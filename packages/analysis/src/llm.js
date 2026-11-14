@@ -53,7 +53,20 @@ export const GEMINI_RESPONSE_SCHEMA = {
  * The prompt contains ONLY aggregate rows (no match ids, seeds, players, hashes of matches) and the
  * allowlisted paths. Human-match rows are left out.
  */
-export function buildPrompt(report) {
+/** The diagnosis as aggregate numbers only: rates, games, roles, the ranked recommendations. */
+function compactDiagnosis(d) {
+  return {
+    matchup: d.matchup,
+    classification: d.classification,
+    heroes: d.heroes.map((h) => ({ hero: h.hero, strength: h.strength,
+      overall: { rate: h.overall.rate, games: h.overall.games },
+      opponents: h.opponents.map((o) => ({ opponent: o.opponent, rate: o.rate, games: o.games })) })),
+    recommendations: d.recommendations.map(({ hero, role, path, direction, sizePct, why, expected }) => ({ hero, role,
+      path, direction, sizePct, why, expected })),
+  };
+}
+
+export function buildPrompt(report, context = {}) {
   assertReport(report);
   const rows = report.rows
     .filter((r) => !r.dimension.startsWith(HUMAN_PREFIX))
@@ -72,6 +85,12 @@ export function buildPrompt(report) {
     'Use only these paths: ' + JSON.stringify(allowed),
     `baseDataHash must be exactly: ${report.dataHash}`,
     'Rows: ' + JSON.stringify(rows),
+    ...(context.diagnosis ? [
+      'Diagnosis of the flagged matchup (both heroes against the other heroes; win rate of each hero, direction "up"'
+      + ' raises the number, "down" lowers it, sizePct is a suggested relative change). Prefer the first'
+      + ' recommendation unless the rows contradict it:',
+      JSON.stringify(compactDiagnosis(context.diagnosis)),
+    ] : []),
   ].join('\n');
 }
 
@@ -120,8 +139,9 @@ class LlmAdapter {
     if (!key) throw new Error(`${this.keyName} is not set`);
     return key;
   }
-  async proposePatch(report) {
-    const proposal = await requestWithRetry(this.fetch, this.url(), this.init(this.#key(), buildPrompt(report)), {
+  async proposePatch(report, context = {}) {
+    const prompt = buildPrompt(report, context);
+    const proposal = await requestWithRetry(this.fetch, this.url(), this.init(this.#key(), prompt), {
       timeoutMs: this.timeoutMs,
       retries: this.retries,
       parse: (json) => {
@@ -133,8 +153,8 @@ class LlmAdapter {
     });
     return proposal;
   }
-  async proposeWithOrigin(report) {
-    return { proposal: await this.proposePatch(report), origin: this.origin };
+  async proposeWithOrigin(report, context = {}) {
+    return { proposal: await this.proposePatch(report, context), origin: this.origin };
   }
 }
 
@@ -191,15 +211,15 @@ export class FallbackAdapter {
     this.primary = primary;
     this.fallback = fallback;
   }
-  async proposeWithOrigin(report) {
+  async proposeWithOrigin(report, context = {}) {
     try {
-      return await this.primary.proposeWithOrigin(report);
+      return await this.primary.proposeWithOrigin(report, context);
     } catch (e) {
-      const got = await this.fallback.proposeWithOrigin(report);
+      const got = await this.fallback.proposeWithOrigin(report, context);
       return { proposal: got.proposal, origin: 'fallback', fallbackReason: String(e.message).slice(0, 160) };
     }
   }
-  async proposePatch(report) {
-    return (await this.proposeWithOrigin(report)).proposal;
+  async proposePatch(report, context = {}) {
+    return (await this.proposeWithOrigin(report, context)).proposal;
   }
 }

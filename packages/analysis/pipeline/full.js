@@ -3,7 +3,9 @@
 // Returns { ok: true, value: body } or an error result; body has the shared-interface fields except the transport
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
+import { buildDiagnosis, diagnosisMatchups } from '../src/diagnose.js';
 import { buildEvidence } from '../src/evidence.js';
+import { heroMatchup } from '../src/group.js';
 import { isMirror } from '../src/verdict.js';
 import { HUMAN_PREFIX, withExtras } from '../src/extras.js';
 import { applyPatchToData } from '../src/replay.js';
@@ -82,6 +84,7 @@ function fairBody(baseline, evidence, holdoutSeedSetId) {
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
     evidence,
+    diagnosis: null,
     fair: true,
     proposal: null,
     validation: null,
@@ -90,6 +93,47 @@ function fairBody(baseline, evidence, holdoutSeedSetId) {
     verdict: { verdict: 'inconclusive', reasons: ['no outlier: the matchup is within the fair band'] },
     humanMatches: baseline.humanMatches ?? 0,
   };
+}
+
+/** The flagged matchup furthest from 50% (non-mirror, non-human); ties alphabetical. */
+function focusMatchup(baseline) {
+  return baseline.rows.filter((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r))
+    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0]
+    ?.dimension;
+}
+
+/**
+ * Diagnosis for the focus matchup: the focus heroes against every other hero, run by the injected `runDiagnose`
+ * (matchups, seeds) on fresh seeds. Returns { value } or { error }; a failed diagnosis never stops the run.
+ */
+async function diagnoseStep(input, baseline) {
+  const { baselineResults, baseData, holdoutSeeds, diagnoseSeeds, runDiagnose } = input;
+  if (input.diagnosis) return { value: input.diagnosis };
+  if (typeof runDiagnose !== 'function') return { value: null };
+  const matchup = focusMatchup(baseline);
+  const heroIds = (baseData.characters ?? []).map((c) => c.id);
+  const matchups = matchup ? diagnosisMatchups(matchup, heroIds) : [];
+  if (matchups.length === 0) return { value: null };
+  if (!Array.isArray(diagnoseSeeds) || diagnoseSeeds.length === 0 || !diagnoseSeeds.every(Number.isInteger)) {
+    fail('INVALID_INPUT', 'diagnoseSeeds must be a non-empty array of integers');
+  }
+  const taken = new Set([...baselineResults.map((r) => r.config.seed), ...holdoutSeeds]);
+  if (diagnoseSeeds.some((seed) => taken.has(seed))) {
+    fail('INVALID_INPUT', 'diagnose seeds must not overlap other seeds');
+  }
+  let results;
+  try {
+    results = await runDiagnose(matchups, [...diagnoseSeeds]);
+  } catch (e) {
+    return fail('SIMULATION_FAILED', `the diagnosis run failed: ${String(e?.message ?? e).slice(0, 120)}`);
+  }
+  assertMatchResults(results, 'diagnosis results');
+  if (results.some((r) => r.config.dataHash !== baseline.dataHash)) {
+    fail('DATA_HASH_MISMATCH', 'diagnosis results are not pinned to the baseline data');
+  }
+  const own = baselineResults.filter((r) => heroMatchup(r)?.dimension === matchup);
+  const built = buildDiagnosis([...own, ...results], { matchup, data: baseData });
+  return built.ok ? { value: built.value } : { error: built.error };
 }
 
 async function runFullUnsafe(input) {
@@ -109,13 +153,16 @@ async function runFullUnsafe(input) {
   const evidenceBody = evidence.ok ? evidence.value : null; // null only if it could not be built
   const flagged = baseline.rows.some((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r));
   if (!flagged) return fairBody(baseline, evidenceBody, holdoutSeedSetId);
-  const step = await proposeStep(baseline, adapter);
+  const diagnosed = await diagnoseStep(input, baseline);
+  const step = await proposeStep(baseline, adapter, { context: diagnosed.value ? { diagnosis: diagnosed.value } : {} });
   const body = {
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
     evidence: evidenceBody,
+    diagnosis: diagnosed.value ?? null,
+    ...(diagnosed.error ? { diagnosisError: diagnosed.error } : {}),
     fair: false,
     proposal: { ...step.proposal, origin: step.origin,
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },

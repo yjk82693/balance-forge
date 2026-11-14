@@ -35,8 +35,11 @@ export function analyzePhase(results, options = {}) {
   return { report, meta, counted };
 }
 
-/** Baseline: analyze, ask the adapter, validate. `adapter.proposeWithOrigin` falls back to proposePatch. */
-export async function proposeStep(report, adapter, options = {}) {
+/**
+ * Baseline: analyze, ask the adapter, validate. `adapter.proposeWithOrigin` falls back to proposePatch.
+ * options.context ({ diagnosis }) goes to the adapter as extra input; the other options go to the validator.
+ */
+export async function proposeStep(report, adapter, { context = {}, ...options } = {}) {
   assertReport(report);
   if (!adapter || (typeof adapter.proposeWithOrigin !== 'function' && typeof adapter.proposePatch !== 'function')) {
     fail('INVALID_INPUT', 'adapter must provide proposeWithOrigin or proposePatch');
@@ -44,8 +47,8 @@ export async function proposeStep(report, adapter, options = {}) {
   let got;
   try {
     got = adapter.proposeWithOrigin
-      ? await adapter.proposeWithOrigin(report)
-      : { proposal: await adapter.proposePatch(report), origin: 'custom' };
+      ? await adapter.proposeWithOrigin(report, context)
+      : { proposal: await adapter.proposePatch(report, context), origin: 'custom' };
   } catch (e) {
     return fail('ADAPTER_FAILED', `the patch adapter failed: ${String(e?.message ?? e).slice(0, 120)}`);
   }

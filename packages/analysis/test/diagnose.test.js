@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDiagnosis, diagnosisMatchups, CLASSIFICATIONS } from '../src/diagnose.js';
+import { analyze, buildPrompt, FallbackAdapter } from '../src/index.js';
 import { pairedResults } from './helpers.js';
 
 const DATA = { tuning: { damageScalePermille: 1000 },
@@ -132,4 +133,27 @@ test('only two heroes in the data: nothing else to compare, so the pairing itsel
   const d = diagnose({ 'bari vs daewi': 0.9 }, 'bari vs daewi');
   assert.equal(d.classification, 'counter_specific');
   assert.equal(d.heroes[0].opponents.length, 1);
+});
+
+test('the prompt carries the diagnosis as aggregate numbers only, and adapters pass the context on', async () => {
+  const table = { 'bari vs daewi': 0.99, 'bari vs nightcrow': 0.85, 'bari vs real_armor': 0.8, 'bari vs sepia': 0.88,
+    'daewi vs nightcrow': FAIR, 'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR };
+  const results = world(table);
+  const d = buildDiagnosis(results, { matchup: 'bari vs daewi', data: DATA }).value;
+  const report = analyze(results.filter((r) => r.config.options.assignments.p1 !== 'zzz'));
+  const prompt = buildPrompt(report, { diagnosis: d });
+  assert.match(prompt, /Diagnosis of the flagged matchup/);
+  assert.match(prompt, /"classification":"overall_strong"/);
+  assert.match(prompt, /"direction":"down"/);
+  assert.doesNotMatch(prompt, /matchId|finalStateHash|statistics/); // no raw match data
+  assert.doesNotMatch(buildPrompt(report), /Diagnosis of the flagged matchup/); // without context nothing changes
+  const seen = [];
+  const spy = (name, fail) => ({ async proposeWithOrigin(r, context) {
+    seen.push([name, context]);
+    if (fail) throw new Error('down');
+    return { proposal: { baseDataHash: r.dataHash, replacements: [], rationale: '' }, origin: name };
+  } });
+  await new FallbackAdapter(spy('primary', true), spy('backup', false)).proposeWithOrigin(report, { diagnosis: d });
+  assert.deepEqual(seen.map(([name, context]) => [name, context.diagnosis === d]),
+    [['primary', true], ['backup', true]]);
 });
