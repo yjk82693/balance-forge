@@ -3,8 +3,11 @@ import * as cards from '../../packages/games/cards/index.js';
 import { chooseActions, deriveBotSeed, botPolicyVersion } from '../../packages/games/action/bot.js';
 import { hash, validate, validateOutcome, compareIds } from '../../packages/contracts/index.js';
 import { emptyStatistics } from '../../packages/sim/index.js';
+import * as cardBot from '../../packages/games/cards/bot.js';
 import { learnedBot } from './learn/load.js';
 export { botPolicyVersion };
+// The scripted policy's version per game: results are tagged with the bot that produced them.
+export const scriptedVersionOf = gameId => (gameId === 'hero_cards' ? cardBot.botPolicyVersion : botPolicyVersion);
 export const games = {
   hero_arena: arena,
   hero_cards: cards
@@ -26,6 +29,12 @@ export function cardAction(game, state, seq) {
       } : {})
     }
   };
+}
+// The runner's Hero Cards player: the seeded cards bot, seat index = position in config.players.
+function turnAction(game, state, config) {
+  const active = state.payload.activePlayer;
+  return cardBot.chooseAction(game.observe(state, active), state.tick,
+    cardBot.deriveBotSeed(config.seed, config.players.indexOf(active)));
 }
 function getGame(gameId) {
   if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
@@ -58,7 +67,7 @@ export function executeMatch(job, {
     if (!game) throw Error('INVALID_SCHEMA');
     state = game.initial(config, data);
     while (game.outcome(state).status === 'running') {
-      const actions = config.mode === 'turn' ? [cardAction(game, state, state.tick)] : config.players.flatMap((id,
+      const actions = config.mode === 'turn' ? [turnAction(game, state, config)] : config.players.flatMap((id,
         i) => bot.chooseActions(game.observe(state, id), state.tick * 2,
           bot.deriveBotSeed(config.seed, i))).sort((a, b) => compareIds(a.playerId, b.playerId));
       const frame = {

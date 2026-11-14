@@ -4,7 +4,7 @@ import { xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta, cl
 import { schemas, actions } from './schemas.js';
 export { data } from './data.js';
 export { hash };
-export const simVersion = 'cards-0.1.1';
+export const simVersion = 'cards-0.1.2';
 registerGame('hero_cards', 1, schemas);
 export const describe = () => ({
   gameId: 'hero_cards',
@@ -85,7 +85,9 @@ export function initial(config, data) {
         winners: [],
         reason: 'in_progress'
       },
-      statistics: emptyStatistics(config.players, ['play', 'end_turn'])
+      // play:<cardId> counts, per player, the plays of that card and the turns it was in hand and playable.
+      statistics: emptyStatistics(config.players, ['play', 'end_turn',
+        ...data.gameRules.cards.map(c => `play:${c.id}`)])
     }
   };
   for (const e of state.payload.entities) {
@@ -179,6 +181,10 @@ export function step(state, frame, data) {
   const s = q.statistics.players.find(x => x.playerId === e.id);
   for (const spec of legalActions(observe(state, e.id))) s.actions.find(a =>
     a.actionId === spec.actionId).opportunities++;
+  for (const id of new Set(e.hand)) {
+    if (playable(data.gameRules.cards.find(c => c.id === id), e)) s.actions.find(a =>
+      a.actionId === `play:${id}`).opportunities++;
+  }
   const action = frame.actions[0];
   const damage = (amount, ignoresWard = false) => {
     const absorbed = ignoresWard ? 0 : Math.min(amount, enemy.ward);
@@ -195,6 +201,7 @@ export function step(state, frame, data) {
       const [id] = e.hand.splice(action.params.handIndex, 1),
         card = data.gameRules.cards.find(c => c.id === id);
       e.discard.push(id);
+      s.actions.find(a => a.actionId === `play:${id}`).uses++;
       e.energy -= card.cost;
       if (card.kind === 'summon') e.units.push({
         id: `u${q.nextUnit++}`,
@@ -217,7 +224,8 @@ export function step(state, frame, data) {
         });
       } else if (card.kind === 'ward') e.ward = clamp(e.ward + card.power, 0, 100);else {
         const amount = damage(card.power, card.ignoresWard);
-        if (card.kind === 'hypnosis') for (const unit of enemy.units) unit.sleepUntil = state.turnId + 2;
+        // sleepUntil stops at 12: the schema ends there, and the game is over at turn 12
+        if (card.kind === 'hypnosis') for (const unit of enemy.units) unit.sleepUntil = Math.min(state.turnId + 2, 12);
         event('card.hit', {
           source: e.id,
           target: enemy.id,
