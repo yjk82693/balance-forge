@@ -59,10 +59,35 @@ async function waitForHealth(url, ms) {
   return false;
 }
 
+// Secrets come from the environment or, on macOS, from Keychain items of the same name.
+// They go to the server process only and are never printed; only the names are listed.
+const SECRETS = ['GEMINI_API_KEY', 'XAI_API_KEY', 'MONGODB_URI', 'TIGER_DATABASE_URL'];
+
+function secretEnv() {
+  const env = {};
+  for (const name of SECRETS) {
+    if (process.env[name]) {
+      env[name] = process.env[name];
+      continue;
+    }
+    if (process.platform !== 'darwin') continue;
+    const found = spawnSync('security', ['find-generic-password', '-s', name, '-w'], { encoding: 'utf8' });
+    if (found.status === 0 && found.stdout.trim()) env[name] = found.stdout.trim();
+  }
+  const names = Object.keys(env);
+  console.log(`secrets: ${names.length ? names.join(', ') : 'none'} (values never printed)`);
+  return env;
+}
+
 function startLive() {
   const child = spawn(process.execPath, ['services/room/cli.js'], {
     cwd: root,
-    env: { ...process.env, PORT: String(port) },
+    env: {
+      ...process.env,
+      ...secretEnv(),
+      GEMINI_MODEL: process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest',
+      PORT: String(port),
+    },
     stdio: ['ignore', 'inherit', 'inherit'],
   });
   return child;

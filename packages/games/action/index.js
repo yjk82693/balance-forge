@@ -4,7 +4,7 @@ import { clamp, xorshift32, pinData, assertPinned, emptyStatistics, statisticsDe
 import { actions, schemas } from './schemas.js';
 export { data } from './data.js';
 export { hash };
-export const simVersion = 'arena-0.1.1';
+export const simVersion = 'arena-0.1.2';
 registerGame('hero_arena', 1, schemas);
 const ids = actions.filter(a => a.actionId !== 'move').map(a => a.actionId);
 export const describe = () => ({

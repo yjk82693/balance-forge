@@ -11,6 +11,7 @@ import { botRows } from "../lib/groups";
 import { go } from "../lib/router";
 import { pct } from "../lib/stats";
 import { useManifest } from "../lib/assets";
+import { useIntent } from "../lib/intent";
 import { loadDesigner } from "../lib/designer";
 import { useHeroStats } from "../lib/heroStats";
 import {
@@ -22,6 +23,7 @@ import {
   matchupName,
   runAutoBalance,
   shortHash,
+  summaryLine,
   type HistorySource,
   type VersionDetail,
   type VersionList,
@@ -50,6 +52,7 @@ function BotResult({ run, target }: { run: PlaytestRun; target?: string }) {
 
 export function Versions() {
   useManifest();
+  useIntent();
   useHeroStats();
   const [list, setList] = useState<VersionList | null>(null);
   const [source, setSource] = useState<HistorySource>("recorded");
@@ -147,6 +150,9 @@ export function Versions() {
               </span>
               <span className="meta">newest first</span>
             </div>
+            {summaryLine(list?.summary) && (
+              <p className="caption">Recorded run · {summaryLine(list?.summary)}</p>
+            )}
             <div className="balance-bar">
               <div className="seg" role="group" aria-label="Rounds">
                 {[1, 2, 3].map((n) => (
@@ -189,7 +195,7 @@ export function Versions() {
             {!loading && rows.length === 0 && (
               <div className="empty">
                 <p className="h3">No stored versions yet.</p>
-                <p className="text-2">Run auto-balance on the live server, or add a stored history file.</p>
+                <p className="text-2">Run auto-balance on the live server, or wait for the recorded history.</p>
               </div>
             )}
             <DesignerSection cases={list?.needsDesigner ?? loadDesigner()} />

@@ -1,6 +1,7 @@
 import type { ReportRow } from "../lib/contract";
 import { humanLabel, isHumanDimension } from "../lib/groups";
 import { heroName } from "../lib/heroes";
+import { targetFor, targetFromRate, type Target } from "../lib/intent";
 import { pct, wilson } from "../lib/stats";
 import { HeroPortrait } from "./HeroPortrait";
 
@@ -27,15 +28,33 @@ export interface RowStats {
   small: boolean;
   outlier: boolean;
   matchup: Matchup;
+  /** what the designer intends for this matchup (even unless the intent says otherwise) */
+  target: Target;
+  /** true when target and outlier were worked out here because the row carries none from the analysis */
+  estimated: boolean;
 }
 
-/** Wilson interval from wins/games; outlier = interval entirely outside the balanced band, never for tiny n. */
+/**
+ * Wilson interval from wins/games; outlier = interval entirely outside the intended band (the target ±5 points,
+ * 45–55% when the matchup is meant to be even), never for tiny n.
+ */
 export function rowStats(row: ReportRow): RowStats {
   const [lo, hi] = wilson(row.wins, row.games);
   const small = row.games < MIN_GAMES;
   const human = isHumanDimension(row.dimension);
   // Human rows are descriptive: a handful of games never raises an outlier alarm.
-  const outlier = !human && !small && (lo > BAND[1] || hi < BAND[0]);
+  const matchup = parseMatchup(row.dimension);
+  // A row with its own target (and outlier flag) from the analysis is shown exactly as given; only older reports are
+  // worked out here, from the design intent, and say so.
+  const given = !human && typeof row.target === "number";
+  const target = human
+    ? targetFor("", "")
+    : given
+      ? targetFromRate(matchup.a, matchup.b, row.target as number)
+      : targetFor(matchup.a, matchup.b);
+  const own = given && typeof row.outlier === "boolean";
+  const worked = !human && !small && (lo > target.band[1] || hi < target.band[0]);
+  const outlier = own ? row.outlier : worked;
   return {
     row,
     rate: row.games ? row.wins / row.games : 0,
@@ -43,7 +62,9 @@ export function rowStats(row: ReportRow): RowStats {
     hi,
     small,
     outlier,
-    matchup: parseMatchup(row.dimension),
+    matchup,
+    target,
+    estimated: !human && !own,
   };
 }
 
@@ -65,10 +86,11 @@ export function Axis() {
   );
 }
 
-export function Plot({ children }: { children: React.ReactNode }) {
+/** The 0-100% track with the fair band (the intended result ±5; 45–55% unless the designer wants otherwise). */
+export function Plot({ children, band = BAND }: { children: React.ReactNode; band?: [number, number] }) {
   return (
     <div className="viz-plot">
-      <div className="viz-band" style={{ left: `${BAND[0] * 100}%`, width: `${(BAND[1] - BAND[0]) * 100}%` }} />
+      <div className="viz-band" style={{ left: `${band[0] * 100}%`, width: `${(band[1] - band[0]) * 100}%` }} />
       {children}
       <div className="viz-baseline" />
     </div>
@@ -105,7 +127,19 @@ function RowLabel({ s, dense }: { s: RowStats; dense: boolean }) {
   );
 }
 
-export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense?: boolean }) {
+export const CHART_FOOT =
+  "Dashed line = 50%. Shaded band = the intended result ±5 (45–55% where even). Whiskers = 95% CI (Wilson).";
+
+interface ChartProps {
+  rows: ReportRow[];
+  dense?: boolean;
+  /** the legend line; false when the screen shows it once itself */
+  foot?: boolean;
+  /** extra content under a flagged row (the "Intended?" question) */
+  rowAction?: (s: RowStats) => React.ReactNode;
+}
+
+export function WinRateChart({ rows, dense = false, foot = true, rowAction }: ChartProps) {
   const stats = rows.map(rowStats);
   return (
     <div className={`viz${dense ? " dense" : ""}`}>
@@ -119,8 +153,14 @@ export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense
           <div className="viz-label">
             <RowLabel s={s} dense={dense} />
             {s.outlier && <span className="badge outlier">▲ Outlier</span>}
+            {s.target.favored && (
+              <span className="caption intended">
+                {s.target.label}
+                {s.estimated && " · estimated"}
+              </span>
+            )}
           </div>
-          <Plot>
+          <Plot band={s.target.band}>
             <div
               className={`viz-bar${s.outlier ? " warn" : ""}${s.small ? " small-n" : ""}`}
               style={{ width: `${s.rate * 100}%` }}
@@ -130,11 +170,10 @@ export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense
           <span className="viz-value small" title={ciText(s)}>
             {s.small ? "Too few games yet" : `${pct(s.rate)}%`}
           </span>
+          {s.outlier && rowAction && <div className="viz-action">{rowAction(s)}</div>}
         </div>
       ))}
-      <p className="caption viz-foot">
-        Dashed line = 50%. Shaded band = 45–55%. Whiskers = 95% CI (Wilson).
-      </p>
+      {foot && <p className="caption viz-foot">{CHART_FOOT}</p>}
       <table className="sr-only">
         <caption>Win rate by matchup</caption>
         <thead>

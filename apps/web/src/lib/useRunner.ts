@@ -78,7 +78,7 @@ export function useRunner() {
     setLive({ done: result.baseline.validMatches, total: result.baseline.validMatches, rows: null });
   };
 
-  const start = async (heroes?: [string, string], diagnose = false) => {
+  const start = async (heroes?: [string, string], diagnose = false, botPolicy?: string) => {
     if (busy) return;
     setBusy(true);
     setError(null);
@@ -89,7 +89,7 @@ export function useRunner() {
     const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
-      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes, diagnose);
+      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes, diagnose, botPolicy);
       finish(result);
       if (!mock) saveRun(result);
     } catch (e) {
@@ -111,5 +111,11 @@ export function useRunner() {
     }
   };
 
-  return { run, busy, live, error, notice, elapsed, start };
+  /** Swap in the same run judged again (after reanalyze), without a new bot run. */
+  const replace = (next: PlaytestRun) => {
+    setRun(next);
+    if (!mock) saveRun(next);
+  };
+
+  return { run, busy, live, error, notice, elapsed, start, replace };
 }

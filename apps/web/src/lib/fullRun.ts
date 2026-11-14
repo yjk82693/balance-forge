@@ -56,6 +56,10 @@ function cleanRow(r: unknown): ReportRow | null {
     opportunities: Number(r.opportunities) || 0,
     outlier: r.outlier === true,
     ...(seatWins !== undefined ? { seatWins } : {}),
+    ...(Number.isFinite(Number(r.target)) && r.target != null ? { target: Number(r.target) } : {}),
+    ...(Number.isFinite(Number(r.deltaToTarget)) && r.deltaToTarget != null
+      ? { deltaToTarget: Number(r.deltaToTarget) }
+      : {}),
   };
 }
 
@@ -98,6 +102,7 @@ function proposalFrom(raw: unknown, validation: unknown): Proposal | undefined {
     patch,
     changes,
     origin: ORIGINS.includes(raw.origin as PatchOrigin) ? (raw.origin as PatchOrigin) : "manual",
+    ...(typeof raw.fallbackReason === "string" && raw.fallbackReason ? { fallbackReason: raw.fallbackReason } : {}),
     validation: { ok: v.ok !== false && errors.length === 0, errors },
   };
 }

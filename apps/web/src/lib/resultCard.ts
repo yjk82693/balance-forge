@@ -17,6 +17,8 @@ export interface Rate {
   lo: number;
   hi: number;
   games: number;
+  /** "intended: Bari favored (60%)" when the designer wants something other than even */
+  intended?: string;
 }
 
 export interface Finding extends Rate {
@@ -52,6 +54,8 @@ export interface ResultFacts {
   /** one line of evidence for the outlier, from the run's `evidence`; null when the run has none */
   evidence: string | null;
   patch: PatchFact[];
+  /** one plain line when the proposal came from the fallback rule; never hidden */
+  fallbackNote: string | null;
   holdout: Rate | null;
   verdict: {
     kind: VerdictKind;
@@ -73,7 +77,8 @@ function rateOf(dimension: string, rows: Parameters<typeof botRows>[0]): Rate | 
   const row = botRows(rows).find((r) => r.dimension === dimension);
   if (!row) return null;
   const s = rowStats(row);
-  return { matchup: name(dimension), rate: s.rate, lo: s.lo, hi: s.hi, games: row.games };
+  const intended = s.target.favored ? `${s.target.label}${s.estimated ? " · estimated" : ""}` : undefined;
+  return { matchup: name(dimension), rate: s.rate, lo: s.lo, hi: s.hi, games: row.games, intended };
 }
 
 /** The matchups of the recorded roster report that are clearly unbalanced, most lopsided first. */
@@ -105,6 +110,14 @@ function sourceOf(run: PlaytestRun): Pick<ResultFacts, "source" | "sourceDetail"
   return { source, sourceDetail: detail.join(" · ") };
 }
 
+/** "Gemini unavailable: timeout, offline sample used" when the proposal is the fallback rule's; else null. */
+export function fallbackLine(origin: string | undefined, reason: string | undefined): string | null {
+  return origin === "fallback" ? `Gemini unavailable: ${reason || "no reason given"}, offline sample used` : null;
+}
+
+export const fallbackNote = (run: PlaytestRun): string | null =>
+  fallbackLine(run.proposal?.origin, run.proposal?.fallbackReason);
+
 export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): ResultFacts {
   const stats = botRows(run.baseline.rows).map(rowStats);
   const target = stats.find((s) => s.row.dimension === pickTargetDimension(stats));
@@ -132,6 +145,7 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
           errors: run.proposal!.validation.errors,
         }))
       : [],
+    fallbackNote: fallbackNote(run),
     holdout: target && run.patched && !run.fair ? rateOf(target.row.dimension, run.patched.rows) : null,
     verdict: run.verdict && !run.fair
       ? {
@@ -202,6 +216,7 @@ export function summaryText(f: ResultFacts): string {
   } else if (f.outlier) {
     const verb = f.outlier.isOutlier ? "Outlier" : "Most lopsided matchup (within the normal range)";
     lines.push(`${verb}: ${f.outlier.matchup}, first hero wins ${rateText(f.outlier)}`);
+    if (f.outlier.intended) lines.push(`Design intent: ${f.outlier.intended.replace("intended: ", "")}`);
     if (f.evidence) lines.push(`Evidence: ${f.evidence}`);
   } else lines.push("Outlier: none, too few games per matchup.");
   for (const p of f.patch) {

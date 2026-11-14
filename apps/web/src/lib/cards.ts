@@ -46,10 +46,46 @@ export function cardEffect(c: CardDef): string {
   }
 }
 
-/** Card art in assets/hero_cards/cards: {hero}_{attack|guard|signature}.png */
+/** Cards with their own illustration, made for the card whoever plays it: cards/rules/<id>.png */
+const RULES_ART = ["spark", "pulse", "sentinel", "hypnosis", "mechanical_crows", "forethought"];
+
+/**
+ * Card art: the card's own illustration (cards/rules/<id>) when it has one; ward keeps the hero's guard picture
+ * (cards/<hero>_guard); anything else falls back to the hero's picture for its kind (attack, guard or signature).
+ */
 export function cardArtPath(hero: string, c: CardDef): string {
+  if (RULES_ART.includes(c.id)) return `assets/hero_cards/cards/rules/${c.id}.png`;
   const variant = c.kind === "damage" ? "attack" : c.kind === "ward" ? "guard" : "signature";
   return `assets/hero_cards/cards/${hero}_${variant}.png`;
 }
 
-export const SUMMON_ART = "assets/hero_cards/summons/turret_drone.png";
+/**
+ * Summon art by the card that made the unit. Only sentinel and mechanical_crows summon; the other summon pictures
+ * (spirit_wisp, ink_screen, training_dummy) belong to no card in the rules.
+ */
+const SUMMON_NAME: Record<string, string> = { sentinel: "turret_drone", mechanical_crows: "crow_flock" };
+export const SUMMON_ART_NAMES = ["turret_drone", "crow_flock"]; // the two pictures a card can use
+export const summonArtName = (kind: string | undefined) => SUMMON_NAME[kind ?? ""] ?? "turret_drone";
+export const summonArtPath = (name: string) => `assets/hero_cards/summons/${name}.png`;
+export const SUMMON_ART = summonArtPath("turret_drone");
+
+/** The effect of a played card in words, for the table. `dealt` is the damage the hit event reports. */
+export function effectWords(c: CardDef, who: string, foe: string, dealt?: number): string {
+  const name = cardName(c.id);
+  switch (c.kind) {
+    case "damage": {
+      const absorbed = dealt !== undefined && dealt < c.power ? ` (${c.power - dealt} absorbed by ward)` : "";
+      return `${name}: ${foe} takes ${dealt ?? c.power} damage${absorbed}`;
+    }
+    case "ward":
+      return `${name}: ${who} gains ${c.power} ward`;
+    case "summon":
+      return `${name}: ${who} summons a unit that deals ${c.power} damage every turn`;
+    case "hypnosis":
+      return `${name}: ${foe} takes ${dealt ?? c.power} damage through ward, and ${foe}'s summons sleep next turn`;
+    case "peek":
+      return `${name}: ${who} looks at the top card of ${foe}'s deck`;
+    default:
+      return name;
+  }
+}

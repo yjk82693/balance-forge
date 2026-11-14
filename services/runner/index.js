@@ -3,7 +3,8 @@ import { performance } from 'node:perf_hooks';
 import { availableParallelism } from 'node:os';
 import { validate } from '../../packages/contracts/index.js';
 import { botPolicyVersion } from './match.js';
-export { pairedJobs, runMatch, rosterJobs } from './match.js';
+import { learnedBot } from './learn/load.js';
+export { pairedJobs, runMatch, rosterJobs, botPolicies } from './match.js';
 function addMatch(groups, result) {
   const names = result.config.players.map(id => result.config.options?.assignments[id] ?? id).sort();
   const key = JSON.stringify(names);
@@ -121,7 +122,8 @@ export async function runBatch(jobs, {
         elapsedMs,
         matchesPerSecond: results.length * 1000 / elapsedMs,
         includesWorkerStartup: true,
-        botPolicyVersion,
+        botPolicyVersion: jobs[0].botPolicy === 'learned' ? learnedBot().botPolicyVersion : botPolicyVersion,
+        botPolicy: jobs[0].botPolicy ?? 'scripted',
         seedSetId: 'explicit-paired-seeds',
         seeds: [...new Set(jobs.map(j => j.config.seed))]
       }

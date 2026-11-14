@@ -114,7 +114,10 @@ export class Storage {
       if (changes.some((change, index) => change.old !== record.changes[index].old ||
           change.new !== record.changes[index].new)) throw Error('HASH_MISMATCH');
     }
-    return this.versionStore.add(record);
+    const known = Boolean(this.versionStore.get(record.gameId, record.dataHash));
+    const added = this.versionStore.add(record);
+    if (!known) this.sinks?.emit('version', added ?? record);
+    return added;
   }
   select(gameId, dataHash) {
     this.get(gameId, dataHash);
@@ -156,5 +159,6 @@ export class Storage {
     const records = [...this.humans, result];
     writeJson(this.humanPath, records);
     this.humans = records;
+    this.sinks?.emit('human', result);
   }
 }

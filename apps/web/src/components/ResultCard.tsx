@@ -3,11 +3,12 @@ import { pct } from "../lib/stats";
 import { VERDICT_COPY, n } from "../lib/dashboardData";
 import type { VerdictTarget } from "../lib/api";
 import { matchupName as matchupLabel } from "../lib/versions";
+import { targetFor } from "../lib/intent";
 import { rangeNote } from "../lib/statPaths";
 import { HeroProfile } from "./HeroProfile";
 import { summaryText, type Rate, type ResultFacts } from "../lib/resultCard";
 
-const rateLine = (r: Rate) => (
+export const rateLine = (r: Rate) => (
   <>
     <strong>{pct(r.rate)}%</strong>
     <span className="caption">
@@ -39,7 +40,7 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-function CopyButton({ facts }: { facts: ResultFacts }) {
+export function CopyButton({ facts }: { facts: ResultFacts }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
   const copy = async () => {
     setState((await copyText(summaryText(facts))) ? "done" : "failed");
@@ -72,7 +73,7 @@ function PatchLine({ p }: { p: ResultFacts["patch"][number] }) {
   );
 }
 
-function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
+export function PatchColumn({ patch, fallbackNote }: { patch: ResultFacts["patch"]; fallbackNote?: string | null }) {
   return (
     <div>
       <p className="caption">AI patch</p>
@@ -80,6 +81,12 @@ function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
       {patch.map((p) => (
         <PatchLine key={p.path} p={p} />
       ))}
+      {fallbackNote && (
+        <p className="status warn fallback-note" role="status">
+          <span className="dot" />
+          {fallbackNote}
+        </p>
+      )}
       {patch[0]?.rationale && <p className="caption result-why">{patch[0].rationale}</p>}
     </div>
   );
@@ -95,6 +102,8 @@ const place = (rate: number) => `${Math.max(0, Math.min(100, rate * 100))}%`;
 
 /** A small bar from 0 to 100%: the 45-55% band, the rate before (hollow) and after (filled) joined by a line. */
 function BeforeAfterBar({ target }: { target: VerdictTarget }) {
+  const [a, b] = target.matchup.split(" vs ");
+  const band = targetFor(a, b).band;
   const lo = Math.min(target.before.rate, target.after.rate);
   const hi = Math.max(target.before.rate, target.after.rate);
   return (
@@ -103,7 +112,7 @@ function BeforeAfterBar({ target }: { target: VerdictTarget }) {
       role="img"
       aria-label={`${pct(target.before.rate)}% before, ${pct(target.after.rate)}% after`}
     >
-      <span className="ba-band" />
+      <span className="ba-band" style={{ left: place(band[0]), width: `${(band[1] - band[0]) * 100}%` }} />
       <span className="ba-line" style={{ left: place(lo), width: `${(hi - lo) * 100}%` }} />
       <span className="ba-dot before" style={{ left: place(target.before.rate) }} />
       <span className="ba-dot after" style={{ left: place(target.after.rate) }} />
@@ -112,7 +121,7 @@ function BeforeAfterBar({ target }: { target: VerdictTarget }) {
 }
 
 /** One row per target: the matchup, the small before to after bar, the numbers and an outcome chip. */
-function TargetRows({ targets }: { targets: VerdictTarget[] }) {
+export function TargetRows({ targets }: { targets: VerdictTarget[] }) {
   return (
     <ul className="target-rows" aria-label="Targets, before and after the patch">
       {targets.map((t) => (
@@ -129,7 +138,7 @@ function TargetRows({ targets }: { targets: VerdictTarget[] }) {
   );
 }
 
-function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verdict">) {
+export function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verdict">) {
   return (
     <div>
       <p className="caption">Holdout on the patched data</p>
@@ -159,8 +168,25 @@ interface CardProps {
   children?: ReactNode;
 }
 
+/** Other matchups of the recorded roster report that stand out, labelled recorded. */
+export function OthersColumn({ others, note }: { others: NonNullable<ResultFacts["others"]>; note: string | null }) {
+  return (
+    <div>
+      <p className="caption">
+        Other findings <span className="badge recorded">recorded</span>
+      </p>
+      {others.map((o) => (
+        <p key={o.matchup} className="result-line">
+          {o.matchup} · {o.side} {rateLine(o)}
+        </p>
+      ))}
+      {others.length === 0 && <p className="small text-2">{note ?? "No recorded roster report."}</p>}
+    </div>
+  );
+}
+
 export function ResultCard({ facts, title = "Result", children }: CardProps) {
-  const { fair, outlier, evidence, patch, holdout, verdict, others, othersNote } = facts;
+  const { fair, outlier, evidence, patch, holdout, verdict, others, othersNote, fallbackNote } = facts;
   return (
     <section className="panel result" aria-labelledby="result-title">
       <div className="panel-head">
@@ -193,23 +219,12 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
           ) : (
             <p className="small text-2">Too few games per matchup to name one.</p>
           )}
+          {outlier?.intended && <p className="caption">{outlier.intended}</p>}
           {evidence && <p className="caption result-why">{evidence}</p>}
         </div>
-        {!fair && <PatchColumn patch={patch} />}
+        {!fair && <PatchColumn patch={patch} fallbackNote={fallbackNote} />}
         {!fair && <HoldoutColumn holdout={holdout} verdict={verdict} />}
-        {others && (
-          <div>
-            <p className="caption">
-              Other findings <span className="badge recorded">recorded</span>
-            </p>
-            {others.map((o) => (
-              <p key={o.matchup} className="result-line">
-                {o.matchup} · {o.side} {rateLine(o)}
-              </p>
-            ))}
-            {others.length === 0 && <p className="small text-2">{othersNote ?? "No recorded roster report."}</p>}
-          </div>
-        )}
+        {others && <OthersColumn others={others} note={othersNote} />}
       </div>
       {!fair && verdict && verdict.targets.length > 0 && <TargetRows targets={verdict.targets} />}
       {facts.diagnosis && <HeroProfile diagnosis={facts.diagnosis} patchPaths={facts.patchPaths} />}

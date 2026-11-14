@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { runBatch, pairedJobs, rosterJobs } from '../runner/index.js';
 import { botPolicyVersion, games } from '../runner/match.js';
+import { learnedBot } from '../runner/learn/load.js';
 import { hash, validateSchema } from '../../packages/contracts/index.js';
 import { array, integer, object, text } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
@@ -20,6 +22,9 @@ const digest = {
   type: 'string',
   pattern: '^[0-9a-f]{64}$'
 };
+const botPolicyEnum = {
+  enum: ['scripted', 'learned']
+};
 export const runRequest = object({
   gameId,
   pairs: integer(1, 1000),
@@ -27,6 +32,7 @@ export const runRequest = object({
     type: 'boolean'
   },
   heroes: array(text(64), 2, 2),
+  botPolicy: botPolicyEnum,
   dataHash: digest
 }, ['gameId', 'pairs']);
 export const fullRequest = object({
@@ -42,8 +48,23 @@ export const fullRequest = object({
   diagnose: {
     type: 'boolean'
   },
+  botPolicy: botPolicyEnum,
   dataHash: digest
 }, ['gameId']);
+
+// The bot that plays the matches: 'scripted' (scripted-0.2.1, the default) or 'learned' (self-play trained parameters,
+// Hero Arena only). The report's botPolicyVersion says which one produced a result; for 'learned' it carries a hash of
+// the parameters (learned-cem-1+<8 hex>).
+export function resolveBotPolicy(gameId, body) {
+  const policy = body.botPolicy ?? 'scripted';
+  if (policy === 'scripted') return { botPolicy: 'scripted', botPolicyVersion };
+  if (gameId !== 'hero_arena') throw new PipelineError({ code: 'INVALID_SCHEMA',
+    message: 'Learned bots exist for Hero Arena only.' });
+  const bot = learnedBot();
+  if (!bot) throw new PipelineError({ code: 'LEARNED_UNAVAILABLE',
+    message: 'No trained bot parameters are available. Use botPolicy "scripted" or run the trainer first.' });
+  return { botPolicy: 'learned', botPolicyVersion: bot.botPolicyVersion };
+}
 
 // heroes: [a, b] picks one matchup. Both must be playable in this data version and different (a mirror only measures
 // the first-seat advantage). Errors keep their own codes so the screen can say what is wrong.
@@ -66,6 +87,7 @@ export async function matchBatch(server, {
   pairs,
   roster = false,
   heroes,
+  botPolicy,
   matchups,
   seeds,
   phase,
@@ -77,9 +99,10 @@ export async function matchBatch(server, {
     length: pairs
   }, (_, index) => index + 1);
   const dataHash = server.storage.addVersion(data);
+  const policy = botPolicy === 'learned' ? { botPolicy } : {};
   const jobs = matchups ? matchups.flatMap(matchup => pairedJobs({
-    gameId, data, seeds, heroes: matchup.split(' vs ')
-  })) : (roster ? rosterJobs : pairedJobs)({ gameId, data, seeds, ...(heroes ? { heroes } : {}) });
+    gameId, data, seeds, heroes: matchup.split(' vs '), ...policy
+  })) : (roster ? rosterJobs : pairedJobs)({ gameId, data, seeds, ...(heroes ? { heroes } : {}), ...policy });
   batchId ??= runId;
   jobs.forEach((job, index) => {
     job.matchId = `bot-${batchId}-${phase ?? 'run'}-${index + 1}`;
@@ -104,6 +127,8 @@ export async function matchBatch(server, {
   const fileId = phase ? `${batchId}-${phase}` : batchId;
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.json`), batch.results);
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.metrics.json`), batch.metrics);
+  server.sinks.emit('matches', { results: batch.results, dataHash, phase: phase ?? 'run', runId, at: Date.now(),
+    botPolicyVersion: batch.metrics.botPolicyVersion ?? botPolicyVersion });
   return {
     ...batch,
     resultsPath: `/v1/playtest/results/${fileId}.json`,
@@ -116,11 +141,14 @@ export async function runPlaytest(server, body) {
     data
   } = server.storage.get(body.gameId, body.dataHash);
   checkHeroes(body.gameId, data, body);
+  const policy = resolveBotPolicy(body.gameId, body);
   const batch = await matchBatch(server, {
     ...body,
     data
   });
   return {
+    botPolicy: policy.botPolicy,
+    botPolicyVersion: policy.botPolicyVersion,
     resultsPath: batch.resultsPath,
     elapsedMs: batch.metrics.elapsedMs,
     matchCount: batch.results.length,
@@ -157,15 +185,19 @@ export async function fullPlaytest(server, body) {
     data
   } = server.storage.get(body.gameId, body.dataHash);
   const heroes = checkHeroes(body.gameId, data, body);
+  const policy = resolveBotPolicy(body.gameId, body);
   const {
     createAdapter
   } = await import('../../packages/analysis/src/adapters.js');
   const adapter = createAdapter(server.analysisEnv.GEMINI_API_KEY ? 'gemini' : 'fake', server.analysisEnv);
+  const intent = await server.design.get(body.gameId);
+  const humanSnapshot = structuredClone(server.storage.humans);
   const baseline = await matchBatch(server, {
     gameId: body.gameId,
     data,
     roster: body.roster ?? false,
     heroes,
+    botPolicy: policy.botPolicy,
     seeds,
     phase: 'baseline',
     runId
@@ -176,9 +208,10 @@ export async function fullPlaytest(server, body) {
     baseData: data,
     rootData: structuredClone(games[body.gameId].data), // hero stats stay within 40% of the original data
     adapter,
+    intent,
     holdoutSeeds,
     hashData: hash,
-    botPolicyVersion,
+    botPolicyVersion: policy.botPolicyVersion,
     seedSetId,
     holdoutSeedSetId,
     ...(body.diagnose ? {
@@ -187,12 +220,13 @@ export async function fullPlaytest(server, body) {
         gameId: body.gameId,
         data,
         matchups,
+        botPolicy: policy.botPolicy,
         seeds: diagnoseSeeds,
         phase: 'diagnose',
         runId
       })).results
     } : {}),
-    humanResults: structuredClone(server.storage.humans),
+    humanResults: structuredClone(humanSnapshot),
     elapsedMs: Math.round(baseline.metrics.elapsedMs),
     createdAt: new Date().toISOString(),
     runHoldout: async (patched, seeds) => {
@@ -201,6 +235,7 @@ export async function fullPlaytest(server, body) {
         data: patched,
         roster: body.roster ?? false,
         heroes,
+        botPolicy: policy.botPolicy,
         seeds,
         phase: 'holdout',
         runId
@@ -210,16 +245,52 @@ export async function fullPlaytest(server, body) {
   });
   if (!result.ok) throw new PipelineError(result.error);
   recordFullVersion(server, data, result.value);
-  return {
+  const output = {
     ...result.value,
     runId,
     gameId: body.gameId,
+    botPolicy: policy.botPolicy,
     elapsedMs: Math.round(performance.now() - start),
     seatWins: {
       baseline: baseline.metrics.seatWins,
       holdout: holdout?.metrics.seatWins ?? null
     }
   };
+  // Kept so the analysis can be re-run on these results under another design intent (POST /v1/playtest/reanalyze).
+  const folder = join(server.storage.directory, 'playtests');
+  writeJson(join(folder, `${runId}-full.json`), output);
+  server.sinks.emit('report', output);
+  if (humanSnapshot.length) writeJson(join(folder, `${runId}-humans.json`), humanSnapshot);
+  return output;
+}
+
+const reanalyzeRequest = object({
+  runId: { type: 'string', pattern: '^[0-9a-f-]{36}$' },
+  intent: { type: 'object' }
+}, ['runId']);
+
+/** Re-runs only the analysis of a stored full run, under the given intent or the saved one. No simulation. */
+export async function reanalyzePlaytest(server, body) {
+  validateSchema(reanalyzeRequest, body);
+  const folder = join(server.storage.directory, 'playtests');
+  const read = name => {
+    const path = join(folder, `${body.runId}${name}.json`);
+    return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+  };
+  const stored = read('-full');
+  const baselineResults = read('-baseline');
+  if (!stored || !baselineResults) throw new PipelineError({ code: 'INVALID_SCHEMA',
+    message: 'Unknown run: only full runs made by this server can be re-analysed.' });
+  const intent = body.intent === undefined ? await server.design.get(stored.gameId) :
+    await server.design.prepare(stored.gameId, body.intent);
+  const { reanalyzeRun } = await import('../../packages/analysis/pipeline/reanalyze.js');
+  const out = await reanalyzeRun({ stored, baselineResults, holdoutResults: read('-holdout'),
+    diagnoseResults: read('-diagnose'), humanResults: read('-humans') ?? [],
+    baseData: server.storage.get(stored.gameId, stored.baseline.dataHash).data,
+    rootData: structuredClone(games[stored.gameId].data), hashData: hash, intent });
+  if (!out.ok) throw new PipelineError(out.error);
+  return { ...out.value, runId: body.runId, gameId: stored.gameId, botPolicy: stored.botPolicy,
+    seatWins: stored.seatWins };
 }
 
 function recordFullVersion(server, baseData, result) {

@@ -2,19 +2,23 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import type { CardsPayload, Observation } from "../lib/contract";
 import { assetUrl, loadManifest, preferWebp } from "../lib/assets";
-import { SUMMON_ART } from "../lib/cards";
+import { SUMMON_ART_NAMES, summonArtPath } from "../lib/cards";
+import { HEROES } from "../lib/heroes";
+import { heroThumbPath } from "../lib/assets";
 import { CardsScene, TABLE_H, TABLE_W, type CardsAssets, type CardsMeta } from "./CardsScene";
 
 interface Props {
   observation: Observation<CardsPayload> | null;
   names: Record<string, string>;
+  /** seat -> hero id */
+  heroes?: Record<string, string>;
 }
 
-export function CardsCanvas({ observation, names }: Props) {
+export function CardsCanvas({ observation, names, heroes }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
-  const latest = useRef({ observation, names });
-  latest.current = { observation, names };
+  const latest = useRef({ observation, names, heroes });
+  latest.current = { observation, names, heroes };
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +34,9 @@ export function CardsCanvas({ observation, names }: Props) {
         iconHealth: u("icon_health"),
         iconDefense: u("icon_defense"),
         iconMana: u("icon_mana"),
-        summon: assetUrl(SUMMON_ART),
+        summons: Object.fromEntries(SUMMON_ART_NAMES.map((n) => [n, assetUrl(summonArtPath(n))])),
+        frames: Object.fromEntries(HEROES.map((h) => [h.id, u(`frame_${h.id}`)])),
+        portraits: Object.fromEntries(HEROES.map((h) => [h.id, assetUrl(heroThumbPath(h.id))])),
       };
       game.current = new Phaser.Game({
         type: Phaser.AUTO,
@@ -45,7 +51,7 @@ export function CardsCanvas({ observation, names }: Props) {
         callbacks: {
           preBoot: (gm) => {
             gm.registry.set("assets", assets);
-            gm.registry.set("meta", { names: latest.current.names } satisfies CardsMeta);
+            gm.registry.set("meta", { names: latest.current.names, heroes: latest.current.heroes } satisfies CardsMeta);
             if (latest.current.observation) gm.registry.set("obs", latest.current.observation);
           },
         },
@@ -59,9 +65,9 @@ export function CardsCanvas({ observation, names }: Props) {
   }, []);
 
   useEffect(() => {
-    game.current?.registry.set("meta", { names } satisfies CardsMeta);
+    game.current?.registry.set("meta", { names, heroes } satisfies CardsMeta);
     if (observation) game.current?.registry.set("obs", observation);
-  }, [observation, names]);
+  }, [observation, names, heroes]);
 
   return <div ref={host} className="arena-host" role="img" aria-label="Hero Cards table view" />;
 }

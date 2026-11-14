@@ -405,3 +405,98 @@ Retaken from the live demo server at its LAN address (the lobby QR shows `10.25.
 ## Round 8 holdout size and sample-size wording
 The live run's request now carries `holdoutPairs` equal to `pairs` (100), so the holdout has as many games as the baseline (the live run found a 100-game holdout against a 200-game gate). When a verdict reason names a sample-size cause (the analysis wording "<matchup>: only N games after the patch (need M)"), the Result card, Copy summary, the Versions detail and the presenter's verdict scene say it in plain words, e.g. "Bari vs Real Armor needs more games: 100 of 200". Checked in node on that reason text (and that other reasons and no reasons give nothing); build and type check pass; not seen with a live run after the engine change.
 **Update.** The thin-holdout reason is now also read in the analysis's new wording, "<matchup>: holdout has N games; M needed" (the old "only N games after the patch (need M)" still works); both give "needs more games: N of M" (node-checked). `needs_designer` is read from the auto response and, when that lacks it, from `/v1/playtest/results/<runId>-auto.json` (using the `runId` of the auto response); an unreadable file gives no cards. Type check and build pass; the results-file read was not run against a server.
+
+## Round 8 Hero Cards on the big screen and the phones
+**What the live server does** (two headless phone clients on the same cards room at the demo server, a full 12-turn match played through the phones' own buttons; the server's own web build): each phone got its own hand on the first `state.view` (viewer `p1` / `p2`, 5 cards each, `activePlayer` and both `handCount`s), the display's view carries `hand: []`, and a phone that reloads mid-match gets `room.status` and a fresh `state.view` with its hand again. So the server does not withhold a seat's hand; in both phones the hand showed from the start and stayed up to the last turn. The phone told the player "Both summon slots are full" when a third summon was picked (live, turns 10-12).
+**The bug that was the web's:** the big screen's route (`screens/Arena.tsx`) opened its socket with `useTransport("display")`, without the game. The host room is kept per game (`bf-host-<game>`), so for Hero Cards the arena screen attached to (or created) a Hero Arena room, not the cards room: its messages were `room.status: lobby` for an empty room and no `state.view` at all, and it showed "Waiting for the match to start" with an empty table through the whole match, while both phones played. That is why no card effect ever appeared on the big screen. Hero Arena was unaffected because the default game is Hero Arena. Fixed (`useTransport("display", gameId)`). I could not run the fixed build against the live server (no other server may be started), so the fix is read from the code and the live capture, not seen live. Why one phone showed no hand is not reproduced: both seats got hands in every run; the phone now also switches to the cards hand whenever the view it receives is a cards view, whatever the room status said about the game when it joined.
+**Card id → art, as the web uses it now** (`lib/cards.ts`): art is by the card's kind and the hero holding it: `damage` (spark, pulse) → `<hero>_attack`; `ward` (ward) → `<hero>_guard`; every other kind (sentinel and mechanical_crows = `summon`, hypnosis, forethought = `peek`) → `<hero>_signature`. So: spark and pulse share one picture per hero; sentinel, mechanical_crows, hypnosis and forethought all share the hero's signature picture; ward has its own guard picture. Nothing is specific to a card id. Summons on the table: sentinel → `turret_drone`, mechanical_crows → `crow_flock` (new, from the unit's `kind`); `spirit_wisp`, `ink_screen` and `training_dummy` are used by no card in the rules. Cards that would need their own art: hypnosis (borrows the signature picture, the one the demo cares about), forethought (borrows it too), sentinel and mechanical_crows (borrow it; their units have art, the cards do not), and spark vs pulse (identical pictures).
+**Table (display)** (`CardsScene`, `CardBanner`): each side has its hero's card frame, portrait, name and HP from the first view; summons draw in their two slots from the unit's `kind` with their per-turn power and "asleep" state (the rules give units power and sleep only; there is no summon HP and nothing destroys or expires a unit, so there is nothing to disappear); a banner over the table shows each `card.played` with the card's art, the player and the effect in words, from the rules: "Spark: Bari takes 3 damage", "(2 absorbed by ward)", "Ward: Bari gains 5 ward", "Sentinel: Bari summons a unit that deals 2 damage every turn", "Hypnosis: Daewi takes 4 damage through ward, and Daewi's summons sleep next turn", "Forethought: Bari looks at the top card of Daewi's deck"; a `turn.ended` shows "Round 3 of 6 · Daewi's turn". (The rules' hypnosis puts the opponent's summons to sleep for their next turn; it does not make a hero skip a turn, so the banner says what the rules do.) The mock server now emits the same events so all of this runs in `?mock=1`.
+**Event → expected → table → phone** (mock server with the fixed build for table and phone; the live server for what the server sends; `-` = not applicable):
+| Event | Expected | Table | Phone |
+|---|---|---|---|
+| match start | both heroes on the field, one per side, frame, portrait, HP; hands of 5 | seen (hero card per side with HP 20/20, 5 hand backs) | seen (own hand of 5, HP, energy, two open slots) |
+| `card.played` spark/pulse + `card.hit` | banner with art, "N damage", HP drops | seen (banner, HP 20 → 18) | seen (opponent HP updates in the stats line) |
+| ward | banner "gains 5 ward", ward counter up | seen | seen (Ward 5) |
+| sentinel / mechanical_crows | unit in a slot with its art, per-turn power | seen (turret_drone art, "2 / turn") | seen (thumbnail, name, "2 per turn" in its slot; the foe's count in the stats line) |
+| hypnosis | 4 damage through ward, opponent summons asleep next turn | seen (banner words; summons dimmed, "asleep") | seen (slot text "asleep") |
+| forethought (`card.peek`, private to the player) | banner with the effect | banner seen (from `card.played`); the peeked card itself is private and not shown | not shown (the phone does not display the peek result) |
+| third summon with both slots full | refused with a visible message | - | seen live: "Both summon slots are full" (Play stays disabled) |
+| `turn.ended` | turn counter changes | seen (turn chip, "Round N of 6 · X's turn") | seen ("Your turn" / "Waiting for X") |
+| match end | result | seen (match over panel) | seen ("Match over") |
+Not checked: the fixed build against the live server (see above); a unit being destroyed (the rules have no such event); the peek result on a phone.
+
+## Round 8 long runs
+While a run goes on (30-60 s with diagnosis) the big result area on the dashboard is the Result card's shape in shimmering blocks (`components/ResultSkeleton.tsx`): the phase in words (Measuring baseline / Diagnosing heroes / Testing the patch on fresh seeds / Starting the run), matches done of total for that phase with a progress bar, and the elapsed time; it is replaced by the card when the run ends, so the area is never empty. The right panel keeps its live bars. Shimmer stops under reduced motion. Checked in the mock run (phase changed from baseline to fresh-seeds testing, counters and time ran, the screen stayed at 1080 px); not with the real 60-second run.
+
+## Round 8 recorded auto-balance history
+The recorded fallback of the Versions screen and of `#/present` now reads `services/runner/recorded-auto-history.json` (`{summary: {stoppedBecause, rounds, needs_designer, botPolicyVersion, simVersion, createdAt}, versions: [records]}`) instead of the old runtime path under `services/room/data/versions`, which never ships. The versions fill the history (siblings side by side, as before), `summary.needs_designer` fills the "Handed to a designer" cards, and the run's facts show as a line "Recorded run · 3 rounds · stopped because no more outliers" on the Versions screen and in the presenter. The file does not exist yet, so nothing recorded shows today; the parse was checked in node with a made-up file of that shape (two versions, one designer case, the summary line) and with a bare list or no summary. Not seen on screen with the real file.
+
+## Round 8 card illustrations
+The Chairman's six card illustrations (`hero_cards/cards/rules/{spark,pulse,sentinel,hypnosis,mechanical_crows,forethought}`, 512x384, PNG and WebP q82) are listed in `manifest.json` (the WebP with the PNG as its fallback, as for the other images). `cardArtPath` now returns `rules/<id>` for those six cards, whoever plays them, so spark and pulse no longer share a picture and hypnosis, forethought, sentinel and mechanical_crows have their own; ward keeps the hero's guard picture (`<hero>_guard`); the hero's own frame and portrait stay on the table. Checked with one mock-match capture: the played-card banner shows the Pulse illustration (blue ring) and the Ward banner the hero's guard picture, the phone hand shows different pictures for Spark and Pulse and the hero's for Ward, the card backs on the table keep one size, and the banner sits between the turn banner and the hands (moved down from the top, where it covered the player names).
+
+## Round 8 design intent
+**What it is.** The designer's chart of what each matchup should come to: `GET /v1/design/hero_arena/intent` = `{version, matchups: {"a vs b": {favored, strength: even|slight|clear|strong}}}` (hero ids in alphabetical order, like the report's rows). The favored side's target win rate is 50 / 55 / 60 / 65%, and a result is fair within ±5 points of its target; with no intent (endpoint absent, read failed, unusable body) every matchup is intended to be even, 45–55%, as before (`lib/intent.ts`).
+**1. Design intent screen** (`#/intent`, "Design intent" in the dashboard top bar; `components/IntentGrid.tsx`): a 5x5 hero grid without the diagonal; each cell shows the row hero's target against the column hero ("60%", "Bari clear"). Clicking a cell cycles even → row slight → clear → strong → column slight → clear → strong → even; the mirrored cell follows (40% for the other hero). "Save intent" sends `PUT` with all ten pairs (even ones without a favorite) and takes the server's answer as the new intent. In `?mock=1` the chart can be played with but is not saved.
+**2. Every win-rate view uses the intent.** `rowStats` carries a `target`, and "outlier" now means the interval lies wholly outside the target ±5; the shaded band is drawn at the target in the win-rate chart (report, live bars, recorded all-matchups table), the before/after chart, the verdict-target rows and the hero profile bars; rows whose intent is not even say "intended: Bari favored (60%)" (second line in the chart, a caption on the Result card, a line in Copy summary); the dashboard headline says "As intended" for a favored matchup inside its band and now says who wins too often in either direction (it used to name the first hero even for a low rate); the hero profile's "beats / loses" counts use each matchup's own band; "most lopsided" is measured from the target.
+**3. Presenter.** A "What the designer wants" scene (the read-only chart) before the bots, only when something other than even is intended.
+**Checks** (a throwaway stub of the endpoint, deleted): the intent loaded into the grid, a cell cycled through all seven states and back with the mirror cell following (55, 60, 65, 45, 40, 35, 50%), Save sent the PUT with the new pair, a 62% Bari vs Real Armor run with a clear (60%) intent showed "As intended", no outlier badge and the band at 55–65%, the dashboard stayed at 1080 px, the presenter listed the new scene and drew the chart. Not checked: the real endpoint, the no-endpoint fallback in a browser (the code path returns all even on any failed read), the `?mock=1` chart.
+
+## Round 8 target rows from the analysis
+A report row that carries `target`, `deltaToTarget` and `outlier` is shown exactly as given: its target and outlier flag are not recomputed (`rowStats`), the band is drawn at the row's own target ±5, and the "intended: Bari favored (60%)" label is read from the target (above 50%: the first-named hero is favored). Only a row without a `target` (older reports) is worked out in the browser from the design intent, and those labels say "estimated" (chart rows, Result card, Copy summary), so the screen and the verdict cannot disagree about a row the analysis has judged. Checked in node: old row (estimated, band from the intent), a row with its own target (not estimated), a row whose own target and outlier differ from the intent (the row's wins), and a target below 50% (the second hero favored). Not seen with a real report that carries these fields.
+
+## Round 9 bot skill (first part)
+**Selector** (`components/BotSkillPicker.tsx`, `lib/botPolicy.ts`; dashboard top bar): Scripted (default), Trained (self-play) and Human-style, sent as `botPolicy` in `POST /v1/playtest/full` and `/run` (`learned-cem-1` and `cloned-lr-1`, the policy names in the round 9 plan; Scripted sends nothing). A skill is offered only when its files exist under `services/runner/learned/` (committed output of the trainer, read at build time like the recorded runs): Trained once at least one `<hero>.json` is there, Human-style once `human-style.json` is; with none, the selector shows Scripted only and says so. A 400 on a request carrying `botPolicy` is shown as an error with the server's code and message, like `heroes` and `diagnose`; the presenter uses the same choice.
+**Bot skill screen** (`#/skill`, "Bot skill" in the top bar): *Same matchup, different bots*: the matchup picker plus "Compare bot skill", which measures the matchup with each available skill in turn (`/full` with `heroes` and `botPolicy`) and draws the first-named hero's win rate with its 95% interval per skill (needs the live server; disabled in `?mock=1`); *Training*: per trained hero a fitness curve (generation → mean win rate, the fair 50% dashed), the policy, number of generations, training time and the seeds and data hash used, read from `learned/<hero>.json`. The files' shape is not committed yet, so they are read tolerantly: the curve from `fitness`, `fitnessCurve` or `curve` (numbers, or objects with `generation` and `meanWinRate`/`mean`/`fitness`), time from `trainingMs`, `trainingSeconds` or `elapsedMs`, seeds and generations from `trainedOn`; whatever is missing is left out. With no files the screen says no trained bots exist yet.
+**Checked:** type check and build; the parser and the availability rules in node against made-up files of that shape (numbers and objects for the curve, seconds from milliseconds, a seed list, an unusable file, the human-style file making Human-style available); the empty states of `#/skill` in a headless 1920x1080 screenshot. Not checked: the real trainer files, the server's handling of `botPolicy`, or a comparison run.
+
+## UI re-establishment: dashboard (option B)
+- Chosen by the CTO: headline strip + left accordions (Patch open) + the all-matchups roster always visible on the right.
+- Pickers and headline name the same pair (sample mode locks the picker to the sample's pair; a different live pick says
+  "Showing the last run"). The chart legend appears once. The outlier row is first and highlighted, each row against its
+  own intended band; human players sit in their own group and keep "Too few games yet".
+- The verdict line shows the real reason; when `proposal.origin` is `fallback`, `proposal.fallbackReason` shows as one
+  plain line ("Gemini unavailable: …, offline sample used") in the strip and under the patch. Reads
+  `proposal.fallbackReason` (optional field; CHANGE_REQUEST.md notes it).
+- Rare controls moved into an Options menu; Design intent opens as a modal from the strip.
+- Principles used (from the company references, ideas only): one primary action per screen, status never by colour
+  alone, honest data scope, at most three text levels, 8-pt grid.
+
+## UI re-establishment: present mode and the "Intended?" chips
+- Present scenes now have one idea each and three text sizes: the number at 144 px (96 px verdict badge), one line at
+  40 px, one line at 28 px. Bots: the flagged matchup's win rate big against its intended band, the whole roster beside
+  it. Patch: the change as one 72 px line, origin badge, fallback line when the model was not used. Verdict: badge,
+  before → after, the real reason, then the chips. On phones the sizes step down (72 / 28 / 20 px).
+- "Intended?" chips (Even, A/B slight, clear, strong) sit under the headline bar of the dashboard (flagged matchup only)
+  and in the Present verdict scene (large, with the hero names). A tap PUTs the intent, then
+  `POST /v1/playtest/reanalyze {runId}`; the run is replaced in place with a short highlight and no new bot run. If
+  reanalyze is absent (404/405/501) the chips say "Intent saved. Re-run to apply."; in sample mode nothing is sent.
+- Before/after screenshots: `screenshots/dashboard-before.png`, `dashboard-after.png`, `present-before-verdict.png`,
+  `present-after-*.png`.
+
+## UI re-establishment: phones
+- `#/intent` no longer overflows at 390 px (page width 390; the grid shrinks to portraits and rates).
+- The new dashboard stacks on phones: strip, accordions, then the roster; no sideways scroll (`dashboard-phone-after.png`).
+- Lobby, arena, controller, cards, versions and launcher already use the shared tokens and showed no overflow in the
+  audit; they were left as they are.
+
+## Round 10 small items
+- "Intended?" chips now sit under every other flagged row of the roster (the headline's own are in the strip); shown only
+  for rows of the current run, not for the recorded roster.
+- `fallbackReason` is read from version records too (optional field) and shows as the same "Gemini unavailable: …" line in
+  the Versions detail.
+
+## Round 10 sponsor surfaces
+- Top-bar chip from `GET /v1/sinks` ({enabled, status:{name:{written, failed}}}): "Stored in MongoDB Atlas · Tiger Data";
+  hidden when none are enabled or the call fails; a failed-writes count turns it amber and says so. Never in `?mock=1`.
+- "Win rate across versions" in the open Patch section from `GET /v1/trend/hero_arena?matchup=a vs b`
+  ({points:[{data_hash, first_seen, games, rate}]}): up to the last 8 versions, the first hero of the sorted pair's rate
+  against the intended band. Hidden on 404/400/any failure or an empty series.
+- Checked against a local stub of both endpoints (`screenshots/sinks-trend-stub.png`), not the real engine.
+
+## Round 9 learned bots, wired to the committed files
+- `#/skill` reads `services/runner/learned/{bari,daewi,real_armor,sepia}.json` (policy `learned-cem-1`): curve, time,
+  seeds, data hash, who it trained against, and the `heldOutEval` block (the opponent left out of training).
+- Held-out result is shown as it is: learned, starting parameters and scripted on Nightcrow, judged by 95% intervals
+  only. Today: Daewi generalizes better than its start, Bari and Real Armor show no clear difference, Sepia's learned
+  bot generalizes worse than its start (72% against 86%); it says so in amber.
+- Nightcrow has no trained bot (held out). The comparison panel still needs the live server; not run here.

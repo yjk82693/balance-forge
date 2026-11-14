@@ -75,7 +75,9 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const online = status === "online";
   const playing = !!seat && !!joined;
   const padName = useGamepad(pipeline, playing && online);
-  usePreventPageGestures(playing && gameId !== "hero_cards"); // the cards hand scrolls sideways, so it is left alone
+  // A cards view means the cards hand, whatever the room status said about the game when this phone joined.
+  const isCards = gameId === "hero_cards" || isCardsPayload(observation?.payload);
+  usePreventPageGestures(playing && !isCards); // the cards hand scrolls sideways, so it is left alone
 
   useEffect(() => {
     if (import.meta.env.DEV && transport) {
@@ -197,7 +199,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
           </button>
         </div>
       )}
-      {gameId === "hero_cards" ? (
+      {isCards ? (
         <CardsHand
           seat={seat!}
           hero={hero}
@@ -281,7 +283,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
       )}
       <DebugReadout stats={net} buffer={bufferStats} />
       <footer className="phone-foot">
-        {gameId !== "hero_cards" && (
+        {!isCards && (
           <button className="btn secondary touch" aria-pressed={arenaOn} onClick={() => setArenaOn(!arenaOn)}>
             {arenaOn ? "Arena: on" : "Arena: off"}
           </button>

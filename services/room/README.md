@@ -408,7 +408,7 @@ Exact pinned MatchConfig for the match.
     "contractVersion": "0.1",
     "schemaVersion": 1,
     "gameId": "hero_arena",
-    "simVersion": "arena-0.1.1",
+    "simVersion": "arena-0.1.2",
     "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
     "seed": 1,
     "players": [

@@ -45,8 +45,11 @@ test('schema extends normative bundle only with approved addendum fields and tra
     }
   });
   delete extended.$defs.MatchResult.properties.botSeats;
-  for (const key of ['elapsedMs', 'recorded', 'createdAt', 'humanMatches']) delete extended.$defs.Report.properties[
-    key];
+  // Design intent (addendum v0.1.3, proposed): the report names the intent it used and rows carry their target.
+  for (const key of ['elapsedMs', 'recorded', 'createdAt', 'humanMatches', 'intentVersion']) {
+    delete extended.$defs.Report.properties[key];
+  }
+  for (const key of ['target', 'deltaToTarget']) delete extended.$defs.Report.properties.rows.items.properties[key];
   // Addendum v0.1.2: the patch allowlist also holds /characters/N/health and /characters/N/speed (exact pattern).
   const path = extended.$defs.PatchProposal.properties.replacements.items.properties.path;
   // (indexes without leading zeros: "01" and "1" would be two paths for one move)

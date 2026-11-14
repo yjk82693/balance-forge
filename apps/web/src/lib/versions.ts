@@ -9,7 +9,7 @@ import {
 } from "./api";
 import { describePath } from "../components/PatchCompare";
 import { heroName } from "./heroes";
-import { needsMoreGames, type Rate, type ResultFacts } from "./resultCard";
+import { fallbackLine, needsMoreGames, type Rate, type ResultFacts } from "./resultCard";
 import { VERDICT_COPY } from "./dashboardData";
 import { originLabel, targetsFrom } from "./fullRun";
 import { fixturePatch } from "./fixtures";
@@ -18,7 +18,7 @@ import { isMockMode } from "../mock/types";
 
 export type HistorySource = "live run" | "recorded" | "sample data";
 
-/** One data version, as stored in services/room/data/versions/<gameId>.json (round 8 shared interface). */
+/** One data version record (round 8 shared interface); the recorded history file holds a list of them. */
 export interface VersionRecord {
   dataHash: string;
   parentHash: string | null;
@@ -31,6 +31,8 @@ export interface VersionRecord {
   verdict: { verdict: VerdictKind; reasons: string[]; targets?: VerdictTarget[] } | null;
   approved: boolean;
   note?: string;
+  /** why the model was not used, when origin is "fallback" */
+  fallbackReason?: string;
 }
 export type VersionRate = VerdictRate;
 /** The history plus which version rooms and runs use by default (`currentHash`, when the server says). */
@@ -39,6 +41,17 @@ export interface VersionList {
   currentHash?: string;
   /** heroes the auto-balance gave up on (`needs_designer`), when the server says */
   needsDesigner?: DesignerCase[];
+  /** how a recorded auto-balance run went, from the stored file's `summary` */
+  summary?: RunSummary;
+}
+
+/** The stored auto-balance run's `summary`: why it stopped and how many rounds it ran. */
+export interface RunSummary {
+  stoppedBecause?: string;
+  rounds?: number;
+  botPolicyVersion?: string;
+  simVersion?: string;
+  createdAt?: string;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object";
@@ -75,17 +88,49 @@ export function parseVersion(raw: unknown): VersionRecord | null {
     verdict,
     approved: raw.approved !== false,
     note: typeof raw.note === "string" ? raw.note : undefined,
+    ...(typeof raw.fallbackReason === "string" && raw.fallbackReason ? { fallbackReason: raw.fallbackReason } : {}),
   };
 }
 
 /** The file or the endpoint: an array of records, or `{versions, currentHash}`. */
+/** `summary` of the stored history file: the run's facts, and its `needs_designer` list kept apart. */
+function parseSummary(raw: unknown): { run: RunSummary; needsDesigner: unknown } | undefined {
+  if (!isObject(raw)) return undefined;
+  const text = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const rounds = typeof raw.rounds === "number" && Number.isFinite(raw.rounds) ? raw.rounds : undefined;
+  const run: RunSummary = {
+    stoppedBecause: text(raw.stoppedBecause),
+    rounds,
+    botPolicyVersion: text(raw.botPolicyVersion),
+    simVersion: text(raw.simVersion),
+    createdAt: text(raw.createdAt),
+  };
+  return { run, needsDesigner: raw.needs_designer ?? raw.needsDesigner };
+}
+
 export function parseVersionList(raw: unknown): VersionList | null {
   const list = Array.isArray(raw) ? raw : isObject(raw) && Array.isArray(raw.versions) ? raw.versions : null;
   if (!list) return null;
   const versions = list.map(parseVersion).filter((v): v is VersionRecord => v !== null);
   const currentHash = isObject(raw) && typeof raw.currentHash === "string" ? raw.currentHash : undefined;
-  const cases = isObject(raw) ? parseDesigner(raw.needs_designer ?? raw.needsDesigner) : [];
-  return { versions, currentHash, ...(cases.length ? { needsDesigner: cases } : {}) };
+  const summary = isObject(raw) ? parseSummary(raw.summary) : undefined;
+  const given = isObject(raw) ? (raw.needs_designer ?? raw.needsDesigner ?? summary?.needsDesigner) : undefined;
+  const cases = parseDesigner(given);
+  return {
+    versions,
+    currentHash,
+    ...(cases.length ? { needsDesigner: cases } : {}),
+    ...(summary ? { summary: summary.run } : {}),
+  };
+}
+
+/** "3 rounds · stopped because <reason>" for a recorded run; null when the file gave neither. */
+export function summaryLine(s: RunSummary | undefined): string | null {
+  const parts = [
+    s?.rounds !== undefined ? `${s.rounds} round${s.rounds === 1 ? "" : "s"}` : "",
+    s?.stoppedBecause ? `stopped because ${s.stoppedBecause.replace(/_/g, " ")}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }
 
 export const shortHash = (hash: string) => hash.slice(0, 7);
@@ -171,6 +216,7 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     patchPaths: v.changes.map((c) => c.path),
     outlier: t ? { ...asRate(t.matchup, t.before), isOutlier: true } : null,
     evidence: null,
+    fallbackNote: fallbackLine(v.origin, v.fallbackReason),
     patch: v.changes.map((c) => ({
       field: c.label ?? describePath(c.path),
       path: c.path,
@@ -197,8 +243,8 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
 
 // ---- where the history comes from ----
 
-// A stored history file, if the engine wrote one. A glob, so a missing file is simply absent.
-const stored = import.meta.glob("../../../../services/room/data/versions/hero_arena.json", { import: "default" });
+// The recorded auto-balance run, { summary, versions }, committed with the runner (a missing file is just absent).
+const stored = import.meta.glob("../../../../services/runner/recorded-auto-history.json", { import: "default" });
 
 export async function loadRecordedVersions(): Promise<VersionList | null> {
   const load = Object.values(stored)[0];

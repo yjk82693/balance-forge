@@ -16,25 +16,28 @@
     "test": "node --test",
     "check:secrets": "node tools/check-secrets.mjs",
     "demo": "node tools/demo.mjs",
-    "test:e2e": "RUN_SOCKET_TESTS=1 node --test tests/e2e/"
+    "test:e2e": "RUN_SOCKET_TESTS=1 node --test tests/e2e/",
+    "demo:gemini": "node tools/demo.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
     "@types/node": "^22.0.0",
-    "vite": "^6.0.0",
-    "@vitejs/plugin-react": "^4.3.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.5.0",
-    "@types/qrcode": "^1.5.5"
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.1.0",
+    "@fontsource/noto-sans-kr": "^5.1.0",
+    "mongodb": "^7.9.0",
+    "pg": "^8.23.1",
+    "phaser": "^3.80.0",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "phaser": "^3.80.0",
-    "ws": "^8.18.0",
-    "qrcode": "^1.5.4",
-    "@fontsource/inter": "^5.1.0",
-    "@fontsource/noto-sans-kr": "^5.1.0"
+    "ws": "^8.18.0"
   }
 }

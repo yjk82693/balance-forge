@@ -60,6 +60,12 @@ export interface ReportRow {
   outlier: boolean;
   /** mirror matchups only: games won by the first seat */
   seatWins?: number;
+  /**
+   * The analysis's own view of this row against the design intent: the target win rate of the first-named hero, how far
+   * the row is from it, and whether that makes it an outlier. When present the screens show these as they are.
+   */
+  target?: number;
+  deltaToTarget?: number;
 }
 
 export interface Report {
@@ -172,7 +178,8 @@ export interface CardsEntity {
   ward: number;
   handCount: number;
   deckCount: number;
-  units: { id: string; power: number; sleepUntil: number }[];
+  /** `kind` is the card id the unit was summoned by (the server sends it; older views may lack it) */
+  units: { id: string; kind?: string; power: number; sleepUntil: number }[];
 }
 
 /** hero_cards observation payload (packages/games/cards/schemas.js). `hand` is only the viewer's. */

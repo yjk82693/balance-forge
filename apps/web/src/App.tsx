@@ -10,6 +10,8 @@ const Lobby = lazy(() => import("./screens/Lobby").then((m) => ({ default: m.Lob
 const Arena = lazy(() => import("./screens/Arena").then((m) => ({ default: m.Arena })));
 const Dashboard = lazy(() => import("./screens/Dashboard").then((m) => ({ default: m.Dashboard })));
 const Versions = lazy(() => import("./screens/Versions").then((m) => ({ default: m.Versions })));
+const Intent = lazy(() => import("./screens/Intent").then((m) => ({ default: m.Intent })));
+const Skill = lazy(() => import("./screens/Skill").then((m) => ({ default: m.Skill })));
 const Present = lazy(() => import("./screens/Present").then((m) => ({ default: m.Present })));
 
 function Loading() {
@@ -35,6 +37,10 @@ function screenFor(screen: string | undefined, route: ReturnType<typeof useRoute
       return <Arena gameId={route.path[1] ?? "hero_arena"} />;
     case "present":
       return <Present auto={isAutoMode(route.query)} />;
+    case "intent":
+      return <Intent />;
+    case "skill":
+      return <Skill />;
     case "versions":
       return <Versions />;
     case "dashboard":
