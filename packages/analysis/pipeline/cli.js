@@ -5,7 +5,8 @@
 //   node pipeline/cli.js run     --baseline a.json --holdout b.json --out dir
 //   node pipeline/cli.js replay  --baseline results.json --patch patch.json --out dir [--base-data data.json]
 //                                 -> before_after.json (most lopsided match, same seed, patched data)
-// Optional: --metrics runner-metrics.json (elapsedMs, recorded), --human human-results.json (MatchResult[]).
+// Optional: --intent intent.json (the designer's intended rates: rows get target and deltaToTarget),
+//   --metrics runner-metrics.json (elapsedMs, recorded), --human human-results.json (MatchResult[]).
 // Writes report_baseline.json, patch.json, report_patched.json, verdict.json (+ pipeline-meta.json).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,6 +22,7 @@ import { loadArenaSimulator } from './arena-simulator.js';
 import { buildMatchupTable } from '../src/matchups.js';
 import { buildEvidence } from '../src/evidence.js';
 import { validatePatch } from '../src/validator.js';
+import { normalizeIntent } from '../src/intent.js';
 
 // File errors become coded results; messages name the file, never its contents.
 function readJson(p) {
@@ -105,6 +107,7 @@ async function run(argv, env, now) {
   }
   const f = (name) => join(flags.out, name);
   const reportOptions = { botPolicyVersion: flags['bot-policy'], seedSetId: flags['seed-set'] };
+  if (flags.intent) reportOptions.intent = normalizeIntent(readJson(flags.intent));
   for (const k of Object.keys(reportOptions)) if (reportOptions[k] === undefined) delete reportOptions[k];
   const summary = {};
 
