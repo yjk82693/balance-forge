@@ -130,3 +130,16 @@ test('listener-permission failures have readable messages and shutdown errors ke
   assert.equal(healthy.exitCode, 1);
   assert.match(healthy.output.stderr, /shutdown/);
 });
+test('invalid port spellings fail before constructing server resources', async () => {
+  for (const PORT of ['', ' ', '0x10', '3e3', '-1', '65536']) {
+    const state = runtime({ PORT });
+    let created = false;
+    assert.equal(await runCli({
+      runtime: state,
+      createServer: () => { created = true; }
+    }), null);
+    assert.equal(created, false);
+    assert.equal(state.exitCode, 1);
+    assert.match(state.output.stderr, /Invalid PORT/);
+  }
+});

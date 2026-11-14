@@ -355,3 +355,21 @@ Measured the final runner: 300 valid matches, 15 matchups, 2 workers, 100 first-
 5,900.796416 ms, 50.840595 matches/s including startup, recorded 2026-11-14T05:40:15.940Z. Actual artifacts remain
 services/runner/recorded-roster-match-results.json and recorded-roster-metrics.json.
 No dependencies, external calls, pushes or commits. Files are left for the external commit process.
+
+## Polish 01:26
+
+Rejected blank, whitespace and non-decimal PORT settings before constructing server resources. Invalid matches
+now clear win/draw credit even when their terminal step succeeded before observation failed, without changing
+simulation state or its hash. Added regression tests for both cases; existing assertions and gates are unchanged.
+
+Final `node --test`: 166 passed, 0 failed, 6 existing socket-gated skips, 1 existing pending integration;
+47,832.063334 ms. Both 120-column source/documentation checks and `git diff --check` pass. Reviewed console noise;
+production CLI benchmark output remains intentional. No web build or render-FPS measurement (web is not owned).
+
+Fresh benchmark: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+4,636.518917 ms, 64.703715 matches/s including worker startup, recorded 2026-11-14T06:25:29.170Z.
+Updated services/runner/recorded-roster-metrics.json; deterministic result data stayed unchanged.
+
+Still blocked: packages/analysis/pipeline/full.js is absent from this worktree, so its existing integration test
+remains pending. Live socket tests retain their RUN_SOCKET_TESTS=1 permission gate; no networking was attempted.
+No dependencies, commits or pushes; changes are left for the external commit process.

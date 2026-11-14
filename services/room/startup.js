@@ -28,9 +28,10 @@ export async function runCli({
   runtime = process,
   createServer = createRoomServer
 } = {}) {
-  const port = Number(runtime.env.PORT ?? 3000),
+  const rawPort = runtime.env.PORT ?? '3000',
+    port = Number(rawPort),
     host = runtime.env.HOST ?? '0.0.0.0';
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+  if (!/^\d+$/.test(rawPort) || !Number.isInteger(port) || port < 0 || port > 65535) {
     runtime.stderr.write('Invalid PORT: choose an integer from 0 to 65535.\n');
     runtime.exitCode = 1;
     return null;

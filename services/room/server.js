@@ -508,6 +508,14 @@ export class RoomServer {
   finish(room, failure) {
     if (room.phase !== 'playing') return;
     const a = room.authority;
+    const statistics = structuredClone(room.game.statistics(a.state));
+    // A terminal step may succeed before view delivery fails; invalid matches earn no result credit.
+    if (failure) {
+      for (const player of statistics.players) {
+        player.wins = 0;
+        player.draws = 0;
+      }
+    }
     const result = {
       matchId: room.matchId,
       config: a.config,
@@ -516,7 +524,7 @@ export class RoomServer {
         winners: [],
         reason: 'invalid_match'
       } : room.game.outcome(a.state),
-      statistics: room.game.statistics(a.state),
+      statistics,
       finalStateHash: room.game.hash(a.state),
       valid: !failure,
       errorCode: failure ?? '',
