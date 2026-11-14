@@ -545,3 +545,20 @@ both records unapproved. With `requireApproval` both stay unapproved and the run
 candidate produced a result. Without a diagnosis there is one plain candidate, as before. The `seedsFor` interface is unchanged.
 7 new tests in `test/auto.test.js` (siblings and parent, better of two, next round from the chosen record, neither accepted,
 approval, skipped candidates, `candidateDiagnoses`).
+
+## Three candidates and needs_designer
+
+`MAX_CANDIDATES` is 3 (health is tried too). A hero no candidate could fix is not a reason to stop: the run records the hero in
+`needs_designer` and works on the next hero in the next round. Result field (not a version record):
+`needs_designer: [{ hero, tried: [{ label, path, old, new, outcome }], evidence }]` (also `round`, `matchups`, `rawEvidence` and, for a
+skipped lever, `reason`). `outcome` is the verdict of that candidate (`rejected`, `inconclusive`) or `skipped` (invalid patch,
+changes nothing, or a version that was already tried). `evidence` is one or two sentences with the numbers, for example
+"daewi wins 10.0% overall (600 games, -40.0 points from 50%). 3 lever(s) tried (Daewi · Speed rejected, ...), none moved a flagged
+matchup beyond noise. Worst matchup: daewi vs sepia at 10.0% (200 games), 10.0% after the last lever tried."
+`pickFocus` takes flagged matchups from the most lopsided down, diagnoses each (cached per version) and picks the first whose
+recommended hero is not escalated; without a diagnosis the open hero in the most flagged matchups. A version that was already
+recorded is never tried again. The run stops only when nothing is flagged (`fair`), the rounds are used up (`rounds`), every
+flagged hero is escalated (`needs_designer`, which replaces `not_accepted`; the value stays in the engine's allowed set), a
+person must approve, the final check finds a regression, or on an error. Tests adapted for the new rules (3 candidates, the old
+stop on a rejected verdict is now an escalation) plus 2 new: all levers rejected, and "the next hero is worked on" (Daewi cannot be
+fixed, a later round fixes Bari).
