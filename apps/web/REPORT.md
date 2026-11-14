@@ -288,3 +288,5 @@ Simulated check (node, `lib/snapshotBuffer.ts` bundled with esbuild, 300 ticks o
 ## Round 8 result card
 
 **1. Live run request.** The dashboard Run now sends `POST /v1/playtest/full {gameId: "hero_arena", pairs: 100}` with no `roster`: Bari vs Real Armor only, 400 matches, which is over the 200-game verdict gate (the earlier roster run had about 100 games per matchup, so the verdict was always inconclusive, and its holdout phase restarted the table). The all-matchups table now comes from the recorded roster report, labelled recorded (step 3 below).
+
+**2. Never reset.** When the `holdout` phase starts, the baseline counter and table stay as they were (frozen at the finished baseline); the holdout run gets its own bar and counter in the live panel and its own strip above the baseline table (the baseline's three most lopsided matchups, on the patched data). Checked with the mock run (two phases): the baseline kept "1,000 / 1,000" while the holdout counted 450, then 850, of 1,000. `foldProgress` in `lib/useRunner.ts` is the one place that decides this.

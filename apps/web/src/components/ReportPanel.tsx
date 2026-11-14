@@ -92,6 +92,28 @@ function HumanGroup({ rows }: { rows: ReportRow[] }) {
   );
 }
 
+/** At most this many matchups are repeated in the holdout strip (the same ones the baseline shows as most lopsided). */
+const HOLDOUT_ROWS = 3;
+
+/** The holdout run's own strip: its counter and the baseline's most lopsided matchups, on the patched data. */
+function HoldoutStrip({ live }: { live: LiveState }) {
+  const holdout = live.holdout;
+  if (!holdout) return null;
+  const lead = outliersFirst(botRows(live.rows ?? []).map(rowStats)).slice(0, HOLDOUT_ROWS);
+  const dims = new Set(lead.map((s) => s.row.dimension));
+  const rows = holdout.rows.filter((r) => dims.has(r.dimension));
+  return (
+    <section className="holdout-strip" aria-label="Holdout on the patched data">
+      <p className="eyebrow">
+        Holdout on the patched data · {n(holdout.done)} / {holdout.total ? n(holdout.total) : "…"} matches
+      </p>
+      {rows.length > 0 ? <WinRateChart rows={rows} dense /> : <div className="skeleton" aria-hidden="true" />}
+      <hr className="divider" />
+      <p className="eyebrow">Baseline, finished</p>
+    </section>
+  );
+}
+
 function LiveReport({ live, elapsed }: { live: LiveState; elapsed: number }) {
   return (
     <>
@@ -101,6 +123,7 @@ function LiveReport({ live, elapsed }: { live: LiveState; elapsed: number }) {
         {n(live.done)} / {live.total ? n(live.total) : "…"} matches
       </p>
       <hr className="divider" />
+      <HoldoutStrip live={live} />
       {live.rows ? <WinRateChart rows={live.rows} dense /> : <div className="skeleton" aria-hidden="true" />}
     </>
   );

@@ -117,7 +117,7 @@ export function Dashboard() {
               active={showPatched ? "patched" : "broken"}
               source={replaySource}
             />
-            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} elapsed={elapsed} />
+            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} elapsed={elapsed} holdout={live.holdout} />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
                 <span id="matches-title" className="eyebrow">

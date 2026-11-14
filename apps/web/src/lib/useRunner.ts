@@ -13,6 +13,16 @@ export interface LiveState {
   rows: ReportRow[] | null;
   /** which run is going: the baseline, then the holdout on the patched data */
   phase?: "baseline" | "holdout";
+  /** the holdout run's own counter and bars; the baseline numbers above stay frozen once it starts */
+  holdout?: { done: number; total: number; rows: ReportRow[] };
+}
+
+/** Folds one progress message into the live state. The holdout phase never touches the baseline table. */
+export function foldProgress(prev: LiveState, p: ProgressMsg): LiveState {
+  if (p.phase === "holdout") {
+    return { ...prev, phase: "holdout", holdout: { done: p.matchesDone, total: p.totalMatches, rows: toRows(p) } };
+  }
+  return { done: p.matchesDone, total: p.totalMatches, rows: toRows(p), phase: p.phase };
 }
 
 const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
@@ -71,8 +81,7 @@ export function useRunner() {
     setLive({ done: 0, total: 0, rows: null });
     const controller = new AbortController();
     abort.current = controller;
-    const onProgress = (p: ProgressMsg) =>
-      setLive({ done: p.matchesDone, total: p.totalMatches, rows: toRows(p), phase: p.phase });
+    const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
       const result = await runPlaytest(MATCHES, controller.signal, onProgress);

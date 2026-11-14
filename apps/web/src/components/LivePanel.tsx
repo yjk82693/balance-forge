@@ -5,6 +5,8 @@ interface Props {
   busy: boolean;
   done: number;
   total: number;
+  /** holdout counter, shown beside the baseline's once that phase starts */
+  holdout?: { done: number; total: number };
   /** seconds since the run started; keeps the panel moving while the server is quiet */
   elapsed?: number;
 }
@@ -22,7 +24,7 @@ function statusLine(busy: boolean, done: number, total: number, elapsed = 0): st
 }
 
 /** Progress bar plus the mini-arena texture grid. The big counter lives in the report panel. */
-export function LivePanel({ busy, done, total, phase, elapsed }: Props) {
+export function LivePanel({ busy, done, total, phase, elapsed, holdout }: Props) {
   const pctDone = total ? Math.round((done / total) * 100) : 0;
   return (
     <section className="panel live" aria-labelledby="live-title">
@@ -44,6 +46,23 @@ export function LivePanel({ busy, done, total, phase, elapsed }: Props) {
         </div>
         <p className="small live-line">{phaseName(phase) && busy ? `${phaseName(phase)} · ` : ""}
           {statusLine(busy, done, total, elapsed)}</p>
+        {holdout && (
+          <>
+            <div
+              className="progress holdout"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={holdout.total || 100}
+              aria-valuenow={holdout.done}
+              aria-label="Holdout matches played"
+            >
+              <span style={{ width: `${holdout.total ? Math.round((holdout.done / holdout.total) * 100) : 0}%` }} />
+            </div>
+            <p className="small live-line">
+              Holdout · {n(holdout.done)} of {holdout.total ? n(holdout.total) : "…"} matches
+            </p>
+          </>
+        )}
         <p className="caption">Each bar settles as its games pile up.</p>
       </div>
       <MiniArenas active={busy} />
