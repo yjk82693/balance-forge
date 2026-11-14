@@ -14,6 +14,9 @@ export interface Manifest {
 }
 
 const base = import.meta.env.BASE_URL;
+/** Portraits drawn this small or smaller use the 128 px thumbnail. */
+export const THUMB_MAX_PX = 64;
+
 export const assetUrl = (path: string) => `${base}${path}`;
 
 let manifest: Manifest | null = null;
@@ -37,6 +40,17 @@ export function manifestUrl(path: string): string | undefined {
   return findAsset(path) ? assetUrl(path) : undefined;
 }
 
+let webpOk: boolean | undefined;
+const canDecodeWebp = () =>
+  (webpOk ??= document.createElement("canvas").toDataURL("image/webp").startsWith("data:image/webp"));
+
+/** The .webp twin of a .png when the manifest lists it and the browser can decode WebP; otherwise the PNG itself. */
+export function preferWebp(pngPath: string): string {
+  const webp = pngPath.replace(/\.png$/, ".webp");
+  return webp !== pngPath && canDecodeWebp() && findAsset(webp) ? webp : pngPath;
+}
+
+export const heroThumbPath = (hero: string) => `assets/common/heroes/${hero}/portrait_128.png`;
 export const heroPortraitPath = (hero: string) => `assets/common/heroes/${hero}/portrait.png`;
 /** Optional still poses: attack.png, hit.png, ko.png next to full_body.png; used only if the manifest lists them. */
 export const heroPosePath = (hero: string, pose: string) => `assets/common/heroes/${hero}/${pose}.png`;

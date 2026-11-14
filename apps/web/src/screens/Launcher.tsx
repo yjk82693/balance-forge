@@ -1,7 +1,7 @@
 import { GAMES, type GameInfo } from "../lib/games";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { MockStatus, TopBar } from "../components/TopBar";
-import { manifestUrl, useManifestState } from "../lib/assets";
+import { manifestUrl, preferWebp, useManifestState } from "../lib/assets";
 import { go } from "../lib/router";
 import { fixtureReportBaseline } from "../lib/fixtures";
 
@@ -16,7 +16,7 @@ function lastRunLine(g: GameInfo): string {
 
 function Tile({ game, loading }: { game: GameInfo; loading: boolean }) {
   const planned = game.status === "planned";
-  const art = manifestUrl(game.art);
+  const art = manifestUrl(preferWebp(game.art));
   const open = () => !planned && go(`/lobby/${game.id}`);
   return (
     <article

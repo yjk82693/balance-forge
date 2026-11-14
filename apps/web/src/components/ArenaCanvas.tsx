@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import type { GameEvent, Observation } from "../lib/contract";
 import type { ViewPacket } from "../mock/useRoom";
-import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath, heroPosePath } from "../lib/assets";
+import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath, heroPosePath, preferWebp } from "../lib/assets";
 import { HEROES } from "../lib/heroes";
 import { SnapshotBuffer } from "../lib/snapshotBuffer";
 import { ARENA_H, ARENA_W, ArenaScene, type ArenaAssets } from "./ArenaScene";
@@ -60,7 +60,7 @@ export function ArenaCanvas({
       }
       const assets: ArenaAssets = {
         poses,
-        floor: assetUrl("assets/hero_arena/backgrounds/arena_floor.png"),
+        floor: assetUrl(preferWebp("assets/hero_arena/backgrounds/arena_floor.png")),
         heroes,
         effects: Object.fromEntries(EFFECTS.map((k) => [k, assetUrl(`assets/hero_arena/effects/${k}.png`)])),
         hpTrack: assetUrl("assets/hero_arena/ui/player_health_track.png"),

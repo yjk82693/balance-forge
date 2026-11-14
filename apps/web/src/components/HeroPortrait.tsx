@@ -1,5 +1,5 @@
 import { heroColorVar, heroName } from "../lib/heroes";
-import { heroPortraitPath, manifestUrl, useManifest } from "../lib/assets";
+import { THUMB_MAX_PX, heroPortraitPath, heroThumbPath, manifestUrl, useManifest } from "../lib/assets";
 
 interface Props {
   hero: string | undefined;
@@ -11,7 +11,9 @@ interface Props {
 /** Portrait PNG masked to a circle with a 2px hero-color ring; initial letter if the manifest lacks it. */
 export function HeroPortrait({ hero, size, ring = true, dim }: Props) {
   useManifest();
-  const src = hero ? manifestUrl(heroPortraitPath(hero)) : undefined;
+  // Small portraits use the 128 px thumbnail when the manifest lists it (about a third of the bytes).
+  const thumb = hero && size <= THUMB_MAX_PX ? manifestUrl(heroThumbPath(hero)) : undefined;
+  const src = thumb ?? (hero ? manifestUrl(heroPortraitPath(hero)) : undefined);
   const style = {
     width: size,
     height: size,
