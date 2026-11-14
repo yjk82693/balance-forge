@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { intentBody } from "./intentBody";
 import { HEROES, heroName } from "./heroes";
 import { isMockMode } from "../mock/types";
 
@@ -122,18 +123,10 @@ export async function loadIntent(signal?: AbortSignal): Promise<{ intent: Intent
 
 /** PUT the intent (all ten pairs; even ones carry no favorite); returns what the server now holds. */
 export async function saveIntent(intent: Intent): Promise<Intent> {
-  const matchups: Record<string, unknown> = {};
-  for (let i = 0; i < HEROES.length; i++) {
-    for (let j = i + 1; j < HEROES.length; j++) {
-      const key = pairKey(HEROES[i].id, HEROES[j].id);
-      matchups[key] = intent.matchups[key] ?? { strength: "even" };
-    }
-  }
   const res = await fetch(PATH, {
     method: "PUT",
     headers: { "content-type": "application/json" },
-    // A saved change is a new version of the intent: a short string, as the server requires (PUT intent.version).
-    body: JSON.stringify({ version: `ui-${Date.now().toString(36)}`, matchups }),
+    body: JSON.stringify(intentBody(intent)),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
