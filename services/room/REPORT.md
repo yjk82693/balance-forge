@@ -703,3 +703,11 @@ use it;
 callers pass the game's original data as `root`. Tests: packages/contracts/hero-stats.test.js, a room test for
 apply-patch
 and refused drift, and the normative-bundle test now states the extended path pattern exactly.
+
+## Auto rounds: hero stats and two candidates
+
+The auto route passes the game's original data as `rootData`, so hero health and speed stay within 40% of it across
+rounds,
+and the full route does the same. A round stores up to two sibling version records (same parent); the analysis
+module picks
+the accepted one that improved most. See the analysis report for the rules.
