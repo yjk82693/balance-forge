@@ -12,7 +12,7 @@ import { object } from '../../packages/contracts/shapes.js';
 import { runPlaytest, fullPlaytest, PipelineError } from './playtests.js';
 import { replayViews } from './replay-views.js';
 import { games, cardAction } from '../runner/match.js';
-import { chooseActions } from '../../packages/games/action/bot.js';
+import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.js';
 import { Storage } from './storage.js';
 import { parseEnvelope, validatePayload, assertDepth, errorCode } from './protocol.js';
 import { messages } from './errors.js';
@@ -488,7 +488,7 @@ export class RoomServer {
       if (!seat.bot) continue;
       const inputs = authority.config.mode === 'turn' ? state.payload.activePlayer === seat.seat ? [cardAction(
         room.game, state, state.tick)] : [] : chooseActions(room.game.observe(state, seat.seat), state.tick * 2,
-        authority.config.players.indexOf(seat.seat));
+        deriveBotSeed(authority.config.seed, authority.config.players.indexOf(seat.seat)));
       for (const input of inputs) authority.submit(input);
     }
   }

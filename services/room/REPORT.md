@@ -490,3 +490,14 @@ regression plus tests for retained baseline pins and public error transport; no 
 Known full-suite blockers are analysis-owned tests: recorded.test.js compares the stale recorded report and
 requests scripted-0.1.1; replay.test.js:164 expects 300 games rather than this required 3,000-game run.
 Left both tests unchanged and documented precise owner follow-ups in services/room/CHANGE_REQUEST.md.
+
+Amendment step 1: superseded 0.2.0 with scripted-0.2.1; previous step 3 artifacts do not count as final.
+Exported deriveBotSeed(matchSeed, seatIndex), mixing both inputs into the project's xorshift32 stream.
+Per-match draws set reaction delay (0–12), guard attempt probability (55–95%), engagement distance, strafe
+and small projectile aim offsets. Each projectile receives a repeatable attempt draw from that same stream;
+choices are pure under repeated observations, with no simulation RNG, clock or ambient randomness.
+Runner and solo room seats now derive their policy seed from the actual match seed and seat index.
+Added reproducibility/diversity/seed-validation tests; guard tests use a fixed seed with a known successful
+attempt, retaining all incoming/friendly/outgoing/off-axis/cooldown assertions. Analysis replay is outside
+ownership and needs the precise deriveBotSeed integration described in CHANGE_REQUEST.md. Re-measurement
+and complete 0.2.1 recording/example regeneration are in progress; 0.2.0 measurements remain historical only.

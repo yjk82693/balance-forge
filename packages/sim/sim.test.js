@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { xorshift32 } from './index.js';
 import * as game from '../games/action/index.js';
-import { chooseActions } from '../games/action/bot.js';
+import { chooseActions, deriveBotSeed } from '../games/action/bot.js';
 import { hash, validateGamePayload } from '../contracts/index.js';
 test('xorshift32-v1 reference sequence and zero rejection', () => {
   let x = 1;
@@ -27,11 +27,10 @@ test('100 seeds × 1,000 active ticks × two runs: every tick hash matches', () 
     const config = game.makeConfig(data, seed, ['p1', 'p2'], 1800, assignments),
       first = [],
       frames = [];
-    let state = game.initial(config, data),
-      rng = seed;
+    let state = game.initial(config, data);
     for (let i = 0; i < 1000; i++) {
-      rng = xorshift32(rng);
-      const actions = config.players.flatMap((id, j) => chooseActions(game.observe(state, id), i * 2, (rng + j) % 3));
+      const actions = config.players.flatMap((id, j) => chooseActions(game.observe(state, id), i * 2,
+        deriveBotSeed(config.seed, j)));
       const frame = {
         tick: state.tick + 1,
         actions,
@@ -42,12 +41,10 @@ test('100 seeds × 1,000 active ticks × two runs: every tick hash matches', () 
       first.push(hash(state));
     }
     validateGamePayload('hero_arena', 1, 'state', state.payload);
-    let second = game.initial(config, data),
-      secondRng = seed;
+    let second = game.initial(config, data);
     for (let i = 0; i < 1000; i++) {
-      secondRng = xorshift32(secondRng);
-      const actions = config.players.flatMap((id, j) => chooseActions(game.observe(second, id), i * 2, (
-        secondRng + j) % 3));
+      const actions = config.players.flatMap((id, j) => chooseActions(game.observe(second, id), i * 2,
+        deriveBotSeed(config.seed, j)));
       const secondFrame = {
         tick: second.tick + 1,
         actions,

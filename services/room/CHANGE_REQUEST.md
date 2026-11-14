@@ -37,3 +37,13 @@ packages/analysis/test/replay.test.js:164 still asserts exactly 300 games; the r
 Please update that expected run size while preserving every replay/hash/outcome/duration assertion.
 The matching regenerated report is services/runner/recorded-roster-report.json. These files are outside
 engine ownership; their tests remain failing until the analysis owner integrates the recording update.
+
+## Round 7 seeded bot replay boundary
+
+The 0.2.0 recording regeneration is superseded by scripted-0.2.1. New public engine export:
+`deriveBotSeed(matchSeed, seatIndex)` in packages/games/action/bot.js returns a nonzero uint32.
+Call `chooseActions(view, tick * 2, deriveBotSeed(config.seed, seatIndex))` every tick, with a stable seat index.
+The runner and room use this boundary. Analysis-owned pipeline/arena-simulator.js still passes only seatIndex;
+please import/pass deriveBotSeed from the bot module and derive the variant from config.seed for every seat.
+Do not change any replay/hash assertions; they should validate the regenerated seeded-policy recordings.
+The analysis-owned policy-pinned recording test/copy must likewise move to scripted-0.2.1 and 3,000 games.

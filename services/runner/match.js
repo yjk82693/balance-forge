@@ -1,6 +1,6 @@
 import * as arena from '../../packages/games/action/index.js';
 import * as cards from '../../packages/games/cards/index.js';
-import { chooseActions, botPolicyVersion } from '../../packages/games/action/bot.js';
+import { chooseActions, deriveBotSeed, botPolicyVersion } from '../../packages/games/action/bot.js';
 import { hash, validate, validateOutcome, compareIds } from '../../packages/contracts/index.js';
 import { emptyStatistics } from '../../packages/sim/index.js';
 export { botPolicyVersion };
@@ -48,8 +48,8 @@ export function executeMatch(job, {
     state = game.initial(config, data);
     while (game.outcome(state).status === 'running') {
       const actions = config.mode === 'turn' ? [cardAction(game, state, state.tick)] : config.players.flatMap((id,
-        i) => chooseActions(game.observe(state, id), state.tick * 2, i)).sort((a, b) => compareIds(a.playerId,
-        b.playerId));
+        i) => chooseActions(game.observe(state, id), state.tick * 2,
+          deriveBotSeed(config.seed, i))).sort((a, b) => compareIds(a.playerId, b.playerId));
       const frame = {
         tick: state.tick + 1,
         actions,
