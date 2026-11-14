@@ -381,6 +381,10 @@ test('run and full accept botPolicy: scripted by default, learned with trained f
 test('full playtest on Hero Cards: deck matchup, card probes, a card patch, holdout and a verdict', async t => {
   const { server } = await localServer(t);
   const originalHash = server.storage.get('hero_cards').dataHash;
+  // a stored Hero Arena human match must not show up as a row of a Hero Cards report
+  const fixtureUrl = new URL('../../fixtures/match_results.json', import.meta.url);
+  const arenaHuman = JSON.parse(await readFile(fixtureUrl, 'utf8'))[0];
+  server.storage.record({ ...arenaHuman, matchId: 'human-arena-1' });
   const response = await http(server, '/v1/playtest/full', { method: 'POST',
     body: { gameId: 'hero_cards', pairs: 60, holdoutPairs: 60 } });
   assert.equal(response.status, 200);
@@ -403,4 +407,6 @@ test('full playtest on Hero Cards: deck matchup, card probes, a card patch, hold
     'utf8'));
   assert.equal(stored.length, 120);
   assert.ok(stored[0].statistics.players[0].actions.some(action => action.actionId === 'play:hypnosis'));
+  assert.ok(body.baseline.rows.every(row => !row.dimension.startsWith('human: ')));
+  assert.equal(body.humanMatches, 0);
 });
