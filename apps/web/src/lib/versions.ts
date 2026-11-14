@@ -195,23 +195,54 @@ const JSON_POST = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
-/** GET /v1/versions/<gameId>: null when the server has no history endpoint. */
+/** GET /v1/versions/hero_arena: the history and the current hash; null when the server has no history endpoint. */
 export async function fetchVersions(signal?: AbortSignal): Promise<VersionList | null> {
   const raw = await call<unknown>("/v1/versions/hero_arena", undefined, signal);
   return raw === null ? null : parseVersionList(raw);
 }
 
-/** POST /v1/auto-balance: the server runs `rounds` of measure, propose, validate, holdout; answers with the list. */
+/** A record with the changes that separate it from its parent. */
+export interface VersionDetail {
+  record: VersionRecord;
+  diff: VersionRecord["changes"];
+}
+
+/** GET /v1/versions/hero_arena/:hash: the record plus its diff against the parent (`diff`, or `diff.changes`). */
+export async function fetchVersion(hash: string, signal?: AbortSignal): Promise<VersionDetail | null> {
+  const raw = await call<unknown>(`/v1/versions/hero_arena/${encodeURIComponent(hash)}`, undefined, signal);
+  if (!isObject(raw)) return null;
+  const record = parseVersion(isObject(raw.record) ? raw.record : raw);
+  if (!record) return null;
+  const nested = isObject(raw.diff) ? raw.diff.changes : null;
+  const diff = Array.isArray(raw.diff) ? raw.diff : Array.isArray(nested) ? nested : null;
+  const own = parseVersion({ ...record, changes: diff ?? record.changes });
+  return { record, diff: own?.changes ?? record.changes };
+}
+
+/** POST /v1/versions/hero_arena/:hash/approve: ship a candidate version. The list is read again afterwards. */
+export async function approveVersion(hash: string, signal?: AbortSignal): Promise<VersionList | null> {
+  const path = `/v1/versions/hero_arena/${encodeURIComponent(hash)}/approve`;
+  const done = await call<unknown>(path, JSON_POST({}), signal);
+  return done === null ? null : fetchVersions(signal);
+}
+
+/** POST /v1/data/hero_arena/select { dataHash }: make a kept version current (the revert). Nothing is deleted. */
+export async function makeCurrent(dataHash: string, signal?: AbortSignal): Promise<VersionList | null> {
+  const done = await call<unknown>("/v1/data/hero_arena/select", JSON_POST({ dataHash }), signal);
+  return done === null ? null : fetchVersions(signal);
+}
+
+/**
+ * POST /v1/playtest/auto { gameId, fromHash?, rounds, requireApproval }: rounds of measure, propose, validate, holdout.
+ * `approval` is the screen's toggle (on: an accepted version ships by itself); the server's flag is its opposite.
+ * Progress (round and phase) streams over /ws; when it ends the list is read again.
+ */
 export async function runAutoBalance(
   opts: { rounds: number; approval: boolean; fromHash?: string },
   signal?: AbortSignal,
 ): Promise<VersionList | null> {
-  const raw = await call<unknown>("/v1/auto-balance", JSON_POST({ gameId: "hero_arena", ...opts }), signal);
-  return raw === null ? null : parseVersionList(raw);
-}
-
-/** POST /v1/versions/<gameId>/current: select an older (or any) kept version as the one used from now on. */
-export async function makeCurrent(dataHash: string, signal?: AbortSignal): Promise<VersionList | null> {
-  const raw = await call<unknown>("/v1/versions/hero_arena/current", JSON_POST({ dataHash }), signal);
-  return raw === null ? null : parseVersionList(raw);
+  const { rounds, approval, fromHash } = opts;
+  const body = { gameId: "hero_arena", rounds, requireApproval: !approval, ...(fromHash ? { fromHash } : {}) };
+  const done = await call<unknown>("/v1/playtest/auto", JSON_POST(body), signal);
+  return done === null ? null : fetchVersions(signal);
 }

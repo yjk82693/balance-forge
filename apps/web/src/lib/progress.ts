@@ -22,6 +22,9 @@ export interface ProgressMsg {
   gameId?: string;
   /** "baseline" on the data as it is, then "holdout" on the patched data (POST /v1/playtest/full) */
   phase?: "baseline" | "holdout";
+  /** auto-balance only: which round is running, and how many there are */
+  round?: number;
+  rounds?: number;
   dataHash?: string;
   matchesDone: number;
   totalMatches: number;
