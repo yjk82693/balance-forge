@@ -1,13 +1,13 @@
 # Engine implementation report
 
-Branch: jokerstar/engine
+Branch: engine
 
 ## Blocker
 
 Resume attempted on 2026-11-13. Although the session lists the shared Git directory as writable, Git metadata writes are still denied:
 
 ```
-fatal: Unable to create '/Users/yoojun0522/dev/games/balance-forge/.git/worktrees/balance-forge-engine/index.lock': Operation not permitted
+fatal: Unable to create '~/balance-forge/.git/worktrees/balance-forge-engine/index.lock': Operation not permitted
 ```
 
 Both `git add packages/contracts` and `git commit -m "core: implement v0.1 contracts and canonical state hashing"` failed with this error. No commit was created. Stopped as instructed because per-stage commits remain blocked. Resume requires effective write access to the exact worktree metadata directory above. No network, dependencies, push, UI changes, or out-of-ownership edits were made.
