@@ -2089,7 +2089,7 @@ p {
   margin: 0;
   padding: var(--space-4) var(--space-6) 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--steps, 5), 1fr);
   gap: var(--space-3);
 }
 .present-steps li { display: flex; flex-direction: column; gap: var(--space-1); opacity: 0.5; }
@@ -2123,7 +2123,7 @@ p {
 .present-keys { text-align: center; padding: var(--space-3); color: var(--text-2); }
 .present.auto { cursor: none; }
 @media (max-width: 1099px) {
-  .present-steps { grid-template-columns: repeat(5, 1fr); padding: var(--space-3) var(--space-4) 0; }
+  .present-steps { grid-template-columns: repeat(var(--steps, 5), 1fr); padding: var(--space-3) var(--space-4) 0; }
   .present-steps .caption { display: none; }
   .present-stage { padding: var(--space-4); }
   .present-duel { gap: var(--space-5); }
@@ -2135,7 +2135,7 @@ p {
 .present-bots { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 1099px) {
   .present { overflow-x: hidden; }
-  .present-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .present-steps { grid-template-columns: repeat(var(--steps, 5), minmax(0, 1fr)); }
 }
 .present-wide .diff { zoom: 1.5; }
 @media (max-width: 1099px) {
@@ -2199,3 +2199,5 @@ p {
 .phone-body.tight > p { font-size: var(--fs-body); line-height: 22px; }
 .phone-body.tight .text-2 { display: none; }
 .phone-foot .btn { white-space: nowrap; padding-inline: var(--space-3); }
+/* a table cannot be shrunk to 1px by width alone; as a block it can, so it never widens the page */
+table.sr-only { display: block; max-width: 1px; }

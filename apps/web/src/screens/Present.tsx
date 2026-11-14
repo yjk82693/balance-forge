@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompareReplay } from "../components/CompareReplay";
 import { DiffCard } from "../components/DiffCard";
 import { FitStage } from "../components/FitStage";
@@ -12,10 +12,12 @@ import { fixtureMatchConfig } from "../lib/fixtures";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
-import { SCENES, usePresenter, type SceneId } from "../lib/presenter";
+import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
+import { VersionRow } from "../components/VersionRow";
 import { useManifest } from "../lib/assets";
+import { fetchVersions, layoutRows, loadHistory, type HistorySource, type VersionList } from "../lib/versions";
 import { isMockMode } from "../mock/types";
 import type { PlaytestRun } from "../lib/api";
 
@@ -45,7 +47,9 @@ export function Present({ auto }: { auto: boolean }) {
   const finished = !!run && !busy;
   const ready = useCallback((id: SceneId) => id !== "bots" || finished || !!error, [finished, error]);
   const restart = useCallback(() => void start(), [start]);
-  const { index, scene, held, paused } = usePresenter(ready, restart);
+  const history = useHistory(finished);
+  const scenes = useMemo(() => scenesFor(!!history && history.list.versions.length > 1), [history]);
+  const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
   const source = sourceLabel(run, !!notice, mock);
 
   return (
@@ -60,8 +64,8 @@ export function Present({ auto }: { auto: boolean }) {
           <span className={`badge ${source.cls}`}>{source.text}</span>
           {paused && <span className="badge">paused</span>}
         </TopBar>
-        <ol className="present-steps" aria-label="Steps">
-          {SCENES.map((s, i) => (
+        <ol className="present-steps" aria-label="Steps" style={{ ["--steps" as string]: scenes.length }}>
+          {scenes.map((s, i) => (
             <li key={s.id} className={i === index ? "on" : i < index ? "done" : ""} aria-current={i === index}>
               <span className="present-step-bar">
                 <span style={{ width: i === index && s.min ? `${Math.min(100, (held / s.min) * 100)}%` : "" }} />
@@ -71,7 +75,16 @@ export function Present({ auto }: { auto: boolean }) {
           ))}
         </ol>
         <main className="present-stage" aria-live="polite">
-          <SceneBody id={scene.id} run={run} busy={busy} live={live} elapsed={elapsed} error={error} notice={notice} />
+          <SceneBody
+            id={scene.id}
+            run={run}
+            busy={busy}
+            live={live}
+            elapsed={elapsed}
+            error={error}
+            notice={notice}
+            history={history}
+          />
         </main>
         {!auto && (
           <footer className="present-keys caption">
@@ -91,10 +104,13 @@ interface BodyProps {
   elapsed: number;
   error: string | null;
   notice: string | null;
+  history: HistoryState | null;
 }
 
-function SceneBody({ id, run, busy, live, elapsed, error, notice }: BodyProps) {
+function SceneBody({ id, run, busy, live, elapsed, error, notice, history }: BodyProps) {
   switch (id) {
+    case "history":
+      return <HistoryScene history={history} />;
     case "match":
       return <MatchScene />;
     case "bots":
@@ -106,6 +122,52 @@ function SceneBody({ id, run, busy, live, elapsed, error, notice }: BodyProps) {
     default:
       return <VerdictScene run={run} busy={busy} error={error} />;
   }
+}
+
+interface HistoryState {
+  list: VersionList;
+  source: HistorySource;
+}
+
+/**
+ * The version history for the last scene: the live list (read again once the run is finished, since a run can add a
+ * version), else the stored one. Null while loading or when there is none, and the scene is then left out.
+ */
+function useHistory(runFinished: boolean): HistoryState | null {
+  const [state, setState] = useState<HistoryState | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const job: Promise<HistoryState | null> =
+      runFinished && state?.source === "live run"
+        ? fetchVersions()
+            .then((list) => (list ? { list, source: "live run" as const } : null))
+            .catch(() => null)
+        : loadHistory().then((h) => (h.list ? { list: h.list, source: h.source } : null));
+    job.then((next) => alive && next && setState(next));
+    return () => {
+      alive = false;
+    };
+  }, [runFinished]);
+  return state;
+}
+
+/** Auto-balance rounds as the Versions screen shows them, read only. */
+function HistoryScene({ history }: { history: HistoryState | null }) {
+  if (!history) return <Waiting what="the version history" />;
+  const rows = layoutRows(history.list.versions);
+  return (
+    <section className="present-wide panel">
+      <div className="panel-head">
+        <span className="eyebrow">Version history, newest first</span>
+        <span className={`badge${history.source === "live run" ? "" : " recorded"}`}>{history.source}</span>
+      </div>
+      <ul className="version-list">
+        {rows.map((r) => (
+          <VersionRow key={r.record.dataHash} row={r} current={r.record.dataHash === history.list.currentHash} />
+        ))}
+      </ul>
+    </section>
+  );
 }
 
 /** The human match that just ended, when there is one; otherwise only the title. */
@@ -160,7 +222,7 @@ function Waiting({ what, error }: { what: string; error?: string | null }) {
   );
 }
 
-function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, "id">) {
+function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, "id" | "history">) {
   const rows = live.rows ?? run?.baseline.rows ?? null;
   return (
     <div className="present-bots">

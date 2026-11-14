@@ -1,91 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, runBotsOnVersion, subscribeProgress, type PlaytestRun } from "../lib/api";
 import { ResultCard } from "../components/ResultCard";
+import { VersionRow } from "../components/VersionRow";
 import { FitStage } from "../components/FitStage";
 import { TopBar } from "../components/TopBar";
 import { rowStats } from "../components/WinRateChart";
-import { VERDICT_COPY } from "../lib/dashboardData";
 import { originLabel } from "../lib/fullRun";
 import { botRows } from "../lib/groups";
 import { go } from "../lib/router";
 import { pct } from "../lib/stats";
 import { useManifest } from "../lib/assets";
-import { isMockMode } from "../mock/types";
 import {
   approveVersion,
   factsFromVersion,
   fetchVersion,
-  fetchVersions,
-  fieldText,
   layoutRows,
-  loadRecordedVersions,
+  loadHistory,
   makeCurrent,
   matchupName,
   runAutoBalance,
-  sampleVersions,
   shortHash,
-  type Row,
+  type HistorySource,
   type VersionDetail,
   type VersionList,
   type VersionRecord,
 } from "../lib/versions";
 
-type Source = "live run" | "recorded" | "sample data";
 type Busy = null | "balance" | "bots" | "current" | "approve";
 
 /** The record with the server's diff against its parent in place of its own change list, when there is one. */
 const withDiff = (v: VersionRecord, d?: VersionDetail): VersionRecord => (d ? { ...v, changes: d.diff } : v);
 const originName = (v: VersionRecord) => (v.origin === "base" ? "base" : originLabel(v.origin));
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
-
-/** Where the history comes from: the server, else the stored file, else (?mock=1) the sample. */
-async function loadHistory(): Promise<{ list: VersionList | null; source: Source }> {
-  if (isMockMode()) return { list: sampleVersions(), source: "sample data" };
-  try {
-    const live = await fetchVersions();
-    if (live) return { list: live, source: "live run" };
-  } catch {
-    /* no server: fall through to the stored history */
-  }
-  return { list: await loadRecordedVersions().catch(() => null), source: "recorded" };
-}
-
-interface RowProps {
-  row: Row;
-  selected: boolean;
-  current: boolean;
-  onPick: () => void;
-}
-
-function RowButton({ row, selected, current, onPick }: RowProps) {
-  const { record: v } = row;
-  const t = v.target;
-  return (
-    <li style={{ marginLeft: row.lane * 24 }}>
-      <button className={`version-row${selected ? " on" : ""}`} onClick={onPick} aria-pressed={selected}>
-        <span className="version-hash">{shortHash(v.dataHash)}</span>
-        <span className="badge origin">{v.origin === "base" ? "base" : originLabel(v.origin)}</span>
-        {current && <span className="badge after">current</span>}
-        {!v.approved && <span className="badge before">candidate versions — not shipped</span>}
-        <span className="version-fields small">
-          {v.changes.length ? v.changes.slice(0, 2).map(fieldText).join(" · ") : "The shipped data"}
-        </span>
-        {t && (
-          <span className="small">
-            {matchupName(t.matchup)} {pct(t.before.rate)}% → {pct(t.after.rate)}%
-          </span>
-        )}
-        {v.verdict && (
-          <span className={`status ${VERDICT_COPY[v.verdict.verdict].cls}`}>
-            <span className="dot" />
-            {VERDICT_COPY[v.verdict.verdict].glyph}
-            {VERDICT_COPY[v.verdict.verdict].label}
-          </span>
-        )}
-      </button>
-    </li>
-  );
-}
 
 /** What the bots measured on this version, for the matchup the version was about. */
 function BotResult({ run, target }: { run: PlaytestRun; target?: string }) {
@@ -103,7 +49,7 @@ function BotResult({ run, target }: { run: PlaytestRun; target?: string }) {
 export function Versions() {
   useManifest();
   const [list, setList] = useState<VersionList | null>(null);
-  const [source, setSource] = useState<Source>("recorded");
+  const [source, setSource] = useState<HistorySource>("recorded");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
@@ -245,7 +191,7 @@ export function Versions() {
             )}
             <ul className="version-list">
               {rows.map((r) => (
-                <RowButton
+                <VersionRow
                   key={r.record.dataHash}
                   row={r}
                   selected={r.record.dataHash === selected}
