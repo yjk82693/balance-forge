@@ -58,7 +58,6 @@ export function blip(kind: Blip) {
   osc.stop(t + s.ms / 1000 + 0.02);
 }
 
-export const isMuted = () => muted;
 export function setMuted(v: boolean) {
   muted = v;
   try {
