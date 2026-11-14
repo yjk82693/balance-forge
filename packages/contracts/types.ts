@@ -291,9 +291,10 @@ export type TentacleProjectile = { id: string; x: number; y: number; vx: number;
   damage: number; from: 'drone' | 'sentry' | 'boss' };
 /** The payload of state.view (Observation.payload) and of the state itself, the same shape for the one seat. */
 export type TentacleObservationPayload = {
-  wave: number; // 1..5 = the waves, 6 = the boss, 0 = the break before wave 1; wave 7 never happens (the run ends)
+  wave: number; // 1..5 = the waves, 6 = the boss: the wave being fought, or the one about to start during a break
   waveCount: number; // 5 (the boss is wave 6)
-  waveTick: number; // ticks since this wave started (0 during the break between waves)
+  waveTick: number; // ticks since this wave started (0 during a break)
+  breakTicks: number; // ticks until the wave spawns (0 while it is being fought); the first break is the start
   entities: TentacleEntity[]; // the player first, then the enemies in spawn order; the boss has kind "boss"
   posts: Array<{ id: number; x: number; y: number }>;
   projectiles: TentacleProjectile[];
