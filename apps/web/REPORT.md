@@ -492,3 +492,11 @@ A report row that carries `target`, `deltaToTarget` and `outlier` is shown exact
   ({points:[{data_hash, first_seen, games, rate}]}): up to the last 8 versions, the first hero of the sorted pair's rate
   against the intended band. Hidden on 404/400/any failure or an empty series.
 - Checked against a local stub of both endpoints (`screenshots/sinks-trend-stub.png`), not the real engine.
+
+## Round 9 learned bots, wired to the committed files
+- `#/skill` reads `services/runner/learned/{bari,daewi,real_armor,sepia}.json` (policy `learned-cem-1`): curve, time,
+  seeds, data hash, who it trained against, and the `heldOutEval` block (the opponent left out of training).
+- Held-out result is shown as it is: learned, starting parameters and scripted on Nightcrow, judged by 95% intervals
+  only. Today: Daewi generalizes better than its start, Bari and Real Armor show no clear difference, Sepia's learned
+  bot generalizes worse than its start (72% against 86%); it says so in amber.
+- Nightcrow has no trained bot (held out). The comparison panel still needs the live server; not run here.

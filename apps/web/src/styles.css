@@ -2511,3 +2511,5 @@ button.intent-btn { cursor: pointer; }
 .trend-dot { fill: var(--accent); }
 .trend-label { fill: var(--text-1); font-size: 14px; }
 .trend-axis { fill: var(--text-2); font-size: 12px; }
+.held-out { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 8px; }
+.held-out .badge { white-space: normal; }

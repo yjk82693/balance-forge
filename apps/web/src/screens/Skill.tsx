@@ -8,7 +8,16 @@ import { TopBar } from "../components/TopBar";
 import { rowStats } from "../components/WinRateChart";
 import { ApiError, runPlaytest } from "../lib/api";
 import { useManifest } from "../lib/assets";
-import { BOT_SKILLS, availableSkills, learnedHeroes, policyFor, skillLabel, type BotSkill } from "../lib/botPolicy";
+import type { HeldOut } from "../lib/botPolicy";
+import {
+  BOT_SKILLS,
+  availableSkills,
+  generalization,
+  learnedHeroes,
+  policyFor,
+  skillLabel,
+  type BotSkill,
+} from "../lib/botPolicy";
 import { MATCHES } from "../lib/dashboardData";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
@@ -26,7 +35,8 @@ interface Measured {
   error?: string;
 }
 
-const seconds = (s?: number) => (s === undefined ? "—" : s < 90 ? `${Math.round(s)} s` : `${(s / 60).toFixed(1)} min`);
+const seconds = (s?: number) =>
+  s === undefined ? "—" : s < 90 ? `${Math.round(s)} s` : `${(s / 60).toFixed(1)} min`;
 
 /** The same matchup measured with each bot type, side by side with intervals. */
 function Comparison() {
@@ -111,6 +121,36 @@ function Comparison() {
   );
 }
 
+const VERDICT_TEXT = {
+  better: { cls: "status ok", text: "Generalizes: better than its starting parameters" },
+  worse: { cls: "status warn", text: "Generalizes worse than its starting parameters" },
+  same: { cls: "badge", text: "No clear difference from its starting parameters" },
+} as const;
+
+/** The result on an opponent training never saw. Shown as it is, including when it is worse than the start. */
+function HeldOutBlock({ h, hero, trainedAgainst }: { h: HeldOut; hero: string; trainedAgainst?: string[] }) {
+  const g = generalization(h);
+  return (
+    <div className="held-out">
+      <p className="caption">
+        Held out: {heroName(hero)} against {heroName(h.opponent)}, never trained against
+        {trainedAgainst?.length ? ` (it trained against ${trainedAgainst.map(heroName).join(", ")})` : ""}
+      </p>
+      <ul className="rate-rows">
+        <RateRow label="Learned" rate={h.learned} strong />
+        {h.defaults && <RateRow label="Start" rate={h.defaults} />}
+        {h.scripted && <RateRow label="Scripted" rate={h.scripted} />}
+      </ul>
+      {g && (
+        <p className={`small ${VERDICT_TEXT[g].cls}`}>
+          {g !== "same" && <span className="dot" />}
+          {VERDICT_TEXT[g].text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Each trained hero: its fitness curve, how long it trained and on what. */
 function TrainingPanel() {
   const heroes = learnedHeroes();
@@ -122,6 +162,12 @@ function TrainingPanel() {
         </span>
         <span className="badge recorded">recorded</span>
       </div>
+      {heroes.length > 0 && (
+        <p className="caption">
+          Each bot trained against the other heroes in turn. A hero left out of training is tested on seeds it never
+          saw; that held-out line is the honest one.
+        </p>
+      )}
       {heroes.length === 0 && (
         <p className="small text-2">No trained bots yet. The trainer writes one file per hero; they show up here.</p>
       )}
@@ -139,6 +185,7 @@ function TrainingPanel() {
             </p>
             {h.seeds && <p className="caption">{h.seeds}</p>}
             {h.dataHash && <p className="caption">data {h.dataHash.slice(0, 7)}</p>}
+            {h.heldOut && <HeldOutBlock h={h.heldOut} hero={h.hero} trainedAgainst={h.trainedAgainst} />}
           </article>
         ))}
       </div>

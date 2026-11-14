@@ -39,6 +39,50 @@ export interface LearnedHero {
   /** training time in seconds, when the file records it */
   trainingSeconds?: number;
   dataHash?: string;
+  /** the opponents it trained against */
+  trainedAgainst?: string[];
+  /** the evaluation on seeds and an opponent that training never saw, when the file has one */
+  heldOut?: HeldOut;
+}
+
+export interface HeldOutRate {
+  rate: number;
+  ci95: [number, number];
+  games: number;
+}
+/** The learned bot, the same bot with its starting parameters and the scripted bot, on the held-out opponent. */
+export interface HeldOut {
+  opponent: string;
+  learned: HeldOutRate;
+  defaults?: HeldOutRate;
+  scripted?: HeldOutRate;
+}
+
+function heldRate(raw: unknown): HeldOutRate | undefined {
+  if (!isObject(raw) || !Array.isArray(raw.ci95) || raw.ci95.length !== 2) return undefined;
+  const rate = Number(raw.winRate);
+  const games = Number(raw.games);
+  const ci: [number, number] = [Number(raw.ci95[0]), Number(raw.ci95[1])];
+  return [rate, games, ...ci].every(Number.isFinite) ? { rate, ci95: ci, games } : undefined;
+}
+
+function parseHeldOut(raw: unknown): HeldOut | undefined {
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  if (!isObject(first) || typeof first.opponent !== "string") return undefined;
+  const learned = heldRate(first.learned);
+  if (!learned) return undefined;
+  return { opponent: first.opponent, learned, defaults: heldRate(first.defaults), scripted: heldRate(first.scripted) };
+}
+
+/**
+ * What the held-out numbers say about the learned bot, judged by the 95% intervals only: better than its own starting
+ * parameters, worse, or no clear difference. Undefined when there is nothing to compare with.
+ */
+export function generalization(h: HeldOut): "better" | "worse" | "same" | undefined {
+  if (!h.defaults) return undefined;
+  if (h.learned.ci95[0] > h.defaults.ci95[1]) return "better";
+  if (h.learned.ci95[1] < h.defaults.ci95[0]) return "worse";
+  return "same";
 }
 
 function parseCurve(raw: unknown): FitnessPoint[] {
@@ -76,6 +120,8 @@ export function parseLearned(hero: string, raw: unknown): LearnedHero | null {
     seeds: seedsText(trained.seeds),
     trainingSeconds: secs ?? (ms !== undefined ? ms / 1000 : undefined),
     dataHash: typeof trained.dataHash === "string" ? trained.dataHash : undefined,
+    trainedAgainst: Array.isArray(trained.opponents) ? trained.opponents.map(String) : undefined,
+    heldOut: parseHeldOut(raw.heldOutEval),
   };
 }
 
