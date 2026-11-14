@@ -1,6 +1,6 @@
 # Room service protocol
 
-Start from the repository root: `node services/room/cli.js`.
+Start from the repository root: `node services/room/cli.ts`.
 
 HOST defaults to 0.0.0.0; PORT defaults to 3000. A busy port produces a readable stderr message and exit code 1.
 GET /v1/games is registered before listening; the demo launcher can use it as a readiness probe.
@@ -13,7 +13,7 @@ and full envelopes are captured in [examples.json](examples.json). Large bodies 
 omitted fields are still required. Captures use production handlers and real workers without network, including
 a two-tick illustrative human match; these are protocol examples, not demo balance evidence.
 Captured room/session/match IDs are illustrative. Tokens are redacted; replace them with your client's actual
-values. Regenerate the capture with `node services/room/generate-examples.js`.
+values. Regenerate the capture with `node services/room/generate-examples.ts`.
 
 For curl examples set `BASE=http://localhost:3000`, `GAME=hero_arena`, and HASH to a hash returned by GET data.
 hero_cards is also supported. Substitute returned paths, IDs, hashes and tokens when following the examples.
@@ -587,7 +587,7 @@ never draws. Restart does not preserve live rooms.
 ## Verification
 
 `node --test` runs real workers, persistence and production handlers without network. Five existing TCP tests
-require external listener permission: `RUN_SOCKET_TESTS=1 node --test services/room/room.test.js`.
+require external listener permission: `RUN_SOCKET_TESTS=1 node --test services/room/room.test.ts`.
 Those tests enforce catalog readiness within one second after listening. See REPORT.md for actual verification.
 
 ## Round 6 dashboard additions
@@ -612,7 +612,8 @@ Baseline seeds 1..pairs never overlap holdout 1000001..1000000+holdoutPairs. Bot
 baseline or holdout. Candidates are retained by hash without automatically replacing the current baseline.
 Production selects Gemini when GEMINI_API_KEY is set, otherwise fake; tests explicitly pass an empty adapter env.
 
-The analysis full.js module is integrated. Pipeline failures retain their public code and readable message,
+The analysis full module (packages/analysis/pipeline/full.ts) is integrated. Pipeline failures retain their public
+code and readable message,
 for example HTTP 400 {"code":"SIMULATION_FAILED","message":"The holdout run could not complete."}.
 The full captured success response is in examples.json → http.full.
 
@@ -735,4 +736,43 @@ only request validation (http.autoInvalid, 400 INVALID_SCHEMA for rounds:9). Rea
 is `[{hero, tried: [{label, path, old, new, outcome}], evidence}]` (never a version record; `outcome` is the
 candidate's verdict or `skipped`, `evidence` is a sentence with the numbers). The whole run output is kept as
 `/v1/playtest/results/<runId>-auto.json`, so a later GET shows it.
-`RUN_REAL_AUTO=1 node --test services/room/auto-real.test.js`.
+`RUN_REAL_AUTO=1 node --test services/room/auto-real.test.ts`.
+
+## Later additions (design intent, reanalysis, bot policy, Hero Cards, outside stores)
+
+### Design intent
+`GET /v1/design/:gameId/intent` and `PUT` the same (gameId `hero_arena` or `hero_cards`). The body is
+`{version, matchups: {"a vs b": {favored, strength}}, notes?}`; strength is `even | slight | clear | strong` (a target
+of 50 / 55 / 60 / 65% for the favored side), a missing pair means even, mirrors and unknown heroes are `400
+INVALID_SCHEMA`. The committed file `services/room/design/<gameId>-intent.json` is the read-only default: a PUT
+saves the runtime intent in `services/room/data/design/` (git-ignored) and GET answers with it when it exists. A PUT
+without `notes` keeps the notes of the intent it replaces; without `version` it gets `intent-<8 hex of the matchups
+hash>`.
+Reports judged against an intent carry `intentVersion`, and every row `target` and `deltaToTarget` (contract v0.1.3).
+Changing the intent never changes a data hash.
+
+### POST /v1/playtest/reanalyze
+`{runId, intent?}` re-judges a stored full run without simulating (under the given intent, else the current one). The
+run's baseline, holdout, diagnosis and human results are read from `playtests/<runId>-*.json`. The reply is the full
+body plus `reanalyzed: true`; `stale: true` means the run stopped fair under the old intent and the matchup is flagged
+under the new one (run it again), `diagnosisIncomplete: true` that the stored diagnosis does not cover the new focus.
+An unknown runId is `400 INVALID_SCHEMA`.
+
+### Bot policy
+`botPolicy: "scripted" | "learned"` on /v1/playtest/run and /full (Hero Arena only for `learned`; `LEARNED_UNAVAILABLE`
+without trained files in `services/runner/learned/`). The reply carries `botPolicy` and `botPolicyVersion`:
+`scripted-0.2.1` for Hero Arena, `cards-bot-0.1.0` for Hero Cards, `learned-cem-1+<8 hex>` for trained bots.
+
+### Hero Cards
+`POST /v1/playtest/full {"gameId": "hero_cards"}` runs the same pipeline. Without `heroes` or `roster` the matchup is
+`nightcrow vs standard`. The diagnosis is by card: each card's cost and power, one step up and down, is run on the same
+fresh seeds as the unchanged data (`diagnosis.levers` with the measured effect and whether it is beyond noise); probe
+runs write no replays, files or progress events. The patch allowlist adds `/gameRules/cards/N/cost` (integer 1..3) and
+`/gameRules/cards/N/power` (integer 1..10, none on the peek card). Match statistics carry `play:<cardId>` per player.
+Only the human matches of the requested game enter a run's report.
+
+### Outside stores
+Optional MongoDB Atlas and Tiger Data sinks (`services/sinks/`), off without `MONGODB_URI` / `TIGER_DATABASE_URL`.
+`GET /v1/sinks` returns `{enabled, status: {name: {written, failed}}}` (never connection strings);
+`GET /v1/trend/:gameId?matchup=a vs b` returns the win-rate points per data version, or `404 TRANSPORT_UNAVAILABLE`
+without Tiger Data.
