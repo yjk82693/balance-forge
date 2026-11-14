@@ -134,3 +134,11 @@ Room WebSockets receive playtest.progress with runId/gameId/dataHash, matchesDon
 per-matchup wins/games/draws/invalid counts. Final ordered MatchResult arrays retain their existing shape and
 values; progress observers cannot change simulation outcomes. Eight runner/replay/room tests passed, including
 cadence, monotonicity, all 15 matchup totals, equal streamed/plain results, and persisted bot replays.
+
+## Combat event views
+
+Completed I. state.view now carries that step's ordered events: combat.hit, combat.guard (activate/block),
+combat.ko, projectile.spawn and projectile.expire (hit/lifetime/bounds). IDs are tick/ordinal based; no cosmetic
+RNG, clock or display fields enter simulation state. Viewer audience filtering protects card.peek events, and
+resending an unchanged view does not repeat transient events. Five event/replay tests passed, including all
+expiry reasons, one KO per elimination, deterministic event streams, private filtering and real step forwarding.

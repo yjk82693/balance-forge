@@ -8,7 +8,10 @@ export const envelopeSchema = object({
 const id = {enum:['hero_arena','hero_cards']};
 export const payloadSchemas = {
   'room.create':object({gameId:id}, []),
-  'room.join':object({joinCode:{type:'string',pattern:'^[A-Za-z0-9]{4}$'},name:text(40),hero:text()}),
+  'room.join':object({joinCode:{type:'string',pattern:'^[A-Za-z0-9]{4}$'},name:text(40),hero:text(),
+    seatToken:{type:'string',minLength:32,maxLength:128}},['joinCode','name','hero']),
+  'reconnect':object({joinCode:{type:'string',pattern:'^[A-Za-z0-9]{4}$'},
+    seatToken:{type:'string',minLength:32,maxLength:128},lastAck:integer()},['joinCode','seatToken']),
   'game.select':object({gameId:id,dataHash:{type:'string',pattern:'^[0-9a-f]{64}$'}}, ['gameId']),
   'match.start':object({gameId:id,seed:integer(1,4294967295),maxTicks:integer(1,1800)}, []),
   'match.reset':object({}), 'ping':object({})
@@ -24,7 +27,7 @@ export function parseEnvelope(raw) {
   return value;
 }
 export function validatePayload(type, payload) {
-  const schema=payloadSchemas[type];
+  const schema=Object.hasOwn(payloadSchemas,type)?payloadSchemas[type]:null;
   if(!schema)throw Error('INVALID_SCHEMA');
   return validateSchema(schema,payload);
 }

@@ -13,6 +13,7 @@ import {runBatch, pairedJobs} from '../runner/index.js';
 import {games} from '../runner/match.js';
 import {Storage, writeJson} from './storage.js';
 import {parseEnvelope, validatePayload, assertDepth, errorCode} from './protocol.js';
+import {messages} from './errors.js';
 const directory=fileURLToPath(new URL('./',import.meta.url));
 const defaultStatic=fileURLToPath(new URL('../../apps/web/dist',import.meta.url));
 const STEP_MS=1000/60;
@@ -21,6 +22,7 @@ const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=
   '.svg':'image/svg+xml','.webp':'image/webp','.woff2':'font/woff2','.ico':'image/x-icon'};
 const httpStatus=code=>code==='RATE_LIMITED'?429:code==='AUTH_EXPIRED'?403:code==='TRANSPORT_UNAVAILABLE'?503:400;
 function json(response,status,value) {
+  if(response.destroyed||response.writableEnded)return;
   response.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});
   response.end(JSON.stringify(value));
 }
@@ -32,19 +34,26 @@ async function readBody(request) {
   assertDepth(result);return result;
 }
 export class RoomServer {
-  constructor({storageDir=directory,staticDir=defaultStatic,turnTimeoutMs=15000,workers=2}={}) {
+  constructor({storageDir=directory,staticDir=defaultStatic,turnTimeoutMs=15000,workers=2,clock=()=>performance.now()}={}) {
     if(!Number.isInteger(turnTimeoutMs)||turnTimeoutMs<1)throw Error('INVALID_SCHEMA');
+    if(typeof clock!=='function')throw Error('INVALID_SCHEMA');
+    this.now=clock;this.pendingRecords=new Map();this.failures=[];
     this.storage=new Storage(storageDir);this.staticDir=resolve(staticDir);this.turnTimeoutMs=turnTimeoutMs;
     this.workers=workers;this.rooms=new Map();this.codes=new Map();this.sessions=new Set();this.tasks=new Set();
     this.runningBatch=false;this.closed=false;
     this.http=createServer((req,res)=>this.handleHttp(req,res).catch(error=>{
-      if(!res.headersSent)json(res,httpStatus(errorCode(error)),{code:errorCode(error)});else res.destroy();
+      const code=errorCode(error);
+      try {if(!res.headersSent)json(res,httpStatus(code),{code,message:messages[code]});else res.destroy();}
+      catch {try {res.destroy();}catch {}}
     }));
+    this.http.on('clientError',(_error,socket)=>{try {socket.destroy();}catch {}});
     this.ws=new WebSocketServer({noServer:true,maxPayload:65536,perMessageDeflate:false});
     this.http.on('upgrade',(request,socket,head)=>{
-      const url=new URL(request.url,'http://localhost');
-      if(url.pathname!=='/ws'){socket.destroy();return;}
-      this.ws.handleUpgrade(request,socket,head,ws=>this.connect(ws,url));
+      try {
+        const url=new URL(request.url,'http://localhost');
+        if(url.pathname!=='/ws'){socket.destroy();return;}
+        this.ws.handleUpgrade(request,socket,head,ws=>this.connect(ws,url));
+      }catch {try {socket.destroy();}catch {}}
     });
     this.timer=setInterval(()=>this.pump(),8);
     this.timer.unref();
@@ -59,20 +68,22 @@ export class RoomServer {
     this.rooms.set(room.id,room);this.codes.set(code,room);return room;
   }
   connect(ws,url) {
-    const session={id:randomUUID(),ws,room:null,seat:null,count:0,window:performance.now(),seq:0};
+    const session={id:randomUUID(),ws,room:null,seat:null,count:0,window:this.now(),seq:0};
+    if(this.closed||this.sessions.size>=500){try {ws.close(1013,'Server busy');}catch {}return;}
     this.sessions.add(session);
     ws.on('error',()=>{});
     ws.on('message',(raw,isBinary)=>{
+      if(ws.readyState!==WebSocket.OPEN)return;
       let env;
       try {
         if(isBinary)throw Error('INVALID_SCHEMA');env=parseEnvelope(raw.toString('utf8'));
         if(env.sessionId&&env.sessionId!==session.id)throw Error('AUTH_EXPIRED');
-        if(session.room&&env.type!=='room.join'&&env.type!=='room.create') {
+        if(session.room&&!['room.join','room.create','reconnect'].includes(env.type)) {
           if(env.roomId!==session.room.id)throw Error('AUTH_EXPIRED');
           if(env.epoch!==session.room.epoch)throw Error('STALE_TURN');
         }
         this.receive(session,env);
-      }catch(error){this.send(session,'error',{code:errorCode(error),requestId:env?.requestId??'',retryable:false},env);}
+      }catch(error){this.send(session,'error',{code:errorCode(error),message:messages[errorCode(error)],requestId:env?.requestId??'',retryable:['LATE_INPUT','RATE_LIMITED','STALE_TURN'].includes(errorCode(error))},env);}
     });
     ws.on('close',()=>this.disconnect(session));
     try {
@@ -87,20 +98,23 @@ export class RoomServer {
         const room=this.createRoom(url.searchParams.get('gameId')??'hero_arena');room.host=session;
         this.attach(session,room);this.status(room);
       }else this.send(session,'room.status',{joinCode:'',phase:'lobby',seats:[]});
-    }catch(error){this.send(session,'error',{code:errorCode(error),requestId:'',retryable:false});}
+    }catch(error){this.send(session,'error',{code:errorCode(error),message:messages[errorCode(error)],requestId:'',retryable:false});}
   }
   attach(session,room){session.room=room;room.members.add(session);}
   send(session,type,payload,request,seq) {
     if(session.ws.readyState!==WebSocket.OPEN)return;
-    if(session.ws.bufferedAmount>1048576){session.ws.close(1013,'Slow consumer');return;}
-    session.ws.send(JSON.stringify({protocolVersion:'0.1',type,roomId:session.room?.id??'',sessionId:session.id,
-      requestId:request?.requestId??'',seq:seq??session.seq++,epoch:session.room?.epoch??1,payload}));
+    try {
+      if(session.ws.bufferedAmount>1048576){session.ws.close(1013,'Slow consumer');return;}
+      session.ws.send(JSON.stringify({protocolVersion:'0.1',type,roomId:session.room?.id??'',sessionId:session.id,
+        requestId:request?.requestId??'',seq:seq??session.seq++,epoch:session.room?.epoch??1,payload}),
+        error=>{if(error){try {session.ws.terminate();}catch {}}});
+    }catch {try {session.ws.terminate();}catch {}}
   }
   status(room,request) {
     for(const s of room.members)this.send(s,'room.status',{
       joinCode:room.code,phase:room.phase,gameId:room.gameId,
       seats:room.seats.map(({seat,name,hero,session})=>({seat,name,hero,connected:!!session})),
-      ...(s.seat?{you:s.seat}:{})
+      ...(s.seat?{you:s.seat,seatToken:room.seats.find(seat=>seat.seat===s.seat)?.token}:{})
     },request);
   }
   host(session) {
@@ -115,18 +129,22 @@ export class RoomServer {
       if(session.room)throw Error('ILLEGAL_ACTION');
       const room=this.createRoom(env.payload.gameId);room.host=session;this.attach(session,room);this.status(room,env);return;
     }
+    if(env.type==='reconnect')return this.resume(session,env);
     if(env.type==='room.join') {
+      if(env.payload.seatToken)return this.resume(session,env);
       const room=this.codes.get(env.payload.joinCode.toUpperCase());
       if(!room)throw Error('AUTH_EXPIRED');
+      if(!env.payload.name.trim())throw Error('INVALID_SCHEMA');
+      this.expireSeats(room,this.now());
       if(session.room&&session.room!==room)throw Error('ILLEGAL_ACTION');
       if(room.phase!=='lobby')throw Error('ILLEGAL_ACTION');
       if(!games.hero_arena.data.characters.some(c=>c.id===env.payload.hero))throw Error('INVALID_SCHEMA');
       if(session.seat) {
-        const seat=room.seats.find(s=>s.seat===session.seat);seat.name=env.payload.name;seat.hero=env.payload.hero;
+        const seat=room.seats.find(s=>s.seat===session.seat);seat.name=env.payload.name.trim();seat.hero=env.payload.hero;
       }else {
         if(room.seats.length>=games[room.gameId].describe().maxPlayers)throw Error('ROOM_FULL');
         const seat=['p1','p2','p3','p4'].find(id=>!room.seats.some(s=>s.seat===id));
-        room.seats.push({seat,name:env.payload.name,hero:env.payload.hero,session});session.seat=seat;
+        room.seats.push({seat,name:env.payload.name.trim(),hero:env.payload.hero,session,token:randomBytes(32).toString('base64url'),expiresAt:0});session.seat=seat;
       }
       this.attach(session,room);this.status(room,env);return;
     }
@@ -153,7 +171,7 @@ export class RoomServer {
     if(options.maxTicks!==undefined)config.maxTicks=options.maxTicks;
     const authority=new Authority(game.adapter,config,data);
     room.authority=authority;room.game=game;room.gameId=gameId;room.phase='playing';room.result=null;
-    room.matchId=`human-${randomUUID()}`;room.epoch++;room.lastTime=performance.now();room.accumulator=0;
+    room.matchId=`human-${randomUUID()}`;room.epoch++;room.lastTime=this.now();room.accumulator=0;
     room.deadline=room.lastTime+this.turnTimeoutMs;
     this.status(room,request);
     for(const s of room.members)this.send(s,'match.started',{config},request);
@@ -161,10 +179,10 @@ export class RoomServer {
   }
   input(session,env) {
     const room=session.room;
-    if(!room?.authority||!session.seat)throw Error('ILLEGAL_ACTION');
+    if(!room?.authority||!session.seat||room.seats.find(s=>s.seat===session.seat)?.session!==session)throw Error('ILLEGAL_ACTION');
     validate('ActionInput',env.payload);
     if(env.payload.playerId!==session.seat)throw Error('ILLEGAL_ACTION');
-    const now=performance.now();
+    const now=this.now();
     if(now-session.window>=1000){session.window=now;session.count=0;}
     if(++session.count>120)throw Error('RATE_LIMITED');
     const authority=room.authority,key=JSON.stringify([session.seat,env.payload.seq]);
@@ -189,7 +207,7 @@ export class RoomServer {
     try {
       const turn=room.authority.state.turnId;
       const result=room.authority.advance(systemInputs);
-      if(room.authority.state.turnId!==turn)room.deadline=performance.now()+this.turnTimeoutMs;
+      if(room.authority.state.turnId!==turn)room.deadline=this.now()+this.turnTimeoutMs;
       this.views(room,result.events);
       if(room.game.outcome(room.authority.state).status!=='running')this.finish(room);
     }catch(error){this.finish(room,errorCode(error));}
@@ -200,14 +218,50 @@ export class RoomServer {
     const result={matchId:room.matchId,config:a.config,
       outcome:failure?{status:'running',winners:[],reason:'invalid_match'}:room.game.outcome(a.state),
       statistics:room.game.statistics(a.state),finalStateHash:room.game.hash(a.state),valid:!failure,errorCode:failure??''};
-    this.storage.record(result,{matchId:room.matchId,seed:a.config.seed,config:a.config,frames:a.frames,finalStateHash:result.finalStateHash});room.result=result;room.phase='ended';
-    for(const s of room.members)this.send(s,'match.ended',{result});
-    this.status(room);
+    const recording={matchId:room.matchId,seed:a.config.seed,config:a.config,frames:a.frames,finalStateHash:result.finalStateHash};
+    room.result=result;room.phase='ended';
+    this.pendingRecords.set(result.matchId,{room,result,recording,retryAt:0});
+    this.flushRecord(result.matchId);
+  }
+  flushRecord(matchId) {
+    const entry=this.pendingRecords.get(matchId);if(!entry)return;
+    try {
+      this.storage.record(entry.result,entry.recording);this.pendingRecords.delete(matchId);
+      if(entry.room.matchId===matchId){
+        for(const s of entry.room.members)this.send(s,'match.ended',{result:entry.result});
+        this.status(entry.room);
+      }
+    }catch {
+      entry.retryAt=this.now()+1000;
+      for(const s of entry.room.members)this.send(s,'error',{code:'TRANSPORT_UNAVAILABLE',
+        message:'Match finished; saving results is delayed and will be retried.',requestId:'',retryable:true});
+    }
+  }
+  expireSeats(room,now) {
+    for(const seat of room.seats)if(!seat.session&&seat.expiresAt&&now>=seat.expiresAt){seat.token=null;seat.expiresAt=0;}
+    if(room.phase==='lobby')room.seats=room.seats.filter(s=>s.session||s.expiresAt>now);
+  }
+  resume(session,env) {
+    const room=this.codes.get(env.payload.joinCode.toUpperCase()),now=this.now();
+    if(!room||(session.room&&session.room!==room)||session.seat)throw Error('AUTH_EXPIRED');
+    this.expireSeats(room,now);
+    const seat=room.seats.find(s=>s.token===env.payload.seatToken);
+    if(!seat||seat.session||!seat.expiresAt||now>=seat.expiresAt)throw Error('AUTH_EXPIRED');
+    seat.session=session;seat.expiresAt=0;seat.token=randomBytes(32).toString('base64url');
+    session.seat=seat.seat;this.attach(session,room);this.status(room,env);
+    if(room.authority){
+      this.send(session,'match.started',{config:room.authority.config},env);this.view(session);
+      const receipt=room.authority.receipts.get(JSON.stringify([seat.seat,env.payload.lastAck]));
+      if(receipt)this.send(session,'input.ack',receipt,env,receipt.seq);
+      if(room.result&&!this.pendingRecords.has(room.result.matchId))this.send(session,'match.ended',{result:room.result},env);
+    }
   }
   pump() {
     if(this.closed)return;
-    const now=performance.now();
+    const now=this.now();
+    for(const [matchId,entry] of this.pendingRecords)if(now>=entry.retryAt)this.flushRecord(matchId);
     for(const room of this.rooms.values()) {
+      this.expireSeats(room,now);
       if(room.phase!=='playing')continue;
       if(room.authority.config.mode==='turn') {
         if(now>=room.deadline)this.advance(room,[{kind:'system.timeout',
@@ -224,13 +278,17 @@ export class RoomServer {
   disconnect(session) {
     this.sessions.delete(session);const room=session.room;if(!room)return;
     room.members.delete(session);
-    const seat=room.seats.find(s=>s.session===session);if(seat)seat.session=null;
-    if(room.phase==='lobby')room.seats=room.seats.filter(s=>s.session);
+    const seat=room.seats.find(s=>s.session===session);
+    if(seat){seat.session=null;seat.expiresAt=!this.closed&&room.phase==='playing'?this.now()+10000:0;
+      if(!seat.expiresAt)seat.token=null;}
+    session.room=null;session.seat=null;
+    this.expireSeats(room,this.now());
     if(room.host===session)room.host=null;
     this.status(room);
   }
   async handleHttp(request,response) {
-    const url=new URL(request.url,'http://localhost'),path=url.pathname;
+    let url;try {url=new URL(request.url,'http://localhost');}catch {throw Error('INVALID_SCHEMA');}
+    const path=url.pathname;
     if(request.method==='GET'&&path==='/v1/games') {
       json(response,200,Object.values(games).map(g=>g.describe()));return;
     }
@@ -312,7 +370,8 @@ export class RoomServer {
   async close() {
     this.closed=true;clearInterval(this.timer);
     for(const room of this.rooms.values())if(room.phase==='playing')this.finish(room,'TRANSPORT_UNAVAILABLE');
-    for(const session of this.sessions)session.ws.terminate();
+    for(const session of [...this.sessions]){try {session.ws.terminate();}catch {}}
+    for(const matchId of [...this.pendingRecords.keys()])this.flushRecord(matchId);
     await Promise.allSettled([...this.tasks]);
     await new Promise(resolve=>this.ws.close(resolve));
     if(this.http.listening)await new Promise((resolve,reject)=>this.http.close(error=>error?reject(error):resolve()));
