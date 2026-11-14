@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isArenaPayload } from "../lib/contract";
+import { isArenaPayload, isCardsPayload, type CardsPayload } from "../lib/contract";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { Stick } from "../components/Stick";
@@ -8,6 +8,7 @@ import { useManifest } from "../lib/assets";
 import { go } from "../lib/router";
 import { InputPipeline } from "../lib/input";
 import { useGamepad } from "../lib/gamepad";
+import { CardsHand } from "../components/CardsHand";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 
@@ -114,6 +115,18 @@ export function Controller({ initialCode }: { initialCode: string }) {
           </button>
         </div>
       )}
+      {gameId === "hero_cards" ? (
+        <CardsHand
+          seat={seat!}
+          hero={hero}
+          payload={isCardsPayload(observation?.payload) ? (observation!.payload as CardsPayload) : null}
+          tick={tick.current}
+          names={Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]))}
+          online={online}
+          send={(input) => transport?.send("input.submit", input)}
+        />
+      ) : (
+      <>
       <section className="phone-body" aria-live="polite">
         {ended ? (
           <p>Thanks for playing. Your match is recorded.</p>
@@ -164,6 +177,8 @@ export function Controller({ initialCode }: { initialCode: string }) {
           />
         </div>
       </div>
+      </>
+      )}
       <footer className="phone-foot">
         <button className="btn secondary touch" onClick={() => go(`/join?r=${Date.now()}`)}>
           Leave

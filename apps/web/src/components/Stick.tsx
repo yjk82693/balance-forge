@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { InputPipeline } from "../lib/input";
 
-const RING = 200;
 const KNOB = 72;
 const REACH = 80; // px of knob travel that counts as full deflection
 
@@ -13,6 +12,8 @@ interface Props {
 /** Dynamic-origin stick: touching anywhere in the left half centers the ring there. */
 export function Stick({ pipeline, disabled }: Props) {
   const area = useRef<HTMLDivElement>(null);
+  const ringEl = useRef<HTMLDivElement>(null);
+  const ringPx = useRef(200);
   const active = useRef<{ id: number; ox: number; oy: number } | null>(null);
   const [state, setState] = useState<{ ox: number; oy: number; kx: number; ky: number } | null>(null);
 
@@ -23,6 +24,7 @@ export function Stick({ pipeline, disabled }: Props) {
   const down = (e: React.PointerEvent) => {
     if (disabled || active.current) return;
     const [x, y] = local(e);
+    ringPx.current = ringEl.current?.offsetWidth ?? 200; // the ring shrinks on narrow phones
     active.current = { id: e.pointerId, ox: x, oy: y };
     e.currentTarget.setPointerCapture(e.pointerId);
     setState({ ox: x, oy: y, kx: 0, ky: 0 });
@@ -60,8 +62,9 @@ export function Stick({ pipeline, disabled }: Props) {
       aria-label="Movement stick"
     >
       <div
+        ref={ringEl}
         className={`stick-ring${state ? " on" : ""}`}
-        style={state ? { left: state.ox - RING / 2, top: state.oy - RING / 2 } : undefined}
+        style={state ? { left: state.ox - ringPx.current / 2, top: state.oy - ringPx.current / 2 } : undefined}
       />
       <div
         className={`stick-knob${state ? " on" : ""}`}

@@ -14,6 +14,7 @@ import {
   fixtureStateView,
 } from "../lib/fixtures";
 import { makeEnvelope } from "./envelope";
+import { CardsMock } from "./mockCards";
 
 /** Actions the mock accepts; mirrors the action ids in fixtures (melee, projectile, guard) plus movement. */
 export const ARENA_ACTIONS = ["move", "melee", "projectile", "guard"] as const;
@@ -47,6 +48,8 @@ export class MockServer {
   readonly joinCode = fixtureRoomStatus.payload.joinCode;
   inputCount = 0;
   private gameId = "hero_arena";
+  private cards: CardsMock | null = null;
+  private botTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     // Fixture seats carry no hero; the mock gives the two named judges the heroes in observation.json.
@@ -57,9 +60,14 @@ export class MockServer {
   connect(id: string, role: Session["role"], deliver: Deliver) {
     this.sessions.set(id, { id, role, deliver });
     if (role === "display") {
-      this.sendStatus(id);
-      // A new display (e.g. lobby -> arena route change) resumes a match that is still running.
-      if (this.phase === "playing" && !this.timer) this.timer = setInterval(() => this.sendFrame(), FRAME_MS);
+      // Deferred so the screen's subscriber is attached before the first messages arrive.
+      setTimeout(() => {
+        if (!this.sessions.has(id)) return;
+        this.sendStatus(id);
+        // A new display (e.g. lobby -> arena route change) resumes a match that is still running.
+        if (this.phase === "playing" && this.cards) this.afterCardsChange();
+        else if (this.phase === "playing" && !this.timer) this.timer = setInterval(() => this.sendFrame(), FRAME_MS);
+      }, 60);
     }
   }
 
@@ -116,12 +124,13 @@ export class MockServer {
     );
     s.seat = id;
     this.broadcastStatus(s.id, id, env.requestId);
-    if (this.phase === "playing") this.sendFrame();
+    if (this.phase === "playing") (this.cards ? this.afterCardsChange() : this.sendFrame());
   }
 
   private onInput(s: Session, env: Envelope<ActionInput>) {
     const a = env.payload;
     if (!s.seat || a.playerId !== s.seat) return this.error(s, env, "ILLEGAL_ACTION", false);
+    if (this.cards) return this.onCardsInput(s, env);
     if (!(ARENA_ACTIONS as readonly string[]).includes(a.actionId)) return this.error(s, env, "ILLEGAL_ACTION", false);
     const prev = this.lastSeq.get(s.seat);
     if (prev && a.seq === prev.seq) return s.deliver(prev.receipt); // duplicate seq returns its receipt
@@ -136,7 +145,60 @@ export class MockServer {
     s.deliver(receipt);
   }
 
+  private onCardsInput(s: Session, env: Envelope<ActionInput>) {
+    const a = env.payload;
+    const cards = this.cards!;
+    const prev = this.lastSeq.get(s.seat!);
+    if (prev && a.seq === prev.seq) return s.deliver(prev.receipt);
+    let err: string | null = "ILLEGAL_ACTION";
+    if (a.turnId !== cards.turnId) err = "STALE_TURN";
+    else if (a.actionId === "play") err = cards.play(s.seat!, Number(a.params.handIndex));
+    else if (a.actionId === "end_turn") err = cards.endTurn(s.seat!);
+    if (err) return this.error(s, env, err, false);
+    this.inputCount += 1;
+    const receipt = makeEnvelope("input.ack", { status: "accepted", acceptedTick: a.tick }, { roomId: this.roomId, sessionId: s.id, requestId: env.requestId, seq: a.seq, epoch: 1 });
+    this.lastSeq.set(s.seat!, { seq: a.seq, receipt });
+    s.deliver(receipt);
+    this.afterCardsChange();
+  }
+
+  private afterCardsChange() {
+    const cards = this.cards;
+    if (!cards) return;
+    for (const s of this.sessions.values()) {
+      const viewer = s.role === "display" ? "display" : (s.seat ?? "p?");
+      this.to(s, "state.view", { observation: { tick: cards.tick, viewerId: viewer, payload: cards.view(viewer) }, viewHash: fixtureStateView.payload.viewHash });
+    }
+    if (!cards.running) {
+      this.phase = "ended";
+      const base = fixtureMatchEnded.payload.result;
+      const result: MatchResult = { ...base, config: { ...base.config, gameId: "hero_cards", mode: "turn" }, outcome: cards.outcome, statistics: { ...base.statistics, durationTicks: cards.tick } };
+      for (const s of this.sessions.values()) this.to(s, "match.ended", { result });
+      this.broadcastStatus();
+      return;
+    }
+    // A seat nobody is holding plays itself, so the table keeps moving in the demo.
+    const held = new Set([...this.sessions.values()].map((x) => x.seat));
+    clearTimeout(this.botTimer ?? undefined);
+    if (!held.has(cards.active.id)) {
+      this.botTimer = setTimeout(() => {
+        cards.botStep();
+        this.afterCardsChange();
+      }, 900);
+    }
+  }
+
   private startMatch() {
+    if (this.gameId === "hero_cards") {
+      this.stopReplay();
+      this.phase = "playing";
+      this.cards = new CardsMock(["p1", "p2"]);
+      this.broadcastStatus();
+      for (const s of this.sessions.values()) this.to(s, "match.started", { config: { ...fixtureMatchConfig, gameId: "hero_cards", mode: "turn", players: ["p1", "p2"] } });
+      this.afterCardsChange();
+      return;
+    }
+    this.cards = null;
     this.phase = "playing";
     this.frame = 0;
     this.broadcastStatus();
@@ -150,11 +212,14 @@ export class MockServer {
 
   private resetMatch() {
     this.stopReplay();
+    this.cards = null;
     this.phase = "lobby";
     this.broadcastStatus();
   }
 
   private stopReplay() {
+    clearTimeout(this.botTimer ?? undefined);
+    this.botTimer = null;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
   }

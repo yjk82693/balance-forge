@@ -488,8 +488,8 @@ p {
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 560px));
-  gap: var(--space-7);
+  grid-template-columns: repeat(3, minmax(0, 560px));
+  gap: var(--space-6);
   justify-content: center;
 }
 .card {
@@ -1134,7 +1134,7 @@ p {
 }
 .viz-row {
   display: grid;
-  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr) 74px;
+  grid-template-columns: 200px minmax(0, 1fr) 74px;
   align-items: center;
   gap: var(--space-3);
   min-height: 44px;
@@ -1421,4 +1421,162 @@ p {
 }
 .btn[aria-busy="true"] {
   cursor: progress;
+}
+
+/* Hero Cards phone hand */
+.hand {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 0;
+  min-height: 0;
+}
+.hand-top {
+  padding: 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.hand-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.orbs {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+.orb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--line-strong);
+}
+.orb.on {
+  background: var(--game-cards);
+  box-shadow: inset 0 0 0 2px var(--text-1);
+}
+.slots {
+  display: flex;
+  gap: var(--space-2);
+}
+.slot {
+  flex: 1;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--text-2);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  text-align: center;
+}
+.slot.full {
+  background: var(--surface-2);
+  color: var(--text-1);
+  box-shadow: inset 0 0 0 1px var(--game-cards-2);
+}
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  flex: none;
+}
+.cards li {
+  flex: none;
+  scroll-snap-align: center;
+}
+.hcard {
+  position: relative;
+  width: 140px;
+  min-height: 200px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-1);
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px var(--line-strong);
+  transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-press) var(--ease-out);
+}
+.hcard.sel {
+  transform: translateY(-12px);
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-card-hover);
+}
+.hcard.off {
+  opacity: 0.5;
+}
+.hcard-art {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: var(--surface-2) center / cover no-repeat;
+}
+.hcard-cost {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 2px var(--game-cards);
+  font-weight: 700;
+  font-size: var(--fs-small);
+}
+.hcard-name {
+  padding: var(--space-2) var(--space-3) 0;
+  font-weight: 700;
+  font-size: var(--fs-small);
+}
+.hcard-fx {
+  padding: 0 var(--space-3) var(--space-3);
+  color: var(--text-2);
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  font-weight: 500;
+}
+.hand-reason {
+  padding: 0 var(--space-4);
+  min-height: 16px;
+}
+.hand-actions {
+  display: flex;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  margin-top: auto;
+}
+.hand-actions .btn {
+  flex: 1;
+  padding: 0 var(--space-3);
+}
+
+@media (max-width: 1000px) {
+  .tiles {
+    grid-template-columns: minmax(0, 560px);
+    gap: var(--space-5);
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --stick-zone: 164px;
+  }
+  .b-guard {
+    bottom: 76px;
+  }
 }

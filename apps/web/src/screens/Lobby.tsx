@@ -74,7 +74,7 @@ export function Lobby({ gameId }: { gameId: string }) {
   const url = joinUrl(code);
   const seats = room?.seats ?? [];
   const here = seats.filter((s) => s.connected).length;
-  const arena = game.id === "hero_arena";
+  const arena = game.status === "ready";
   const canStart = here >= 1 && arena && status === "online";
   const reason = !arena
     ? `${game.title} can't be played on the big screen yet.`

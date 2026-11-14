@@ -1,8 +1,9 @@
-import { isArenaPayload, type Observation } from "../lib/contract";
+import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { go } from "../lib/router";
 import { gameById } from "../lib/games";
 import { heroName } from "../lib/heroes";
 import { ArenaCanvas } from "../components/ArenaCanvas";
+import { CardsCanvas } from "../components/CardsCanvas";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -18,6 +19,8 @@ export function Arena({ gameId }: { gameId: string }) {
   const { transport, status } = useTransport("display");
   const { room, observation, result } = useRoom(transport);
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
+  const cardsObs = observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
+  const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
   const winnerHero = (isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === winnerSeat)?.hero : undefined) ?? winner?.hero;
@@ -36,9 +39,9 @@ export function Arena({ gameId }: { gameId: string }) {
       </TopBar>
       <main className="arena-screen">
         <div className="arena-stage">
-          <ArenaCanvas observation={arenaObs} />
+          {gameId === "hero_cards" ? <CardsCanvas observation={cardsObs} names={names} /> : <ArenaCanvas observation={arenaObs} />}
           <div className="arena-overlay">
-            <span className="badge">sample replay</span>
+            {gameId !== "hero_cards" && <span className="badge">sample replay</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
           {result && (
