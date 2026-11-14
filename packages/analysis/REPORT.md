@@ -271,3 +271,31 @@ review findings and the live Gemini/Grok check.
 Still clean, no code changes since Polish 05:55: 93 of 93 tests pass (none skipped or edited), no line over 120 characters,
 no TODO/FIXME/debugger, `check:secrets` passes, tree was clean. Performance numbers unchanged. Blocked on others: Round 6
 review findings and the live Gemini/Grok check.
+
+## Round 7 (early part, steps 1 and 2 only)
+
+**1. Mirror rows and the verdict (`src/verdict.js`).** Default verdict targets are now the outlier rows that are not mirror
+matchups (`a vs a`; they only show first-seat advantage, which a hero patch cannot fix). Mirror rows still count in the
+"new extreme matchup" check (a patch that pushes a mirror row above 65% is still rejected), and explicit
+`options.targets` may still name one. If the only outliers are mirrors the verdict is `inconclusive` with the reason "the
+only outliers are mirror matchups (first-seat advantage)". 4 new tests in `test/verdict.test.js`.
+
+**2. Measurement script, prepared and not run on new recordings.**
+`node packages/analysis/pipeline/measure-full.js --mode nonroster --pairs 100 [--engine-root dir]` and
+`--mode roster --pairs 100`. It runs `runFull` with the fake adapter against the real engine runner in-process (no server, no
+network) and prints one JSON line: baseline and holdout rate for `bari vs real_armor` (win rate, games, CI, outlier flag), the
+proposal with `origin`, validation, verdict, per-phase match counts and ms, and total elapsed. Seeds: baseline 1..pairs,
+holdout 1000001.. (same as the room service). `test/measure.test.js` only checks the wiring on a 2-pair run; those numbers
+are not a measurement. Expect roughly 10 s for non-roster and several minutes for roster at 100 pairs (earlier: roster 50
+pairs was about 63 s).
+
+**Bot seed derivation plug-in point.** `BOT_SEED_DERIVATIONS` at the top of `pipeline/arena-simulator.js` is the single place.
+Each entry maps a bot policy version to `({ tick, seat, config }) => ({ seq, variant })`; today only `scripted-0.1.1`
+(`seq = tick * 2`, `variant = seat`). When the engine exports the `scripted-0.2.1` derivation function, add one entry there
+(a marked comment shows the shape). Until then `loadArenaSimulator` refuses a bot with another policy version
+(`ENGINE_UNAVAILABLE`, naming the missing entry) rather than replaying with a wrong derivation. Consequence: when the engine
+with 0.2.1 merges, `test/replay.test.js` and `test/measure.test.js` fail loudly until the entry is added. That is intended.
+The derivation is also injectable (`createArenaSimulator({ botSeed })`), which a test covers.
+
+Not done on purpose: regenerating the recorded report and the real `runFull` measurement (steps 2-3 of Round 7) wait for the
+engine's 0.2.1 recordings.
