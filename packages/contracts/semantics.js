@@ -1,7 +1,12 @@
-import { hash, validate, validateSchema } from './index.js';
-const fail = (code = 'INVALID_SCHEMA') => { throw Error(code); };
+import { hash } from './canonical.js';
+import { validate, validateSchema } from './validation.js';
+const fail = (code = 'INVALID_SCHEMA') => {
+  throw Error(code);
+};
 export const compareIds = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-const unique = values => { if (new Set(values).size !== values.length) fail(); };
+const unique = values => {
+  if (new Set(values).size !== values.length) fail();
+};
 const registries = new Map();
 export function registerGame(gameId, schemaVersion, schemas) {
   for (const name of ['state', 'observation', 'rules']) if (!schemas[name]) fail();
@@ -9,12 +14,13 @@ export function registerGame(gameId, schemaVersion, schemas) {
 }
 export function validateGamePayload(gameId, schemaVersion, kind, payload) {
   const entry = registries.get(`${gameId}/${schemaVersion}`);
-  if (!entry?.[kind]) fail();
+  if (!entry || !Object.hasOwn(entry, kind)) fail();
   return validateSchema(entry[kind], payload);
 }
 export function validateData(data) {
   validate('GameData', data);
-  unique(data.characters.map(x => x.id)); unique(data.moves.map(x => x.id));
+  unique(data.characters.map(x => x.id));
+  unique(data.moves.map(x => x.id));
   const moves = new Set(data.moves.map(x => x.id));
   const provenance = new Set(data.provenance.map(x => `${x.authorKey}/${x.licenseKey}`));
   for (const item of [...data.characters, ...data.moves]) {
@@ -25,22 +31,33 @@ export function validateData(data) {
   return data;
 }
 export function validateConfig(config, data, descriptor, simVersion) {
-  validate('MatchConfig', config); validateData(data);
-  if (config.gameId !== data.gameId || config.gameId !== descriptor.gameId || config.simVersion !== simVersion || config.mode !== descriptor.mode) fail('VERSION_MISMATCH');
+  validate('MatchConfig', config);
+  validateData(data);
+  if (config.gameId !== data.gameId || config.gameId !== descriptor.gameId || config.simVersion !== simVersion ||
+    config.mode !== descriptor.mode) fail('VERSION_MISMATCH');
   if (hash(data) !== config.dataHash) fail('HASH_MISMATCH');
   if (config.players.length < descriptor.minPlayers || config.players.length > descriptor.maxPlayers) fail();
+  if (config.options) {
+    const ids = Object.keys(config.options.assignments);
+    if (ids.length !== config.players.length || ids.some(id => !config.players.includes(id))) fail();
+  }
   return config;
 }
 export function validateOutcome(outcome, players) {
   validate('Outcome', outcome);
-  if (outcome.winners.some(id => !players.includes(id)) || (outcome.status === 'win') !== (outcome.winners.length > 0)) fail();
+  if (outcome.winners.some(id => !players.includes(id))) fail();
+  const hasWinners = outcome.winners.length > 0;
+  if (outcome.status === 'win' && !hasWinners) fail();
+  if (outcome.status !== 'win' && hasWinners) fail();
 }
-export function validateFrame(state, frame, players, specs, legal) {
+export function validateFrame(state, frame, players, specs, legal, allowMoveAndAttack = false) {
   validate('InputFrame', frame);
   if (frame.tick !== state.tick + 1) fail('LATE_INPUT');
-  unique(frame.actions.map(x => x.playerId));
-  const sorted = [...frame.actions].sort((a,b) => compareIds(a.playerId,b.playerId) || a.seq-b.seq);
-  if (frame.actions.some((x,i) => x !== sorted[i])) fail();
+  unique(frame.actions.map(x => allowMoveAndAttack ? JSON.stringify([x.playerId, x.actionId === 'move' ?
+    'move' : 'attack']) : x.playerId));
+  unique(frame.actions.map(x => JSON.stringify([x.playerId, x.seq])));
+  const sorted = [...frame.actions].sort((a, b) => compareIds(a.playerId, b.playerId) || a.seq - b.seq);
+  if (frame.actions.some((x, i) => x !== sorted[i])) fail();
   for (const action of frame.actions) {
     if (!players.includes(action.playerId)) fail('ILLEGAL_ACTION');
     if (action.tick !== frame.tick) fail('LATE_INPUT');
@@ -56,18 +73,25 @@ export function validateFrame(state, frame, players, specs, legal) {
 }
 export function restoreSnapshot(snapshot, config) {
   validate('Snapshot', snapshot);
-  for (const key of ['contractVersion','schemaVersion','gameId','simVersion','dataHash']) if (snapshot.config[key] !== config[key]) fail('VERSION_MISMATCH');
+  for (const key of ['contractVersion', 'schemaVersion', 'gameId', 'simVersion', 'dataHash']) if (snapshot.config[
+    key] !== config[key]) fail('VERSION_MISMATCH');
   if (hash(snapshot.config) !== hash(config)) fail('VERSION_MISMATCH');
   if (snapshot.tick !== snapshot.state.tick || snapshot.stateHash !== hash(snapshot.state)) fail('HASH_MISMATCH');
+  if (snapshot.state.payload.config && hash(snapshot.state.payload.config) !== hash(config)) fail('VERSION_MISMATCH');
   validateGamePayload(config.gameId, config.schemaVersion, 'state', snapshot.state.payload);
   return structuredClone(snapshot.state);
 }
 export function applyPatch(data, proposal) {
   validate('PatchProposal', proposal);
   if (proposal.baseDataHash !== hash(data)) fail('PATCH_REJECTED');
-  const result = structuredClone(data), paths = new Set();
-  for (const {path,value} of proposal.replacements) {
-    if (paths.has(path)) fail('PATCH_REJECTED'); paths.add(path);
+  const result = structuredClone(data),
+    paths = new Set();
+  for (const {
+    path,
+    value
+  } of proposal.replacements) {
+    if (paths.has(path)) fail('PATCH_REJECTED');
+    paths.add(path);
     if (path === '/tuning/damageScalePermille') {
       if (value < 100 || value > 3000) fail('PATCH_REJECTED');
       result.tuning.damageScalePermille = value;
@@ -77,5 +101,6 @@ export function applyPatch(data, proposal) {
       result.moves[index].power = value;
     }
   }
-  validateData(result); return result;
+  validateData(result);
+  return result;
 }

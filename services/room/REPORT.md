@@ -1,0 +1,279 @@
+# Server implementation report
+
+Commits are performed outside this sandbox. This task writes only owned engine/service files and runs node:test.
+
+## Match assignments
+
+Adopted the approved optional MatchConfig.options.assignments and optional report metadata from the addendum.
+GameData no longer contains seats. Runner pairs reverse assignments, retain the same seed, and share one dataHash.
+Arena action catalogs now expose separate move axes and attack aim parameters, with maxHp on entities.
+Old v0.1 fixture shapes remain valid. Focused contracts/game/runner tests: 26 passed.
+
+## Separate move action
+
+Move accepts bounded moveX/moveY every tick unless stunned or eliminated, including during recovery and cooldown.
+Movement consumes no cooldown and is excluded from attack uses/opportunities. Bots send movement plus a legal attack.
+Frames and Authority allow at most one move and one attack per seat, with distinct monotonic sequences.
+Tests cover movement through startup/recovery/cooldown, stun rejection, duplicate categories, receipts, and replay.
+Full determinism matrix will run after the requested formatting pass, before server implementation.
+
+## Readability and determinism
+
+Formatted all packages/games and packages/sim files using already installed tooling; no dependencies added.
+Verified zero lines over 120 characters. All 28 engine/runner tests passed after the movement and assignment changes.
+The 100 seeds × 1,000 ticks × two independent runs matrix passed every input and state hash comparison in 50.19 s.
+
+## Room server and join flow
+
+Implemented services/room/server.js, protocol.js, storage.js, and cli.js using installed ws and node:http.
+Four-character room codes; connection-bound seat ownership; host-only start/reset/select; room status with hero/you;
+match.started, input.ack, state.view with viewHash, actions.available, match.ended; plain-disconnect handling.
+Arena advances at 60 logical ticks/s using a monotonic accumulator outside simulation state. Cards advance only on
+accepted actions or logged authoritative timeout frames. Input envelopes are bounded to 64 KiB and depth 32;
+seat, epoch, tick, sequence, action domain, per-tick category count and 120 submissions/s limits are checked.
+Accepted duplicate sequences return prior receipts. Rejected inputs do not enter the accepted frame history.
+Human MatchResult arrays are written atomically to services/room/human-results.json before match.ended is sent.
+Reset/shutdown of an unfinished match records an invalid result rather than a draw.
+
+Implementation is present, but socket integration is NOT verified: sandbox denial described below.
+
+## Data and playtest APIs
+
+Implemented on the same HTTP server:
+
+- POST /v1/playtest/run {gameId, pairs}: worker_threads batch, fixed paired seeds, resultsPath and elapsedMs.
+  GET the returned /v1/playtest/results/<id>.json path to retrieve the MatchResult array.
+- GET /v1/data/:gameId: current {data, dataHash}; optional ?dataHash=<retained-hash> retrieves a base version.
+- POST /v1/data/:gameId/apply-patch {proposal}: validated allowlisted numeric replacements; returns new dataHash
+  and baseDataHash. Base content is retained, current selection persisted, active matches keep their pinned data.
+- GET /v1/games and POST /v1/rooms {gameId} are also available. HTTP room creation returns a hostToken for
+  attaching the host WebSocket; the token is not included in results or public room status.
+- Static files are served from apps/web/dist, including SPA fallback, with realpath confinement.
+
+These paths are implemented but their HTTP integration tests could not execute because binding was denied.
+
+## Start command
+
+From the repository root:
+
+```
+node services/room/cli.js
+```
+
+Default bind: 0.0.0.0:3000; HOST and PORT override it. Laptop and phones use the same server's LAN URL.
+A prebuilt apps/web/dist is required for the static UI. It was absent at inspection; no files in apps/web were
+modified or generated because that directory is outside this task's ownership. The existing web source still
+uses its mock transport and needs the web owner to connect it to this protocol.
+
+WebSocket host shortcut: /ws?role=display&gameId=hero_arena (or hero_cards) creates a room and sends room.status.
+Controllers connect to /ws and receive their sessionId in an initial room.status; they send room.join with
+{joinCode, name, hero}. Every command uses the spec envelope, the server-issued sessionId, roomId and epoch.
+The host can also occupy a seat. Additional displays can attach read-only with /ws?roomId=<id>.
+For HTTP-created rooms, attach the host with /ws?roomId=<id>&hostToken=<token>.
+
+match.start accepts optional gameId, seed, maxTicks (1..1800). Inputs target the next authoritative tick only.
+Arena sends state.view/actions.available every tick; cards send them after accepted actions/timeouts.
+Movement and attacks use separate ActionInput envelopes with distinct increasing seq values in the same tick.
+Cards currently support the standard deck assignment. Match reset clears simulation/receipts, increments epoch,
+and returns connected seats to the lobby; disconnected seats are removed.
+
+## Socket verification blocker
+
+Ran:
+
+```
+node --test services/room/room.test.js
+```
+
+Five tests were attempted; all five failed before any WebSocket/HTTP exchange at server.listen on an ephemeral
+loopback port:
+
+```
+listen EPERM: operation not permitted 127.0.0.1
+```
+
+This sandbox denies TCP listener creation, independently of the already-known read-only Git restriction.
+No escalation or permission bypass was attempted. Per the repository's stop-when-blocked rule, implementation
+work stopped here. Do not treat the server implementation or HTTP APIs as integration-verified.
+
+The test suite is ready to run in an environment permitting localhost listeners. It covers two actual ws clients,
+300 scripted fixed ticks (with movement plus aimed attacks), match.ended and exact recorded MatchResult,
+seat/tick/seq/domain rejection immutability, duplicate receipts, card timeout/privacy, static confinement,
+retained base patches, worker playtests for both games, join limits, disconnects, reset, and stale epochs.
+
+Previously completed verification before this blocker: 28 engine/runner tests passed, including the full
+100-seed × 1,000-tick × two-run determinism matrix after movement/assignment/formatting changes.
+No commits were attempted, no dependencies added, and no external network calls made.
+
+## Match replay
+
+Completed H. GET /v1/replay/:matchId serves archived seed/config and the actual accepted InputFrame stream.
+Human and HTTP bot matches persist replays separately from unchanged MatchResult exports; match IDs are unique.
+No in-progress private replay is exposed. replayOnData reuses the seed/assignments/inputs with a new immutable data
+pin; illegal counterfactual inputs fail explicitly instead of being replaced. Two new replay tests and three
+runner tests passed without opening sockets, including original final-hash reproduction and patched-data repeats.
+
+## Fifth hero and deck
+
+Completed N. Nightcrow is arena content only: crow_dive, crow_swarm, wing_shield use existing archetypes/tiers/effects
+and ordinary damage/shield values; no character-specific branches or new guard bypass. Only spirit_arrow retains
+its existing intended arena exception. The nightcrow card deck has mechanical_crows summons and a generic peek
+card; revealed next-card identity is private to its owner and expires at the next turn boundary. No boosted matchup
+rule.
+The expanded schemas remain closed and bounded; deck references and assignments are validated.
+All 28 selected game/sim/runner/replay tests passed, including the 100-seed matrix with all five heroes (48.33 s).
+
+Measured `node services/runner/benchmark.js`: 15 unordered matchups including mirrors × 10 seeds × 2 seat orders
+= 300 matches, 300 valid, 0 invalid, 2 workers. Recorded at 2026-11-14T03:39:53.643Z: 4,805.539334 ms,
+62.427956 matches/s including worker startup. Actual outputs: services/runner/recorded-roster-match-results.json
+and recorded-roster-metrics.json. Previous smaller-roster samples are historical, not current balance evidence.
+
+## Live playtest progress
+
+Completed G. Workers report individual completions; runBatch emits initial, ~100 ms, and final progress snapshots.
+Room WebSockets receive playtest.progress with runId/gameId/dataHash, matchesDone, totalMatches, elapsedMs and
+per-matchup wins/games/draws/invalid counts. Final ordered MatchResult arrays retain their existing shape and
+values; progress observers cannot change simulation outcomes. Eight runner/replay/room tests passed, including
+cadence, monotonicity, all 15 matchup totals, equal streamed/plain results, and persisted bot replays.
+
+## Combat event views
+
+Completed I. state.view now carries that step's ordered events: combat.hit, combat.guard (activate/block),
+combat.ko, projectile.spawn and projectile.expire (hit/lifetime/bounds). IDs are tick/ordinal based; no cosmetic
+RNG, clock or display fields enter simulation state. Viewer audience filtering protects card.peek events, and
+resending an unchanged view does not repeat transient events. Five event/replay tests passed, including all
+expiry reasons, one KO per elimination, deterministic event streams, private filtering and real step forwarding.
+
+## Phone reconnect and clear errors
+
+Completed K. A private seatToken in the owner's room.status reserves a disconnected active-match seat for exactly
+10 seconds. reconnect {joinCode, seatToken, lastAck?} (or room.join with seatToken) resumes the same seat/hero,
+match, content pin, sequence cursor and receipts. Tokens rotate on resume; expired/active/foreign tokens cannot
+claim a seat. Tokens never appear in peer seat lists, MatchResults or replays. Simulation continues neutrally
+while disconnected; no new controller may replace a player mid-match.
+Malformed JSON, shape/domain violations, bad URLs/upgrades, binary messages, stale epochs and failed sends are
+contained and return stable error codes plus readable messages. Transient result-write failures retain a retry
+queue and do not emit a false saved result or escape the timer callback. Five new reconnect/hardening tests passed,
+including the exact ten-second boundary, duplicate receipts, private tokens, send/write failures, and a 300-tick
+match through production handlers. The combined room/runner run passed 14 tests with zero failures.
+
+Per the current no-network instruction, the five real-listener integration tests now require explicit external
+opt-in: `RUN_SOCKET_TESTS=1 node --test services/room/room.test.js`. They are skipped in the default suite, not
+claimed as verified. New socket-free tests invoke the actual message handlers and HTTP request listener using
+in-memory streams, while real worker_threads and persistence still execute.
+
+## Final verification
+
+Round 3 completed in order H → N → G → I → K. No dependency additions, network calls, listener attempts, pushes
+or commits in this round. Only packages/contracts, packages/sim, packages/games and services files were written.
+`node --test`: 68 passed, 0 failed, 5 explicitly skipped listener tests; total duration 49,019.812 ms. The final
+five-hero determinism matrix compared every tick of two independent 1,000-tick runs across 100 seeds and passed
+in 48,752.986875 ms. A final documentation-only readability check also passed; all game/sim lines stay <=120.
+
+After all code changes, re-ran `node services/runner/benchmark.js`: 300/300 valid matches across 15 matchups,
+0 invalid, 2 workers, recorded at 2026-11-14T03:54:09.218Z. Elapsed 6,273.891542 ms; throughput 47.817212 matches/s
+including worker startup. This final measurement supersedes the earlier step-N throughput for the final code.
+Actual result/metadata artifacts remain recorded-roster-match-results.json and recorded-roster-metrics.json under
+services/runner. Metadata includes game/simulation/content identity; all 300 results share exactly one dataHash.
+
+Start remains `node services/room/cli.js`. New usage/protocol details are in services/room/README.md.
+Real TCP/WebSocket transport remains unverified here: five opt-in tests require an environment permitting local
+listeners. Production handlers, HTTP routing/static confinement, workers, persistence/retries, replay, progress,
+private events and reconnect behavior were exercised without network. The UI transport/build remains the web
+owner's responsibility; this task did not change apps/web.
+
+## Polish 23:17
+
+- Fixed inherited schema/reference lookups, sparse-array validation, empty/unknown runner inputs, snapshot config
+  mismatches, replay/result identity checks, failed atomic-write cleanup, and stale hashes after game switches.
+- Failed data-index writes now leave both the in-memory and persisted current content pin unchanged.
+- Split contract validation/canonicalization and arena combat into named helpers; removed unused imports and a
+  redundant lookup. Every owned file is within 120 columns. Only intentional CLI output remains.
+- Initial suite: 68 passed, 0 failed. Final suite: 77 passed, 0 failed, 5 unchanged opt-in network skips; 51.26 s.
+  No test was weakened, removed or newly skipped. Contract declarations type-check; 12 final focused tests pass.
+- Final recorded measurement: 300 valid matches, 15 matchups, 2 workers, 4,318.634625 ms, 69.466400 matches/s
+  including startup, at 2026-11-14T04:17:24.632Z. All 300 complete results/hashes match the pre-refactor run.
+  Artifacts: services/runner/recorded-roster-match-results.json and recorded-roster-metrics.json.
+- Still unverified: real TCP/WebSocket transport under the no-network rule. Existing socket-free production-handler
+  tests cover disconnect/reconnect and persistence. No web build/render FPS: the web app is outside ownership.
+- No dependencies, network, push or commits; files are left for the external commit process.
+
+## Round 4
+
+Scope: stable bot compatibility, graceful startup/readiness, and complete protocol examples. No commits;
+progress is committed externally. No network or dependencies added; only owned engine/service files changed.
+
+## Stable bot exports
+
+Read Ultron's worktree report and replay adapter. No separate engine CHANGE_REQUEST file was present there;
+its replay adapter already prefers chooseActions with an optional single-input fallback. Assignment/human-result
+assumptions in the report are resolved here; per-card action statistics remain a separate integration request.
+Added the thin deprecated chooseAction(view, seq, variant) alias, documented as "for old callers": it selects the
+attack from chooseActions without changing its seq, or returns null. chooseActions behavior/policy is unchanged.
+Two export/behavior tests passed, including movement-only and spectator cases.
+
+## Startup and readiness
+
+CLI startup now catches bind/configuration failures, closes partial server resources, writes a readable message
+without a stack trace, and sets exitCode=1. EADDRINUSE explicitly names the busy port and suggests choosing PORT.
+Added tests for that failure using the real RoomServer.listen error path, invalid-port failure through the actual
+CLI subprocess, listener permissions, and failed shutdown. Four startup tests passed without opening sockets.
+GET /v1/games is registered before listen and needed 0.50 ms after an in-memory listening event in this run;
+the test enforces <1 second. Existing opt-in TCP tests now also enforce the one-second readiness check after
+binding. Real OS port contention/TCP timing remains unverified under the no-network sandbox; no tests were skipped
+or weakened to obtain the new results. tools/demo.mjs was read from the integration worktree, not modified.
+
+## Protocol examples
+
+Replaced the abbreviated README with every implemented HTTP route (including retained data, static GET/HEAD and
+/ws upgrade) and all eight incoming/nine outgoing application message types. Each has an example and response
+shape; large bodies are explicitly labelled excerpts and linked to complete captures in examples.json.
+The captures use real handlers, persistence and workers, with private tokens redacted; no TCP listeners.
+Added a reproducible generator and three tests checking schema-valid examples, complete message/route coverage,
+and fresh handler responses against the documented catalog, data and observation. All three pass.
+README examples explain host/phone ownership, tokens, input/transport sequences, reconnect, progress and errors.
+
+## Round 4 verification
+
+Full `node --test`: 86 passed, 0 failed, 5 unchanged opt-in TCP skips; 48,257.040708 ms, including the complete
+100-seed determinism matrix. New checks cover both bot exports, attack-only compatibility, graceful port/config
+failure, readiness, shutdown, complete protocol examples and fresh-handler agreement. Final in-memory catalog
+readiness: 0.54 ms after listening; real OS port contention and TCP latency are not claimed as verified.
+No new skips or weakened assertions. Every owned file remains within 120 columns. No commits, dependencies,
+network calls, pushes, web/spec/fixture/root changes. Files remain available for the external commit process.
+
+## Round 5
+
+Added the explicitly requested tests/e2e files; no root package.json, analysis, spec, fixture or web files changed.
+No dependencies, push or commits. The scenario is opt-in under RUN_SOCKET_TESTS=1 and restricts every HTTP/WS
+connection to the server's 127.0.0.1 origin, with redirects rejected.
+
+## Full flow scenario
+
+Added node:test coverage for a real display and two real ws phones, chooseActions-driven human play, exactly one
+new valid recorded human result with both assignments, a 20-pair worker run and monotonic/reconciled progress.
+It invokes the real analysis pipeline/fake adapter, applies the proposal through HTTP, selects disjoint holdout
+seeds 21..40 from the patched prefix run, checks the verdict and human-inclusive report, fetches baseline replay
+frames, and replays them on both pins through the analysis replay helper. A second match drops and resumes Bari
+with its private token inside ten seconds, checking the same config/seat/hero and newer accepted receipts.
+All runtime data, static fixtures and analysis artifacts use mkdtemp; cleanup closes sockets/server/workers and
+removes temporary files on success or failure. No lower verdict thresholds or synthetic analysis are substituted.
+
+## E2E instructions
+
+Added tests/e2e/README.md with the direct test:e2e command, default gate, dependencies, isolation, cleanup, timeouts
+and honest holdout semantics. It explains npm-script wiring for the integrator without editing root files.
+The test fails clearly if the required merged packages/analysis modules are unavailable; it never imports another
+worktree as a hidden fallback. All new test/documentation lines are within 120 columns.
+
+## Round 5 verification
+
+`node --check tests/e2e/full-flow.test.js`: passed.
+`node --test tests/e2e/full-flow.test.js`: one explicitly skipped scenario, as requested when the flag is absent.
+`RUN_SOCKET_TESTS=1 node --test tests/e2e/full-flow.test.js`: one failure, left explicit and not weakened:
+packages/analysis/pipeline/pipeline.js is missing in this engine worktree. The pipeline/replay/human APIs were read
+from the analysis worktree to implement the integration correctly, but were not copied or modified.
+This dependency blocks live execution before server setup or any TCP bind. The full flow is NOT claimed as run
+or passing. After analysis is merged, it also requires an environment permitting loopback listeners (the earlier
+sandbox rejected them). Temporary data was not created by the preflight failure; no repository runtime output
+was changed. No commits were attempted under the sandbox rule.
