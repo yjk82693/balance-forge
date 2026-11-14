@@ -263,6 +263,7 @@ export async function runPlaytest(
 ): Promise<PlaytestRun> {
   if (isMockMode() && gameId === "hero_cards") {
     await playMockPhase(mockCardsReport("broken"), "baseline", onProgress, signal);
+    await quietPhase(3000, signal); // the card probe sends no progress, like the real engine
     await playMockPhase(mockCardsReport("patched"), "holdout", onProgress, signal);
     return mockCardsRun();
   }
@@ -348,6 +349,16 @@ async function runFullPlaytest(
   const run = runFromFull(await readJson<unknown>(res, "run reply"));
   if (!run) throw new ApiError("The server's reply had no report.", "shape");
   return run;
+}
+
+function quietPhase(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(t);
+      reject(new DOMException("aborted", "AbortError"));
+    });
+  });
 }
 
 function playMockPhase(

@@ -21,8 +21,8 @@ export interface LiveState {
 
 /** Folds one progress message into the live state. The holdout phase never touches the baseline table. */
 export function foldProgress(prev: LiveState, p: ProgressMsg): LiveState {
-  if (p.phase === "diagnose") {
-    return { ...prev, phase: "diagnose", diagnose: { done: p.matchesDone, total: p.totalMatches } };
+  if (p.phase === "diagnose" || p.phase === "probe") {
+    return { ...prev, phase: p.phase, diagnose: { done: p.matchesDone, total: p.totalMatches } };
   }
   if (p.phase === "holdout") {
     return { ...prev, phase: "holdout", holdout: { done: p.matchesDone, total: p.totalMatches, rows: toRows(p) } };

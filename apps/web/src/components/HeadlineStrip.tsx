@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { pct } from "../lib/stats";
 import { heroName } from "../lib/heroes";
 import type { ResultFacts } from "../lib/resultCard";
+import { isIndeterminate, shownPhase } from "../lib/runPhase";
 import { phaseWords } from "./ResultSkeleton";
 import { HeroPortrait } from "./HeroPortrait";
 import type { RowStats } from "./WinRateChart";
@@ -36,10 +37,14 @@ interface Props {
   chips?: ReactNode;
   /** shown when nothing has run yet */
   empty: ReactNode;
+  /** Hero Cards: the quiet card probe after the baseline is shown as its own phase */
+  cards?: boolean;
 }
 
 /** The headline strip: matchup, actual against intended, the verdict. Always above the fold. */
-export function HeadlineStrip({ shown, headline, facts, busy, live, elapsed, status, actions, chips, empty }: Props) {
+export function HeadlineStrip(props: Props) {
+  const { shown, headline, facts, busy, live, elapsed, status, actions, chips, empty, cards } = props;
+  const waiting = isIndeterminate(live, cards);
   const verdict = facts?.verdict;
   const verdictClass = verdict?.kind === "accepted" ? "ok" : verdict?.kind === "rejected" ? "bad" : "warn";
   const games = (k: number) => k.toLocaleString("en-US");
@@ -47,12 +52,18 @@ export function HeadlineStrip({ shown, headline, facts, busy, live, elapsed, sta
     <section className="strip" aria-label="Result">
       {busy ? (
         <div className="strip-busy" aria-busy="true" aria-live="polite">
-          <p className="strip-mid">{phaseWords(live.phase)}…</p>
-          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100}>
-            <span style={{ width: `${live.total ? Math.round((live.done / live.total) * 100) : 0}%` }} />
-          </div>
+          <p className="strip-mid">{phaseWords(shownPhase(live, cards))}…</p>
+          {waiting ? (
+            <div className="progress waiting" role="progressbar" aria-valuemin={0} aria-valuemax={100}>
+              <span />
+            </div>
+          ) : (
+            <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100}>
+              <span style={{ width: `${live.total ? Math.round((live.done / live.total) * 100) : 0}%` }} />
+            </div>
+          )}
           <p>
-            {live.total ? `${games(live.done)} of ${games(live.total)} matches · ` : ""}
+            {live.total && !waiting ? `${games(live.done)} of ${games(live.total)} matches · ` : ""}
             {elapsed} s
           </p>
         </div>

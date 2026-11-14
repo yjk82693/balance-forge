@@ -137,6 +137,7 @@ export function CardsDashboard({ theme, onTheme }: Props) {
           busy={busy}
           live={live}
           elapsed={elapsed}
+          cards
           status={status}
           actions={facts ? <CopyButton facts={facts} /> : null}
           empty={
@@ -162,7 +163,7 @@ export function CardsDashboard({ theme, onTheme }: Props) {
         <main className="d2-main d2-split">
           <div className="d2-left">
             {busy ? (
-              <ResultSkeleton live={live} elapsed={elapsed} />
+              <ResultSkeleton live={live} elapsed={elapsed} cards />
             ) : (
               sections.map((sec) => (
                 <Collapsible key={sec.id} title={sec.title} note={sec.note} defaultOpen={sec.open}>
