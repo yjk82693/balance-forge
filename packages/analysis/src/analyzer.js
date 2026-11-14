@@ -29,7 +29,8 @@ const defaultFocal = (result) => heroMatchup(result)?.focal ?? result.config.pla
  * MatchResult[] -> Report (contract v0.1).
  * The focal side of a row is the alphabetically first hero (addendum assignments) or players[0]; win rate = focal wins / valid games
  * (draws count as games, not wins). Invalid matches are counted apart and excluded from every rate.
- * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string, focalOf(result) -> playerId.
+ * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string, focalOf(result) -> playerId,
+ * allowMixed (skip the single-dataHash check; used for human matches, which may span content versions).
  */
 export function analyze(results, options = {}) {
   const dimensionOf = options.dimensionOf ?? defaultDimension;
@@ -39,7 +40,7 @@ export function analyze(results, options = {}) {
 
   const first = valid[0]?.config ?? results[0]?.config;
   if (!first) throw new Error('analyze: no results');
-  for (const r of valid) {
+  for (const r of options.allowMixed ? [] : valid) {
     const c = r.config;
     if (c.gameId !== first.gameId || c.simVersion !== first.simVersion || c.dataHash !== first.dataHash) {
       throw new Error('analyze: mixed gameId/simVersion/dataHash; group results first');

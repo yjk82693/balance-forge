@@ -92,3 +92,18 @@ test('CLI with gemini and no key falls back offline and records origin "fallback
   assert.equal(v.patchOrigin, 'fallback');
   assert.match(JSON.parse(readFileSync(join(dir, 'pipeline-meta.json'), 'utf8')).fallbackReason, /GEMINI_API_KEY/);
 });
+
+test('CLI adds extras and human rows when files are given', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bf-x-'));
+  const w = (n, v) => { const p = join(dir, n); writeFileSync(p, JSON.stringify(v)); return p; };
+  const b = w('b.json', baseline()), h = w('h.json', holdout());
+  const m = w('m.json', { kind: 'recorded', elapsedMs: 3421.49 });
+  const hu = w('hu.json', pairedResults({ seeds: 2, dataHash: 'd'.repeat(64) }));
+  await main(['run', '--baseline', b, '--holdout', h, '--out', dir, '--metrics', m, '--human', hu], {});
+  const rep = JSON.parse(readFileSync(join(dir, 'report_baseline.json'), 'utf8'));
+  assert.equal(rep.elapsedMs, 3421);
+  assert.equal(rep.recorded, true);
+  assert.equal(rep.humanMatches, 4);
+  assert.equal(rep.rows.length, 2);
+  assert.equal(JSON.parse(readFileSync(join(dir, 'verdict.json'), 'utf8')).verdict, 'accepted');
+});

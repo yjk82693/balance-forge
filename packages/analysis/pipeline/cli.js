@@ -3,6 +3,7 @@
 //   node pipeline/cli.js propose --baseline results.json --out dir [--adapter fake|gemini|grok]
 //   node pipeline/cli.js verify  --holdout results.json --out dir   (needs dir/report_baseline.json)
 //   node pipeline/cli.js run     --baseline a.json --holdout b.json --out dir
+// Optional: --metrics runner-metrics.json (elapsedMs, recorded), --human human-results.json (MatchResult[]).
 // Writes report_baseline.json, patch.json, report_patched.json, verdict.json (+ pipeline-meta.json).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { analyzePhase, proposeStep, verifyStep } from './pipeline.js';
 import { createAdapter } from '../src/adapters.js';
 import { withExtras } from '../src/extras.js';
+import { addHumanRows, humanResultsOf } from '../src/human.js';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const writeJson = (p, v) => writeFileSync(p, JSON.stringify(v, null, 2) + '\n');
@@ -28,6 +30,8 @@ function resultsOf(path) {
   const v = readJson(path);
   return Array.isArray(v) ? v : v.results;
 }
+
+const withHuman = (report, flags) => (flags.human ? addHumanRows(report, humanResultsOf(readJson(flags.human))) : report);
 
 function extrasFrom(flags) {
   const extras = {};
@@ -52,7 +56,7 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
 
   if (cmd === 'propose' || cmd === 'run') {
     const { report, meta } = analyzePhase(resultsOf(flags.baseline), { reportId: 'r-baseline', ...reportOptions });
-    const baseline = withExtras(report, { createdAt: now(), ...extrasFrom(flags) });
+    const baseline = withExtras(withHuman(report, flags), { createdAt: now(), ...extrasFrom(flags) });
     const adapter = createAdapter(flags.adapter ?? 'fake', env);
     const step = await proposeStep(baseline, adapter);
     writeJson(f('report_baseline.json'), baseline);
@@ -64,7 +68,7 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
     const baseline = readJson(f('report_baseline.json'));
     const prior = existsSync(f('pipeline-meta.json')) ? readJson(f('pipeline-meta.json')) : {};
     const out = verifyStep(baseline, resultsOf(flags.holdout), { reportId: 'r-patched', botPolicyVersion: baseline.botPolicyVersion, seedSetId: baseline.seedSetId, ...reportOptions });
-    writeJson(f('report_patched.json'), withExtras(out.report, { createdAt: now(), ...extrasFrom(flags) }));
+    writeJson(f('report_patched.json'), withExtras(withHuman(out.report, flags), { createdAt: now(), ...extrasFrom(flags) }));
     writeJson(f('verdict.json'), { ...out.verdict, patchOrigin: prior.patchOrigin ?? 'unknown', holdout: out.meta });
     writeJson(f('pipeline-meta.json'), { ...prior, holdout: out.meta });
     summary.verdict = out.verdict.verdict;

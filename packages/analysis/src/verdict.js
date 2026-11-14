@@ -4,6 +4,9 @@
 export const MIN_GAMES = 200;
 export const EXTREME = 0.65;
 
+import { HUMAN_PREFIX } from './extras.js';
+
+const isBot = (row) => !row.dimension.startsWith(HUMAN_PREFIX); // human rows never gate a patch
 const dist = (row) => Math.abs(row.winRate - 0.5);
 const worstSide = (row) => Math.max(row.winRate, 1 - row.winRate);
 const invalidRate = (r) => {
@@ -33,10 +36,10 @@ export function judgePatch(before, after, options = {}) {
     return out('inconclusive');
   }
 
-  const afterBy = new Map(after.rows.map((r) => [r.dimension, r]));
-  const beforeBy = new Map(before.rows.map((r) => [r.dimension, r]));
+  const afterBy = new Map(after.rows.filter(isBot).map((r) => [r.dimension, r]));
+  const beforeBy = new Map(before.rows.filter(isBot).map((r) => [r.dimension, r]));
 
-  const targetDims = options.targets ?? before.rows.filter((r) => r.outlier).map((r) => r.dimension);
+  const targetDims = options.targets ?? before.rows.filter((r) => isBot(r) && r.outlier).map((r) => r.dimension);
   if (targetDims.length === 0) {
     reasons.push('no target: no outlier in the baseline report');
     return out('inconclusive');
@@ -48,7 +51,7 @@ export function judgePatch(before, after, options = {}) {
     reasons.push('invalid-match rate increased');
     rejected = true;
   }
-  for (const row of after.rows) {
+  for (const row of after.rows.filter(isBot)) {
     if (row.games < minGames || worstSide(row) <= EXTREME) continue;
     const prev = beforeBy.get(row.dimension);
     // Already extreme only if it was extreme on the same side; flipping sides is a new extreme.
