@@ -12,7 +12,7 @@ const change = object({ path: text(256), label: text(256), old: number, new: num
 const target = object({ matchup: text(256), before: result, after: result,
   outcome: { enum: ['improved', 'unchanged', 'worse'] } });
 const recordSchema = object({
-  dataHash: digest, parentHash: nullable(digest), gameId: { enum: ['hero_arena', 'hero_cards'] },
+  dataHash: digest, parentHash: nullable(digest), gameId: { enum: ['hero_arena', 'hero_cards', 'tentacle_run'] },
   createdAt: text(64), origin: { enum: ['base', 'gemini', 'grok', 'fallback', 'fake', 'manual'] },
   changes: array(change, 64), rationale: { type: 'string', maxLength: 8192 },
   target: nullable(object({ matchup: text(256), before: result, after: result })),
@@ -52,7 +52,7 @@ export class VersionStore {
     this.directory = join(directory, 'data', 'versions');
   }
   path(gameId) {
-    if (!['hero_arena', 'hero_cards'].includes(gameId)) throw Error('INVALID_SCHEMA');
+    if (!['hero_arena', 'hero_cards', 'tentacle_run'].includes(gameId)) throw Error('INVALID_SCHEMA');
     return join(this.directory, `${gameId}.json`);
   }
   list(gameId) {

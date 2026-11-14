@@ -19,7 +19,7 @@ export class PipelineError extends Error {
   }
 }
 const gameId = {
-  enum: ['hero_arena', 'hero_cards']
+  enum: ['hero_arena', 'hero_cards', 'tentacle_run']
 };
 const digest = {
   type: 'string',

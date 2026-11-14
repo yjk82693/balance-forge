@@ -318,6 +318,7 @@ export class RoomServer {
     const {
       data
     } = this.storage.get(room.gameId, room.selectedHash);
+    if (room.gameId === 'tentacle_run') return ['sepia']; // solo game: the seat always plays Sepia
     if (room.gameId === 'hero_arena') return data.characters.map(character => character.id);
     const decks = data.gameRules.decks.map(deck => deck.id);
     return decks.includes('standard') ? games.hero_arena.data.characters.map(character => character.id) : decks;
@@ -373,8 +374,10 @@ export class RoomServer {
         seat = room?.seats.find(s => s.seat === session.seat);
       if (!room || !seat) throw Error('AUTH_EXPIRED');
       if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
-      if (!this.playableHeroes(room).includes(env.payload.hero)) throw Error('INVALID_SCHEMA');
-      seat.hero = env.payload.hero;
+      if (room.gameId !== 'tentacle_run' && !this.playableHeroes(room).includes(env.payload.hero)) {
+        throw Error('INVALID_SCHEMA');
+      }
+      seat.hero = room.gameId === 'tentacle_run' ? 'sepia' : env.payload.hero;
       this.status(room, env);
       return;
     }
@@ -387,7 +390,11 @@ export class RoomServer {
       this.expireSeats(room, this.now());
       if (session.room && session.room !== room) throw Error('ILLEGAL_ACTION');
       if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
-      if (!this.playableHeroes(room).includes(env.payload.hero)) throw Error('INVALID_SCHEMA');
+      // Tentacle Run is solo with Sepia: any hero a phone picked still joins, and plays Sepia
+      if (room.gameId !== 'tentacle_run' && !this.playableHeroes(room).includes(env.payload.hero)) {
+        throw Error('INVALID_SCHEMA');
+      }
+      if (room.gameId === 'tentacle_run') env.payload.hero = 'sepia';
       if (session.seat) {
         const seat = room.seats.find(s => s.seat === session.seat);
         seat.name = env.payload.name.trim();
@@ -464,11 +471,17 @@ export class RoomServer {
         expiresAt: 0
       }];
     }
-    if (seats.length !== 2) throw Error('ILLEGAL_ACTION');
+    const solo = gameId === 'tentacle_run';
+    if (seats.length !== (solo ? 1 : 2)) throw Error('ILLEGAL_ACTION');
+    if (solo) { // the game's one seat is always p1
+      for (const session of this.sessions) if (session.seat === seats[0].seat) session.seat = 'p1';
+      seats[0].seat = 'p1';
+      seats[0].hero = 'sepia';
+    }
     const players = seats.map(s => s.seat).sort();
     const config = game.makeConfig(data, options.seed ?? this.freshSeed(), players);
     config.options = {
-      assignments: Object.fromEntries(seats.map(s => [s.seat, gameId === 'hero_arena' ?
+      assignments: Object.fromEntries(seats.map(s => [s.seat, gameId === 'hero_arena' || solo ?
         s.hero : data.gameRules.decks.some(d => d.id === s.hero) ? s.hero : 'standard']))
     };
     if (options.maxTicks !== undefined) config.maxTicks = options.maxTicks;
@@ -759,7 +772,8 @@ export class RoomServer {
       });
       return;
     }
-    const versionsRoute = path.match(/^\/v1\/versions\/(hero_arena|hero_cards)(?:\/([0-9a-f]{64})(\/approve)?)?$/);
+    const versionsRoute = path.match(
+      /^\/v1\/versions\/(hero_arena|hero_cards|tentacle_run)(?:\/([0-9a-f]{64})(\/approve)?)?$/);
     if (versionsRoute) {
       const [, gameId, dataHash, approve] = versionsRoute;
       const versions = this.storage.versionStore;
@@ -785,7 +799,7 @@ export class RoomServer {
       json(response, 200, { enabled: this.sinks.enabled, status });
       return;
     }
-    const trendRoute = path.match(/^\/v1\/trend\/(hero_arena|hero_cards)$/);
+    const trendRoute = path.match(/^\/v1\/trend\/(hero_arena|hero_cards|tentacle_run)$/);
     if (request.method === 'GET' && trendRoute) {
       const matchup = url.searchParams.get('matchup') ?? '';
       if (!/^[a-z_]{1,32} vs [a-z_]{1,32}$/.test(matchup)) throw Error('INVALID_SCHEMA');
@@ -794,7 +808,7 @@ export class RoomServer {
         { code: 'TRANSPORT_UNAVAILABLE', message: 'The trend needs Tiger Data (TIGER_DATABASE_URL).' });
       return;
     }
-    const designRoute = path.match(/^\/v1\/design\/(hero_arena|hero_cards)\/intent$/);
+    const designRoute = path.match(/^\/v1\/design\/(hero_arena|hero_cards|tentacle_run)\/intent$/);
     if (designRoute && ['GET', 'PUT'].includes(request.method)) {
       const gameId = designRoute[1];
       const intent = request.method === 'GET' ? await this.design.get(gameId) :
@@ -807,7 +821,7 @@ export class RoomServer {
       json(response, 200, await reanalyzePlaytest(this, await readBody(request)));
       return;
     }
-    const selectRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards)\/select$/);
+    const selectRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards|tentacle_run)\/select$/);
     if (request.method === 'POST' && selectRoute) {
       const body = await readBody(request);
       validateSchema(object({ dataHash: { type: 'string', pattern: '^[0-9a-f]{64}$' } }), body);
@@ -815,7 +829,7 @@ export class RoomServer {
       json(response, 200, this.versionList(selectRoute[1]));
       return;
     }
-    const dataRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards)(\/apply-patch)?$/);
+    const dataRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards|tentacle_run)(\/apply-patch)?$/);
     if (dataRoute) {
       if (request.method === 'GET' && !dataRoute[2]) {
         json(response, 200, this.storage.get(dataRoute[1], url.searchParams.get('dataHash') ?? undefined));

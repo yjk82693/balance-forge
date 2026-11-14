@@ -87,11 +87,15 @@ export class Authority {
     this.held = new Map();
   }
   // Drops a seat's held movement (disconnect, or any other reason the seat can no longer move).
+  /** Games with a stick (Hero Arena, Tentacle Run): the move of the last tick repeats until a new one comes. */
+  holdsMoves(): boolean {
+    return this.config.gameId === 'hero_arena' || this.config.gameId === 'tentacle_run';
+  }
   release(playerId: string): void {
     this.held.delete(playerId);
   }
   trackHold(action: ActionInput): void {
-    const holds = this.config.gameId === 'hero_arena' && action.actionId === 'move';
+    const holds = this.holdsMoves() && action.actionId === 'move';
     if (!holds || !this.holdMoves.has(action.playerId)) return;
     const { moveX, moveY } = action.params;
     if (moveX === 0 && moveY === 0) this.held.delete(action.playerId);
@@ -139,7 +143,7 @@ export class Authority {
     if (action.seq <= (this.lastSeq.get(action.playerId) ?? -1)) throw Error('ILLEGAL_ACTION');
     if (action.tick !== this.state.tick + 1) throw Error('LATE_INPUT');
     if (action.turnId !== this.state.turnId) throw Error('STALE_TURN');
-    const category = a => this.config.gameId === 'hero_arena' && a.actionId === 'move' ? 'move' : 'attack';
+    const category = a => this.holdsMoves() && a.actionId === 'move' ? 'move' : 'attack';
     const queued = this.pending.get(action.playerId) ?? [];
     if (queued.some(a => category(a) === category(action))) throw Error('RATE_LIMITED');
     // Adapter performs the exact same validation that advance will use, on a pure copy.

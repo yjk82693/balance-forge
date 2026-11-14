@@ -1,5 +1,7 @@
 import * as arena from '../../packages/games/action/index.ts';
 import * as cards from '../../packages/games/cards/index.ts';
+import * as tentacle from '../../packages/games/tentacle/index.ts';
+import * as tentacleBot from '../../packages/games/tentacle/bot.ts';
 import { chooseActions, deriveBotSeed, botPolicyVersion } from '../../packages/games/action/bot.ts';
 import { hash, validate, validateOutcome, compareIds } from '../../packages/contracts/index.ts';
 import { emptyStatistics } from '../../packages/sim/index.ts';
@@ -12,10 +14,12 @@ export type MatchJob = { matchId: string; config: MatchConfig; data: GameData; b
 export type JobOptions = { seeds?: number[]; heroes?: string[]; gameId?: string; data?: GameData; botPolicy?: string };
 export { botPolicyVersion };
 // The scripted policy's version per game: results are tagged with the bot that produced them.
-export const scriptedVersionOf = gameId => (gameId === 'hero_cards' ? cardBot.botPolicyVersion : botPolicyVersion);
+export const scriptedVersionOf = gameId => (gameId === 'hero_cards' ? cardBot.botPolicyVersion :
+  gameId === 'tentacle_run' ? tentacleBot.botPolicyVersion : botPolicyVersion);
 export const games = {
   hero_arena: arena,
-  hero_cards: cards
+  hero_cards: cards,
+  tentacle_run: tentacle
 };
 export function cardAction(game, state, seq) {
   const view = game.observe(state, state.payload.activePlayer),
@@ -59,7 +63,7 @@ export function executeMatch(job, {
 } = {}) {
   if (!job || typeof job !== 'object') throw Error('INVALID_SCHEMA');
   validate('MatchConfig', job.config);
-  const bot = botFor(job);
+  const bot = job.config?.gameId === 'tentacle_run' ? tentacleBot : botFor(job);
   const {
       matchId,
       config,
@@ -137,6 +141,17 @@ export function executeMatch(job, {
   }
 }
 export const runMatch = job => executeMatch(job).result;
+/** Solo games (Tentacle Run): one run per seed, one seat, no hero assignments. */
+export function soloJobs({ seeds = Array.from({ length: 100 }, (_, index) => index + 1), gameId = 'tentacle_run', data,
+  maxTicks }: { seeds?: number[]; gameId?: string; data?: GameData; maxTicks?: number } = {}): MatchJob[] {
+  const game = getGame(gameId);
+  data ??= game.data;
+  validate('GameData', data);
+  if (!Array.isArray(seeds) || !seeds.length || seeds.some(seed => !Number.isInteger(seed) || seed < 1 ||
+      seed > 4294967295)) throw Error('INVALID_SCHEMA');
+  return seeds.map((seed, index) => ({ matchId: `m-${index + 1}`, data,
+    config: (game as any).makeConfig(data, seed, ['p1'], ...(maxTicks === undefined ? [] : [maxTicks])) }));
+}
 export function pairedJobs({
   seeds = Array.from({
     length: 100

@@ -5,7 +5,7 @@ import { validate } from '../../packages/contracts/index.ts';
 import { scriptedVersionOf } from './match.ts';
 import type { MatchJob } from './match.ts';
 import { learnedBot } from './learn/load.ts';
-export { pairedJobs, runMatch, rosterJobs, botPolicies } from './match.ts';
+export { pairedJobs, soloJobs, runMatch, rosterJobs, botPolicies } from './match.ts';
 function addMatch(groups, result) {
   const names = result.config.players.map(id => result.config.options?.assignments[id] ?? id).sort();
   const key = JSON.stringify(names);

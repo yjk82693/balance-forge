@@ -19,7 +19,7 @@ export const envelopeSchema = object({
   }
 });
 const id = {
-  enum: ['hero_arena', 'hero_cards']
+  enum: ['hero_arena', 'hero_cards', 'tentacle_run']
 };
 export const payloadSchemas = {
   'room.create': object({

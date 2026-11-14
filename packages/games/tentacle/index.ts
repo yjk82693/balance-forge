@@ -1,4 +1,5 @@
-import { hash, validate, validateConfig, validateFrame, registerGame, validateGamePayload } from '../../contracts/index.ts';
+import { hash, validate, validateConfig, validateFrame, registerGame,
+  validateGamePayload } from '../../contracts/index.ts';
 import { xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta, clamp } from '../../sim/index.ts';
 import { schemas, actions } from './schemas.ts';
 import type { ActionSpec, GameData, InputFrame, MatchConfig, Observation, Outcome, State, Statistics, StepResult,
@@ -166,8 +167,8 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
     event('player.hit', { amount: taken });
   };
   const spawn = (kind: string, x: number, y: number, hp: number, fire: number) => {
-    q.enemies.push({ id: kind === 'boss' ? 'boss' : `e${q.nextId++}`, kind, x, y, hp, maxHp: hp, facingX: -1000, facingY: 0,
-      nextFireTick: tick + fire, nextHitTick: tick + CONTACT_INTERVAL });
+    q.enemies.push({ id: kind === 'boss' ? 'boss' : `e${q.nextId++}`, kind, x, y, hp, maxHp: hp, facingX: -1000,
+      facingY: 0, nextFireTick: tick + fire, nextHitTick: tick + CONTACT_INTERVAL });
   };
   const shoot = (from: string, e: any, dx: number, dy: number, speed: number, damage: number) => {
     const [vx, vy] = toward(dx, dy, speed);
@@ -193,7 +194,8 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
         const dx = post.x - me.x, dy = post.y - me.y, d2 = dx * dx + dy * dy;
         const dot = dx * aimX + dy * aimY;
         // within 45 degrees of the aim: dot > 0 and 2 dot^2 >= |d|^2 |aim|^2
-        if (d2 === 0 || d2 > rules.player.latchRange ** 2 || dot <= 0 || 2 * dot * dot < d2 * (aimX * aimX + aimY * aimY)) continue;
+        if (d2 === 0 || d2 > rules.player.latchRange ** 2 || dot <= 0) continue;
+        if (2 * dot * dot < d2 * (aimX * aimX + aimY * aimY)) continue;
         if (d2 < bestD) {
           best = post.id;
           bestD = d2;
@@ -256,7 +258,9 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
         [side === 2 ? 0 : rules.arena.w, roll(next, rules.arena.h + 1)];
     };
     if (q.wave <= 5) {
-      for (let i = 0; i < w.walkers; i++) spawn('walker', ...(edge() as [number, number]), rules.enemies.walker.health, 0);
+      for (let i = 0; i < w.walkers; i++) {
+        spawn('walker', ...(edge() as [number, number]), rules.enemies.walker.health, 0);
+      }
       for (let i = 0; i < w.drones; i++) spawn('drone', ...(edge() as [number, number]), rules.enemies.drone.health,
         w.fireIntervalTicks);
       for (let i = 0; i < w.sentries; i++) {
@@ -310,8 +314,8 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
       }
       if (tick >= e.nextFireTick) {
         for (const [c, sn] of [[1000, 0], [COS15, SIN15], [COS15, -SIN15]]) {
-          shoot('boss', e, Math.trunc((dx * c - dy * sn) / 1000), Math.trunc((dx * sn + dy * c) / 1000), BOSS_SHOT_SPEED,
-            rules.boss.shotDamage);
+          shoot('boss', e, Math.trunc((dx * c - dy * sn) / 1000), Math.trunc((dx * sn + dy * c) / 1000),
+            BOSS_SHOT_SPEED, rules.boss.shotDamage);
         }
         e.nextFireTick = tick + rules.boss.fireIntervalTicks;
       }
@@ -328,7 +332,8 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
       hurt(shot.damage);
       return false;
     }
-    return shot.life > 0 && shot.x > -1000 && shot.x < rules.arena.w + 1000 && shot.y > -1000 && shot.y < rules.arena.h + 1000;
+    const inside = shot.x > -1000 && shot.x < rules.arena.w + 1000 && shot.y > -1000 && shot.y < rules.arena.h + 1000;
+    return shot.life > 0 && inside;
   });
 
   // 5. wave clear, death, time
