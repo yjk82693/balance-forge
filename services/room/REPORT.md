@@ -747,3 +747,18 @@ The held-move rule (the server re-sends the last move, a move may repeat the sea
 can do, so simVersion moves from arena-0.1.1 to arena-0.1.2, once. Regenerated with it: the recorded roster results,
 metrics and report (15 matchups, 100 seed pairs each) and examples.json. The learned-bot files keep the simVersion
 they were trained under (arena-0.1.1) as their provenance; the human results keep theirs too.
+
+## Hero Cards through the pipeline (cards-0.1.2)
+`POST /v1/playtest/full {gameId: 'hero_cards'}` runs baseline, card diagnosis, proposal, validation, holdout and the
+per-target verdict. Without `heroes` or `roster` the matchup is `nightcrow vs standard` (the two decks).
+- Statistics: every match records `play:<cardId>` per player (uses = plays, opportunities = turns the card was in hand
+  and playable). simVersion is cards-0.1.2.
+- Bot `cards-bot-0.1.0` (packages/games/cards/bot.js): legal cards only, seeded style per seat (attacker, defender,
+  none), 70% follows the style, 8% of turns end early. It exposed a real engine defect: hypnosis late in the game set
+  `sleepUntil` to 13, past the schema limit, so about 7% of matches were invalid; it now stops at 12.
+- Diagnosis by card: each card's cost and power, one step up and down (about 22 levers), is run on the same fresh seeds
+  as the unchanged data; `diagnosis.levers` lists the measured effect on the first deck's win rate and whether it is
+  beyond noise. A table of play rates cannot do this: every card of a winning deck "wins when played".
+- Patch allowlist (contract v0.1.4): `/gameRules/cards/N/cost` 1..3 and `/gameRules/cards/N/power` 1..10, no power on
+  the peek card. The analysis validator and the engine `applyPatch` agree (cross-check test).
+- Probe runs write no replays, files or progress events, and are not copied to the outside stores.

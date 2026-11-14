@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { runBatch, pairedJobs, rosterJobs } from '../runner/index.js';
-import { botPolicyVersion, games } from '../runner/match.js';
+import { games, scriptedVersionOf } from '../runner/match.js';
 import { learnedBot } from '../runner/learn/load.js';
-import { hash, validateSchema } from '../../packages/contracts/index.js';
+import { applyPatch, hash, validateSchema } from '../../packages/contracts/index.js';
 import { array, integer, object, text } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
 import { patchChanges } from './versions.js';
@@ -36,9 +36,7 @@ export const runRequest = object({
   dataHash: digest
 }, ['gameId', 'pairs']);
 export const fullRequest = object({
-  gameId: {
-    const: 'hero_arena'
-  },
+  gameId,
   roster: {
     type: 'boolean'
   },
@@ -57,7 +55,7 @@ export const fullRequest = object({
 // the parameters (learned-cem-1+<8 hex>).
 export function resolveBotPolicy(gameId, body) {
   const policy = body.botPolicy ?? 'scripted';
-  if (policy === 'scripted') return { botPolicy: 'scripted', botPolicyVersion };
+  if (policy === 'scripted') return { botPolicy: 'scripted', botPolicyVersion: scriptedVersionOf(gameId) };
   if (gameId !== 'hero_arena') throw new PipelineError({ code: 'INVALID_SCHEMA',
     message: 'Learned bots exist for Hero Arena only.' });
   const bot = learnedBot();
@@ -93,6 +91,7 @@ export async function matchBatch(server, {
   phase,
   round,
   batchId,
+  probe = false, // a card probe: many small runs, so no replays, files, progress events or outside copies
   runId = randomUUID()
 }) {
   seeds ??= Array.from({
@@ -109,8 +108,8 @@ export async function matchBatch(server, {
   });
   const batch = await runBatch(jobs, {
     workers: server.workers,
-    captureReplays: true,
-    onProgress: progress => {
+    captureReplays: !probe,
+    onProgress: probe ? undefined : progress => {
       for (const session of server.sessions) server.send(session, 'playtest.progress', {
         runId,
         gameId,
@@ -123,6 +122,7 @@ export async function matchBatch(server, {
       });
     }
   });
+  if (probe) return { ...batch, dataHash };
   batch.replays.forEach(recording => server.storage.recordReplay(recording));
   const fileId = phase ? `${batchId}-${phase}` : batchId;
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.json`), batch.results);
@@ -184,7 +184,10 @@ export async function fullPlaytest(server, body) {
   const {
     data
   } = server.storage.get(body.gameId, body.dataHash);
-  const heroes = checkHeroes(body.gameId, data, body);
+  const isCards = body.gameId === 'hero_cards';
+  // Hero Cards has two decks: without a pair or a roster the matchup is the decks against each other.
+  const heroes = checkHeroes(body.gameId, data, body) ?? (isCards && !body.roster ? ['nightcrow', 'standard'] :
+    undefined);
   const policy = resolveBotPolicy(body.gameId, body);
   const {
     createAdapter
@@ -214,7 +217,23 @@ export async function fullPlaytest(server, body) {
     botPolicyVersion: policy.botPolicyVersion,
     seedSetId,
     holdoutSeedSetId,
-    ...(body.diagnose ? {
+    ...(isCards ? {
+      diagnoseSeeds: Array.from({ length: pairs }, (_, index) => 2000001 + index),
+      // one run of the unchanged data and one per card lever, each on the same fresh seeds
+      runCardProbe: async (variants, seeds) => {
+        const root = games[body.gameId].data;
+        const run = async patched => (await matchBatch(server, { gameId: body.gameId, data: patched, heroes,
+          botPolicy: policy.botPolicy, seeds, probe: true, runId })).results;
+        const probes = [{ variant: null, results: await run(data) }];
+        for (const variant of variants) {
+          const patched = applyPatch(data, { baseDataHash: hash(data), rationale: 'card probe',
+            replacements: [{ path: variant.path, value: variant.to }] }, root);
+          probes.push({ variant, results: await run(patched) });
+        }
+        return probes;
+      }
+    } : {}),
+    ...(body.diagnose && !isCards ? {
       diagnoseSeeds: Array.from({ length: pairs }, (_, index) => 2000001 + index),
       runDiagnose: async (matchups, diagnoseSeeds) => (await matchBatch(server, {
         gameId: body.gameId,

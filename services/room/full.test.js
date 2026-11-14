@@ -169,7 +169,7 @@ test('run endpoint accepts roster scans and an explicit retained content pin', a
   assert.equal(response.json().matchCount, 30);
   assert.equal(response.json().dataHash, original.dataHash);
 });
-test('playtest boundaries reject unknown fields, invalid pins and unsupported full game IDs', async t => {
+test('playtest boundaries reject unknown fields, invalid pins and mirror pairs', async t => {
   const {
     server
   } = await localServer(t);
@@ -180,7 +180,8 @@ test('playtest boundaries reject unknown fields, invalid pins and unsupported fu
     gameId: 'hero_arena',
     roster: 'yes'
   }, {
-    gameId: 'hero_cards'
+    gameId: 'hero_cards',
+    heroes: ['standard', 'standard']
   }, {
     gameId: 'hero_arena',
     code: 'no'
@@ -375,4 +376,31 @@ test('run and full accept botPolicy: scripted by default, learned with trained f
     const cards = await post('/v1/playtest/run', { gameId: 'hero_cards', pairs: 1, botPolicy: 'learned' });
     assert.equal(cards.status, 400);
   });
+});
+
+test('full playtest on Hero Cards: deck matchup, card probes, a card patch, holdout and a verdict', async t => {
+  const { server } = await localServer(t);
+  const originalHash = server.storage.get('hero_cards').dataHash;
+  const response = await http(server, '/v1/playtest/full', { method: 'POST',
+    body: { gameId: 'hero_cards', pairs: 60, holdoutPairs: 60 } });
+  assert.equal(response.status, 200);
+  const body = response.json();
+  assert.equal(body.gameId, 'hero_cards');
+  assert.equal(body.botPolicyVersion, 'cards-bot-0.1.0');
+  validate('Report', body.baseline);
+  assert.deepEqual(body.baseline.rows.map(row => row.dimension), ['nightcrow vs standard']);
+  assert.equal(body.fair, false); // Nightcrow wins about 36% against the standard deck (120 games, seed-fixed)
+  assert.equal(body.diagnosis.kind, 'cards');
+  assert.ok(body.diagnosis.probed >= 20 && body.diagnosis.levers.length >= 1);
+  assert.ok(body.diagnosis.levers.every(lever => /^\/gameRules\/cards\/\d+\/(cost|power)$/.test(lever.path)));
+  assert.equal(body.validation.ok, true);
+  assert.match(body.proposal.changes[0].path, /^\/gameRules\/cards\/\d+\/(cost|power)$/);
+  assert.equal(server.storage.get('hero_cards').dataHash, originalHash);
+  assert.equal(server.storage.get('hero_cards', body.patchedDataHash).dataHash, body.patchedDataHash);
+  validate('Report', body.patched);
+  assert.ok(['accepted', 'rejected', 'inconclusive'].includes(body.verdict.verdict));
+  const stored = JSON.parse(await readFile(join(server.storage.directory, 'playtests', `${body.runId}-baseline.json`),
+    'utf8'));
+  assert.equal(stored.length, 120);
+  assert.ok(stored[0].statistics.players[0].actions.some(action => action.actionId === 'play:hypnosis'));
 });
