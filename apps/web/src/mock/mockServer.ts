@@ -19,7 +19,8 @@ import { CardsMock } from "./mockCards";
 
 /** Actions the mock accepts; mirrors the action ids in fixtures (melee, projectile, guard) plus movement. */
 export const ARENA_ACTIONS = ["move", "melee", "projectile", "guard"] as const;
-const MAX_SEATS = 4;
+const MAX_SEATS = 2; // the room server runs two-player matches
+const RECONNECT_MS = 10_000;
 const FRAME_MS = REPLAY_MS;
 
 type Deliver = (env: Envelope) => void;
@@ -48,6 +49,8 @@ export class MockServer {
   readonly joinCode = fixtureRoomStatus.payload.joinCode;
   inputCount = 0;
   private gameId = "hero_arena";
+  /** private seat tokens: valid while the seat is held, and for 10 s after a mid-match disconnect */
+  private tokens = new Map<string, { seat: string; expiresAt: number }>();
   private version: Version = "broken";
   private cards: CardsMock | null = null;
   private botTimer: ReturnType<typeof setTimeout> | null = null;
@@ -77,6 +80,7 @@ export class MockServer {
     this.sessions.delete(id);
     if (s?.seat) {
       this.seats = this.seats.map((x) => (x.seat === s.seat ? { ...x, connected: false } : x));
+      this.expireToken(s.seat, this.phase === "playing" ? Date.now() + RECONNECT_MS : -1);
       this.broadcastStatus();
     }
     if (![...this.sessions.values()].some((x) => x.role === "display")) this.stopReplay();
@@ -87,6 +91,8 @@ export class MockServer {
     const session = this.sessions.get(from);
     if (!session) return;
     switch (env.type) {
+      case "reconnect":
+        return this.onReconnect(session, env as Envelope<{ joinCode: string; seatToken: string; lastAck?: number }>);
       case "room.join":
         return this.onJoin(session, env as Envelope<{ joinCode: string; name: string; hero?: string }>);
       case "input.submit":
@@ -125,7 +131,40 @@ export class MockServer {
       x.seat === id ? { ...x, name: name.trim() || x.name, hero: hero ?? x.hero, connected: true } : x,
     );
     s.seat = id;
-    this.broadcastStatus(s.id, id, env.requestId);
+    this.broadcastStatus(s.id, id, env.requestId, this.issueToken(id));
+    if (this.phase === "playing") (this.cards ? this.afterCardsChange() : this.sendFrame());
+  }
+
+  /** One live token per seat; the old one stops working when a new one is issued. */
+  private issueToken(seat: string): string {
+    for (const [t, v] of this.tokens) if (v.seat === seat) this.tokens.delete(t);
+    const token = `tok-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}${"x".repeat(20)}`;
+    this.tokens.set(token, { seat, expiresAt: 0 });
+    return token;
+  }
+
+  /** expiresAt < 0 drops the token; otherwise it stays usable until then. */
+  private expireToken(seat: string, expiresAt: number) {
+    for (const [t, v] of this.tokens) {
+      if (v.seat !== seat) continue;
+      if (expiresAt < 0) this.tokens.delete(t);
+      else v.expiresAt = expiresAt;
+    }
+  }
+
+  /** `reconnect {joinCode, seatToken, lastAck}`: take the same seat back within 10 s; the token rotates. */
+  private onReconnect(s: Session, env: Envelope<{ joinCode: string; seatToken: string; lastAck?: number }>) {
+    const { joinCode, seatToken } = env.payload;
+    const entry = this.tokens.get(seatToken);
+    const seat = entry && this.seats.find((x) => x.seat === entry.seat);
+    const live = [...this.sessions.values()].some((x) => x.seat === entry?.seat);
+    const codeOk = joinCode.trim().toUpperCase() === this.joinCode;
+    const valid = codeOk && !!entry && !!seat && !live && entry.expiresAt > Date.now();
+    if (!valid || !entry) return this.error(s, env, "AUTH_EXPIRED", false);
+    this.seats = this.seats.map((x) => (x.seat === entry.seat ? { ...x, connected: true } : x));
+    s.seat = entry.seat;
+    this.broadcastStatus(s.id, entry.seat, env.requestId, this.issueToken(entry.seat));
+    this.to(s, "match.started", { config: { ...fixtureMatchConfig, gameId: this.gameId, players: ["p1", "p2"] } });
     if (this.phase === "playing") (this.cards ? this.afterCardsChange() : this.sendFrame());
   }
 
@@ -290,10 +329,12 @@ export class MockServer {
     };
   }
 
-  private broadcastStatus(joiner?: string, seat?: string, requestId = "") {
+  private broadcastStatus(joiner?: string, seat?: string, requestId = "", seatToken?: string) {
     for (const s of this.sessions.values()) {
       const you = s.id === joiner ? seat : s.seat;
-      this.to(s, "room.status", this.statusPayload(you), s.id === joiner ? { requestId } : undefined);
+      const payload = this.statusPayload(you);
+      if (s.id === joiner && seatToken) payload.seatToken = seatToken;
+      this.to(s, "room.status", payload, s.id === joiner ? { requestId } : undefined);
     }
   }
 

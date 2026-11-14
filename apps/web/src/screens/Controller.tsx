@@ -8,6 +8,7 @@ import { useManifest } from "../lib/assets";
 import { go } from "../lib/router";
 import { InputPipeline } from "../lib/input";
 import { useGamepad } from "../lib/gamepad";
+import { clearSeat, loadSeat, saveSeat } from "../lib/seat";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
@@ -36,7 +37,7 @@ interface Profile {
 export function Controller({ initialCode }: { initialCode: string }) {
   useManifest();
   const { transport, status } = useTransport("controller");
-  const { room, observation, config, result, error } = useRoom(transport);
+  const { room, observation, config, result, error, lastAckSeq } = useRoom(transport);
   const [profile, setProfile] = useState<Profile>({ code: initialCode.toUpperCase(), name: "", hero: "bari" });
   const [joined, setJoined] = useState<Profile | null>(null);
   const seat = room?.you;
@@ -75,18 +76,51 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const rejoin = () => {
     transport?.reconnect();
   };
-  // After a dropped connection comes back, take a seat again (not on the first join).
+
+  // Take the saved seat back (message `reconnect`) if the server would still accept it: after a reload, or after the
+  // socket came back. The token rotates on success, so the new one is saved below.
+  const resumeSavedSeat = () => {
+    const saved = loadSeat();
+    if (!saved) return false;
+    setJoined({ code: saved.joinCode, name: saved.name, hero: saved.hero });
+    transport?.send("reconnect", { joinCode: saved.joinCode, seatToken: saved.seatToken, lastAck: saved.lastAck });
+    return true;
+  };
+  const resumed = useRef(false);
   const wasLost = useRef(false);
   useEffect(() => {
-    if (status === "lost") {
-      wasLost.current = true;
-    } else if (status === "online" && wasLost.current && joined) {
+    if (status === "lost") wasLost.current = true;
+    if (status !== "online") return;
+    if (!resumed.current || wasLost.current) {
+      resumed.current = true;
       wasLost.current = false;
-      transport?.send("room.join", { joinCode: joined.code, name: joined.name.trim() || "Player", hero: joined.hero });
+      resumeSavedSeat();
     }
-  }, [status, joined, transport]);
+  }, [status, transport]);
+
+  // Remember the seat token the server hands out, and keep its age fresh while we hear from the server.
   useEffect(() => {
-    if (error && joined && !seat) setJoined(null);
+    if (!joined || !room?.you || !room.seatToken) return;
+    saveSeat({
+      joinCode: joined.code,
+      name: joined.name,
+      hero: joined.hero,
+      seatToken: room.seatToken,
+      lastAck: lastAckSeq,
+      at: Date.now(),
+    });
+  }, [joined, room, lastAckSeq]);
+  useEffect(() => {
+    if (!transport) return;
+    return transport.subscribe(() => {
+      const saved = loadSeat();
+      if (saved) saveSeat({ ...saved, at: Date.now() });
+    });
+  }, [transport]);
+  useEffect(() => {
+    if (!error || !joined || seat) return;
+    clearSeat(); // a refused token or code must not be retried
+    setJoined(null);
   }, [error, joined, seat]);
 
   // Phone haptics and blips follow our own HP in the observation: a short pulse on a hit, a longer one on KO.
@@ -213,7 +247,10 @@ export function Controller({ initialCode }: { initialCode: string }) {
       )}
       <footer className="phone-foot">
         <SoundToggle className="btn secondary touch" />
-        <button className="btn secondary touch" onClick={() => go(`/join?r=${Date.now()}`)}>
+        <button className="btn secondary touch" onClick={() => {
+            clearSeat();
+            go(`/join?r=${Date.now()}`);
+          }}>
           Leave
         </button>
       </footer>

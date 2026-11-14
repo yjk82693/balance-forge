@@ -140,6 +140,8 @@ export interface RoomStatusPayload {
   you?: string;
   /** Not in the addendum: lets a phone know which controller to show. See REPORT.md. */
   gameId?: string;
+  /** private token for the joiner only; keep it out of URLs and logs */
+  seatToken?: string;
 }
 
 export interface CardDef {

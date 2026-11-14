@@ -3,13 +3,62 @@ import { makeEnvelope } from "./envelope";
 import type { ConnStatus, Role, Transport } from "./types";
 
 const MAX_ENVELOPE = 64 * 1024; // contract: maximum envelope 64 KiB
+const MAX_TRIES = 5;
 
-export function wsUrl(): string {
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${location.host}/ws`;
+const origin = () => `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
+
+interface HostRoom {
+  roomId: string;
+  hostToken: string;
 }
 
-/** One WebSocket with backoff reconnect. Same envelopes as the mock, so screens don't care which one they have. */
+const hostKey = (gameId: string) => `bf-host-${gameId}`;
+
+function savedHostRoom(gameId: string): HostRoom | null {
+  try {
+    const raw = sessionStorage.getItem(hostKey(gameId));
+    return raw ? (JSON.parse(raw) as HostRoom) : null;
+  } catch {
+    return null;
+  }
+}
+
+function forgetHostRoom(gameId: string) {
+  try {
+    sessionStorage.removeItem(hostKey(gameId));
+  } catch {
+    /* storage blocked: nothing to forget */
+  }
+}
+
+/**
+ * The big screen's socket URL. The first time it creates a room over HTTP (POST /v1/rooms) and keeps the host token,
+ * so a reload or a dropped socket re-attaches to the same room and join code instead of opening a new one.
+ */
+async function displayUrl(gameId: string): Promise<string> {
+  let room = savedHostRoom(gameId);
+  if (!room) {
+    const res = await fetch("/v1/rooms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ gameId }),
+    });
+    if (!res.ok) throw new Error(`room create ${res.status}`);
+    const body = (await res.json()) as HostRoom;
+    room = { roomId: body.roomId, hostToken: body.hostToken };
+    try {
+      sessionStorage.setItem(hostKey(gameId), JSON.stringify(room));
+    } catch {
+      /* storage blocked: a reload will open a new room */
+    }
+  }
+  return `${origin()}/ws?roomId=${encodeURIComponent(room.roomId)}&hostToken=${encodeURIComponent(room.hostToken)}`;
+}
+
+/**
+ * One WebSocket with backoff reconnect. The server assigns the session id; every message after the first reply
+ * carries the server's session id, room id and epoch (the server rejects stale ones).
+ */
 class Conn {
   private ws: WebSocket | null = null;
   private listeners = new Set<(env: Envelope) => void>();
@@ -19,12 +68,16 @@ class Conn {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private closed = false;
   private held = false; // drop() was called: stay down until reconnect()
-  private roomId = "";
   private reqSeq = 0;
-  readonly sessionId = `${Math.random().toString(36).slice(2, 8)}`;
+  sessionId = "";
+  private roomId = "";
+  private epoch = 1;
 
-  constructor(private readonly onOpenMessages: () => [string, unknown][]) {
-    this.open();
+  constructor(
+    private readonly urlFor: () => Promise<string>,
+    private readonly onServerError?: (env: Envelope) => void,
+  ) {
+    void this.open();
   }
 
   private setStatus(s: ConnStatus) {
@@ -32,36 +85,27 @@ class Conn {
     this.statusFns.forEach((f) => f(s));
   }
 
-  private open() {
+  private async open() {
     if (this.closed) return;
     this.setStatus("connecting");
     let ws: WebSocket;
     try {
-      ws = new WebSocket(wsUrl());
+      ws = new WebSocket(await this.urlFor());
     } catch {
       return this.scheduleRetry();
     }
+    if (this.closed) return ws.close();
     this.ws = ws;
     ws.onopen = () => {
       this.tries = 0;
       this.setStatus("online");
-      for (const [type, payload] of this.onOpenMessages()) this.send(type, payload);
     };
-    ws.onmessage = (ev) => {
-      if (typeof ev.data !== "string" || ev.data.length > MAX_ENVELOPE) return;
-      let env: Envelope;
-      try {
-        env = JSON.parse(ev.data) as Envelope;
-      } catch {
-        return;
-      }
-      if (!env || typeof env.type !== "string") return;
-      if (env.roomId) this.roomId = env.roomId;
-      this.listeners.forEach((f) => f(env));
-    };
+    ws.onmessage = (ev) => this.onMessage(ev.data);
     ws.onclose = () => {
       if (this.ws !== ws) return;
       this.ws = null;
+      this.sessionId = "";
+      this.roomId = "";
       if (this.closed || this.held) return;
       this.setStatus("lost");
       this.scheduleRetry();
@@ -69,24 +113,48 @@ class Conn {
     ws.onerror = () => ws.close();
   }
 
+  private onMessage(data: unknown) {
+    if (typeof data !== "string" || data.length > MAX_ENVELOPE) return;
+    let env: Envelope;
+    try {
+      env = JSON.parse(data) as Envelope;
+    } catch {
+      return;
+    }
+    if (!env || typeof env.type !== "string") return;
+    if (env.sessionId) this.sessionId = env.sessionId;
+    if (env.roomId) this.roomId = env.roomId;
+    if (Number.isInteger(env.epoch)) this.epoch = env.epoch;
+    if (env.type === "error") this.onServerError?.(env);
+    this.listeners.forEach((f) => f(env));
+  }
+
   private scheduleRetry() {
     clearTimeout(this.timer);
-    if (this.tries >= 5) {
+    if (this.tries >= MAX_TRIES) {
       this.setStatus("lost"); // stop hammering a server that is not there; reconnect() tries again
       return;
     }
     const wait = Math.min(5000, 400 * 2 ** this.tries++);
-    this.timer = setTimeout(() => this.open(), wait);
+    this.timer = setTimeout(() => void this.open(), wait);
   }
 
   send(type: string, payload: unknown) {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
     const seq = (payload as { seq?: number } | null)?.seq ?? 0;
-    this.ws.send(JSON.stringify(makeEnvelope(
-      type,
-      payload,
-      { roomId: this.roomId, sessionId: this.sessionId, requestId: `q${++this.reqSeq}`, seq },
-    )));
+    const env = makeEnvelope(type, payload, {
+      roomId: this.roomId,
+      sessionId: this.sessionId,
+      requestId: `q${++this.reqSeq}`,
+      seq,
+      epoch: this.epoch,
+    });
+    this.ws.send(JSON.stringify(env));
+  }
+
+  /** Drop the socket and open a fresh one (used when the stored host room turned out to be gone). */
+  restart() {
+    this.ws?.close();
   }
 
   subscribe(fn: (env: Envelope) => void) {
@@ -110,7 +178,7 @@ class Conn {
     this.held = false;
     clearTimeout(this.timer);
     this.tries = 0;
-    this.open();
+    void this.open();
   }
   close() {
     this.closed = true;
@@ -124,28 +192,53 @@ class Conn {
 // The big screen keeps one connection (and so one room) across lobby -> arena route changes.
 let shared: { conn: Conn; refs: number; gameId: string; closeTimer?: ReturnType<typeof setTimeout> } | null = null;
 
-export function createWsTransport(role: Role, opts: { gameId?: string; dataVersion?: string } = {}): Transport {
-  let conn: Conn;
-  const gameId = opts.gameId ?? "hero_arena";
-  if (role === "display") {
-    if (shared && shared.gameId !== gameId) {
-      shared.conn.close();
+function acquireDisplay(gameId: string): Conn {
+  if (shared && shared.gameId !== gameId) {
+    shared.conn.close();
+    shared = null;
+  }
+  if (!shared) {
+    const conn: Conn = new Conn(
+      () => displayUrl(gameId),
+      (env) => {
+        // The saved room is gone or already has a host: forget it and open a fresh room.
+        const code = (env.payload as { code?: string } | null)?.code;
+        if (code === "AUTH_EXPIRED" || code === "ILLEGAL_ACTION") {
+          forgetHostRoom(gameId);
+          conn.restart();
+        }
+      },
+    );
+    shared = { conn, refs: 0, gameId };
+  }
+  clearTimeout(shared.closeTimer);
+  shared.refs += 1;
+  return shared.conn;
+}
+
+function releaseDisplay() {
+  const s = shared;
+  if (!s) return;
+  s.refs -= 1;
+  if (s.refs > 0) return;
+  s.closeTimer = setTimeout(() => {
+    if (shared === s && s.refs <= 0) {
+      s.conn.close();
       shared = null;
     }
-    if (!shared) {
-      const conn0 = new Conn(() => [["room.create", { gameId, seats: 4 }]]);
-      shared = { conn: conn0, refs: 0, gameId };
-    }
-    clearTimeout(shared.closeTimer);
-    shared.refs += 1;
-    conn = shared.conn;
-  } else {
-    conn = new Conn(() => (role === "observer" ? [["subscribe", { topic: "playtest.progress" }]] : []));
-  }
+  }, 1500);
+}
+
+const plainUrl = () => Promise.resolve(`${origin()}/ws`);
+
+export function createWsTransport(role: Role, opts: { gameId?: string } = {}): Transport {
+  const conn = role === "display" ? acquireDisplay(opts.gameId ?? "hero_arena") : new Conn(plainUrl);
   const mine = new Set<() => void>();
   let released = false;
   return {
-    sessionId: conn.sessionId,
+    get sessionId() {
+      return conn.sessionId;
+    },
     send: (t, p) => conn.send(t, p),
     subscribe(fn) {
       const off = conn.subscribe(fn);
@@ -163,18 +256,8 @@ export function createWsTransport(role: Role, opts: { gameId?: string; dataVersi
       if (released) return;
       released = true;
       mine.forEach((off) => off());
-      if (role === "display" && shared) {
-        const s = shared;
-        s.refs -= 1;
-        if (s.refs <= 0) {
-          s.closeTimer = setTimeout(() => {
-            if (shared === s && s.refs <= 0) {
-              s.conn.close();
-              shared = null;
-            }
-          }, 1500);
-        }
-      } else conn.close();
+      if (role === "display") releaseDisplay();
+      else conn.close();
     },
   };
 }

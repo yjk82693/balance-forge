@@ -10,9 +10,10 @@ import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 import { VersionToggle } from "../components/VersionToggle";
 import { ServerDown, useServerState } from "../components/ServerDown";
-import { getDemoVersion } from "../lib/demo";
 
-const SLOTS = 4;
+const SLOTS = 2;
+/** The room server starts a match with exactly two connected players. */
+const PLAYERS_TO_START = 2;
 
 function joinUrl(code: string) {
   return `${location.origin}${location.pathname}#/play?code=${code}`;
@@ -50,12 +51,15 @@ export function Lobby({ gameId }: { gameId: string }) {
   const [left, setLeft] = useState<string | null>(null);
   const prev = useRef(new Map<string, { name: string; connected: boolean }>());
 
-  // Lobby always starts clean: a finished or running match from earlier is reset.
+  // Lobby always starts clean: a finished or running match from earlier is reset. The server needs the room's
+  // id and epoch on every host message, so wait for the first room.status.
+  const phase = room?.phase;
+  const roomGame = room?.gameId;
   useEffect(() => {
-    if (status !== "online") return;
-    transport?.send("game.select", { gameId, dataVersion: getDemoVersion() });
-    transport?.send("match.reset", {});
-  }, [transport, status, gameId]);
+    if (status !== "online" || !phase) return;
+    if (roomGame && roomGame !== gameId) transport?.send("game.select", { gameId });
+    if (phase !== "lobby") transport?.send("match.reset", {});
+  }, [transport, status, phase, roomGame, gameId]);
 
   useEffect(() => {
     if (!room) return;
@@ -94,11 +98,11 @@ export function Lobby({ gameId }: { gameId: string }) {
   const seats = room?.seats ?? [];
   const here = seats.filter((s) => s.connected).length;
   const arena = game.status === "ready";
-  const canStart = here >= 1 && arena && status === "online";
+  const canStart = here === PLAYERS_TO_START && arena && status === "online";
   const reason = !arena
     ? `${game.title} can't be played on the big screen yet.`
-    : here < 1
-      ? "Waiting for at least 1 player"
+    : here < PLAYERS_TO_START
+      ? `Waiting for ${PLAYERS_TO_START - here} more ${PLAYERS_TO_START - here === 1 ? "player" : "players"}`
       : "";
   const start = () => {
     if (!canStart) return;
@@ -191,7 +195,7 @@ export function Lobby({ gameId }: { gameId: string }) {
             })}
           </ul>
           <p className="caption lobby-note" aria-live="polite">
-            {connecting ? "Getting the room ready…" : (left ?? "Bots fill empty slots when you start.")}
+            {connecting ? "Getting the room ready…" : (left ?? "Two players start a match.")}
           </p>
           <button className="btn primary touch" aria-disabled={!canStart} onClick={start}>
             Start match
