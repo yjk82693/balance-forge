@@ -3,7 +3,8 @@ import { rowStats } from "../components/WinRateChart";
 import { describePath } from "../components/PatchCompare";
 import { VERDICT_COPY, fmtSeconds, n, outliersFirst, pickTargetDimension } from "./dashboardData";
 import { originLabel } from "./fullRun";
-import type { EvidenceAction, EvidenceSide, RunEvidence } from "./api";
+import type { Diagnosis, EvidenceAction, EvidenceSide, RunEvidence } from "./api";
+import { classificationLine } from "../components/HeroProfile";
 import { botRows } from "./groups";
 import { heroName } from "./heroes";
 import { pct } from "./stats";
@@ -42,6 +43,10 @@ export interface ResultFacts {
   outlier: (Rate & { isOutlier: boolean }) | null;
   /** the matchup is fair: there is no patch, holdout or verdict, and the card says so */
   fair: boolean;
+  /** hero profiles and recommendations, when the run was asked to diagnose */
+  diagnosis: Diagnosis | null;
+  /** the field paths the AI patch actually changed, to mark which recommendation it used */
+  patchPaths: string[];
   /** one line of evidence for the outlier, from the run's `evidence`; null when the run has none */
   evidence: string | null;
   patch: PatchFact[];
@@ -102,6 +107,8 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
   return {
     ...sourceOf(run),
     fair: !!run.fair,
+    diagnosis: run.diagnosis ?? null,
+    patchPaths: changes.map((c) => c.path),
     outlier: lead ? { ...lead, isOutlier: !!target?.outlier } : null,
     evidence: evidenceLine(run.evidence, target?.row.dimension),
     patch: run.proposal && !run.fair
@@ -176,6 +183,16 @@ export function summaryText(f: ResultFacts): string {
     lines.push(`Patch (${p.origin}): ${change}. ${p.rationale}`.trim());
     if (p.valid !== undefined) {
       lines.push(`Validation: ${p.valid ? "passed" : `failed${p.errors.length ? ` (${p.errors.join("; ")})` : ""}`}`);
+    }
+  }
+  if (f.diagnosis) {
+    const line = classificationLine(f.diagnosis);
+    if (line) lines.push(`Diagnosis: ${line}`);
+    for (const r of f.diagnosis.recommendations) {
+      const verb = r.direction === "down" ? "lower" : "raise";
+      const used = f.patchPaths.includes(r.path) ? " (used by the AI patch)" : "";
+      const change = `${verb} ${describePath(r.path)} by ${Math.round(r.sizePct)}%`;
+      lines.push(`Suggested: ${heroName(r.hero)}, ${change}. ${r.why}${used}`);
     }
   }
   if (f.holdout) {

@@ -3,6 +3,7 @@ import { pct } from "../lib/stats";
 import { VERDICT_COPY, n } from "../lib/dashboardData";
 import type { VerdictTarget } from "../lib/api";
 import { matchupName as matchupLabel } from "../lib/versions";
+import { HeroProfile } from "./HeroProfile";
 import { summaryText, type Rate, type ResultFacts } from "../lib/resultCard";
 
 const rateLine = (r: Rate) => (
@@ -199,6 +200,7 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
         )}
       </div>
       {!fair && verdict && verdict.targets.length > 0 && <TargetRows targets={verdict.targets} />}
+      {facts.diagnosis && <HeroProfile diagnosis={facts.diagnosis} patchPaths={facts.patchPaths} />}
     </section>
   );
 }

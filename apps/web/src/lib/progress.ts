@@ -1,6 +1,9 @@
 import type { Report, ReportRow } from "./contract";
 import { isHumanDimension, isMirror } from "./groups";
 
+/** Which part of a run is going: the baseline, the holdout on the patched data, or the hero diagnosis. */
+export type RunPhase = "baseline" | "holdout" | "diagnose";
+
 /** One matchup in `playtest.progress` (services/room README): wins are keyed by hero id. */
 export interface MatchupProgress {
   matchup: string;
@@ -21,7 +24,7 @@ export interface ProgressMsg {
   runId?: string;
   gameId?: string;
   /** "baseline" on the data as it is, then "holdout" on the patched data (POST /v1/playtest/full) */
-  phase?: "baseline" | "holdout";
+  phase?: RunPhase;
   /** auto-balance only: which round is running, and how many there are */
   round?: number;
   rounds?: number;
@@ -80,7 +83,7 @@ function xorshift32(x: number): number {
 export function mockProgress(
   final: Report,
   onTick: (p: ProgressMsg) => void,
-  opts: { steps?: number; stepMs?: number; phase?: "baseline" | "holdout" } = {},
+  opts: { steps?: number; stepMs?: number; phase?: RunPhase } = {},
 ): () => void {
   const steps = opts.steps ?? 50;
   const total = final.validMatches;

@@ -3,7 +3,7 @@ import { ApiError, runPlaytest, subscribeProgress, type PlaytestRun } from "./ap
 import type { ReportRow } from "./contract";
 import { MATCHES, loadRun, saveRun } from "./dashboardData";
 import { isMockMode } from "../mock/types";
-import { mockProgress, toRows, type ProgressMsg } from "./progress";
+import { mockProgress, toRows, type ProgressMsg, type RunPhase } from "./progress";
 import { loadRecordedRun } from "./recorded";
 
 export interface LiveState {
@@ -12,13 +12,18 @@ export interface LiveState {
   /** cumulative rows while bots play; null once the stored report takes over */
   rows: ReportRow[] | null;
   /** which run is going: the baseline, then the holdout on the patched data */
-  phase?: "baseline" | "holdout";
+  phase?: RunPhase;
   /** the holdout run's own counter and bars; the baseline numbers above stay frozen once it starts */
   holdout?: { done: number; total: number; rows: ReportRow[] };
+  /** the hero diagnosis phase's own counter; it too leaves the baseline table alone */
+  diagnose?: { done: number; total: number };
 }
 
 /** Folds one progress message into the live state. The holdout phase never touches the baseline table. */
 export function foldProgress(prev: LiveState, p: ProgressMsg): LiveState {
+  if (p.phase === "diagnose") {
+    return { ...prev, phase: "diagnose", diagnose: { done: p.matchesDone, total: p.totalMatches } };
+  }
   if (p.phase === "holdout") {
     return { ...prev, phase: "holdout", holdout: { done: p.matchesDone, total: p.totalMatches, rows: toRows(p) } };
   }
@@ -73,7 +78,7 @@ export function useRunner() {
     setLive({ done: result.baseline.validMatches, total: result.baseline.validMatches, rows: null });
   };
 
-  const start = async (heroes?: [string, string]) => {
+  const start = async (heroes?: [string, string], diagnose = false) => {
     if (busy) return;
     setBusy(true);
     setError(null);
@@ -84,7 +89,7 @@ export function useRunner() {
     const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
-      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes);
+      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes, diagnose);
       finish(result);
       if (!mock) saveRun(result);
     } catch (e) {
