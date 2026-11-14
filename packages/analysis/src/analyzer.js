@@ -1,4 +1,5 @@
 import { wilson95, round6 } from './wilson.js';
+import { heroMatchup } from './group.js';
 
 export const BAND_LOW = 0.45;
 export const BAND_HIGH = 0.55;
@@ -20,16 +21,19 @@ export function tooFewGames(row) {
   return row.games < MIN_GAMES_FOR_OUTLIER;
 }
 
-const defaultDimension = (result) => result.config.players.join(' vs ');
+// Hero-aware when config.options.assignments exists (addendum 1), else players joined (v0.1).
+const defaultDimension = (result) => heroMatchup(result)?.dimension ?? result.config.players.join(' vs ');
+const defaultFocal = (result) => heroMatchup(result)?.focal ?? result.config.players[0];
 
 /**
  * MatchResult[] -> Report (contract v0.1).
- * The first player in config.players is the focal side of a row; win rate = focal wins / valid games
+ * The focal side of a row is the alphabetically first hero (addendum assignments) or players[0]; win rate = focal wins / valid games
  * (draws count as games, not wins). Invalid matches are counted apart and excluded from every rate.
- * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string (e.g. "bari vs real_armor").
+ * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string, focalOf(result) -> playerId.
  */
 export function analyze(results, options = {}) {
   const dimensionOf = options.dimensionOf ?? defaultDimension;
+  const focalOf = options.focalOf ?? defaultFocal;
   const valid = results.filter((r) => r.valid === true);
   const invalidMatches = results.length - valid.length;
 
@@ -48,7 +52,7 @@ export function analyze(results, options = {}) {
     const dim = dimensionOf(r);
     let g = groups.get(dim);
     if (!g) groups.set(dim, (g = { wins: 0, games: 0, uses: 0, opportunities: 0 }));
-    const focal = r.config.players[0];
+    const focal = focalOf(r);
     g.games += 1;
     if (r.outcome.status === 'draw') draws += 1;
     else if (r.outcome.status === 'win' && r.outcome.winners.includes(focal)) g.wins += 1;

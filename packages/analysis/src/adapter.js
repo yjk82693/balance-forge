@@ -15,6 +15,9 @@ export class FakePatchAdapter {
     // Keep the pin honest: the proposal must be based on the report's data.
     return { ...structuredClone(this.#proposal), baseDataHash: report.dataHash };
   }
+  async proposeWithOrigin(report) {
+    return { proposal: await this.proposePatch(report), origin: 'fake' };
+  }
 }
 
 /** Placeholder for the real Gemini integration. Wire-up belongs to a later, reviewed step. */
