@@ -171,7 +171,7 @@ test('too few games after the patch: unchanged, and inconclusive when nothing el
   const v = judgePatch(b, a);
   assert.deepEqual(outcomes(v), ['x vs y:unchanged']);
   assert.equal(v.verdict, 'inconclusive');
-  assert.match(v.reasons.join(), /only 100 games after the patch/);
+  assert.match(v.reasons.join(), /x vs y: holdout has 100 games; 200 needed/); // the cause is named, never silent
 });
 
 test('a new extreme matchup still rejects a patch whose target improved, and the targets are still listed', () => {

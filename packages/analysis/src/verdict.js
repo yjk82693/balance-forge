@@ -111,7 +111,7 @@ export function judgePatch(before, after, options = {}) {
     targets.push({ matchup: dimension, before: sideOf(b), after: sideOf(a), outcome });
     reasons.push(`${dimension}: ${outcome} (${describe(b)} -> ${describe(a)})`);
     if (a.games < minGames) {
-      reasons.push(`${dimension}: only ${a.games} games after the patch (need ${minGames})`);
+      reasons.push(`${dimension}: holdout has ${a.games} games; ${minGames} needed`);
       thin = true;
     }
   }
