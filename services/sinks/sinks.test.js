@@ -75,3 +75,9 @@ test('logged errors never contain a connection string or host', async () => {
   assert.doesNotMatch(lines[0], /mongodb\+srv|cluster0|pw@/);
   assert.match(lines[0], /<uri>/);
 });
+
+test('with a CA, ssl* URL parameters are removed so the CA is not replaced', async () => {
+  const { withoutSslParams } = await import('./index.js');
+  const out = withoutSslParams('postgres://u:p@h.example:31196/tsdb?sslmode=require&sslrootcert=x&application_name=bf');
+  assert.equal(out, 'postgres://u:p@h.example:31196/tsdb?application_name=bf');
+});
