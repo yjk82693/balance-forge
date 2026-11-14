@@ -81,7 +81,19 @@ export function restoreSnapshot(snapshot, config) {
   validateGamePayload(config.gameId, config.schemaVersion, 'state', snapshot.state.payload);
   return structuredClone(snapshot.state);
 }
-export function applyPatch(data, proposal) {
+// Hero stats (contract v0.1.2): absolute bounds, and within 40% of the ROOT data value, so that repeated rounds cannot
+// move a hero further than that. `root` is the original game data (default: the data being patched).
+const HERO_STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] };
+const withinFortyPercent = (value, rootValue) => 10 * value >= 6 * rootValue && 10 * value <= 14 * rootValue;
+function heroStatPatch(result, root, path, value) {
+  const [, , index, stat] = path.split('/');
+  const rootHero = root.characters[Number(index)];
+  const [low, high] = HERO_STAT_BOUNDS[stat];
+  if (!result.characters[Number(index)] || !rootHero || !Number.isInteger(rootHero[stat])) fail('PATCH_REJECTED');
+  if (value < low || value > high || !withinFortyPercent(value, rootHero[stat])) fail('PATCH_REJECTED');
+  result.characters[Number(index)][stat] = value;
+}
+export function applyPatch(data, proposal, root = data) {
   validate('PatchProposal', proposal);
   if (proposal.baseDataHash !== hash(data)) fail('PATCH_REJECTED');
   const result = structuredClone(data),
@@ -95,6 +107,8 @@ export function applyPatch(data, proposal) {
     if (path === '/tuning/damageScalePermille') {
       if (value < 100 || value > 3000) fail('PATCH_REJECTED');
       result.tuning.damageScalePermille = value;
+    } else if (path.startsWith('/characters/')) {
+      heroStatPatch(result, root, path, value);
     } else {
       const index = Number(path.split('/')[2]);
       if (!result.moves[index]) fail('PATCH_REJECTED');

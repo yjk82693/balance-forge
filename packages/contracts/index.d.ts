@@ -218,7 +218,8 @@ export declare function validateOutcome(outcome: Outcome, players: string[]): vo
 export declare function validateFrame(state: State, frame: InputFrame, players: string[], specs: ActionSpec[],
   legal: (action: ActionInput) => boolean, allowMoveAndAttack?: boolean): void;
 export declare function restoreSnapshot(snapshot: Snapshot, config: MatchConfig): State;
-export declare function applyPatch(data: GameData, proposal: PatchProposal): GameData;
+/** `root` is the original game data that hero-stat bounds (within 40%) are measured against; default: `data`. */
+export declare function applyPatch(data: GameData, proposal: PatchProposal, root?: GameData): GameData;
 export declare function compareIds(a: string, b: string): number;
 export interface GameAdapter {
   describe(): GameDescriptor;

@@ -173,3 +173,20 @@ test('a version record keeps the per-target outcomes of its verdict', async t =>
   const older = { ...record, verdict: { verdict: 'accepted', reasons: [] } }; // the shape before targets existed
   assert.doesNotThrow(() => validateVersion(older));
 });
+test('apply-patch accepts hero stats within 40% of the root, records them, and refuses drift past it', async t => {
+  const { server } = await localServer(t);
+  const base = server.storage.get('hero_arena');
+  const index = base.data.characters.findIndex(c => c.id === 'daewi');
+  const health = base.data.characters[index].health;
+  const up = server.storage.patch('hero_arena', { baseDataHash: base.dataHash, rationale: 'daewi is fragile',
+    replacements: [{ path: `/characters/${index}/health`, value: Math.floor(health * 1.3) }] });
+  const record = server.storage.versionStore.get('hero_arena', up.dataHash);
+  assert.deepEqual(record.changes,
+    [{ path: `/characters/${index}/health`, old: health, new: Math.floor(health * 1.3) }]);
+  assert.equal(record.parentHash, base.dataHash);
+  // +20% on top of +30% is +56% of the root: refused even though the version it is based on is allowed
+  assert.throws(() => server.storage.patch('hero_arena', { baseDataHash: up.dataHash, rationale: 'drift',
+    replacements: [{ path: `/characters/${index}/health`, value: Math.floor(health * 1.3 * 1.2) }] }),
+  /PATCH_REJECTED/);
+  assert.equal(server.storage.versionStore.list('hero_arena').length, 2);
+});

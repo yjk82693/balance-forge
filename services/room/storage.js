@@ -87,7 +87,7 @@ export class Storage {
     const base = this.get(gameId, proposal?.baseDataHash);
     let candidate;
     try {
-      candidate = applyPatch(base.data, proposal);
+      candidate = applyPatch(base.data, proposal, games[gameId].data); // hero stats stay within 40% of the root
     } catch {
       throw Error('PATCH_REJECTED');
     }

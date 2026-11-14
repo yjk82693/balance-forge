@@ -55,11 +55,12 @@ export async function autoPlaytest(server, body) {
     return server.storage.recordVersion(record);
   };
   const result = await runAuto({
-    gameId: body.gameId, fromHash, data: structuredClone(data), rounds: body.rounds ?? 3,
+    gameId: body.gameId, fromHash, data: structuredClone(data), rootData: structuredClone(games[body.gameId].data),
+    rounds: body.rounds ?? 3,
     requireApproval: body.requireApproval ?? true, adapter, hashData: hash, allMatchups,
     applyPatch: (base, proposal) => {
       if (base.gameId !== body.gameId) throw Error('INVALID_SCHEMA');
-      const data = applyPatch(base, proposal);
+      const data = applyPatch(base, proposal, games[body.gameId].data);
       return { data, dataHash: server.storage.addVersion(data) };
     },
     runBatch: async (dataHash, matchups, seeds) => {

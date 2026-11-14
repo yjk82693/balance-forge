@@ -57,9 +57,9 @@ const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive', targets: []
   reasons: ['the patch did not pass validation, so no holdout run was made', ...errors.slice(0, 3)] });
 
 /** Patched data and its hash: from the injected `applyPatch` (the engine's own) or from our pure copy. */
-function patchData({ baseData, hashData, applyPatch }, proposal) {
+function patchData({ baseData, rootData, hashData, applyPatch }, proposal) {
   if (typeof applyPatch !== 'function') {
-    const data = applyPatchToData(baseData, proposal, { hashData });
+    const data = applyPatchToData(baseData, proposal, { hashData, rootData: rootData ?? baseData });
     return { data, dataHash: hashData(data) };
   }
   let patched;
@@ -149,7 +149,8 @@ async function runFullUnsafe(input) {
   const flagged = baseline.rows.some((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r));
   if (!flagged) return fairBody(baseline, evidenceBody, holdoutSeedSetId);
   const diagnosed = await diagnoseStep(input, baseline);
-  const step = await proposeStep(baseline, adapter, { context: diagnosed.value ? { diagnosis: diagnosed.value } : {} });
+  const context = { rootData: input.rootData ?? baseData, ...(diagnosed.value ? { diagnosis: diagnosed.value } : {}) };
+  const step = await proposeStep(baseline, adapter, { context });
   const body = {
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,

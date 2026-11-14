@@ -30,13 +30,21 @@ export const matchupsOf = (data) => {
 const ATTACKS = ['melee', 'projectile'];
 
 /** Applies a diagnosis recommendation: its path, its direction and its size in percent of the current value. */
-function followRecommendation(report, data, rec) {
+function followRecommendation(report, data, rec, rootData = data) {
   if (!rec) return null;
-  if (!/^\/moves\/\d+\/power$/.test(rec.path)) return null; // only a move's power is a lever (no global scaling)
-  const current = data.moves[Number(rec.path.split('/')[2])]?.power;
+  const move = /^\/moves\/(\d+)\/power$/.exec(rec.path);
+  const stat = /^\/characters\/(\d+)\/(health|speed)$/.exec(rec.path);
+  if (!move && !stat) return null; // only a move's power or a hero stat is a lever (no global scaling)
+  const current = move ? data.moves[Number(move[1])]?.power : data.characters[Number(stat[1])]?.[stat[2]];
   if (!Number.isInteger(current)) return null;
   const factor = 100 + (rec.direction === 'up' ? rec.sizePct : -rec.sizePct);
-  const value = Math.min(MAX_POWER, Math.max(0, Math.round((current * factor) / 100)));
+  let value = Math.round((current * factor) / 100);
+  if (move) value = Math.min(MAX_POWER, Math.max(0, value));
+  else {
+    const [low, high] = stat[2] === 'health' ? [100, 3000] : [30, 400];
+    const root = rootData.characters[Number(stat[1])][stat[2]];
+    value = Math.min(high, Math.floor((root * 14) / 10), Math.max(low, Math.ceil((root * 6) / 10), value));
+  }
   return { origin: 'fake', proposal: { baseDataHash: report.dataHash, replacements: [{ path: rec.path, value }],
     rationale: `Offline stand-in follows the first recommendation (${rec.direction} ${rec.sizePct}%): ${rec.why}` } };
 }
@@ -50,7 +58,7 @@ function followRecommendation(report, data, rec) {
 export function steppingAdapter(dataOf, usesOf = () => ({})) {
   return { async proposeWithOrigin(report, context = {}) {
     const data = dataOf(report.dataHash);
-    const followed = followRecommendation(report, data, context.diagnosis?.recommendations?.[0]);
+    const followed = followRecommendation(report, data, context.diagnosis?.recommendations?.[0], context.rootData);
     if (followed) return followed;
     const rows = report.rows.filter((r) => r.outlier && !/^(\S+) vs \1$/.test(r.dimension));
     const dimensions = focusTargets(rows.map((r) => r.dimension));
@@ -121,7 +129,7 @@ export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => ne
       adapter: steppingAdapter((hash) => versions.get(hash), (hero) => usage[hero] ?? {}),
       allMatchups: matchupsOf(arena.data), seedsFor, botPolicyVersion: match.botPolicyVersion, now,
       applyPatch: (base, proposal) => {
-        const data = applyEngine(base, proposal);
+        const data = applyEngine(base, proposal, arena.data);
         return { data, dataHash: keep(data) };
       },
       runBatch: async (dataHash, matchups, seeds) => {

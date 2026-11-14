@@ -719,10 +719,13 @@ curl -sS -H 'content-type: application/json' \
 ```
 
 Body: gameId, optional fromHash (a recorded version), rounds 1–5 (default 3), requireApproval (default true).
-Runs the analysis runAuto: scan, one targeted patch per round, fresh holdout seeds, verdict, then one final roster
-check. 200 {records, stoppedBecause, finalCheck, headHash, runId, gameId[, error]}; stoppedBecause is one of
-fair, not_accepted, regression, rounds, awaiting_approval, error. playtest.progress messages carry round and phase
-(scan, holdout, final_check). Shares the run/full lock: a second concurrent run gets RATE_LIMITED. A real run with
-five heroes takes minutes (the opt-in integration test measured about 6 minutes for rounds:2), so examples.json
+Runs the analysis runAuto: scan, a diagnosis, up to two candidate patches per round (the first two recommendations
+of the focus hero), fresh holdout seeds, verdict, then one final roster check. Both candidates are stored as sibling
+version records (same parentHash, note "candidate 1 of 2"); the run continues from the accepted one that improved
+most. Hero health and speed are allowed levers (within 40% of the original data). The 200 response is {records,
+stoppedBecause, finalCheck, headHash, diagnoses, runId, gameId[, error]}; stoppedBecause is one of fair,
+not_accepted, regression, rounds, awaiting_approval, error. playtest.progress messages carry round and phase (scan,
+diagnose, holdout, final_check). Shares the run/full lock: a second concurrent run gets RATE_LIMITED. A real run
+with five heroes takes minutes (the opt-in integration test measured about 6 minutes for rounds:2), so examples.json
 captures only request validation (http.autoInvalid, 400 INVALID_SCHEMA for rounds:9). Real-module coverage:
 `RUN_REAL_AUTO=1 node --test services/room/auto-real.test.js`.

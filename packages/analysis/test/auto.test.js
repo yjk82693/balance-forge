@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { baseVersionRecord, focusTargets, runAuto } from '../pipeline/auto.js';
+import { baseVersionRecord, candidateDiagnoses, focusTargets, improvement, runAuto } from '../pipeline/auto.js';
 import { pairedResults } from './helpers.js';
 
 const ROSTER = ['bari vs bari', 'bari vs daewi', 'daewi vs real_armor', 'bari vs real_armor'];
@@ -19,7 +19,7 @@ function world(model, { step = 20, floor = 52 } = {}) {
     const data = store.get(dataHash);
     return matchups.flatMap((dim) => {
       const [a, b] = dim.split(' vs ');
-      const rate = model(dim, power(data));
+      const rate = model(dim, power(data), data);
       return pairedResults({ dataHash, heroes: [a, b], seeds: seeds.length,
         winner: (s) => (s % 100 < rate * 100 ? 'a' : 'b') })
         .map((r, i) => ({ ...r, matchId: `${dim}-${i}`, config: { ...r.config, seed: seeds[r.config.seed - 1] } }));
@@ -33,7 +33,11 @@ function world(model, { step = 20, floor = 52 } = {}) {
   const applyPatch = (data, proposal) => {
     if (proposal.baseDataHash !== hashData(data)) throw new Error('PATCH_REJECTED');
     const next = structuredClone(data);
-    next.moves[1].power = proposal.replacements[0].value;
+    for (const { path, value } of proposal.replacements) {
+      const [, kind, index, field] = path.split('/');
+      if (kind === 'characters') next.characters[Number(index)][field] = value;
+      else next.moves[Number(index)].power = value;
+    }
     return keep(next);
   };
   const seedsFor = (round, phase) => Array.from({ length: 100 }, (_, i) => (phase === 'scan' ? 1 : 1000001 +
@@ -234,7 +238,7 @@ test('Bari beats Daewi, but Daewi loses to everyone: the round targets Daewi (a 
     'sepia vs sepia'];
   let context;
   const adapter = { async proposeWithOrigin(report, ctx) {
-    context = ctx;
+    context ??= ctx; // the first candidate's context
     return w.input().adapter.proposeWithOrigin(report);
   } };
   const out = await runAuto(w.input({ fromHash: store.dataHash, data, allMatchups: roster, rounds: 1, adapter }));
@@ -245,7 +249,9 @@ test('Bari beats Daewi, but Daewi loses to everyone: the round targets Daewi (a 
   assert.equal(out.diagnoses[0].round, 1);
   assert.equal(out.diagnoses[0].diagnosis.classification, 'overall_weak');
   assert.equal(out.diagnoses[0].diagnosis.focusHero, 'daewi');
-  assert.equal(context.diagnosis, out.diagnoses[0].diagnosis); // the adapter got it as context
+  // the adapter got the diagnosis as context, with the candidate's recommendation first
+  assert.equal(context.diagnosis.classification, out.diagnoses[0].diagnosis.classification);
+  assert.deepEqual(context.diagnosis.recommendations[0], out.diagnoses[0].diagnosis.recommendations[0]);
 });
 
 test('later rounds run only the matchups the diagnosis still needs, on the scan seeds, as phase diagnose', async () => {
@@ -267,4 +273,132 @@ test('later rounds run only the matchups the diagnosis still needs, on the scan 
   assert.deepEqual(diagnose.seeds, round2[0].seeds);
   assert.ok(events.some((e) => e.phase === 'diagnose' && e.round === 2));
   assert.equal(out.diagnoses.length, 2);
+});
+
+// --- two candidates per round: the first two recommendations, siblings of one parent ---
+const statData = (base) => ({ ...heroData(base), characters: ['bari', 'daewi', 'sepia'].map((id, i) => ({ id,
+  moveIds: ['a', 'b'], health: 500 + 50 * i, speed: 100 - 15 * i })) });
+const ROSTER3 = ['bari vs bari', 'bari vs daewi', 'bari vs sepia', 'daewi vs daewi', 'daewi vs sepia',
+  'sepia vs sepia'];
+const daewi = (data) => data.characters.find((c) => c.id === 'daewi');
+/** Asks for exactly what the candidate's first recommendation says (a stat or a power, by sizePct). */
+const followFirst = (store) => ({ async proposeWithOrigin(report, context) {
+  const rec = context.diagnosis.recommendations[0];
+  const data = store.get(report.dataHash);
+  const [, kind, index, field] = rec.path.split('/');
+  const current = kind === 'characters' ? data.characters[Number(index)][field] : data.moves[Number(index)].power;
+  const value = Math.round(current * (100 + (rec.direction === 'up' ? rec.sizePct : -rec.sizePct)) / 100);
+  return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: rec.why,
+    replacements: [{ path: rec.path, value }] } };
+} });
+// daewi is weak: bari vs daewi 90% and daewi vs sepia 10% at speed 85; speed helps by `speedGain` per +10, health by
+// `healthGain` per +50 (from the original 550).
+const weakDaewi = (speedGain, healthGain) => (dim, p, data) => {
+  const d = daewi(data);
+  const help = ((d.speed - 85) / 10) * speedGain + ((d.health - 550) / 50) * healthGain;
+  return { 'bari vs daewi': 0.9 - help, 'daewi vs sepia': 0.1 + help }[dim] ?? 0.5;
+};
+const setup = (model, extra = {}) => {
+  const w = world(model);
+  const data = statData(w.base.data);
+  const store = w.keep(data);
+  return { w, data, store, run: (more) => runAuto(w.input({ fromHash: store.dataHash, data, allMatchups: ROSTER3,
+    adapter: followFirst(w.store), ...extra, ...more })) };
+};
+
+test('two candidates per round: both recorded as siblings of one parent, the accepted one continues', async () => {
+  // Speed (the weak hero's first stat) helps a lot; health, the second candidate, changes nothing.
+  const { w, store, run } = setup(weakDaewi(0.1, 0));
+  const out = await run({ rounds: 1 });
+  assert.equal(out.records.length, 2, JSON.stringify(out.error));
+  const [speed, health] = out.records;
+  assert.equal(speed.parentHash, store.dataHash);
+  assert.equal(health.parentHash, store.dataHash); // siblings: the same parent
+  assert.notEqual(speed.dataHash, health.dataHash);
+  assert.match(speed.changes[0].path, /^\/characters\/1\/speed$/);
+  assert.match(health.changes[0].path, /^\/characters\/1\/health$/);
+  assert.equal(speed.verdict.verdict, 'accepted');
+  assert.equal(health.verdict.verdict, 'rejected');
+  assert.deepEqual([speed.approved, health.approved], [true, false]);
+  assert.match(speed.note, /candidate 1 of 2; auto-approved/);
+  assert.match(health.note, /candidate 2 of 2/);
+  assert.equal(out.headHash, speed.dataHash);
+  const holdouts = w.calls.filter((c) => c.seeds[0] > 1000000);
+  assert.equal(holdouts.length, 2); // each candidate was holdout-tested
+  assert.deepEqual(holdouts[0].seeds, holdouts[1].seeds); // on the round's fresh seeds, matched between candidates
+});
+
+test('when both are accepted the one with the larger summed improvement continues', async () => {
+  const { run } = setup(weakDaewi(0.05, 0.12)); // health helps more than speed here
+  const out = await run({ rounds: 1 });
+  const [speed, health] = out.records;
+  assert.equal(speed.verdict.verdict, 'accepted');
+  assert.equal(health.verdict.verdict, 'accepted');
+  assert.ok(improvement(health.verdict.targets) > improvement(speed.verdict.targets));
+  assert.deepEqual([speed.approved, health.approved], [false, true]);
+  assert.match(speed.note, /accepted, not chosen: the other candidate improved more/);
+  assert.equal(out.headHash, health.dataHash); // not the first one: the better one
+  assert.equal(speed.parentHash, health.parentHash);
+});
+
+test('the next round continues from the chosen candidate, with that record as the parent', async () => {
+  const { run } = setup(weakDaewi(0.03, 0.07)); // still flagged after round 1, so there is a round 2
+  const out = await run({ rounds: 2 });
+  const [, chosen, next] = out.records;
+  assert.ok(next, JSON.stringify(out.stoppedBecause));
+  assert.equal(next.parentHash, chosen.dataHash);
+});
+
+test('neither candidate accepted: both records are kept, nothing is approved, the run stops', async () => {
+  const { store, run } = setup(weakDaewi(0, 0));
+  const out = await run({ rounds: 3 });
+  assert.equal(out.stoppedBecause, 'not_accepted');
+  assert.equal(out.records.length, 2);
+  assert.ok(out.records.every((r) => r.parentHash === store.dataHash && r.approved === false));
+  assert.ok(out.records.every((r) => r.verdict.verdict !== 'accepted'));
+  assert.equal(out.headHash, store.dataHash);
+});
+
+test('with approval required both candidates are recorded unapproved and the run waits', async () => {
+  const { run } = setup(weakDaewi(0.1, 0.1));
+  const out = await run({ rounds: 2, requireApproval: true });
+  assert.equal(out.stoppedBecause, 'awaiting_approval');
+  assert.equal(out.records.length, 2);
+  assert.ok(out.records.every((r) => r.approved === false && r.verdict.verdict === 'accepted'));
+  assert.equal(out.finalCheck, null);
+});
+
+test('a candidate that repeats a version, or fails validation, is skipped and the other one is used', async () => {
+  const same = setup(weakDaewi(0.1, 0));
+  const fixedPatch = { async proposeWithOrigin(report) { // an adapter that ignores the candidate order
+    const speed = same.w.store.get(report.dataHash).characters[1].speed;
+    return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: 'same twice',
+      replacements: [{ path: '/characters/1/speed', value: Math.round(speed * 1.3) }] } };
+  } };
+  const first = await same.run({ rounds: 1, adapter: fixedPatch });
+  assert.equal(first.records.length, 1); // the second candidate was the same version
+  const flaky = setup(weakDaewi(0.1, 0));
+  let calls = 0;
+  const out = await flaky.run({ rounds: 1, adapter: { async proposeWithOrigin(report, ctx) {
+    calls += 1;
+    if (calls === 2) return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: 'bad',
+      replacements: [{ path: '/characters/1/health', value: 99999 }] } };
+    return followFirst(flaky.w.store).proposeWithOrigin(report, ctx);
+  } } });
+  assert.equal(out.records.length, 1);
+  assert.equal(out.records[0].verdict.verdict, 'accepted');
+  assert.equal(out.stoppedBecause !== 'error', true, JSON.stringify(out.error));
+});
+
+test('candidateDiagnoses: the focus hero recommendations, at most two, distinct paths, each first in its turn', () => {
+  const rec = (hero, path) => ({ hero, path, direction: 'up', sizePct: 10, why: '', expected: '', alsoAffects: [] });
+  const diagnosis = { classification: 'overall_weak', focusHero: 'daewi', recommendations: [rec('daewi', '/p/1'),
+    rec('daewi', '/p/1'), rec('daewi', '/p/2'), rec('daewi', '/p/3'), rec('bari', '/p/9')] };
+  const variants = candidateDiagnoses(diagnosis, 'daewi');
+  assert.equal(variants.length, 2);
+  assert.deepEqual(variants.map((v) => v.recommendations[0].path), ['/p/1', '/p/2']);
+  assert.equal(variants[1].recommendations.length, 5); // the full list is still there, only reordered
+  assert.deepEqual(candidateDiagnoses(null, null), [null]); // no diagnosis: one plain candidate
+  assert.equal(improvement([{ before: { rate: 0.9 }, after: { rate: 0.7 } }, { before: { rate: 0.2 },
+    after: { rate: 0.3 } }]).toFixed(2), '0.30');
 });

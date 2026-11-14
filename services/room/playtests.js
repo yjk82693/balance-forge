@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { runBatch, pairedJobs, rosterJobs } from '../runner/index.js';
-import { botPolicyVersion } from '../runner/match.js';
+import { botPolicyVersion, games } from '../runner/match.js';
 import { hash, validateSchema } from '../../packages/contracts/index.js';
 import { array, integer, object, text } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
@@ -172,6 +172,7 @@ export async function fullPlaytest(server, body) {
   const result = await pipeline.runFull({
     baselineResults: baseline.results,
     baseData: data,
+    rootData: structuredClone(games[body.gameId].data), // hero stats stay within 40% of the original data
     adapter,
     holdoutSeeds,
     hashData: hash,

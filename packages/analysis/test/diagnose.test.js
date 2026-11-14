@@ -102,9 +102,9 @@ test('there is never a global lever: scaling every hero is not a way to change o
   const d = diagnose({ 'bari vs daewi': 0.99, 'bari vs nightcrow': 0.9, 'bari vs real_armor': 0.9, 'bari vs sepia': 0.9,
     'daewi vs nightcrow': FAIR, 'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR }, 'bari vs daewi');
   assert.ok(d.recommendations.length > 0);
-  assert.ok(d.recommendations.every((r) => r.path.startsWith('/moves/') && r.scope !== 'global'));
+  assert.ok(d.recommendations.every((r) => /^\/(moves|characters)\//.test(r.path) && r.scope !== 'global'));
   assert.ok(d.recommendations.every((r) => r.hero === 'bari' || r.hero === 'daewi'));
-  assert.ok(d.recommendations.filter((r) => r.hero === 'bari').length <= 2); // one or two per hero
+  assert.ok(d.recommendations.filter((r) => r.hero === 'bari').length <= 3); // at most three per hero
 });
 
 test('a bigger gap gives a bigger suggested change, in steps of 5 within 5..30', () => {
@@ -222,4 +222,68 @@ test('the unique non-attack move is a lever before any shared attack', () => {
   assert.match(sepia[0].why, /its own move, no other hero has it/);
   assert.equal(sepia[1].path, pathOf(data, 'projectile')); // the most-used shared attack comes next
   assert.deepEqual(sepia[1].alsoAffects, ['daewi', 'real_armor']);
+});
+
+// --- hero stats (contract v0.1.2): health and speed are hero-only levers ---
+const STATS = structuredClone(SHARED);
+STATS.characters.forEach((c, i) => Object.assign(c, { health: 500 + i * 50, speed: 100 + i * 10 }));
+const statPaths = (d, hero) => d.recommendations.filter((r) => r.hero === hero).map((r) => r.path);
+const statIndex = (hero) => STATS.characters.findIndex((c) => c.id === hero);
+
+test('a weak hero: own attack, then speed, then health; a strong hero: own attack, health, speed', () => {
+  const weak = sharedDiagnosis({ 'bari vs daewi': 0.99, 'bari vs real_armor': FAIR, 'bari vs sepia': FAIR,
+    'daewi vs real_armor': 0.15, 'daewi vs sepia': 0.2 }, 'bari vs daewi', { meleeUses: 5, shotUses: 70 }, STATS);
+  const i = statIndex('daewi');
+  assert.deepEqual(statPaths(weak, 'daewi'), [pathOf(STATS, 'heavy_melee'), `/characters/${i}/speed`,
+    `/characters/${i}/health`]);
+  assert.ok(weak.recommendations.filter((r) => r.hero === 'daewi').every((r) => r.direction === 'up'));
+  const strong = sharedDiagnosis({ 'bari vs daewi': 0.99, 'bari vs real_armor': 0.85, 'bari vs sepia': 0.9,
+    'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR }, 'bari vs daewi', { meleeUses: 5, shotUses: 70 }, STATS);
+  const b = statIndex('bari');
+  assert.deepEqual(statPaths(strong, 'bari'), [pathOf(STATS, 'spirit_arrow'), `/characters/${b}/health`,
+    `/characters/${b}/speed`]);
+  assert.ok(strong.recommendations.filter((r) => r.hero === 'bari').every((r) => r.direction === 'down'));
+});
+
+test('stat levers are hero-only: alsoAffects is empty, and they rank above any shared move', () => {
+  const d = sharedDiagnosis({ 'real_armor vs sepia': 0.1, 'bari vs sepia': 0.12, 'daewi vs sepia': 0.15,
+    'bari vs real_armor': FAIR, 'bari vs daewi': FAIR, 'daewi vs real_armor': FAIR }, 'real_armor vs sepia',
+  { meleeUses: 20, shotUses: 50 }, STATS);
+  const s = statIndex('sepia');
+  // sepia owns only shared moves: health and speed come first, then at most one shared attack (max three per hero)
+  const sepia = d.recommendations.filter((r) => r.hero === 'sepia');
+  assert.deepEqual(sepia.map((r) => r.path).slice(0, 2), [`/characters/${s}/health`, `/characters/${s}/speed`]);
+  assert.deepEqual(sepia.slice(0, 2).map((r) => r.alsoAffects), [[], []]);
+  assert.equal(sepia.length, 3);
+  assert.deepEqual(sepia[2].alsoAffects, ['daewi', 'real_armor']);
+  assert.match(sepia[0].why, /a stat that belongs to sepia alone/);
+});
+
+test('a stat with no room left is not offered, and the size is capped by the room that is left', () => {
+  const root = STATS;
+  const worn = structuredClone(STATS);
+  const d = statIndex('daewi');
+  worn.characters[d].speed = Math.floor(root.characters[d].speed * 1.4); // already at +40%: cannot go up
+  worn.characters[d].health = Math.floor(root.characters[d].health * 1.36); // only a little room left
+  const out = buildDiagnosis(world({ 'bari vs daewi': 0.99, 'bari vs real_armor': FAIR, 'bari vs sepia': FAIR,
+    'daewi vs real_armor': 0.15, 'daewi vs sepia': 0.2 }, { meleeUses: 5, shotUses: 70 }),
+  { matchup: 'bari vs daewi', data: worn, rootData: root });
+  const daewi = out.value.recommendations.filter((r) => r.hero === 'daewi');
+  assert.ok(!daewi.some((r) => r.path === `/characters/${d}/speed`), 'no room left to raise speed');
+  const health = daewi.find((r) => r.path === `/characters/${d}/health`);
+  assert.equal(health, undefined); // under 5% of room is not worth a recommendation
+  const roomy = structuredClone(STATS);
+  roomy.characters[d].health = Math.floor(root.characters[d].health * 1.2);
+  const room = buildDiagnosis(world({ 'bari vs daewi': 0.99, 'bari vs real_armor': FAIR, 'bari vs sepia': FAIR,
+    'daewi vs real_armor': 0.15, 'daewi vs sepia': 0.2 }, { meleeUses: 5, shotUses: 70 }),
+  { matchup: 'bari vs daewi', data: roomy, rootData: root }).value.recommendations
+    .find((r) => r.path === `/characters/${d}/health`);
+  assert.ok(room.sizePct <= 15, `capped by the room that is left: ${room.sizePct}`); // 1.4/1.2 - 1 = 16%
+  assert.equal(room.sizePct % 5, 0);
+});
+
+test('without health and speed in the data there are no stat levers (older data keeps working)', () => {
+  const d = sharedDiagnosis({ 'bari vs daewi': 0.99, 'bari vs real_armor': FAIR, 'bari vs sepia': FAIR,
+    'daewi vs real_armor': 0.15, 'daewi vs sepia': 0.2 }, 'bari vs daewi', { meleeUses: 5, shotUses: 70 });
+  assert.ok(d.recommendations.every((r) => r.path.startsWith('/moves/')));
 });

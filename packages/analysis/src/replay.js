@@ -12,17 +12,21 @@ import { validatePatch } from './validator.js';
 import { fail, safely } from './errors.js';
 
 /** Pure: returns patched GameData or throws AnalysisError (wrap with safely). */
-export function applyPatchToData(data, proposal, { hashData } = {}) {
-  const check = validatePatch(proposal);
+export function applyPatchToData(data, proposal, { hashData, rootData = data } = {}) {
+  const check = validatePatch(proposal, { rootData });
   if (!check.ok) fail('INVALID_PATCH', check.errors.join('; '), check.errors);
   if (hashData && proposal.baseDataHash !== hashData(data)) {
     fail('PATCH_BASE_MISMATCH', 'patch baseDataHash does not match the data it is applied to');
   }
   const out = structuredClone(data);
   for (const { path, value } of proposal.replacements) {
+    const stat = /^\/characters\/(\d+)\/(health|speed)$/.exec(path);
     if (path === '/tuning/damageScalePermille') {
       if (!out.tuning) fail('PATCH_PATH_MISSING', 'data has no tuning section');
       out.tuning.damageScalePermille = value;
+    } else if (stat) {
+      if (!out.characters?.[Number(stat[1])]) fail('PATCH_PATH_MISSING', `data has no character ${stat[1]}`);
+      out.characters[Number(stat[1])][stat[2]] = value;
     } else {
       const index = Number(path.split('/')[2]);
       if (!out.moves?.[index]) fail('PATCH_PATH_MISSING', `data has no move ${index}`);

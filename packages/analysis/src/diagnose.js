@@ -17,7 +17,10 @@ import { round6, wilson95 } from './wilson.js';
 
 export const CLASSIFICATIONS = ['overall_strong', 'overall_weak', 'counter_specific'];
 const ATTACKS = ['melee', 'projectile'];
-const MAX_LEVERS_PER_HERO = 2;
+const MAX_LEVERS_PER_HERO = 3;
+const STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] }; // contract v0.1.2, also within 40% of the root value
+// A weak hero is slow or fragile: speed first (it closes the gap), then health. A strong hero: health first.
+const STAT_ORDER = { loser: ['speed', 'health'], winner: ['health', 'speed'] };
 const STEP_PCT = 5;
 const MIN_SIZE_PCT = 5;
 const MAX_SIZE_PCT = 30;
@@ -86,12 +89,25 @@ function heroEntry(hero, byOpponent, role) {
 }
 
 /**
- * Levers of one hero, best first. Moves are shared between heroes (melee, projectile and guard each belong to several),
- * and changing a shared move changes every owner, so the hero's own moves come first: unique attacks (most used first),
- * then other unique moves, then shared attacks (most used first), each marked with the other heroes it would also
- * change.
+ * How far a hero stat can still move in `direction` (percent of its current value): the nearer of the absolute bound
+ * and the 40% band around the root value. Zero when it cannot move that way any more.
  */
-function leversFor(data, hero, uses) {
+function statRoomPct(current, rootValue, stat, direction) {
+  const [low, high] = STAT_BOUNDS[stat];
+  const limit = direction === 'down' ? Math.max(low, Math.ceil((rootValue * 6) / 10))
+    : Math.min(high, Math.floor((rootValue * 14) / 10));
+  const room = direction === 'down' ? current - limit : limit - current;
+  return room > 0 ? Math.floor((room * 100) / current) : 0;
+}
+
+/**
+ * Levers of one hero, best first. Moves are shared between heroes (melee, projectile and guard each belong to several),
+ * and changing a shared move changes every owner, so hero-only levers come first: the hero's unique attacks (most
+ * used first), then its health and speed (contract v0.1.2; a weak hero: speed, then health; a strong one: health, then
+ * speed), then other unique moves, and only then shared attacks (most used first), each marked with the other heroes it
+ * would also change. A stat that has no room left in the wanted direction is not offered.
+ */
+function leversFor(data, hero, uses, role, rootData) {
   const ownIds = data.characters.find((c) => c.id === hero)?.moveIds ?? [];
   const ownersOf = (move) => data.characters.filter((c) => c.moveIds.includes(move.id)).map((c) => c.id).sort();
   const owned = data.moves.filter((m) => ownIds.includes(m.id)).map((move) => ({ move, owners: ownersOf(move) }));
@@ -101,12 +117,22 @@ function leversFor(data, hero, uses) {
   const byUse = (x, y) => used(y) - used(x) || (x.move.id < y.move.id ? -1 : 1);
   const byId = (x, y) => (x.move.id < y.move.id ? -1 : 1);
   const total = ATTACKS.reduce((n, action) => n + (uses[action] ?? 0), 0);
-  return [...owned.filter((o) => attack(o) && unique(o)).sort(byUse),
-    ...owned.filter((o) => !attack(o) && unique(o)).sort(byId),
-    ...owned.filter((o) => attack(o) && !unique(o)).sort(byUse)]
-    .map((o) => ({ path: `/moves/${data.moves.indexOf(o.move)}/power`, move: o.move.id, action: o.move.archetype,
-      attack: attack(o), share: attack(o) && total ? Math.round((used(o) / total) * 100) : null,
-      alsoAffects: o.owners.filter((h) => h !== hero) }));
+  const moveLever = (o) => ({ path: `/moves/${data.moves.indexOf(o.move)}/power`, move: o.move.id,
+    action: o.move.archetype, attack: attack(o), share: attack(o) && total ? Math.round((used(o) / total) * 100) : null,
+    alsoAffects: o.owners.filter((h) => h !== hero) });
+  const index = data.characters.findIndex((c) => c.id === hero);
+  const direction = role === 'winner' ? 'down' : 'up';
+  const statLevers = STAT_ORDER[role].map((stat) => {
+    const current = data.characters[index]?.[stat];
+    const rootValue = rootData.characters?.[index]?.[stat];
+    if (!Number.isInteger(current) || !Number.isInteger(rootValue)) return null;
+    const roomPct = statRoomPct(current, rootValue, stat, direction);
+    return roomPct < MIN_SIZE_PCT ? null : { path: `/characters/${index}/${stat}`, stat, current, roomPct,
+      attack: false, share: null, alsoAffects: [] };
+  }).filter(Boolean);
+  return [...owned.filter((o) => attack(o) && unique(o)).sort(byUse).map(moveLever), ...statLevers,
+    ...owned.filter((o) => !attack(o) && unique(o)).sort(byId).map(moveLever),
+    ...owned.filter((o) => attack(o) && !unique(o)).sort(byUse).map(moveLever)];
 }
 
 function recommendation({ entry, role, lever, sizePct, scope, outside, total, why }) {
@@ -114,30 +140,39 @@ function recommendation({ entry, role, lever, sizePct, scope, outside, total, wh
     why, expected: `brings ${outside} of ${total} matchups toward the band`, scope, alsoAffects: lever.alsoAffects };
 }
 
-function leverRecommendations(entry, role, data, uses, sizePct, scope, outside, total) {
+function leverRecommendations(entry, role, ctx, uses, sizePct, scope, outside, total) {
   const verb = role === 'winner' ? 'lower' : 'raise';
   const where = scope === 'interaction' ? 'in this matchup' : 'across its matchups';
-  return leversFor(data, entry.hero, uses).slice(0, MAX_LEVERS_PER_HERO).map((lever) => {
+  const who = `${entry.hero} is ${role === 'winner' ? 'too strong' : 'too weak'} (${entry.strength.marginPts} points `
+    + 'from 50% overall)';
+  return leversFor(ctx.data, entry.hero, uses, role, ctx.rootData).slice(0, MAX_LEVERS_PER_HERO).map((lever) => {
+    if (lever.stat) {
+      const size = Math.min(sizePct, Math.floor(lever.roomPct / STEP_PCT) * STEP_PCT);
+      return recommendation({ entry, role, lever, sizePct: size, scope, outside, total,
+        why: `${who}: ${verb} ${lever.stat}, a stat that belongs to ${entry.hero} alone (now ${lever.current}; it may `
+          + `still move about ${lever.roomPct}% this way within the 40% limit from the original value).` });
+    }
     const share = lever.share === null ? '' : ` (${lever.share}% of its attack uses ${where})`;
     const kind = lever.attack ? 'attack' : 'move';
     const ownership = lever.alsoAffects.length === 0 ? `its own ${kind}, no other hero has it`
       : `a ${kind} shared with ${lever.alsoAffects.join(', ')}: this also changes them, so it ranks below the `
         + 'hero\'s own moves';
     return recommendation({ entry, role, lever, sizePct, scope, outside, total,
-      why: `${entry.hero} is ${role === 'winner' ? 'too strong' : 'too weak'} (${entry.strength.marginPts} points `
-        + `from 50% overall): ${verb} ${lever.move}, ${ownership}${share}. Damage per move is not recorded yet, so `
-        + 'use counts stand in for the highest-damage move.' });
+      why: `${who}: ${verb} ${lever.move}, ${ownership}${share}. Damage per move is not recorded yet, so use counts `
+        + 'stand in for the highest-damage move.' });
   });
 }
 
 /**
  * results: MatchResults of the focus matchup and of both focus heroes against the other heroes (one dataHash).
- * options: { matchup: 'a vs b', data: GameData (moves, characters, tuning) }.
+ * options: { matchup: 'a vs b', data: GameData (moves, characters, tuning), rootData: the original game data that hero
+ * stats stay within 40% of (default: `data`) }.
  * @returns {{ok: true, value: {focusHero, matchup, heroes, classification, recommendations}} | error result}
  */
 export const buildDiagnosis = safely((results, options = {}) => {
   assertMatchResults(results);
   const { matchup, data } = options;
+  const ctx = { data, rootData: options.rootData ?? data };
   const [a, b, ...rest] = String(matchup ?? '').split(' vs ');
   if (!a || !b || a === b || rest.length) fail('INVALID_INPUT', 'matchup must be "a vs b" with two different heroes');
   if (!Array.isArray(data?.moves) || !Array.isArray(data?.characters)) {
@@ -177,12 +212,12 @@ export const buildDiagnosis = safely((results, options = {}) => {
     const total = entry.opponents.length;
     const out = entry.strength.opponentsOutsideBand;
     const size = sizeFor(entry.strength.marginPts, 0.8);
-    return leverRecommendations(entry, role, data, usesOf(entry.hero), size, 'overall', out, total);
+    return leverRecommendations(entry, role, ctx, usesOf(entry.hero), size, 'overall', out, total);
   };
   const interaction = (entry, role) => {
     const size = sizeFor(pts(focus.wins / focus.games), 0.5);
     const partner = entry === W ? loser : winner;
-    return leverRecommendations(entry, role, data, usesOf(entry.hero, partner), size, 'interaction', 1, 1);
+    return leverRecommendations(entry, role, ctx, usesOf(entry.hero, partner), size, 'interaction', 1, 1);
   };
   const recommendations = classification === 'overall_strong' ? [...overall(W, 'winner'), ...overall(L, 'loser')]
     : classification === 'overall_weak' ? [...overall(L, 'loser'), ...overall(W, 'winner')]
