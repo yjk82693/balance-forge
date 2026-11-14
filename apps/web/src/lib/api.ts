@@ -60,6 +60,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly kind: "network" | "server" | "shape",
+    /** the server's error code, when it sent one (e.g. RATE_LIMITED) */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -187,9 +189,13 @@ async function readJson<T>(res: Response, what: string): Promise<T> {
   }
 }
 
+/** Turns an error reply into an ApiError that carries the server's code and message, so the dashboard can show both. */
 async function failFrom(res: Response): Promise<never> {
-  const body = (await res.json().catch(() => ({}))) as { code?: string };
-  throw new ApiError(MESSAGES[body.code ?? ""] ?? `The server answered ${res.status}.`, "server");
+  const body = (await res.json().catch(() => null)) as { code?: unknown; message?: unknown } | null;
+  const code = typeof body?.code === "string" ? body.code : undefined;
+  const said = typeof body?.message === "string" ? body.message : undefined;
+  const text = said ?? MESSAGES[code ?? ""] ?? `The server answered ${res.status}.`;
+  throw new ApiError(code ? `${code}: ${text}` : text, "server", code);
 }
 
 /** POST /v1/playtest/run, then GET the returned resultsPath and build the report from the match results. */

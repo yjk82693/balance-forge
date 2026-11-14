@@ -30,13 +30,15 @@ interface Props {
   busy: boolean;
   live: LiveState;
   error: string | null;
+  /** seconds since the run started */
+  elapsed?: number;
   notice: string | null;
   showPatched: boolean;
   onRun: () => void;
 }
 
 /** Right-hand panel: live counter while bots play, then the report, patch comparison and verdict. */
-export function ReportPanel({ run, busy, live, error, notice, showPatched, onRun }: Props) {
+export function ReportPanel({ run, busy, live, error, notice, elapsed = 0, showPatched, onRun }: Props) {
   const report = run ? (showPatched && run.patched ? run.patched : run.baseline) : null;
   return (
     <section className="panel report" aria-labelledby="report-title" aria-busy={busy}>
@@ -57,14 +59,14 @@ export function ReportPanel({ run, busy, live, error, notice, showPatched, onRun
       )}
       {!busy && error && (
         <div className="err" role="alert">
-          <p className="small">{error} Check that the server is running, then try again.</p>
+          <p className="small">{error} Try again when you're ready.</p>
           <button className="btn secondary" onClick={onRun}>
             Try again
           </button>
         </div>
       )}
 
-      {busy && <LiveReport live={live} />}
+      {busy && <LiveReport live={live} elapsed={elapsed} />}
 
       {!busy && !run && !error && (
         <div className="empty">
@@ -90,11 +92,11 @@ function HumanGroup({ rows }: { rows: ReportRow[] }) {
   );
 }
 
-function LiveReport({ live }: { live: LiveState }) {
+function LiveReport({ live, elapsed }: { live: LiveState; elapsed: number }) {
   return (
     <>
       <h1 className="h2">Bots are playing…</h1>
-      {live.phase && <p className="eyebrow">{phaseName(live.phase)}</p>}
+      <p className="eyebrow">{live.phase ? phaseName(live.phase) : "Waiting for the first results"} · {elapsed} s</p>
       <p className="kpi">
         {n(live.done)} / {live.total ? n(live.total) : "…"} matches
       </p>

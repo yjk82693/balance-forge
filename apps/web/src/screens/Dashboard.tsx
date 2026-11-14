@@ -43,7 +43,7 @@ export function Dashboard() {
   useManifest();
   const mock = isMockMode();
   const version = useDemoVersion();
-  const { run, busy, live, error, notice, start } = useRunner();
+  const { run, busy, live, error, notice, elapsed, start } = useRunner();
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [selected, setSelected] = useState(SAMPLE_HUMAN_ID);
   const played = useMemo(loadJustPlayed, []);
@@ -117,7 +117,7 @@ export function Dashboard() {
               active={showPatched ? "patched" : "broken"}
               source={replaySource}
             />
-            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} />
+            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} elapsed={elapsed} />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
                 <span id="matches-title" className="eyebrow">
@@ -140,6 +140,7 @@ export function Dashboard() {
               live={live}
               error={error}
               notice={notice}
+              elapsed={elapsed}
               showPatched={showPatched}
               onRun={start}
             />

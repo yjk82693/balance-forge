@@ -5,6 +5,8 @@ interface Props {
   busy: boolean;
   done: number;
   total: number;
+  /** seconds since the run started; keeps the panel moving while the server is quiet */
+  elapsed?: number;
 }
 
 const n = (x: number) => x.toLocaleString("en-US");
@@ -13,13 +15,14 @@ const n = (x: number) => x.toLocaleString("en-US");
 export const phaseName = (phase?: "baseline" | "holdout") =>
   phase === "holdout" ? "Holdout on the patched data" : phase === "baseline" ? "Baseline" : "";
 
-function statusLine(busy: boolean, done: number, total: number): string {
-  if (busy) return total ? `${n(done)} of ${n(total)} matches` : "Getting the bots ready…";
+function statusLine(busy: boolean, done: number, total: number, elapsed = 0): string {
+  const clock = elapsed > 0 ? ` · ${elapsed} s` : "";
+  if (busy) return total ? `${n(done)} of ${n(total)} matches${clock}` : `Getting the bots ready…${clock}`;
   return done ? `${n(done)} matches played` : "Press Run to watch the bots play.";
 }
 
 /** Progress bar plus the mini-arena texture grid. The big counter lives in the report panel. */
-export function LivePanel({ busy, done, total, phase }: Props) {
+export function LivePanel({ busy, done, total, phase, elapsed }: Props) {
   const pctDone = total ? Math.round((done / total) * 100) : 0;
   return (
     <section className="panel live" aria-labelledby="live-title">
@@ -30,7 +33,7 @@ export function LivePanel({ busy, done, total, phase }: Props) {
           </span>
         </div>
         <div
-          className="progress"
+          className={`progress${busy && !total ? " waiting" : ""}`}
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={total || 100}
@@ -40,7 +43,7 @@ export function LivePanel({ busy, done, total, phase }: Props) {
           <span style={{ width: `${pctDone}%` }} />
         </div>
         <p className="small live-line">{phaseName(phase) && busy ? `${phaseName(phase)} · ` : ""}
-          {statusLine(busy, done, total)}</p>
+          {statusLine(busy, done, total, elapsed)}</p>
         <p className="caption">Each bar settles as its games pile up.</p>
       </div>
       <MiniArenas active={busy} />

@@ -1773,6 +1773,17 @@ p {
   background: linear-gradient(90deg, var(--grad-1), var(--grad-2) 62%, var(--grad-3));
   transition: width var(--dur-data) var(--ease-out);
 }
+.progress.waiting > span {
+  width: 30% !important;
+  animation: progress-wait 1.4s var(--ease-out) infinite alternate;
+}
+@keyframes progress-wait {
+  from { transform: translateX(0); }
+  to { transform: translateX(233%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress.waiting > span { animation: none; width: 100% !important; opacity: 0.4; }
+}
 .live-line {
   margin: 0;
 }

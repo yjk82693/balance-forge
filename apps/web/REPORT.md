@@ -253,3 +253,13 @@ Nothing to change. `npm test` 153 pass, 6 skipped (other folders' opt-in tests),
 ## Polish 04:14
 
 Nothing to change since Polish 03:14. Tests 153 pass, 6 skipped, 0 fail; build passes; no line over 120 characters. Blocked items unchanged.
+
+## Round 7
+
+**1. Origin labels and error states.** `fake` already showed as "offline sample" (never "manual") and `grok` is a known origin; unknown origins still fall back to "manual". Failed requests now keep the server's error `code` and `message` (`ApiError.code`; text like "RATE_LIMITED: Too many requests. Wait before retrying."). The dashboard shows that text in the notice (when the stored run is shown instead) and in the error box. The old "Check that the server is running" hint now appears only when the server could not be reached.
+
+**2. Long roster run.** `fetch` has no timeout of its own and the app sets none, so `POST /v1/playtest/full` can take a minute or more. While it runs, the live panel and the report header show the phase and a seconds counter that ticks every second, even between progress messages; before the first message the bar sweeps back and forth (a still, dimmed bar with reduced motion). The bars still follow `playtest.progress` from `/ws`.
+
+**Checks.** `npm run build -w apps/web` passes; `npm test` 173 pass, 0 fail, 6 skipped. In the built app: mock run shows "Baseline · 550 of 1,000 matches · 2 s" and the counter in the report; against a local stub that answered 429 `RATE_LIMITED`, the dashboard showed "RATE_LIMITED: Too many requests. Wait before retrying. Showing the stored run instead." Phone width (390x844, in a frame) renders the live panel with the timer without overflow. Desktop was checked in a 1512x825 window, not 1920x1080.
+
+**Not verified:** the minute-long wait against the real `/v1/playtest/full` (only the mock and the stub), and the Bari vs Real Armor result, which is the engine's side. No recorded or benchmark file was regenerated.
