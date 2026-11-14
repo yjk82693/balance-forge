@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localServer, http } from './test-helpers.js';
+import { localServer } from './test-helpers.js';
 import { validate } from '../../packages/contracts/index.js';
 import { replayOnData } from '../../packages/sim/index.js';
 import * as arena from '../../packages/games/action/index.js';

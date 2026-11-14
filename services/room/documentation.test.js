@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { payloadSchemas, parseEnvelope, validatePayload } from './protocol.js';
 import { validate, validateGamePayload, hash } from '../../packages/contracts/index.js';
 import { collectExamples } from './generate-examples.js';
@@ -41,6 +41,9 @@ test('reference covers every HTTP route, retained versions and static HEAD with 
   assert.equal(examples.http.createRoom.response.status, 201);
   assert.equal(examples.http.static.response.status, 200);
   assert.equal(examples.http.staticHead.response.body, '');
+  assert.equal(examples.http.full.response.status, existsSync(new URL('../../packages/analysis/pipeline/full.js',
+    import.meta.url)) ? 200 : 503);
+  assert.equal(examples.http.views.response.status, 200);
   const results = examples.http.results.response.body;
   results.forEach(result => validate('MatchResult', result));
   assert.equal(results.length, examples.http.playtest.response.body.matchCount);

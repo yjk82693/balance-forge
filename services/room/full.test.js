@@ -10,7 +10,11 @@ test('full playtest awaits the real analysis module rather than fabricating dash
   const {
     server
   } = await localServer(t);
-  if (fullAvailable) return;
+  if (fullAvailable) {
+    const pipeline = await import('../../packages/analysis/pipeline/full.js');
+    assert.equal(typeof pipeline.runFull, 'function');
+    return;
+  }
   const response = await http(server, '/v1/playtest/full', {
     method: 'POST',
     body: {

@@ -322,3 +322,36 @@ The existing socket-gated E2E scenario now also calls /v1/playtest/full without 
 patch, holdout or replay assertions. It checks the shared reports/changes/validation, human count, both phase
 streams, first-seat counts and disjoint phase seeds, plus original/candidate replay-view responses.
 Tests force analysisEnv={} so a developer's real Gemini key can never cause network calls in test runs.
+
+## Full analysis bridge verification
+
+Read the new full.js from the analysis worktree and adapted the bridge to its actual runFull callback API.
+That file is still absent from main and this worktree. As requested, production returns 503 and its real-module
+integration test remains TODO until the module lands; no synthetic report is returned.
+An additional offline check used a temporary Node loader solely to import the real read-only analysis-branch
+module, without copying it or adding a production fallback. The production route completed 60 baseline and
+60 holdout matches across all 15 matchups, with separate phase progress, disjoint seeds, origin=fake,
+humanMatches=1 and verdict=inconclusive in 3,185 ms. Candidate data stayed retained without promoting over base.
+This verifies the bridge against the actual interface; it does not claim the missing main-module integration
+or any TCP/WebSocket execution has passed. Temporary validation files stayed outside the repository.
+
+## Round 6 verification
+
+Final `node --test`: 164 passed, 0 failed, 6 unchanged socket-gated skips, 1 explicitly requested pending full.js
+integration test; 49,881.446333 ms. The 100-seed determinism matrix stayed green. Focused solo/card, schema,
+reconnect, pin/roster, progress/counts, replay/privacy/limits and documentation tests pass. Declarations type-check.
+The API reference/captures and E2E scenario include the new full/view routes and metadata. No tests were weakened;
+only the new full-module integration is pending under the user's explicit instruction.
+Remaining dependency: merge packages/analysis/pipeline/full.js (and its analysis changes) into this worktree,
+then regenerate examples and run the pending test without its temporary dependency gate. Real socket verification
+still needs listener permission and RUN_SOCKET_TESTS=1; no networking was attempted this round.
+
+## Polish 00:51
+
+The earlier polish baseline was clean (153 passed, 0 failed, 6 existing socket skips); Round 6 then authorized
+these feature changes. Removed unused imports, split worker/HTTP coordination into named helpers, enforced
+120 columns, and preserved the stable bot API. No web files/build or render-FPS claims (web is not owned).
+Measured the final runner: 300 valid matches, 15 matchups, 2 workers, 100 first-seat wins, 0 invalid;
+5,900.796416 ms, 50.840595 matches/s including startup, recorded 2026-11-14T05:40:15.940Z. Actual artifacts remain
+services/runner/recorded-roster-match-results.json and recorded-roster-metrics.json.
+No dependencies, external calls, pushes or commits. Files are left for the external commit process.
