@@ -14,7 +14,8 @@ export function singleGroup(results) {
   const groups = groupByDataHash(results.filter((r) => r.valid));
   if (groups.size === 0) fail('NO_RESULTS', 'no valid matches in this phase');
   if (groups.size !== 1) {
-    fail('MIXED_DATAHASH', `expected one dataHash per phase, found ${groups.size}: ${[...groups.keys()].map((h) => h.slice(0, 8)).join(', ')}`);
+    const short = [...groups.keys()].map((h) => h.slice(0, 8)).join(', ');
+    fail('MIXED_DATAHASH', `expected one dataHash per phase, found ${groups.size}: ${short}`);
   }
   return [...groups.values()][0];
 }
@@ -49,7 +50,8 @@ export async function proposeStep(report, adapter, options = {}) {
     return fail('ADAPTER_FAILED', `the patch adapter failed: ${String(e?.message ?? e).slice(0, 120)}`);
   }
   const check = validatePatch(got.proposal, { baseDataHash: report.dataHash, ...options });
-  return { proposal: got.proposal, origin: got.origin, fallbackReason: got.fallbackReason, ok: check.ok, errors: check.errors };
+  return { proposal: got.proposal, origin: got.origin, fallbackReason: got.fallbackReason, ok: check.ok,
+    errors: check.errors };
 }
 
 /** After the caller applied the patch and ran holdout seeds. */

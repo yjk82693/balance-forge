@@ -26,7 +26,8 @@ export function judgePatch(before, after, options = {}) {
   const reasons = [];
   const out = (verdict, targets = []) => ({ verdict, reasons, targets });
 
-  if (before.gameId !== after.gameId || before.simVersion !== after.simVersion || before.botPolicyVersion !== after.botPolicyVersion) {
+  if (before.gameId !== after.gameId || before.simVersion !== after.simVersion ||
+    before.botPolicyVersion !== after.botPolicyVersion) {
     reasons.push('reports are not comparable (gameId, simVersion or botPolicyVersion differ)');
     return out('inconclusive');
   }

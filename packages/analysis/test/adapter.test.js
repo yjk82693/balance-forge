@@ -13,6 +13,7 @@ test('fake adapter returns the fixture example, pinned to the report hash', asyn
 
 test('invalid proposal from an adapter is rejected before use', async () => {
   const bad = { ...fixture('patch_proposal.json'), replacements: [{ path: '/gameRules/x', value: 1 }] };
-  await assert.rejects(proposeValidated(new FakePatchAdapter(bad), fixture('report_baseline.json'), validatePatch), /PATCH_REJECTED/);
+  const run = proposeValidated(new FakePatchAdapter(bad), fixture('report_baseline.json'), validatePatch);
+  await assert.rejects(run, /PATCH_REJECTED/);
 });
 

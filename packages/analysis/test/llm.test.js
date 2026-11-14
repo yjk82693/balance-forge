@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GeminiPatchAdapter, GrokPatchAdapter, buildPrompt, createAdapter, HUMAN_PREFIX, PATCH_JSON_SCHEMA } from '../src/index.js';
+import { GeminiPatchAdapter, GrokPatchAdapter, buildPrompt, createAdapter, HUMAN_PREFIX,
+  PATCH_JSON_SCHEMA } from '../src/index.js';
 import { fixture } from './helpers.js';
 
 const report = () => fixture('report_baseline.json');
@@ -27,7 +28,8 @@ function fakeFetch(...steps) {
 
 test('prompt carries only aggregate rows and allowlisted paths', () => {
   const r = report();
-  r.rows.push({ dimension: `${HUMAN_PREFIX}bari vs daewi`, wins: 3, games: 5, winRate: 0.6, ci95: [0.2, 0.9], uses: 0, opportunities: 0, outlier: false });
+  r.rows.push({ dimension: `${HUMAN_PREFIX}bari vs daewi`, wins: 3, games: 5, winRate: 0.6, ci95: [0.2, 0.9], uses: 0,
+    opportunities: 0, outlier: false });
   const prompt = buildPrompt(r);
   assert.match(prompt, /bari vs real_armor/);
   assert.match(prompt, /\/moves\/<N>\/power/);
@@ -70,7 +72,8 @@ test('one retry: first call fails, second succeeds', async () => {
 });
 
 test('timeout aborts the request (8 s default, shortened here) then falls back with origin "fallback"', async () => {
-  const hang = (init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+  const hang = (init) => new Promise((_, rej) => init.signal.addEventListener('abort',
+    () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
   const f = fakeFetch(hang);
   const adapter = createAdapter('gemini', { GEMINI_API_KEY: KEY }, { fetch: f, timeoutMs: 20 });
   const out = await adapter.proposeWithOrigin(report());
@@ -84,7 +87,8 @@ test('missing key, bad JSON and invalid proposals fall back without leaking the 
   const noKey = createAdapter('grok', {}, { fetch: fakeFetch(ok({})) });
   assert.equal((await noKey.proposeWithOrigin(report())).origin, 'fallback');
 
-  const badJson = createAdapter('gemini', { GEMINI_API_KEY: KEY }, { fetch: fakeFetch(ok({ candidates: [{ content: { parts: [{ text: 'not json' }] } }] })) });
+  const badJson = createAdapter('gemini', { GEMINI_API_KEY: KEY },
+    { fetch: fakeFetch(ok({ candidates: [{ content: { parts: [{ text: 'not json' }] } }] })) });
   assert.equal((await badJson.proposeWithOrigin(report())).origin, 'fallback');
 
   const evil = { ...proposal(), replacements: [{ path: '/gameRules/x', value: 1 }] };

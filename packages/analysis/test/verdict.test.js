@@ -10,7 +10,8 @@ test('fixtures: 79% -> 54% is accepted', () => {
   const [b, a] = pair();
   const v = judgePatch(b, a);
   assert.equal(v.verdict, 'accepted');
-  assert.deepEqual(v.targets.map((t) => [t.dimension, t.before, t.after, t.improved]), [['bari vs real_armor', 0.79, 0.54, true]]);
+  assert.deepEqual(v.targets.map((t) => [t.dimension, t.before, t.after, t.improved]),
+    [['bari vs real_armor', 0.79, 0.54, true]]);
 });
 
 test('no improvement or overshoot to the other side is rejected', () => {

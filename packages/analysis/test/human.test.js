@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addHumanRows, humanResultsOf, humanRows, botRows, withExtras, judgePatch, analyze, HUMAN_PREFIX } from '../src/index.js';
+import { addHumanRows, humanResultsOf, humanRows, botRows, withExtras, judgePatch, analyze,
+  HUMAN_PREFIX } from '../src/index.js';
 import { fixture, pairedResults } from './helpers.js';
 
 test('extras are validated and optional', () => {
@@ -34,6 +35,7 @@ test('human rows: prefixed, separate, small n suppressed, invalid skipped, bot t
 test('human rows never gate a patch verdict', () => {
   const before = fixture('report_baseline.json');
   const after = fixture('report_patched.json');
-  const extreme = { dimension: `${HUMAN_PREFIX}bari vs real_armor`, wins: 190, games: 200, winRate: 0.95, ci95: [0.9, 0.97], uses: 0, opportunities: 0, outlier: true };
+  const extreme = { dimension: `${HUMAN_PREFIX}bari vs real_armor`, wins: 190, games: 200, winRate: 0.95, ci95: [0.9,
+    0.97], uses: 0, opportunities: 0, outlier: true };
   assert.equal(judgePatch(before, { ...after, rows: [...after.rows, extreme] }).verdict, 'accepted');
 });

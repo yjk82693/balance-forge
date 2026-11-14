@@ -74,15 +74,21 @@ export const pickLopsidedMatch = safely((results, options = {}) => {
     const focalWon = r.outcome.winners.includes(focalOf(r));
     return focalWon === focalDominates;
   });
-  if (candidates.length === 0) fail('NO_DECISIVE_MATCH', `no decisive match won by the dominant side in "${row.dimension}"`);
-  const margin = (r) => damageOf(r, r.outcome.winners[0]) - r.statistics.players.filter((p) => p.playerId !== r.outcome.winners[0]).reduce((n, p) => n + p.damage, 0);
-  candidates.sort((a, b) => margin(b) - margin(a) || a.statistics.durationTicks - b.statistics.durationTicks || a.config.seed - b.config.seed || (a.matchId < b.matchId ? -1 : 1));
+  if (candidates.length === 0) fail('NO_DECISIVE_MATCH',
+    `no decisive match won by the dominant side in "${row.dimension}"`);
+  const margin = (r) => damageOf(r,
+    r.outcome.winners[0]) - r.statistics.players.filter((p) => p.playerId !== r.outcome.winners[0]).reduce((n,
+    p) => n + p.damage, 0);
+  candidates.sort((a, b) => margin(b) - margin(a) || a.statistics.durationTicks - b.statistics.durationTicks ||
+    a.config.seed - b.config.seed || (a.matchId < b.matchId ? -1 : 1));
   const result = candidates[0];
-  return { result, dimension: row.dimension, matchupWinRate: row.winRate, matchupGames: row.games, margin: margin(result) };
+  return { result, dimension: row.dimension, matchupWinRate: row.winRate, matchupGames: row.games,
+    margin: margin(result) };
 });
 
 function checkSim(out, label) {
-  const ok = out && Array.isArray(out.timeline) && out.timeline.length >= 1 && out.outcome && typeof out.finalStateHash === 'string';
+  const ok = out && Array.isArray(out.timeline) && out.timeline.length >= 1 && out.outcome &&
+    typeof out.finalStateHash === 'string';
   if (!ok) fail('SIMULATION_FAILED', `${label}: simulator returned an invalid result`);
   return out;
 }
@@ -102,7 +108,8 @@ const side = (dataHash, sim) => ({
  * side by side, or an error result.
  */
 export const buildBeforeAfter = safely(({ baselineResult, selection, baseData, proposal, simulate, hashData }) => {
-  if (typeof simulate !== 'function' || typeof hashData !== 'function') fail('INVALID_INPUT', 'simulate and hashData are required');
+  if (typeof simulate !== 'function' || typeof hashData !== 'function') fail('INVALID_INPUT',
+    'simulate and hashData are required');
   if (!baselineResult?.config) fail('INVALID_INPUT', 'baselineResult is missing');
   if (proposal?.baseDataHash !== baselineResult.config.dataHash) {
     fail('PATCH_BASE_MISMATCH', 'the patch was made for a different dataHash than this match used');

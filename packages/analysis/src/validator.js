@@ -55,7 +55,8 @@ function validatePatchUnsafe(proposal, options) {
       if (seen.has(r.path)) errors.push(`${at}: duplicate path ${r.path}`);
       seen.add(r.path);
       if (!Number.isInteger(r.value)) return errors.push(`${at}: value must be an integer`);
-      if (r.value < bounds[0] || r.value > bounds[1]) errors.push(`${at}: value out of range ${bounds[0]}..${bounds[1]}`);
+      if (r.value < bounds[0] ||
+        r.value > bounds[1]) errors.push(`${at}: value out of range ${bounds[0]}..${bounds[1]}`);
       const m = MOVE_POWER_RE.exec(r.path);
       if (m && options.moveCount !== undefined && Number(m[1]) >= options.moveCount) {
         errors.push(`${at}: move index out of range`);

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyPatchToData, buildBeforeAfter, pickLopsidedMatch, matchupResolver, resolveDataVariants, isError } from '../src/index.js';
+import { applyPatchToData, buildBeforeAfter, pickLopsidedMatch, matchupResolver, resolveDataVariants,
+  isError } from '../src/index.js';
 import { createArenaSimulator } from '../pipeline/arena-simulator.js';
 import { main } from '../pipeline/cli.js';
 import { fixture, pairedResults } from './helpers.js';
@@ -17,19 +18,25 @@ const dmg = (r, p, n) => { r.statistics.players.find((x) => x.playerId === p).da
 test('applyPatchToData: pure, bounded, checks base hash and move index', () => {
   const data = { moves: [{ power: 10 }, { power: 20 }], tuning: { damageScalePermille: 1000 } };
   const h = (d) => `${d.moves[1].power}`.padStart(64, '0');
-  const patched = applyPatchToData(data, { baseDataHash: h(data), replacements: [{ path: '/moves/1/power', value: 5 }, { path: '/tuning/damageScalePermille', value: 900 }], rationale: '' }, { hashData: h });
+  const patched = applyPatchToData(data, { baseDataHash: h(data),
+    replacements: [{ path: '/moves/1/power', value: 5 }, { path: '/tuning/damageScalePermille', value: 900 }],
+    rationale: '' }, { hashData: h });
   assert.equal(patched.moves[1].power, 5);
   assert.equal(patched.tuning.damageScalePermille, 900);
   assert.equal(data.moves[1].power, 20); // input untouched
   const attempt = (proposal, opts) => { try { applyPatchToData(data, proposal, opts); } catch (e) { return e.code; } };
-  assert.equal(attempt({ baseDataHash: 'f'.repeat(64), replacements: [{ path: '/moves/1/power', value: 5 }], rationale: '' }, { hashData: h }), 'PATCH_BASE_MISMATCH');
-  assert.equal(attempt({ baseDataHash: h(data), replacements: [{ path: '/moves/7/power', value: 5 }], rationale: '' }), 'PATCH_PATH_MISSING');
-  assert.equal(attempt({ baseDataHash: h(data), replacements: [{ path: '/gameRules/x', value: 5 }], rationale: '' }), 'INVALID_PATCH');
+  assert.equal(attempt({ baseDataHash: 'f'.repeat(64), replacements: [{ path: '/moves/1/power', value: 5 }],
+    rationale: '' }, { hashData: h }), 'PATCH_BASE_MISMATCH');
+  assert.equal(attempt({ baseDataHash: h(data), replacements: [{ path: '/moves/7/power', value: 5 }],
+    rationale: '' }), 'PATCH_PATH_MISSING');
+  assert.equal(attempt({ baseDataHash: h(data), replacements: [{ path: '/gameRules/x', value: 5 }], rationale: '' }),
+    'INVALID_PATCH');
 });
 
 test('pickLopsidedMatch: most lopsided matchup, most one-sided win by the dominant side', () => {
   const rs = pairedResults({ seeds: 10, winner: () => 'a' });
-  rs.forEach((r, i) => { dmg(r, r.outcome.winners[0], 300 + i); dmg(r, r.outcome.winners[0] === 'p1' ? 'p2' : 'p1', 100); });
+  rs.forEach((r, i) => { dmg(r, r.outcome.winners[0], 300 + i); dmg(r, r.outcome.winners[0] === 'p1' ? 'p2' : 'p1',
+    100); });
   rs[7].statistics.players.forEach((p) => { if (p.playerId === rs[7].outcome.winners[0]) p.damage = 900; });
   const pick = pickLopsidedMatch(rs);
   assert.equal(pick.ok, true);
@@ -52,7 +59,8 @@ test('pickLopsidedMatch follows the dominant side when the focal hero loses', ()
 });
 
 // A tiny fake simulator: hp falls faster with higher move power; deterministic.
-const fakeHash = (d) => [...JSON.stringify(d)].reduce((n, c, i) => (n + c.charCodeAt(0) * (i + 1)) % 1000003, 7).toString(16).padStart(64, '0');
+const fakeHash = (d) => [...JSON.stringify(d)].reduce((n, c, i) => (n + c.charCodeAt(0) * (i + 1)) % 1000003,
+  7).toString(16).padStart(64, '0');
 const fakeSim = ({ config, data }) => {
   const p = data.moves[1].power;
   return {
@@ -86,9 +94,12 @@ test('buildBeforeAfter with a fake simulator: pair JSON, determinism check, erro
 
   const code = (o) => (isError(o) ? o.error.code : 'ok');
   const base = { baselineResult, baseData, proposal, simulate: fakeSim, hashData: fakeHash };
-  assert.equal(code(buildBeforeAfter({ ...base, baselineResult: { ...baselineResult, finalStateHash: 'x'.repeat(64) } })), 'REPLAY_MISMATCH');
-  assert.equal(code(buildBeforeAfter({ ...base, proposal: { ...proposal, baseDataHash: 'a'.repeat(64) } })), 'PATCH_BASE_MISMATCH');
-  assert.equal(code(buildBeforeAfter({ ...base, baseData: { ...baseData, tuning: { damageScalePermille: 5 } } })), 'DATA_HASH_MISMATCH');
+  assert.equal(code(buildBeforeAfter({ ...base, baselineResult: { ...baselineResult,
+    finalStateHash: 'x'.repeat(64) } })), 'REPLAY_MISMATCH');
+  assert.equal(code(buildBeforeAfter({ ...base, proposal: { ...proposal, baseDataHash: 'a'.repeat(64) } })),
+    'PATCH_BASE_MISMATCH');
+  assert.equal(code(buildBeforeAfter({ ...base, baseData: { ...baseData, tuning: { damageScalePermille: 5 } } })),
+    'DATA_HASH_MISMATCH');
   assert.equal(code(buildBeforeAfter({ ...base, simulate: () => { throw new Error('boom'); } })), 'SIMULATION_FAILED');
   assert.equal(code(buildBeforeAfter({ ...base, simulate: () => ({}) })), 'SIMULATION_FAILED');
   assert.equal(code(buildBeforeAfter({ ...base, simulate: undefined })), 'INVALID_INPUT');
@@ -98,7 +109,8 @@ test('buildBeforeAfter with a fake simulator: pair JSON, determinism check, erro
 const jobs = pairedJobs({ seeds: Array.from({ length: 12 }, (_, i) => i + 1) });
 const results = jobs.map(runMatch);
 const sim = createArenaSimulator({ arena, chooseAction, hash, compareIds });
-const patchFor = (hashValue) => ({ baseDataHash: hashValue, replacements: [{ path: '/moves/1/power', value: 72 }], rationale: 'lower spirit arrow' });
+const patchFor = (hashValue) => ({ baseDataHash: hashValue, replacements: [{ path: '/moves/1/power', value: 72 }],
+  rationale: 'lower spirit arrow' });
 
 test('real engine: replay of the baseline match reproduces its recorded hash; patched run differs', () => {
   const seatsByHash = new Map(jobs.map((j) => [j.config.dataHash, j.data.gameRules.seats]));
@@ -106,7 +118,8 @@ test('real engine: replay of the baseline match reproduces its recorded hash; pa
   const hashA = jobs[0].config.dataHash;
   const pick = pickLopsidedMatch(results, { ...resolver, dataHash: hashA });
   assert.equal(pick.ok, true, JSON.stringify(pick));
-  const out = buildBeforeAfter({ baselineResult: pick.value.result, baseData: jobs[0].data, proposal: patchFor(hashA), simulate: sim.simulate, hashData: sim.hashData });
+  const out = buildBeforeAfter({ baselineResult: pick.value.result, baseData: jobs[0].data, proposal: patchFor(hashA),
+    simulate: sim.simulate, hashData: sim.hashData });
   assert.equal(out.ok, true, JSON.stringify(out));
   const { before, after } = out.value;
   assert.equal(before.finalStateHash, pick.value.result.finalStateHash); // determinism
@@ -117,7 +130,8 @@ test('real engine: replay of the baseline match reproduces its recorded hash; pa
     assert.equal(side.timeline.at(-1).tick, side.durationTicks);
     for (let i = 1; i < side.timeline.length; i++) {
       assert.ok(side.timeline[i].tick > side.timeline[i - 1].tick);
-      assert.ok(side.timeline[i].hp.p1 <= side.timeline[i - 1].hp.p1 && side.timeline[i].hp.p2 <= side.timeline[i - 1].hp.p2);
+      assert.ok(side.timeline[i].hp.p1 <= side.timeline[i - 1].hp.p1 &&
+        side.timeline[i].hp.p2 <= side.timeline[i - 1].hp.p2);
     }
   }
   // lowering spirit arrow power can only reduce damage when bari's arrow lands
@@ -129,7 +143,8 @@ test('CLI replay writes before_after.json from runner results', async () => {
   const hashA = jobs[0].config.dataHash;
   writeFileSync(join(dir, 'base.json'), JSON.stringify(results));
   writeFileSync(join(dir, 'patch.json'), JSON.stringify(patchFor(hashA)));
-  const s = await main(['replay', '--baseline', join(dir, 'base.json'), '--patch', join(dir, 'patch.json'), '--out', dir]);
+  const s = await main(['replay', '--baseline', join(dir, 'base.json'), '--patch', join(dir, 'patch.json'), '--out',
+    dir]);
   assert.equal(s.replay, 'before_after.json');
   const v = JSON.parse(readFileSync(join(dir, 'before_after.json'), 'utf8'));
   assert.equal(v.kind, 'before_after');

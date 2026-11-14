@@ -8,7 +8,8 @@ export function createArenaSimulator({ arena, chooseAction, hash, compareIds }) 
     let state = arena.initial(config, data);
     const hpOf = (s) => Object.fromEntries(s.payload.entities.map((e) => [e.id, e.hp]));
     const heroes = Object.fromEntries(state.payload.entities.map((e) => [e.id, e.hero]));
-    const maxHp = Object.fromEntries(state.payload.entities.map((e) => [e.id, data.characters.find((c) => c.id === e.hero).health]));
+    const maxHp = Object.fromEntries(state.payload.entities.map((e) => [e.id,
+      data.characters.find((c) => c.id === e.hero).health]));
     const timeline = [{ tick: 0, hp: hpOf(state) }];
     let last = JSON.stringify(timeline[0].hp);
     while (arena.outcome(state).status === 'running') {
@@ -25,7 +26,8 @@ export function createArenaSimulator({ arena, chooseAction, hash, compareIds }) 
         last = key;
       }
     }
-    return { outcome: arena.outcome(state), finalStateHash: arena.hash(state), durationTicks: state.tick, heroes, maxHp, timeline };
+    return { outcome: arena.outcome(state), finalStateHash: arena.hash(state), durationTicks: state.tick, heroes,
+      maxHp, timeline };
   };
   return { simulate, hashData: hash };
 }
@@ -36,7 +38,8 @@ export async function loadArenaSimulator() {
     const arena = await import('../../games/action/index.js');
     const bot = await import('../../games/action/bot.js');
     const contracts = await import('../../contracts/index.js');
-    return { ok: true, value: { ...createArenaSimulator({ arena, chooseAction: bot.chooseAction, hash: contracts.hash, compareIds: contracts.compareIds }), baseData: arena.data } };
+    return { ok: true, value: { ...createArenaSimulator({ arena, chooseAction: bot.chooseAction, hash: contracts.hash,
+      compareIds: contracts.compareIds }), baseData: arena.data } };
   } catch {
     return errorResult('ENGINE_UNAVAILABLE', 'could not load the Hero Arena engine from packages/games/action');
   }

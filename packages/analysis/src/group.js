@@ -20,7 +20,8 @@ export function heroMatchup(result) {
   const seats = result.config.players;
   const heroes = seats.map((p) => ({ player: p, hero: asg[p] }));
   if (heroes.some((h) => typeof h.hero !== 'string')) return null;
-  const sorted = [...heroes].sort((a, b) => (a.hero < b.hero ? -1 : a.hero > b.hero ? 1 : a.player < b.player ? -1 : 1));
+  const sorted = [...heroes].sort((a, b) => (a.hero < b.hero ? -1 : a.hero > b.hero ? 1 : a.player < b.player ? -1 :
+    1));
   return { dimension: sorted.map((h) => h.hero).join(' vs '), focal: sorted[0].player };
 }
 

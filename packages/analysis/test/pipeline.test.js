@@ -63,7 +63,8 @@ test('CLI writes the four files', async () => {
   const b = join(dir, 'base.json'), h = join(dir, 'hold.json'), out = join(dir, 'out');
   writeFileSync(b, JSON.stringify(baseline()));
   writeFileSync(h, JSON.stringify(holdout()));
-  const s = await main(['run', '--baseline', b, '--holdout', h, '--out', out, '--seed-set', 'pairs-100'], {}, () => '2026-11-14T00:00:00.000Z');
+  const s = await main(['run', '--baseline', b, '--holdout', h, '--out', out, '--seed-set', 'pairs-100'], {},
+    () => '2026-11-14T00:00:00.000Z');
   assert.equal(s.verdict, 'accepted');
   const rd = (n) => JSON.parse(readFileSync(join(out, n), 'utf8'));
   assert.equal(rd('report_baseline.json').createdAt, '2026-11-14T00:00:00.000Z');

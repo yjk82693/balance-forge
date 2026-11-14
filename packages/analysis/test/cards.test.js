@@ -52,7 +52,8 @@ test('small samples never flag; weak side works; invalid skipped; zero opportuni
   assert.equal(losing.cards.find((c) => c.cardId === 'spark').weak, true);
   const inv = cardMatch(0); inv.valid = false;
   assert.equal(analyzeCards([inv]).invalidMatches, 1);
-  assert.equal(analyzeCards([cardMatch(1, { spark: 0, sparkOpp: 0 })]).cards.find((c) => c.cardId === 'spark').playRate, null);
+  assert.equal(analyzeCards([cardMatch(1, { spark: 0,
+    sparkOpp: 0 })]).cards.find((c) => c.cardId === 'spark').playRate, null);
 });
 
 test('50/50 card is not dominant even with many samples', () => {

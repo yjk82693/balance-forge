@@ -18,13 +18,16 @@ export function matchResultIssues(r) {
     if (typeof c.gameId !== 'string') out.push('config.gameId must be a string');
     if (typeof c.simVersion !== 'string') out.push('config.simVersion must be a string');
     if (!isInt(c.seed)) out.push('config.seed must be an integer');
-    if (!Array.isArray(c.players) || c.players.length === 0 || c.players.some((p) => typeof p !== 'string')) out.push('config.players must be a non-empty array of strings');
+    if (!Array.isArray(c.players) || c.players.length === 0 ||
+      c.players.some((p) => typeof p !== 'string')) out.push('config.players must be a non-empty array of strings');
   }
   const o = r.outcome;
-  if (!isObj(o) || !['running', 'win', 'draw'].includes(o.status) || !Array.isArray(o.winners)) out.push('outcome must have status running|win|draw and winners[]');
+  if (!isObj(o) || !['running', 'win', 'draw'].includes(o.status) ||
+    !Array.isArray(o.winners)) out.push('outcome must have status running|win|draw and winners[]');
   const s = r.statistics;
   if (!isObj(s) || !Array.isArray(s.players)) out.push('statistics.players must be an array');
-  else if (s.players.some((p) => !isObj(p) || typeof p.playerId !== 'string' || !Array.isArray(p.actions))) out.push('statistics.players[] needs playerId and actions[]');
+  else if (s.players.some((p) => !isObj(p) || typeof p.playerId !== 'string' ||
+    !Array.isArray(p.actions))) out.push('statistics.players[] needs playerId and actions[]');
   return out;
 }
 
@@ -44,14 +47,18 @@ export function assertMatchResults(results, label = 'results') {
 export function reportIssues(r) {
   const out = [];
   if (!isObj(r)) return ['not an object'];
-  for (const k of ['gameId', 'simVersion', 'dataHash', 'botPolicyVersion', 'seedSetId']) if (typeof r[k] !== 'string') out.push(`${k} must be a string`);
-  for (const k of ['validMatches', 'invalidMatches', 'draws']) if (!isInt(r[k]) || r[k] < 0) out.push(`${k} must be a non-negative integer`);
+  for (const k of ['gameId', 'simVersion', 'dataHash', 'botPolicyVersion',
+    'seedSetId']) if (typeof r[k] !== 'string') out.push(`${k} must be a string`);
+  for (const k of ['validMatches', 'invalidMatches', 'draws']) if (!isInt(r[k]) ||
+    r[k] < 0) out.push(`${k} must be a non-negative integer`);
   if (!Array.isArray(r.rows)) out.push('rows must be an array');
   else {
     r.rows.forEach((row, i) => {
-      const bad = !isObj(row) || typeof row.dimension !== 'string' || !isInt(row.wins) || !isInt(row.games) || row.wins > row.games
+      const bad = !isObj(row) || typeof row.dimension !== 'string' || !isInt(row.wins) || !isInt(row.games) ||
+        row.wins > row.games
         || typeof row.winRate !== 'number' || !Number.isFinite(row.winRate) || row.winRate < 0 || row.winRate > 1
-        || !Array.isArray(row.ci95) || row.ci95.length !== 2 || row.ci95.some((x) => typeof x !== 'number' || !Number.isFinite(x))
+        || !Array.isArray(row.ci95) || row.ci95.length !== 2 || row.ci95.some((x) => typeof x !== 'number' ||
+          !Number.isFinite(x))
         || typeof row.outlier !== 'boolean';
       if (bad && out.length < MAX_ISSUES) out.push(`rows[${i}] is malformed`);
     });
@@ -61,6 +68,7 @@ export function reportIssues(r) {
 
 export function assertReport(report, label = 'report') {
   const problems = reportIssues(report).slice(0, MAX_ISSUES);
-  if (problems.length) fail('INVALID_REPORT', `${label} is malformed: ${problems[0]}`, problems.map((p) => `${label}: ${p}`));
+  if (problems.length) fail('INVALID_REPORT', `${label} is malformed: ${problems[0]}`,
+    problems.map((p) => `${label}: ${p}`));
   return report;
 }

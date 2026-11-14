@@ -18,7 +18,8 @@ function fullRoster({ seeds = 40, rate = () => 0.5 } = {}) {
   ROSTER.forEach((x, i) => {
     for (const y of ROSTER.slice(i)) {
       const r = rate(x, y);
-      out.push(...pairedResults({ dataHash: HASH, heroes: [x, y], seeds, winner: (seed) => (seed % 10 < r * 10 ? 'a' : 'b') }));
+      out.push(...pairedResults({ dataHash: HASH, heroes: [x, y], seeds, winner: (seed) => (seed % 10 < r * 10 ? 'a' :
+        'b') }));
     }
   });
   return out.map((r, i) => ({ ...r, matchId: `m-${i + 1}` }));
@@ -63,7 +64,8 @@ test('cells are oriented per row hero and add up; mirror = seat-1 advantage', ()
 test('outlier rule unchanged: n >= 30 and interval outside 45-55%', () => {
   const small = buildMatchupTable(fullRoster({ seeds: 10, rate: () => 1 })).value; // 20 games each
   assert.ok(small.matchups.every((m) => m.tooFewGames && !m.outlier));
-  const mild = buildMatchupTable(fullRoster({ seeds: 100, rate: (x, y) => (x === 'daewi' && y === 'sepia' ? 0.6 : 0.5) })).value;
+  const mild = buildMatchupTable(fullRoster({ seeds: 100, rate: (x, y) => (x === 'daewi' && y === 'sepia' ? 0.6 :
+    0.5) })).value;
   assert.equal(mild.matchups.find((m) => m.dimension === 'daewi vs sepia').outlier, false); // 120/200, CI touches 55%
   assert.equal(mild.matchups.filter((m) => m.outlier).length, 0);
 });
@@ -76,7 +78,8 @@ test('table matches the Report rows for every non-mirror matchup', () => {
   for (const row of report.rows) {
     const m = matchups.find((x) => x.dimension === row.dimension);
     assert.ok(m, row.dimension);
-    assert.deepEqual([m.wins, m.games, m.winRate, m.ci95, m.outlier], [row.wins, row.games, row.winRate, row.ci95, row.outlier]);
+    assert.deepEqual([m.wins, m.games, m.winRate, m.ci95, m.outlier], [row.wins, row.games, row.winRate, row.ci95,
+      row.outlier]);
   }
 });
 

@@ -40,7 +40,8 @@ export const GEMINI_RESPONSE_SCHEMA = {
       type: 'ARRAY',
       minItems: 1,
       maxItems: MAX_REPLACEMENTS,
-      items: { type: 'OBJECT', properties: { path: { type: 'STRING' }, value: { type: 'INTEGER' } }, required: ['path', 'value'] },
+      items: { type: 'OBJECT', properties: { path: { type: 'STRING' }, value: { type: 'INTEGER' } },
+        required: ['path', 'value'] },
     },
     rationale: { type: 'STRING' },
   },
@@ -54,15 +55,18 @@ export const GEMINI_RESPONSE_SCHEMA = {
 export function buildPrompt(report) {
   const rows = report.rows
     .filter((r) => !r.dimension.startsWith(HUMAN_PREFIX))
-    .map(({ dimension, wins, games, winRate, ci95, uses, opportunities, outlier }) => ({ dimension, wins, games, winRate, ci95, uses, opportunities, outlier }));
+    .map(({ dimension, wins, games, winRate, ci95, uses, opportunities, outlier }) => ({ dimension, wins, games,
+      winRate, ci95, uses, opportunities, outlier }));
   const allowed = [
-    { path: '/tuning/damageScalePermille', min: boundsFor('/tuning/damageScalePermille')[0], max: boundsFor('/tuning/damageScalePermille')[1] },
+    { path: '/tuning/damageScalePermille', min: boundsFor('/tuning/damageScalePermille')[0],
+      max: boundsFor('/tuning/damageScalePermille')[1] },
     { path: '/moves/<N>/power', min: boundsFor('/moves/0/power')[0], max: boundsFor('/moves/0/power')[1] },
   ];
   return [
     'You tune a multiplayer game. Below are aggregate bot-playtest results (win rate of the first-named side).',
     'Propose a small numeric patch that moves one-sided matchups toward 50%.',
-    `Reply with JSON only: {"baseDataHash", "replacements": [{"path","value"}], "rationale"}. At most ${MAX_REPLACEMENTS} replacements, integer values only.`,
+    'Reply with JSON only: {"baseDataHash", "replacements": [{"path","value"}], "rationale"}.',
+    `At most ${MAX_REPLACEMENTS} replacements, integer values only.`,
     'Use only these paths: ' + JSON.stringify(allowed),
     `baseDataHash must be exactly: ${report.dataHash}`,
     'Rows: ' + JSON.stringify(rows),
@@ -91,7 +95,8 @@ export async function requestWithRetry(fetchFn, url, init, { timeoutMs = TIMEOUT
       last = e;
     }
   }
-  throw new Error(`LLM request failed after ${retries + 1} attempts: ${last?.name === 'AbortError' ? 'timeout' : String(last?.message ?? last).slice(0, 120)}`);
+  const reason = last?.name === 'AbortError' ? 'timeout' : String(last?.message ?? last).slice(0, 120);
+  throw new Error(`LLM request failed after ${retries + 1} attempts: ${reason}`);
 }
 
 function parseProposal(text) {
@@ -144,7 +149,8 @@ export class GeminiPatchAdapter extends LlmAdapter {
       headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_RESPONSE_SCHEMA, temperature: 0 },
+        generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_RESPONSE_SCHEMA,
+          temperature: 0 },
       }),
     };
   }
@@ -167,7 +173,8 @@ export class GrokPatchAdapter extends LlmAdapter {
         model: this.model ?? this.env.XAI_MODEL ?? 'grok-4',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0,
-        response_format: { type: 'json_schema', json_schema: { name: 'PatchProposal', strict: true, schema: PATCH_JSON_SCHEMA } },
+        response_format: { type: 'json_schema', json_schema: { name: 'PatchProposal', strict: true,
+          schema: PATCH_JSON_SCHEMA } },
       }),
     };
   }

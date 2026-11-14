@@ -9,7 +9,8 @@ import { fail, safely } from './errors.js';
 const cell = (row, col, dimension, mirror, wins, losses, draws) => {
   const games = wins + losses + draws;
   const ci95 = wilson95(wins, games);
-  const c = { row, col, dimension, mirror, wins, losses, draws, games, winRate: games ? round6(wins / games) : 0, ci95, outlier: isOutlier(ci95, games) };
+  const c = { row, col, dimension, mirror, wins, losses, draws, games, winRate: games ? round6(wins / games) : 0,
+    ci95, outlier: isOutlier(ci95, games) };
   c.tooFewGames = tooFewGames(c);
   return c;
 };
@@ -50,7 +51,8 @@ export const buildMatchupTable = safely((results, options = {}) => {
     if (!t) return null;
     if (x === y) return cell(x, y, `${x} vs ${y}`, true, t.aWins, t.bWins, t.draws);
     const first = x < y; // tally orients alphabetically: a = smaller id
-    return cell(x, y, first ? `${x} vs ${y}` : `${y} vs ${x}`, false, first ? t.aWins : t.bWins, first ? t.bWins : t.aWins, t.draws);
+    return cell(x, y, first ? `${x} vs ${y}` : `${y} vs ${x}`, false, first ? t.aWins : t.bWins, first ? t.bWins :
+      t.aWins, t.draws);
   };
   const cells = roster.map((x) => roster.map((y) => at(x, y)));
 

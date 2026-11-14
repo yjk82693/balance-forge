@@ -29,7 +29,8 @@ export class JsonFileStorage {
     this.#dir = dir;
   }
   #path(id) {
-    if (typeof id !== 'string' || !ID_RE.test(id) || id.includes('..')) fail('INVALID_INPUT', 'invalid reportId (letters, digits, . _ - only)');
+    if (typeof id !== 'string' || !ID_RE.test(id) || id.includes('..')) fail('INVALID_INPUT',
+      'invalid reportId (letters, digits, . _ - only)');
     return join(this.#dir, `${id}.json`);
   }
   async saveReport(report) {

@@ -29,7 +29,8 @@ export function toErrorResult(e) {
   return errorResult('INTERNAL', String(e?.message ?? e).slice(0, 200)); // a bug, but still a result
 }
 
-export const isError = (r) => r !== null && typeof r === 'object' && r.ok === false && typeof r.error?.code === 'string';
+export const isError = (r) => r !== null && typeof r === 'object' && r.ok === false &&
+  typeof r.error?.code === 'string';
 
 /** Wrap a (sync or async) function: returns { ok: true, value } or an error result. Never throws. */
 export function safely(fn) {

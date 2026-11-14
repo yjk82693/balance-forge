@@ -42,8 +42,10 @@ function writeJson(p, v) {
     fail('IO_ERROR', `could not write file: ${p}`);
   }
 }
-const USAGE = 'usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--patch f] [--adapter fake|gemini|grok] [--metrics f] [--human f] [--roster a,b,c]';
-const REQUIRED = { propose: ['baseline', 'out'], verify: ['holdout', 'out'], run: ['baseline', 'holdout', 'out'], replay: ['baseline', 'patch', 'out'] };
+const USAGE = 'usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--patch f] '
+  + '[--adapter fake|gemini|grok] [--metrics f] [--human f] [--roster a,b,c]';
+const REQUIRED = { propose: ['baseline', 'out'], verify: ['holdout', 'out'], run: ['baseline', 'holdout', 'out'],
+  replay: ['baseline', 'patch', 'out'] };
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
@@ -62,7 +64,8 @@ function resultsOf(path) {
   return assertMatchResults(list, path);
 }
 
-const withHuman = (report, flags) => (flags.human ? addHumanRows(report, humanResultsOf(readJson(flags.human))) : report);
+const withHuman = (report, flags) => (flags.human ? addHumanRows(report, humanResultsOf(readJson(flags.human))) :
+  report);
 
 function extrasFrom(flags) {
   const extras = {};
@@ -107,7 +110,8 @@ async function run(argv, env, now) {
     const results = resultsOf(flags.baseline);
     const proposal = readJson(flags.patch);
     const patchCheck = validatePatch(proposal);
-    if (!patchCheck.ok) fail('INVALID_PATCH', `the patch file is not a valid PatchProposal: ${patchCheck.errors[0]}`, patchCheck.errors);
+    if (!patchCheck.ok) fail('INVALID_PATCH', `the patch file is not a valid PatchProposal: ${patchCheck.errors[0]}`,
+      patchCheck.errors);
     const baseData = flags['base-data'] ? readJson(flags['base-data']) : engineData;
     const variants = resolveDataVariants(results, baseData, hashData);
     const seatsByHash = new Map([...variants].map(([h, d]) => [h, d.gameRules?.seats ?? []]));
@@ -118,7 +122,8 @@ async function run(argv, env, now) {
     if (!data) fail('DATA_HASH_MISMATCH', 'no base data explains the picked match dataHash; pass --base-data');
     const out = buildBeforeAfter({
       baselineResult: result, baseData: data, proposal, simulate, hashData,
-      selection: { reason: 'most one-sided win in the most lopsided matchup', dimension, matchupWinRate, matchupGames, margin },
+      selection: { reason: 'most one-sided win in the most lopsided matchup', dimension, matchupWinRate, matchupGames,
+        margin },
     });
     if (isError(out)) fail(out.error.code, out.error.message);
     writeJson(f('before_after.json'), out.value);
@@ -126,7 +131,8 @@ async function run(argv, env, now) {
   }
 
   if (cmd === 'propose' || cmd === 'run') {
-    const { report, meta, counted } = analyzePhase(resultsOf(flags.baseline), { reportId: 'r-baseline', ...reportOptions });
+    const { report, meta, counted } = analyzePhase(resultsOf(flags.baseline), { reportId: 'r-baseline',
+      ...reportOptions });
     const baseline = withExtras(withHuman(report, flags), { createdAt: now(), ...extrasFrom(flags) });
     let adapter;
     try {
@@ -144,14 +150,18 @@ async function run(argv, env, now) {
     if (step.ok) writeJson(f('patch.json'), step.proposal);
     const table = buildMatchupTable(counted, flags.roster ? { roster: flags.roster.split(',') } : {});
     if (table.ok) writeJson(f('matchup_table.json'), table.value);
-    writeJson(f('pipeline-meta.json'), { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors, baseline: meta });
-    Object.assign(summary, { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors });
+    writeJson(f('pipeline-meta.json'), { patchOrigin: step.origin, fallbackReason: step.fallbackReason,
+      patchValid: step.ok, patchErrors: step.errors, baseline: meta });
+    Object.assign(summary, { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok,
+      patchErrors: step.errors });
   }
   if (cmd === 'verify' || cmd === 'run') {
     const baseline = readJson(f('report_baseline.json'));
     const prior = existsSync(f('pipeline-meta.json')) ? readJson(f('pipeline-meta.json')) : {};
-    const out = verifyStep(baseline, resultsOf(flags.holdout), { reportId: 'r-patched', botPolicyVersion: baseline.botPolicyVersion, seedSetId: baseline.seedSetId, ...reportOptions });
-    writeJson(f('report_patched.json'), withExtras(withHuman(out.report, flags), { createdAt: now(), ...extrasFrom(flags) }));
+    const out = verifyStep(baseline, resultsOf(flags.holdout), { reportId: 'r-patched',
+      botPolicyVersion: baseline.botPolicyVersion, seedSetId: baseline.seedSetId, ...reportOptions });
+    writeJson(f('report_patched.json'), withExtras(withHuman(out.report, flags),
+      { createdAt: now(), ...extrasFrom(flags) }));
     writeJson(f('verdict.json'), { ...out.verdict, patchOrigin: prior.patchOrigin ?? 'unknown', holdout: out.meta });
     writeJson(f('pipeline-meta.json'), { ...prior, holdout: out.meta });
     summary.verdict = out.verdict.verdict;

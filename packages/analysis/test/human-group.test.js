@@ -9,7 +9,8 @@ import { pairedResults } from './helpers.js';
 
 // Humans: bari beats real_armor 4-1 in 5 matches (one seat-swapped pair is enough variety).
 const humanFive = () => {
-  const rs = pairedResults({ seeds: 3, heroes: ['bari', 'real_armor'], winner: (seed, swap) => (seed === 3 && swap === 1 ? 'b' : 'a') }); // 6 matches
+  const rs = pairedResults({ seeds: 3, heroes: ['bari', 'real_armor'], winner: (seed, swap) => (seed === 3 &&
+    swap === 1 ? 'b' : 'a') }); // 6 matches
   return rs.slice(0, 5);
 };
 
@@ -29,7 +30,9 @@ test('label reads "Humans: Bari vs Real Armor 4–1 (n=5)" with an honest note a
 
 test('exact 4–1 example', () => {
   const rs = pairedResults({ seeds: 3, heroes: ['bari', 'real_armor'], winner: () => 'a' }).slice(0, 5);
-  rs[4].outcome = { status: 'win', winners: [rs[4].config.players[rs[4].config.players.findIndex((p) => rs[4].config.options.assignments[p] === 'real_armor')]], reason: 'hp_zero' };
+  const { players, options } = rs[4].config;
+  const realArmorSeat = players.find((p) => options.assignments[p] === 'real_armor');
+  rs[4].outcome = { status: 'win', winners: [realArmorSeat], reason: 'hp_zero' };
   const { groups } = buildHumanGroup(rs).value;
   assert.equal(groups[0].label, 'Humans: Bari vs Real Armor 4–1 (n=5)');
 });
@@ -74,7 +77,8 @@ test('Report human rows agree with the group summary', () => {
 test('CLI writes human_group.json', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'bf-hg-'));
   const w = (n, v) => { const p = join(dir, n); writeFileSync(p, JSON.stringify(v)); return p; };
-  await main(['propose', '--baseline', w('b.json', pairedResults({ seeds: 100 })), '--human', w('h.json', humanFive()), '--out', dir]);
+  await main(['propose', '--baseline', w('b.json', pairedResults({ seeds: 100 })), '--human', w('h.json',
+    humanFive()), '--out', dir]);
   const g = JSON.parse(readFileSync(join(dir, 'human_group.json'), 'utf8'));
   assert.equal(g.groups[0].n, 5);
   assert.equal(g.groups[0].outlier, false);
