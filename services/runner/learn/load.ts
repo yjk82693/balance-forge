@@ -15,7 +15,8 @@ export function readLearned(dir = LEARNED_DIR) {
   const files = {};
   const skipped = [];
   if (!existsSync(dir)) return { paramsByHero, files, skipped };
-  for (const name of readdirSync(dir).filter(n => n.endsWith('.json')).sort()) {
+  // human-style.json is the cloned-lr-1 model (packages/games/action/bot-cloned.ts), not a per-hero parameter file
+  for (const name of readdirSync(dir).filter(n => n.endsWith('.json') && n !== 'human-style.json').sort()) {
     try {
       const file = JSON.parse(readFileSync(join(dir, name), 'utf8'));
       if (file?.policy !== POLICY_ID) throw Error('another policy');
