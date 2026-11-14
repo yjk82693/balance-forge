@@ -16,6 +16,7 @@ import { currentDiagnose, currentMatchup } from "../lib/matchup";
 import { buildFacts, needsMoreGames } from "../lib/resultCard";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
+import { IS_STATIC } from "../lib/staticMode";
 import { shouldStartOnMount } from "../lib/presentStart";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
@@ -86,9 +87,10 @@ export function Present({ auto }: { auto: boolean }) {
   const intent = useIntent();
   const wantsIntent = hasIntent(intent);
   // The last Hero Cards result of this tab, if there is one: it adds one scene (never a request).
-  const cardsRun = useMemo(() => (mock ? null : loadRun("hero_cards")), [mock]);
+  const cardsRun = useMemo(() => (mock || IS_STATIC ? null : loadRun("hero_cards")), [mock]);
   const scenes = useMemo(
-    () => scenesFor({ intent: wantsIntent, profile: hasProfile, history: hasHistory, cards: !!cardsRun }),
+    () =>
+      scenesFor({ intent: wantsIntent, profile: hasProfile, history: hasHistory, cards: !!cardsRun, replay: !IS_STATIC }),
     [wantsIntent, hasProfile, hasHistory, cardsRun],
   );
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
@@ -133,7 +135,7 @@ export function Present({ auto }: { auto: boolean }) {
         </main>
         {!auto && (
           <footer className="present-keys caption">
-            Space / → next · ← back · P pause · R run live
+            Space / → next · ← back · P pause · R {IS_STATIC ? "replay" : "run live"}
           </footer>
         )}
       </div>
@@ -340,7 +342,7 @@ function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: BotsPro
       <section className="present-card">
         <p className="h2">No stored result to show.</p>
         <button type="button" className="btn primary present-run-live" onClick={onStart}>
-          Run live
+          {IS_STATIC ? "Replay recorded run" : "Run live"}
         </button>
       </section>
     );
@@ -367,7 +369,7 @@ function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: BotsPro
         <WinRateChart rows={run.baseline.rows} dense foot={false} />
         {notice && <p className="present-sub">{notice}</p>}
         <button type="button" className="btn secondary present-run-live" onClick={onStart}>
-          Run live
+          {IS_STATIC ? "Replay recorded run" : "Run live"}
         </button>
       </section>
     </div>

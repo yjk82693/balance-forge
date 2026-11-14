@@ -2561,3 +2561,18 @@ button.intent-btn { cursor: pointer; }
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* Static build: the banner above every screen. */
+.static-banner {
+  height: 32px;
+  line-height: 32px;
+  padding: 0 var(--space-4);
+  font-size: 14px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  text-align: center;
+}
+.static-banner a { color: inherit; text-decoration: underline; }
+@media (max-width: 1099px) {
+  .static-banner { height: auto; min-height: 32px; line-height: 1.4; padding: var(--space-2) var(--space-4); }
+}

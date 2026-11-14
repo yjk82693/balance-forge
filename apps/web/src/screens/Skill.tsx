@@ -23,6 +23,7 @@ import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
 import { currentMatchup, saveChosen, type Matchup } from "../lib/matchup";
+import { IS_STATIC } from "../lib/staticMode";
 import { isMockMode } from "../mock/types";
 
 interface Measured {
@@ -40,7 +41,7 @@ const seconds = (s?: number) =>
 
 /** The same matchup measured with each bot type, side by side with intervals. */
 function Comparison() {
-  const mock = isMockMode();
+  const mock = isMockMode() || IS_STATIC;
   const skills = availableSkills();
   const [matchup, setMatchup] = useState<Matchup>(() => currentMatchup(loadJustPlayed(), null));
   const [rows, setRows] = useState<Measured[]>([]);
@@ -95,7 +96,9 @@ function Comparison() {
           {busy ? "Measuring…" : "Compare bot skill"}
         </button>
       </div>
-      {mock && <p className="caption">Sample data: this needs the live server.</p>}
+      {mock && (
+        <p className="caption">{IS_STATIC ? "Recorded demo" : "Sample data"}: this needs the live server.</p>
+      )}
       {skills.length === 1 && (
         <p className="caption">Only the scripted bot exists so far; trained bots appear here once trained.</p>
       )}

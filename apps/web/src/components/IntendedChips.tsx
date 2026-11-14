@@ -3,6 +3,7 @@ import type { PlaytestRun } from "../lib/api";
 import { heroName } from "../lib/heroes";
 import { getIntent, saveIntent, setIntent, pairKey } from "../lib/intent";
 import { choicesFor, reanalyze, withChoice } from "../lib/reanalyze";
+import { IS_STATIC } from "../lib/staticMode";
 import { isMockMode } from "../mock/types";
 
 interface Props {
@@ -66,13 +67,18 @@ export function IntendedChips({ a, b, run, onRun, big }: Props) {
           key={c.id}
           className={`intent-chip${c.id === current?.id ? " on" : ""}`}
           aria-pressed={c.id === current?.id}
-          disabled={working}
+          disabled={working || IS_STATIC}
           onClick={() => void pick(c.id)}
           title={c.id === "even" ? "Even" : `${c.label}: ${c.id.startsWith("A") ? heroName(a) : heroName(b)}`}
         >
           {big ? c.label.replace(/^[AB]\b/, (side) => heroName(side === "A" ? a : b)) : c.label}
         </button>
       ))}
+      {IS_STATIC && (
+        <span className="intent-chips-note" role="status">
+          Recorded demo: the intent is the approved chart; judging again needs the live server.
+        </span>
+      )}
       {note && (
         <span className="intent-chips-note" role="status">
           {note}

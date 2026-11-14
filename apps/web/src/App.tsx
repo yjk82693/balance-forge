@@ -2,6 +2,8 @@ import { Suspense, lazy } from "react";
 import { useRoute } from "./lib/router";
 import { Controller } from "./screens/Controller";
 import { isAutoMode } from "./lib/presenter";
+import { IS_STATIC } from "./lib/staticMode";
+import { LiveOnly, StaticBanner } from "./components/StaticBanner";
 
 // Every screen except the phone controller is its own chunk, so a phone joining over a slow link loads the controller
 // and nothing else (the big screen's Phaser scene, the QR code, charts and stored runs stay on the server).
@@ -25,6 +27,16 @@ function Loading() {
 export function App() {
   const route = useRoute();
   const [screen] = route.path;
+  if (IS_STATIC) {
+    // The static build: a banner on every screen, the dashboard as the front page, no room screens.
+    const live = ["play", "join", "lobby", "arena"].includes(screen ?? "");
+    return (
+      <>
+        <StaticBanner />
+        {live ? <LiveOnly /> : <Suspense fallback={<Loading />}>{screenFor(screen ?? "dashboard", route)}</Suspense>}
+      </>
+    );
+  }
   if (screen === "play" || screen === "join") {
     return <Controller key={location.hash} initialCode={route.query.get("code") ?? ""} />;
   }
@@ -48,6 +60,6 @@ function screenFor(screen: string | undefined, route: ReturnType<typeof useRoute
     case "lobby":
       return <Lobby gameId={route.path[1] ?? "hero_arena"} dataHash={route.query.get("hash") ?? undefined} />;
     default:
-      return <Launcher />;
+      return IS_STATIC ? <Dashboard /> : <Launcher />;
   }
 }

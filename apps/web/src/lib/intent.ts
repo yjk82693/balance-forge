@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { intentBody } from "./intentBody";
+import { IS_STATIC } from "./staticMode";
 import { HEROES, heroName } from "./heroes";
 import { isMockMode } from "../mock/types";
 
@@ -110,7 +111,14 @@ export const hasIntent = (intent: Intent = current) => Object.keys(intent.matchu
 const PATH = "/v1/design/hero_arena/intent";
 
 /** GET the saved intent; an absent endpoint or a failed read gives all even. */
+const committed = import.meta.glob("../../../../services/room/design/hero_arena-intent.json", { import: "default" });
+
 export async function loadIntent(signal?: AbortSignal): Promise<{ intent: Intent; found: boolean }> {
+  if (IS_STATIC) {
+    // The static build reads the approved chart that is committed with the repository, never the server.
+    const load = Object.values(committed)[0];
+    return load ? { intent: parseIntent(await load()), found: true } : { intent: EVEN_INTENT, found: false };
+  }
   try {
     const res = await fetch(PATH, { signal });
     if (!res.ok) return { intent: EVEN_INTENT, found: false };

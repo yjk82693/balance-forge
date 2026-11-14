@@ -4,6 +4,7 @@ import { IntentGrid } from "../components/IntentGrid";
 import { TopBar } from "../components/TopBar";
 import { useManifest } from "../lib/assets";
 import { cycle, getIntent, hasIntent, saveIntent, setIntent, useIntent } from "../lib/intent";
+import { IS_STATIC } from "../lib/staticMode";
 import { isMockMode } from "../mock/types";
 
 /** The designer's chart: click a cell to cycle even, then each hero's slight, clear and strong favor. */
@@ -41,13 +42,15 @@ export function Intent() {
           </span>
           <span className="small text-2">Design intent</span>
           <span className="spacer" />
-          <button
-            className="btn primary"
-            aria-disabled={mock || !changed || state === "saving"}
-            onClick={() => !mock && changed && state !== "saving" && save()}
-          >
-            {state === "saving" ? "Saving…" : "Save intent"}
-          </button>
+          {!IS_STATIC && (
+            <button
+              className="btn primary"
+              aria-disabled={mock || !changed || state === "saving"}
+              onClick={() => !mock && changed && state !== "saving" && save()}
+            >
+              {state === "saving" ? "Saving…" : "Save intent"}
+            </button>
+          )}
         </TopBar>
         <main className="intent-main">
           <section className="panel">
@@ -55,9 +58,17 @@ export function Intent() {
               <span className="eyebrow">What the designer wants</span>
               {mock && <span className="badge">sample data</span>}
             </div>
-            <IntentGrid intent={intent} onCycle={(a, b) => setIntent(cycle(getIntent(), a, b))} />
+            <IntentGrid
+              intent={intent}
+              onCycle={IS_STATIC ? undefined : (a, b) => setIntent(cycle(getIntent(), a, b))}
+            />
+            {IS_STATIC && (
+              <p className="caption">Recorded demo: this is the approved chart the results were judged against.</p>
+            )}
             {!hasIntent(intent) && (
-              <p className="caption">Every matchup is intended to be even. Click a cell to favor a hero.</p>
+              <p className="caption">
+                Every matchup is intended to be even.{IS_STATIC ? "" : " Click a cell to favor a hero."}
+              </p>
             )}
             {mock && <p className="caption">Sample data: changes stay on this page and are not saved.</p>}
             {state === "saved" && (
