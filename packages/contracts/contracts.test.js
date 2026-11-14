@@ -34,6 +34,9 @@ test('schema extends normative bundle only with approved addendum fields and tra
   const spec = readFileSync(new URL('../../spec/contract-v0.1.md', import.meta.url), 'utf8');
   const extended = JSON.parse(readFileSync(new URL('./schema.json', import.meta.url)));
   delete extended.$defs.MatchConfig.properties.options;
+  assert.deepEqual(extended.$defs.MatchResult.properties.botSeats, {type:'array',maxItems:4,uniqueItems:true,
+    items:{type:'string',minLength:1,maxLength:128}});
+  delete extended.$defs.MatchResult.properties.botSeats;
   for (const key of ['elapsedMs', 'recorded', 'createdAt', 'humanMatches']) delete extended.$defs.Report.properties[
     key];
   assert.deepEqual(JSON.parse(spec.match(/```json\n([\s\S]*?)```/)[1]), extended);

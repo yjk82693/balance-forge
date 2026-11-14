@@ -286,3 +286,17 @@ and disjoint baseline/holdout seed arrays. Added roster and retained dataHash se
 The analysis full.js module is not present yet: the route returns an explicit 503 and its integration test is
 marked TODO, as requested. No report or verdict is fabricated. Roster/pin and existing progress tests run normally.
 This step will be completed against the real module when it lands; callback details are in CHANGE_REQUEST.md.
+
+## First seat win counts
+
+Added seatWins (first physical seat wins, excluding invalid matches/draws) to every progress matchup row, overall
+progress, worker metrics and /v1/playtest/run summary. Tests reconcile row totals and summaries with actual
+MatchResult winners; mirror matchups are counted by seat rather than by identical hero IDs.
+
+## Bounded replay observations
+
+Added GET /v1/replay/:matchId/views?dataHash=<hash>&every=6. Both original and candidate versions use replayOnData
+and return player-safe display observations, accumulated public events, view hashes and source/selected data pins.
+Replay observers receive copies so they cannot change simulation state. Responses are bounded to 601 samples and
+1 MiB; invalid intervals/unknown pins and incompatible replay frames fail explicitly. New tests cover events,
+deterministic candidate playback, original hashes, privacy and size rejection.

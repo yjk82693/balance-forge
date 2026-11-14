@@ -60,7 +60,8 @@ export const payloadSchemas = {
   'match.start': object({
     gameId: id,
     seed: integer(1, 4294967295),
-    maxTicks: integer(1, 1800)
+    maxTicks: integer(1, 1800),
+    bot: { type: 'boolean' }
   }, []),
   'match.reset': object({}),
   'ping': object({})

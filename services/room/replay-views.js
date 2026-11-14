@@ -23,7 +23,7 @@ export function replayViews(storage, matchId, { dataHash, every = 6 } = {}) {
     if (bytes > MAX_REPLAY_BYTES - 4096) throw Error('RATE_LIMITED');
     views.push(view); pendingEvents = [];
   } });
-  if (!dataHash && hash(state) !== recording.finalStateHash) throw Error('HASH_MISMATCH');
+  if (selectedHash === config.dataHash && hash(state) !== recording.finalStateHash) throw Error('HASH_MISMATCH');
   return { matchId, gameId: config.gameId, seed: config.seed, sourceDataHash: config.dataHash,
     dataHash: selectedHash, every, views, finalStateHash: hash(state) };
 }
