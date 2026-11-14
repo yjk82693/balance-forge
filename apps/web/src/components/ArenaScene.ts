@@ -3,6 +3,7 @@ import type { ArenaPayload, GameEvent, Observation } from "../lib/contract";
 import { HERO_HEX, heroName } from "../lib/heroes";
 import { blip, reducedMotion } from "../lib/sfx";
 import type { Pose, SnapshotBuffer } from "../lib/snapshotBuffer";
+import { HitFeel, PARTICLE_TEXTURE, poseKey, type PoseName } from "./hitFeel";
 
 export const ARENA_W = 1152;
 export const ARENA_H = 648;
@@ -19,6 +20,8 @@ const HERO_FX: Record<string, string> = {
 // Art-space playfield rectangle (1920x1080); multiplied by the canvas scale at runtime.
 const FIELD_ART = { x: 150, y: 140, w: 1770 - 150, h: 1000 - 140 };
 const HERO_SCALE = 0.36;
+/** How far ahead (in ticks) the scene looks for an attack to lean into. */
+const ANTICIPATE_TICKS = 5;
 const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
 
 export interface ArenaAssets {
@@ -28,9 +31,13 @@ export interface ArenaAssets {
   effects: Record<string, string>;
   hpTrack: string;
   hpFill: string;
+  /** optional still poses per hero (attack, hit, ko), only those that exist */
+  poses?: Record<string, Partial<Record<PoseName, string>>>;
 }
 
 interface HeroView {
+  id: string;
+  hero: string;
   sprite: Phaser.GameObjects.Image;
   shadow: Phaser.GameObjects.Ellipse;
   tx: number;
@@ -77,6 +84,8 @@ export class ArenaScene extends Phaser.Scene {
   private ready = false;
   /** when set, positions come from snapshot interpolation instead of easing toward the newest packet */
   private feed: SnapshotBuffer | null = null;
+  private feel!: HitFeel;
+  private anticipated = new Set<string>();
   private debugText: Phaser.GameObjects.Text | null = null;
   private frames = 0;
   private onData = (_p: unknown, key: string, value: Observation | null) => {
@@ -94,23 +103,31 @@ export class ArenaScene extends Phaser.Scene {
     for (const [kind, url] of Object.entries(a.effects)) this.load.image(`fx:${kind}`, url);
     this.load.image("hp-track", a.hpTrack);
     this.load.image("hp-fill", a.hpFill);
+    for (const [hero, byPose] of Object.entries(a.poses ?? {})) {
+      for (const [pose, url] of Object.entries(byPose)) this.load.image(poseKey(hero, pose as PoseName), url);
+    }
   }
 
   create() {
     this.k = this.scale.width / ARENA_W;
     this.silent = this.k < 1; // the small compare canvases stay quiet
     this.reduce = reducedMotion();
+    this.feel = new HitFeel(this, this.k, this.reduce);
+    const dot = this.make.graphics({ x: 0, y: 0 }, false);
+    dot.fillStyle(0xffffff).fillCircle(4, 4, 4).generateTexture(PARTICLE_TEXTURE, 8, 8);
+    dot.destroy();
     this.add.image(0, 0, "floor").setOrigin(0, 0).setDisplaySize(this.scale.width, this.scale.height).setDepth(0);
     this.ready = true;
     this.feed = (this.registry.get("feed") as SnapshotBuffer | undefined) ?? null;
     if (this.feed && this.registry.get("debug")) {
       this.debugText = this.add
-        .text(8, this.scale.height - 28, "", {
+        .text(this.scale.width - 8, this.scale.height - 28, "", {
           fontFamily: "monospace",
           fontSize: "14px",
           color: "#9CF",
           backgroundColor: "#000A",
         })
+        .setOrigin(1, 0)
         .setDepth(20000);
     }
     this.registry.events.on("changedata", this.onData);
@@ -147,7 +164,7 @@ export class ArenaScene extends Phaser.Scene {
       const p = this.toScreen(e.x, e.y, arena);
       let v = this.heroes.get(e.id);
       const key = `hero:${e.hero}`;
-      if (!v || v.sprite.texture.key !== key) {
+      if (!v || v.hero !== e.hero) {
         v?.sprite.destroy();
         v?.shadow.destroy();
         const shadow = this.add.ellipse(p.x, p.y, 90 * this.k, 26 * this.k, 0x000000, 0.28).setDepth(1);
@@ -156,7 +173,20 @@ export class ArenaScene extends Phaser.Scene {
           p.y,
           this.textures.exists(key) ? key : "__MISSING",
         ).setOrigin(0.5, 498 / 512).setScale(HERO_SCALE * this.k);
-        v = { sprite, shadow, tx: p.x, ty: p.y, px: p.x, py: p.y, hp: e.hp, squash: 0, phase: i * 1.7, ko: false };
+        v = {
+          id: e.id,
+          hero: e.hero,
+          sprite,
+          shadow,
+          tx: p.x,
+          ty: p.y,
+          px: p.x,
+          py: p.y,
+          hp: e.hp,
+          squash: 0,
+          phase: i * 1.7,
+          ko: false,
+        };
         this.heroes.set(e.id, v);
         this.makeHud(e.id, e.hero, i === 0 ? "left" : "right");
       }
@@ -233,6 +263,7 @@ export class ArenaScene extends Phaser.Scene {
           break;
         case "action.used":
           if (p.actionId === "melee") this.meleeSwing(String(p.playerId), hero(p.playerId)?.hero);
+          if (p.actionId !== "guard") this.feel.attack(String(p.playerId), hero(p.playerId)?.hero ?? "");
           break;
         default:
           break; // projectile.expire: the sprite already disappears with the observation
@@ -269,8 +300,8 @@ export class ArenaScene extends Phaser.Scene {
   private onHit(v: HeroView, dmg: number, max: number, guarded: boolean) {
     const tier = dmg >= 0.25 * max ? 3 : dmg >= 0.14 * max ? 2 : 1; // weight tier from how hard it hit
     const k = this.k;
-    v.sprite.setTintFill(0xffffff);
-    this.time.delayedCall(80, () => v.sprite.clearTint());
+    v.sprite.setTintFill(0xffffff); // white hit flash, held through the hit-stop
+    this.time.delayedCall(60 + tier * 25, () => v.sprite.clearTint());
     v.squash = 1;
     const spark = this.add.image(
       v.sprite.x,
@@ -286,12 +317,21 @@ export class ArenaScene extends Phaser.Scene {
     });
     const color = guarded ? "#5AB0FF" : tier >= 3 ? "#FF6B6B" : "#E6EBF1";
     this.floatText(v.sprite.x, v.sprite.y - 120 * k, `-${dmg}`, color, 20 + tier * 4);
+    const at = { x: v.sprite.x, y: v.sprite.y - 70 * k };
+    this.feel.hit(v.id, v.hero, tier, this.awayFrom(v), at, HERO_HEX[v.hero] ?? 0xffffff);
     if (!this.reduce) this.cameras.main.shake(100 + tier * 50, 0.0015 * tier);
     this.sfx("hit");
   }
 
+  /** +1 when the other hero stands to the left of this one (a hit pushes right), else -1. */
+  private awayFrom(v: HeroView): number {
+    for (const o of this.heroes.values()) if (o !== v) return v.px >= o.px ? 1 : -1;
+    return v.sprite.flipX ? 1 : -1;
+  }
+
   private onKO(v: HeroView) {
     v.ko = true;
+    this.feel.ko(v.id, v.hero);
     v.sprite.setTint(0x7d8a9a);
     this.floatText(v.sprite.x, v.sprite.y - 150 * this.k, "KO", "#F2C14E", 40);
     this.sfx("ko");
@@ -319,6 +359,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private revive(v: HeroView) {
     v.ko = false;
+    this.feel.revive(v.id);
     v.sprite.clearTint().setAlpha(1).setAngle(0);
   }
 
@@ -403,26 +444,46 @@ export class ArenaScene extends Phaser.Scene {
     if (!feed) return null;
     const rt = feed.renderTick(performance.now());
     for (const snap of feed.due(rt)) this.apply(snap.observation, snap.events);
+    this.anticipate(feed, rt);
     return feed.sample(rt);
   }
 
   /** Put heroes and projectiles where the interpolated pose says (positions only; state still comes from apply). */
-  private placeFromPose(pose: Pose) {
+  private placeFromPose(pose: Pose, rate: number) {
     const arena = (this.latest?.payload as ArenaPayload | undefined)?.arena;
     if (!arena) return;
     for (const [id, at] of pose.entities) {
       const v = this.heroes.get(id);
       if (!v) continue;
       const p = this.toScreen(at.x, at.y, arena);
-      v.px = p.x;
-      v.py = p.y;
+      v.px += (p.x - v.px) * rate;
+      v.py += (p.y - v.py) * rate;
     }
     for (const [id, at] of pose.projectiles) {
       const img = this.arrows.get(id);
       if (!img) continue;
       const p = this.toScreen(at.x, at.y, arena);
-      img.setPosition(p.x, p.y - 40 * this.k);
+      img.setPosition(img.x + (p.x - img.x) * rate, img.y + (p.y - 40 * this.k - img.y) * rate);
     }
+  }
+
+  /** Swap in the hero's attack, hit or ko still while one is active; otherwise the full-body picture. */
+  private showPose(v: HeroView) {
+    const key = this.feel.pose(v.id, v.hero) ?? `hero:${v.hero}`;
+    if (v.sprite.texture.key !== key && this.textures.exists(key)) v.sprite.setTexture(key);
+  }
+
+  /** Heroes lunge a few ticks before an attack that is already in the buffer lands. */
+  private anticipate(feed: SnapshotBuffer, renderTick: number) {
+    for (const ahead of feed.upcoming(renderTick, ANTICIPATE_TICKS)) {
+      for (const ev of ahead.events) {
+        const key = `${ahead.tick}:${ev.eventId}`;
+        if (ev.kind !== "action.used" || ev.payload.actionId === "guard" || this.anticipated.has(key)) continue;
+        this.anticipated.add(key);
+        this.feel.anticipate(String(ev.payload.playerId));
+      }
+    }
+    if (this.anticipated.size > 200) this.anticipated.clear();
   }
 
   private showDebug() {
@@ -436,13 +497,17 @@ export class ArenaScene extends Phaser.Scene {
   update(_t: number, delta: number) {
     const dt = delta / 16.7;
     const now = this.time.now;
+    const frozen = this.feel.step(delta); // hit-stop: the world holds still for a few frames
     const pose = this.stepFeed();
     this.showDebug();
-    if (pose) this.placeFromPose(pose);
+    if (pose && !frozen) this.placeFromPose(pose, this.feel.followRate(delta));
     for (const v of this.heroes.values()) {
-      const dx = pose ? v.px - (v.lastPx ?? v.px) : v.tx - v.px;
-      if (pose) v.lastPx = v.px;
-      else {
+      let dx = 0;
+      if (pose) {
+        dx = v.px - (v.lastPx ?? v.px);
+        v.lastPx = v.px;
+      } else if (!frozen) {
+        dx = v.tx - v.px;
         v.px += dx * 0.25;
         v.py += (v.ty - v.py) * 0.25;
       }
@@ -464,7 +529,10 @@ export class ArenaScene extends Phaser.Scene {
         }
       }
       v.sprite.setScale(HERO_SCALE * this.k * sx, HERO_SCALE * this.k * sy);
-      v.sprite.setPosition(v.px, v.py - bob).setDepth(100 + v.py);
+      const lunge = this.feel.offset(v.id, v.sprite.flipX ? -1 : 1);
+      if (!v.ko) v.sprite.setAngle(lunge.angle);
+      this.showPose(v);
+      v.sprite.setPosition(v.px + lunge.x, v.py - bob).setDepth(100 + v.py);
       v.shadow.setPosition(v.px, v.py).setDepth(50 + v.py);
     }
     for (const h of this.huds.values()) {

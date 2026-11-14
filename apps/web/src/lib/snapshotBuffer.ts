@@ -111,6 +111,13 @@ export class SnapshotBuffer {
     return out;
   }
 
+  /** Events of snapshots that are still ahead of the render tick, up to `aheadTicks` out: a look at what is coming. */
+  upcoming(renderTick: number, aheadTicks: number): { tick: number; events: GameEvent[] }[] {
+    return this.snaps
+      .filter((s) => s.tick > renderTick && s.tick <= renderTick + aheadTicks && s.events?.length)
+      .map((s) => ({ tick: s.tick, events: s.events as GameEvent[] }));
+  }
+
   /** Where everything stands at `renderTick`, or null before the first snapshot is reached. */
   sample(renderTick: number): Pose | null {
     let i = -1;
@@ -131,7 +138,7 @@ export class SnapshotBuffer {
       };
     } else {
       extrapolating = renderTick > a.tick;
-      if (extrapolating) this.stats.extrapolated += 1;
+      if (extrapolating && renderTick < a.tick + MAX_EXTRAPOLATE_TICKS) this.stats.extrapolated += 1; // not while holding
       const pp = prev?.observation.payload as ArenaPayload | undefined;
       const span = prev ? a.tick - prev.tick : 0;
       blend = (id, from, kind) => {
