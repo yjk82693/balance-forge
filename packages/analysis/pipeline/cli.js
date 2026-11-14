@@ -43,7 +43,7 @@ function writeJson(p, v) {
   }
 }
 const USAGE = 'usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--patch f] '
-  + '[--adapter fake|gemini|grok] [--metrics f] [--human f] [--roster a,b,c]';
+  + '[--adapter fake|gemini|grok] [--metrics f] [--human f] [--roster a,b,c] [--engine-root dir]';
 const REQUIRED = { propose: ['baseline', 'out'], verify: ['holdout', 'out'], run: ['baseline', 'holdout', 'out'],
   replay: ['baseline', 'patch', 'out'] };
 
@@ -107,7 +107,7 @@ async function run(argv, env, now) {
   const summary = {};
 
   if (cmd === 'replay') {
-    const loaded = await loadArenaSimulator();
+    const loaded = await loadArenaSimulator(flags['engine-root']);
     if (isError(loaded)) fail(loaded.error.code, loaded.error.message);
     const { simulate, hashData, baseData: engineData } = loaded.value;
     const results = resultsOf(flags.baseline);

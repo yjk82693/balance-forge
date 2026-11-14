@@ -8,10 +8,13 @@ import { applyPatchToData, buildBeforeAfter, pickLopsidedMatch, matchupResolver,
 import { createArenaSimulator } from '../pipeline/arena-simulator.js';
 import { main } from '../pipeline/cli.js';
 import { fixture, pairedResults } from './helpers.js';
-import * as arena from '../../games/action/index.js';
-import { chooseAction } from '../../games/action/bot.js';
-import { hash, compareIds } from '../../contracts/index.js';
-import { pairedJobs, runMatch } from '../../../services/runner/match.js';
+import { loadArenaSimulator } from '../pipeline/arena-simulator.js';
+import { engineRoot, importEngine, recordedRosterResults } from './engine.js';
+
+const arena = await importEngine('packages/games/action/index.js');
+const bot = await importEngine('packages/games/action/bot.js');
+const { hash, compareIds } = await importEngine('packages/contracts/index.js');
+const { pairedJobs, runMatch } = await importEngine('services/runner/match.js');
 
 const dmg = (r, p, n) => { r.statistics.players.find((x) => x.playerId === p).damage = n; };
 
@@ -108,13 +111,12 @@ test('buildBeforeAfter with a fake simulator: pair JSON, determinism check, erro
 // --- Real engine integration: same seed + bot policy, original vs patched data ---
 const jobs = pairedJobs({ seeds: Array.from({ length: 12 }, (_, i) => i + 1) });
 const results = jobs.map(runMatch);
-const sim = createArenaSimulator({ arena, chooseAction, hash, compareIds });
+const sim = createArenaSimulator({ arena, chooseActions: bot.chooseActions, hash, compareIds });
 const patchFor = (hashValue) => ({ baseDataHash: hashValue, replacements: [{ path: '/moves/1/power', value: 72 }],
   rationale: 'lower spirit arrow' });
 
 test('real engine: replay of the baseline match reproduces its recorded hash; patched run differs', () => {
-  const seatsByHash = new Map(jobs.map((j) => [j.config.dataHash, j.data.gameRules.seats]));
-  const resolver = matchupResolver(seatsByHash);
+  const resolver = matchupResolver();
   const hashA = jobs[0].config.dataHash;
   const pick = pickLopsidedMatch(results, { ...resolver, dataHash: hashA });
   assert.equal(pick.ok, true, JSON.stringify(pick));
@@ -144,14 +146,52 @@ test('CLI replay writes before_after.json from runner results', async () => {
   writeFileSync(join(dir, 'base.json'), JSON.stringify(results));
   writeFileSync(join(dir, 'patch.json'), JSON.stringify(patchFor(hashA)));
   const s = await main(['replay', '--baseline', join(dir, 'base.json'), '--patch', join(dir, 'patch.json'), '--out',
-    dir]);
+    dir, '--engine-root', engineRoot]);
   assert.equal(s.replay, 'before_after.json');
   const v = JSON.parse(readFileSync(join(dir, 'before_after.json'), 'utf8'));
   assert.equal(v.kind, 'before_after');
   assert.equal(v.selection.dimension, 'bari vs real_armor');
 });
 
-test('resolveDataVariants maps both seat variants from one base data', () => {
+test('resolveDataVariants: seat-swapped pairs share one dataHash (addendum item 1)', () => {
   const m = resolveDataVariants(results, jobs[0].data, hash);
-  assert.equal(m.size, 2);
+  assert.equal(m.size, 1);
+  assert.equal(new Set(results.map((r) => r.config.dataHash)).size, 1);
+});
+
+test('re-simulating recorded roster matches reproduces the runner finalStateHash (all 15 matchups)', () => {
+  const recorded = recordedRosterResults();
+  assert.equal(recorded.length, 300);
+  const sampled = recorded.filter((_, i) => i % 7 === 0);
+  const matchups = new Set(sampled.map((r) => [...Object.values(r.config.options.assignments)].sort().join()));
+  assert.ok(matchups.size >= 10, `sample covers ${matchups.size} matchups`);
+  for (const r of sampled) {
+    assert.equal(sim.hashData(arena.data), r.config.dataHash, `${r.matchId}: engine data hash`);
+    const out = sim.simulate({ config: r.config, data: arena.data });
+    assert.equal(out.finalStateHash, r.finalStateHash, `${r.matchId}: final hash`);
+    assert.deepEqual(out.outcome, r.outcome, `${r.matchId}: outcome`);
+    assert.equal(out.durationTicks, r.statistics.durationTicks, `${r.matchId}: duration`);
+  }
+});
+
+test('loadArenaSimulator loads the engine and names a missing export instead of hiding it', async () => {
+  const loaded = await loadArenaSimulator(engineRoot);
+  assert.equal(loaded.ok, true, loaded.error?.message);
+  assert.equal(typeof loaded.value.simulate, 'function');
+  const missing = await loadArenaSimulator(join(tmpdir(), 'no-such-engine'));
+  assert.equal(missing.ok, false);
+  assert.equal(missing.error.code, 'ENGINE_UNAVAILABLE');
+  assert.match(missing.error.message, /no-such-engine|Cannot find|ENOENT/);
+  assert.throws(() => createArenaSimulator({ arena: {}, hash, compareIds }), /export missing: arena\.initial/);
+  assert.throws(() => createArenaSimulator({ arena, hash, compareIds }), /export missing: chooseActions/);
+});
+
+test('pickLopsidedMatch skips mirror matchups (seat advantage) while a hero matchup exists', () => {
+  const mirror = pairedResults({ heroes: ['bari', 'bari'], seeds: 40, winner: () => 'a' });
+  const hero = pairedResults({ heroes: ['bari', 'daewi'], seeds: 40, winner: (seed) => (seed % 4 ? 'a' : 'b') });
+  const all = [...mirror, ...hero].map((r, i) => ({ ...r, matchId: `x-${i}` }));
+  const pick = pickLopsidedMatch(all);
+  assert.equal(pick.ok, true, JSON.stringify(pick));
+  assert.equal(pick.value.dimension, 'bari vs daewi');
+  assert.equal(pickLopsidedMatch(mirror).value.dimension, 'bari vs bari'); // only mirrors: still usable
 });

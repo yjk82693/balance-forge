@@ -62,8 +62,11 @@ const damageOf = (result, player) => result.statistics.players.find((p) => p.pla
 export const pickLopsidedMatch = safely((results, options = {}) => {
   const pool = options.dataHash ? results.filter((r) => r.config.dataHash === options.dataHash) : results;
   const report = analyze(pool, { ...options, allowMixed: true });
-  const rows = report.rows.filter((r) => r.games > 0);
-  if (rows.length === 0) fail('NO_RESULTS', 'no valid matches to pick from');
+  const played = report.rows.filter((r) => r.games > 0);
+  if (played.length === 0) fail('NO_RESULTS', 'no valid matches to pick from');
+  // A mirror matchup only measures the first-seat advantage, not hero balance: use it only if nothing else exists.
+  const isMirror = (r) => { const [a, b] = r.dimension.split(' vs '); return a === b; };
+  const rows = played.some((r) => !isMirror(r)) ? played.filter((r) => !isMirror(r)) : played;
   rows.sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1));
   const row = rows[0];
   const focalDominates = row.winRate >= 0.5;
