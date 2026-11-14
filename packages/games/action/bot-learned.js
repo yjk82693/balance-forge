@@ -1,7 +1,7 @@
 // Learned bot policy (learned-cem-1): the scripted bot's decision structure with a small per-hero parameter
 // vector that the trainer searches. It reads only the observation (inputs), never simulation state, draws nothing
 // from the simulation RNG, and keeps no memory between calls, so determinism holds. A parameter vector is a
-// validated "playbook": every field has an integer range, and a field outside its range falls back to the parent's
+// validated record: every field has an integer range, and a field outside its range falls back to the parent's
 // value, so a bad proposal (from a search, a model or a file) cannot crash a run.
 import { data, legalActions } from './index.js';
 import { xorshift32 } from '../../sim/index.js';
