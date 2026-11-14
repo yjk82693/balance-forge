@@ -48,7 +48,8 @@ test('overall_strong: the winner beats most other heroes, so the first recommend
   assert.deepEqual([first.hero, first.role, first.direction, first.path], ['bari', 'winner', 'down', '/moves/1/power']);
   assert.ok(first.sizePct >= 5 && first.sizePct <= 30 && first.sizePct % 5 === 0);
   assert.match(first.expected, /^brings 4 of 4 matchups toward the band$/);
-  assert.match(first.why, /most-used attack/);
+  assert.match(first.why, /its own attack, no other hero has it/);
+  assert.deepEqual(first.alsoAffects, []);
   assert.ok(rest.some((r) => r.hero === 'daewi')); // the loser's buff comes after the winner's recommendations
   const bari = d.heroes.find((h) => h.hero === 'bari');
   assert.equal(bari.strength.role, 'winner');
@@ -81,8 +82,9 @@ test('counter_specific: both are fair elsewhere, so the interaction move of the 
     'bari vs sepia': FAIR, 'daewi vs nightcrow': FAIR, 'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR },
   'bari vs daewi');
   assert.equal(d.classification, 'counter_specific');
-  assert.deepEqual(d.recommendations.map((r) => [r.hero, r.direction, r.scope]),
-    [['bari', 'down', 'interaction'], ['daewi', 'up', 'interaction']]);
+  assert.ok(d.recommendations.every((r) => r.scope === 'interaction'));
+  assert.deepEqual([...new Set(d.recommendations.map((r) => `${r.hero}:${r.direction}`))],
+    ['bari:down', 'daewi:up']); // the winner's recommendations come first, then the loser's
   assert.match(d.recommendations[0].expected, /brings 1 of 1 matchups/);
   assert.equal(d.heroes.find((h) => h.hero === 'bari').strength.opponentsOutsideBand, 1);
 });
@@ -96,18 +98,13 @@ test('the lever is the most-used attack, from the use counts in the results', ()
     '/moves/0/power'); // melee
 });
 
-test('off against nearly everyone adds the global lever as a second recommendation for that hero', () => {
+test('there is never a global lever: scaling every hero is not a way to change one hero', () => {
   const d = diagnose({ 'bari vs daewi': 0.99, 'bari vs nightcrow': 0.9, 'bari vs real_armor': 0.9, 'bari vs sepia': 0.9,
     'daewi vs nightcrow': FAIR, 'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR }, 'bari vs daewi');
-  const bari = d.recommendations.filter((r) => r.hero === 'bari');
-  assert.equal(bari.length, 2);
-  assert.equal(bari[1].path, '/tuning/damageScalePermille');
-  assert.equal(bari[1].scope, 'global');
-  assert.match(bari[1].why, /global/);
-  const fairer = diagnose({ 'bari vs daewi': 0.9, 'bari vs nightcrow': 0.9, 'bari vs real_armor': FAIR,
-    'bari vs sepia': FAIR, 'daewi vs nightcrow': FAIR, 'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR },
-  'bari vs daewi');
-  assert.equal(fairer.recommendations.filter((r) => r.hero === 'bari' && r.scope === 'global').length, 0);
+  assert.ok(d.recommendations.length > 0);
+  assert.ok(d.recommendations.every((r) => r.path.startsWith('/moves/') && r.scope !== 'global'));
+  assert.ok(d.recommendations.every((r) => r.hero === 'bari' || r.hero === 'daewi'));
+  assert.ok(d.recommendations.filter((r) => r.hero === 'bari').length <= 2); // one or two per hero
 });
 
 test('a bigger gap gives a bigger suggested change, in steps of 5 within 5..30', () => {
@@ -156,4 +153,73 @@ test('the prompt carries the diagnosis as aggregate numbers only, and adapters p
   await new FallbackAdapter(spy('primary', true), spy('backup', false)).proposeWithOrigin(report, { diagnosis: d });
   assert.deepEqual(seen.map(([name, context]) => [name, context.diagnosis === d]),
     [['primary', true], ['backup', true]]);
+});
+
+// --- shared moves: melee, projectile and guard belong to several heroes; a hero's own moves rank first ---
+const SHARED = { tuning: { damageScalePermille: 1000 },
+  characters: [{ id: 'bari', moveIds: ['melee', 'spirit_arrow', 'guard'] },
+    { id: 'daewi', moveIds: ['heavy_melee', 'projectile', 'guard'] },
+    { id: 'real_armor', moveIds: ['melee', 'projectile', 'guard'] },
+    { id: 'sepia', moveIds: ['melee', 'projectile', 'guard'] }],
+  moves: [{ id: 'melee', archetype: 'melee', power: 50 }, { id: 'spirit_arrow', archetype: 'projectile', power: 92 },
+    { id: 'heavy_melee', archetype: 'melee', power: 80 }, { id: 'projectile', archetype: 'projectile', power: 60 },
+    { id: 'guard', archetype: 'guard', power: 0 }] };
+const sharedDiagnosis = (table, matchup, opts, data = SHARED) => {
+  const out = buildDiagnosis(world(table, opts), { matchup, data });
+  assert.equal(out.ok, true, JSON.stringify(out));
+  return out.value;
+};
+const pathOf = (data, id) => `/moves/${data.moves.findIndex((m) => m.id === id)}/power`;
+
+test('a strong hero: its unique attack first, then the shared attack marked with the heroes it also changes', () => {
+  const d = sharedDiagnosis({ 'bari vs daewi': 0.99, 'bari vs real_armor': 0.85, 'bari vs sepia': 0.9,
+    'daewi vs real_armor': FAIR, 'daewi vs sepia': FAIR }, 'bari vs daewi', { meleeUses: 60, shotUses: 5 });
+  const bari = d.recommendations.filter((r) => r.hero === 'bari');
+  // Melee is Bari's most-used attack, but it is shared; spirit_arrow is only Bari's, so it ranks first.
+  assert.deepEqual(bari.map((r) => r.path), [pathOf(SHARED, 'spirit_arrow'), pathOf(SHARED, 'melee')]);
+  assert.deepEqual(bari[0].alsoAffects, []);
+  assert.deepEqual(bari[1].alsoAffects, ['real_armor', 'sepia']);
+  assert.match(bari[1].why, /shared with real_armor, sepia: this also changes them, so it ranks below/);
+  assert.match(bari[0].why, /its own attack, no other hero has it/);
+});
+
+test('a weak hero is buffed through its own move even when its most-used attack is shared', () => {
+  const d = sharedDiagnosis({ 'bari vs daewi': 0.99, 'bari vs real_armor': FAIR, 'bari vs sepia': FAIR,
+    'daewi vs real_armor': 0.15, 'daewi vs sepia': 0.2 }, 'bari vs daewi', { meleeUses: 5, shotUses: 70 });
+  assert.equal(d.classification, 'overall_weak');
+  const daewi = d.recommendations.filter((r) => r.hero === 'daewi');
+  // Projectile (shared with real_armor and sepia) is the most used, heavy_melee is only Daewi's.
+  assert.equal(d.recommendations[0].hero, 'daewi');
+  assert.deepEqual(daewi.map((r) => r.path), [pathOf(SHARED, 'heavy_melee'), pathOf(SHARED, 'projectile')]);
+  assert.deepEqual(daewi.map((r) => r.direction), ['up', 'up']);
+  assert.deepEqual(daewi[1].alsoAffects, ['real_armor', 'sepia']);
+  assert.ok(d.recommendations.every((r) => r.path !== pathOf(SHARED, 'guard')), 'guard is shared and not an attack');
+});
+
+test('a hero that owns only shared moves: shared attacks by use, marked with the heroes it also changes', () => {
+  // 'real_armor vs sepia' 0.1 means sepia wins 90%: sepia is the strong one here, and it owns only shared moves.
+  const d = sharedDiagnosis({ 'real_armor vs sepia': 0.1, 'bari vs sepia': 0.12, 'daewi vs sepia': 0.15,
+    'bari vs real_armor': FAIR, 'bari vs daewi': FAIR, 'daewi vs real_armor': FAIR }, 'real_armor vs sepia',
+  { meleeUses: 20, shotUses: 50 });
+  assert.equal(d.classification, 'overall_strong');
+  const sepia = d.recommendations.filter((r) => r.hero === 'sepia');
+  assert.deepEqual(sepia.map((r) => r.path), [pathOf(SHARED, 'projectile'), pathOf(SHARED, 'melee')]); // by use
+  assert.deepEqual(sepia[0].alsoAffects, ['daewi', 'real_armor']);
+  assert.deepEqual(sepia[1].alsoAffects, ['bari', 'real_armor']);
+  assert.ok(sepia.every((r) => /shared with/.test(r.why) && r.direction === 'down'));
+});
+
+test('the unique non-attack move is a lever before any shared attack', () => {
+  const data = structuredClone(SHARED);
+  data.characters.find((c) => c.id === 'sepia').moveIds = ['melee', 'projectile', 'ink_guard'];
+  data.moves.push({ id: 'ink_guard', archetype: 'guard', power: 30 });
+  const d = sharedDiagnosis({ 'bari vs sepia': 0.9, 'daewi vs sepia': 0.9, 'real_armor vs sepia': 0.9,
+    'bari vs daewi': FAIR, 'bari vs real_armor': FAIR, 'daewi vs real_armor': FAIR }, 'bari vs sepia',
+  { meleeUses: 20, shotUses: 50 }, data);
+  const sepia = d.recommendations.filter((r) => r.hero === 'sepia');
+  assert.equal(sepia[0].path, pathOf(data, 'ink_guard'));
+  assert.deepEqual(sepia[0].alsoAffects, []);
+  assert.match(sepia[0].why, /its own move, no other hero has it/);
+  assert.equal(sepia[1].path, pathOf(data, 'projectile')); // the most-used shared attack comes next
+  assert.deepEqual(sepia[1].alsoAffects, ['daewi', 'real_armor']);
 });

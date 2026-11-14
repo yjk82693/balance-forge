@@ -208,3 +208,21 @@ test('a diagnosis that cannot be built does not stop the run: diagnosis null plu
   assert.equal(out.value.diagnosis, null);
   assert.ok(out.value.diagnosisError);
 });
+
+test('change labels: a unique move names its hero, a shared move lists every hero it changes', async () => {
+  const shared = { tuning: {}, characters: [{ id: 'bari', moveIds: ['melee', 'spirit_arrow'] },
+    { id: 'daewi', moveIds: ['melee', 'heavy_melee'] }, { id: 'real_armor', moveIds: ['melee'] }],
+  moves: [{ id: 'melee', power: 50 }, { id: 'spirit_arrow', power: 92 }, { id: 'heavy_melee', power: 80 }] };
+  const labelFor = async (index) => {
+    const data = structuredClone(shared);
+    const hash = (d) => (d.moves[1].power === 92 && d.moves[0].power === 50 ? BASE_HASH : PATCHED_HASH);
+    const out = await runFull(input({ baseData: data, hashData: hash, adapter: { async proposeWithOrigin(report) {
+      return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: 'x',
+        replacements: [{ path: `/moves/${index}/power`, value: 40 }] } };
+    } } }));
+    assert.equal(out.ok, true, JSON.stringify(out));
+    return out.value.proposal.changes[0].label;
+  };
+  assert.equal(await labelFor(1), 'Bari · Spirit Arrow power');
+  assert.equal(await labelFor(0), 'Melee power (shared: Bari, Daewi, Real Armor)');
+});

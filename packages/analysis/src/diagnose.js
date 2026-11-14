@@ -4,7 +4,9 @@
 // recommendation is context for the patch adapter, and any patch still goes through validation and the holdout.
 //
 // Not available in the engine statistics yet: damage per move and hits through guard (CHANGE_REQUEST.md). The lever is
-// therefore the hero's most-used attack (melee or projectile) and `why` says so.
+// therefore picked by use counts, hero-unique moves first (a shared move also changes the other heroes that own it, and
+// the recommendation says so in `alsoAffects`). There is no global lever: scaling every hero's damage is not a way to
+// change one hero's strength.
 import { assertMatchResults } from './input-check.js';
 import { heroMatchup, isCountable } from './group.js';
 import { BAND_HIGH, BAND_LOW, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
@@ -15,8 +17,7 @@ import { round6, wilson95 } from './wilson.js';
 
 export const CLASSIFICATIONS = ['overall_strong', 'overall_weak', 'counter_specific'];
 const ATTACKS = ['melee', 'projectile'];
-const GLOBAL_PATH = '/tuning/damageScalePermille';
-const NEARLY_ALL = 0.75; // "off against nearly everyone": this share of opponents is outside the band
+const MAX_LEVERS_PER_HERO = 2;
 const STEP_PCT = 5;
 const MIN_SIZE_PCT = 5;
 const MAX_SIZE_PCT = 30;
@@ -84,40 +85,49 @@ function heroEntry(hero, byOpponent, role) {
     opponentsOutsideBand: opponents.filter(outside).length, worstOpponent: worst?.opponent ?? null } };
 }
 
-/** The hero's most-used attack (melee or projectile) in `uses`, and the move that carries it. */
-function leverFor(data, hero, uses) {
-  const action = [...ATTACKS].sort((x, y) => (uses[y] ?? 0) - (uses[x] ?? 0) || (x < y ? -1 : 1))[0];
-  const owned = data.moves.filter((m) => data.characters.find((c) => c.id === hero)?.moveIds.includes(m.id));
-  const move = owned.find((m) => m.archetype === action) ?? owned.find((m) => ATTACKS.includes(m.archetype));
-  if (!move) return null;
-  const used = uses[action] ?? 0;
-  const total = ATTACKS.reduce((n, a) => n + (uses[a] ?? 0), 0);
-  return { path: `/moves/${data.moves.indexOf(move)}/power`, move: move.id, action,
-    share: total ? Math.round((used / total) * 100) : null };
+/**
+ * Levers of one hero, best first. Moves are shared between heroes (melee, projectile and guard each belong to several),
+ * and changing a shared move changes every owner, so the hero's own moves come first: unique attacks (most used first),
+ * then other unique moves, then shared attacks (most used first), each marked with the other heroes it would also
+ * change.
+ */
+function leversFor(data, hero, uses) {
+  const ownIds = data.characters.find((c) => c.id === hero)?.moveIds ?? [];
+  const ownersOf = (move) => data.characters.filter((c) => c.moveIds.includes(move.id)).map((c) => c.id).sort();
+  const owned = data.moves.filter((m) => ownIds.includes(m.id)).map((move) => ({ move, owners: ownersOf(move) }));
+  const attack = ({ move }) => ATTACKS.includes(move.archetype);
+  const unique = ({ owners }) => owners.length === 1;
+  const used = ({ move }) => uses[move.archetype] ?? 0;
+  const byUse = (x, y) => used(y) - used(x) || (x.move.id < y.move.id ? -1 : 1);
+  const byId = (x, y) => (x.move.id < y.move.id ? -1 : 1);
+  const total = ATTACKS.reduce((n, action) => n + (uses[action] ?? 0), 0);
+  return [...owned.filter((o) => attack(o) && unique(o)).sort(byUse),
+    ...owned.filter((o) => !attack(o) && unique(o)).sort(byId),
+    ...owned.filter((o) => attack(o) && !unique(o)).sort(byUse)]
+    .map((o) => ({ path: `/moves/${data.moves.indexOf(o.move)}/power`, move: o.move.id, action: o.move.archetype,
+      attack: attack(o), share: attack(o) && total ? Math.round((used(o) / total) * 100) : null,
+      alsoAffects: o.owners.filter((h) => h !== hero) }));
 }
 
 function recommendation({ entry, role, lever, sizePct, scope, outside, total, why }) {
   return { hero: entry.hero, role, path: lever.path, direction: role === 'winner' ? 'down' : 'up', sizePct,
-    why, expected: `brings ${outside} of ${total} matchups toward the band`, scope };
+    why, expected: `brings ${outside} of ${total} matchups toward the band`, scope, alsoAffects: lever.alsoAffects };
 }
 
-function attackRecommendation(entry, role, data, uses, sizePct, scope, outside, total) {
-  const lever = leverFor(data, entry.hero, uses);
-  if (!lever) return null;
+function leverRecommendations(entry, role, data, uses, sizePct, scope, outside, total) {
   const verb = role === 'winner' ? 'lower' : 'raise';
   const where = scope === 'interaction' ? 'in this matchup' : 'across its matchups';
-  const share = lever.share === null ? '' : ` (${lever.share}% of its attack uses ${where})`;
-  return recommendation({ entry, role, lever, sizePct, scope, outside, total,
-    why: `${entry.hero} is ${role === 'winner' ? 'too strong' : 'too weak'} (${entry.strength.marginPts} points from `
-      + `50% overall): ${verb} ${lever.move}, its most-used attack${share}. Damage per move is not recorded yet, `
-      + 'so the most-used attack stands in for the highest-damage move.' });
-}
-
-function globalRecommendation(entry, role, sizePct, total) {
-  const lever = { path: GLOBAL_PATH };
-  return recommendation({ entry, role, lever, sizePct, scope: 'global', outside: entry.strength.opponentsOutsideBand,
-    total, why: `${entry.hero} is off against nearly every opponent. This lever is global: it scales the damage of `
-      + 'every hero, so use it only if no single move explains the gap.' });
+  return leversFor(data, entry.hero, uses).slice(0, MAX_LEVERS_PER_HERO).map((lever) => {
+    const share = lever.share === null ? '' : ` (${lever.share}% of its attack uses ${where})`;
+    const kind = lever.attack ? 'attack' : 'move';
+    const ownership = lever.alsoAffects.length === 0 ? `its own ${kind}, no other hero has it`
+      : `a ${kind} shared with ${lever.alsoAffects.join(', ')}: this also changes them, so it ranks below the `
+        + 'hero\'s own moves';
+    return recommendation({ entry, role, lever, sizePct, scope, outside, total,
+      why: `${entry.hero} is ${role === 'winner' ? 'too strong' : 'too weak'} (${entry.strength.marginPts} points `
+        + `from 50% overall): ${verb} ${lever.move}, ${ownership}${share}. Damage per move is not recorded yet, so `
+        + 'use counts stand in for the highest-damage move.' });
+  });
 }
 
 /**
@@ -167,15 +177,12 @@ export const buildDiagnosis = safely((results, options = {}) => {
     const total = entry.opponents.length;
     const out = entry.strength.opponentsOutsideBand;
     const size = sizeFor(entry.strength.marginPts, 0.8);
-    const list = [attackRecommendation(entry, role, data, usesOf(entry.hero), size, 'overall', out, total)];
-    if (out >= Math.ceil(NEARLY_ALL * total)) list.push(globalRecommendation(entry, role, size, total));
-    return list.filter(Boolean);
+    return leverRecommendations(entry, role, data, usesOf(entry.hero), size, 'overall', out, total);
   };
   const interaction = (entry, role) => {
     const size = sizeFor(pts(focus.wins / focus.games), 0.5);
     const partner = entry === W ? loser : winner;
-    return [attackRecommendation(entry, role, data, usesOf(entry.hero, partner), size, 'interaction', 1, 1)]
-      .filter(Boolean);
+    return leverRecommendations(entry, role, data, usesOf(entry.hero, partner), size, 'interaction', 1, 1);
   };
   const recommendations = classification === 'overall_strong' ? [...overall(W, 'winner'), ...overall(L, 'loser')]
     : classification === 'overall_weak' ? [...overall(L, 'loser'), ...overall(W, 'winner')]
