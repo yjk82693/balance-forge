@@ -443,3 +443,61 @@ Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wi
 Updated recorded metrics; deterministic result data stayed unchanged. Web is outside ownership, so no
 web build/FPS measurement. Existing blockers: analysis pipeline full.js remains absent here; live socket
 tests retain their opt-in gate. No dependencies, network calls, commits or pushes. Stopping.
+
+## Round 7
+
+Step 1: added scripted-0.2.0 generic discrete projectile prediction using guard startup plus four ticks.
+Incoming hostile shots prioritize a legal guard; outgoing/friendly shots and guard cooldown preserve prior
+behavior. No hero branches, balance data changes or bypass-trait checks. Stable bot exports remain intact.
+All three bot tests pass, including every hero, unchanged observations and unavailable guards.
+Follow-up: regenerate roster recordings and every derived artifact with this policy in steps 2–3 below.
+No commits attempted; external committer owns git writes.
+
+Step 2: completed 100 fixed seeds × two seats × 15 matchups (3,000 valid, 0 invalid games).
+Policy scripted-0.2.0; 62,157.726875 ms, 48.264313 matches/s including two-worker startup.
+Win rate is for the first named hero; draws count as games. Flag = whole Wilson 95% CI outside 45–55%.
+
+| Matchup | Wins / games | Win rate | Wilson 95% CI | Flag |
+| --- | --- | --- | --- | --- |
+| bari vs daewi | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| bari vs nightcrow | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| bari vs real_armor | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| bari vs sepia | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| daewi vs nightcrow | 0 / 200 | 0.00% | 0.00–1.88% | yes |
+| daewi vs real_armor | 0 / 200 | 0.00% | 0.00–1.88% | yes |
+| daewi vs sepia | 0 / 200 | 0.00% | 0.00–1.88% | yes |
+| nightcrow vs real_armor | 100 / 200 | 50.00% | 43.14–56.86% | no |
+| nightcrow vs sepia | 100 / 200 | 50.00% | 43.14–56.86% | no |
+| real_armor vs sepia | 100 / 200 | 50.00% | 43.14–56.86% | no |
+
+Bari vs Real Armor is clearly outside the band, but seven non-mirror matchups are flagged in total.
+The requested no-other-flags target is not met. No hero numbers or intended asymmetries were changed.
+Follow-up for recording consistency: regenerate the runner report and room examples in step 3; the analysis
+owner must regenerate packages/analysis/recorded/recorded-roster-report.json and update its policy-pinned test.
+
+Step 3: regenerated all three services/runner/recorded-roster-* files from the same 3,000-game run, including
+scripted-0.2.0 metadata and the derived analysis Report. The benchmark now regenerates its Report alongside
+results and metrics. Regenerated services/room/examples.json with production handlers and the offline adapter.
+The analysis-owned recorded copy and its hard-coded scripted-0.1.1 test still require the owner follow-up noted
+above; no files outside ownership were changed. Older non-roster recordings remain historical, not derivatives
+of this roster run. No outside network or commits.
+
+Step 4: /v1/playtest/full now accepts optional dataHash and passes pipeline error codes/messages through HTTP.
+seatWins.baseline and seatWins.holdout are numeric first-seat counts; holdout is null if no run occurred.
+README and examples describe the integrated pipeline, retained-version selection and public errors.
+Focused bot/full/documentation/readability tests: 15 passed, 0 failed. Added an actual pipeline-validation error
+regression plus tests for retained baseline pins and public error transport; no external adapter calls.
+Known full-suite blockers are analysis-owned tests: recorded.test.js compares the stale recorded report and
+requests scripted-0.1.1; replay.test.js:164 expects 300 games rather than this required 3,000-game run.
+Left both tests unchanged and documented precise owner follow-ups in services/room/CHANGE_REQUEST.md.
+
+Amendment step 1: superseded 0.2.0 with scripted-0.2.1; previous step 3 artifacts do not count as final.
+Exported deriveBotSeed(matchSeed, seatIndex), mixing both inputs into the project's xorshift32 stream.
+Per-match draws set reaction delay (0–12), guard attempt probability (55–95%), engagement distance, strafe
+and small projectile aim offsets. Each projectile receives a repeatable attempt draw from that same stream;
+choices are pure under repeated observations, with no simulation RNG, clock or ambient randomness.
+Runner and solo room seats now derive their policy seed from the actual match seed and seat index.
+Added reproducibility/diversity/seed-validation tests; guard tests use a fixed seed with a known successful
+attempt, retaining all incoming/friendly/outgoing/off-axis/cooldown assertions. Analysis replay is outside
+ownership and needs the precise deriveBotSeed integration described in CHANGE_REQUEST.md. Re-measurement
+and complete 0.2.1 recording/example regeneration are in progress; 0.2.0 measurements remain historical only.

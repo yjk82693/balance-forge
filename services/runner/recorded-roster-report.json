@@ -3,209 +3,209 @@
   "gameId": "hero_arena",
   "simVersion": "arena-0.1.1",
   "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
-  "botPolicyVersion": "scripted-0.1.1",
+  "botPolicyVersion": "scripted-0.2.0",
   "seedSetId": "explicit-paired-seeds",
-  "validMatches": 300,
+  "validMatches": 3000,
   "invalidMatches": 0,
   "draws": 0,
   "rows": [
     {
       "dimension": "bari vs bari",
-      "wins": 20,
-      "games": 20,
+      "wins": 200,
+      "games": 200,
       "winRate": 1,
       "ci95": [
-        0.83887,
+        0.981154,
         1
       ],
-      "uses": 320,
-      "opportunities": 580,
-      "outlier": false
+      "uses": 3200,
+      "opportunities": 5800,
+      "outlier": true
     },
     {
       "dimension": "bari vs daewi",
-      "wins": 20,
-      "games": 20,
+      "wins": 200,
+      "games": 200,
       "winRate": 1,
       "ci95": [
-        0.83887,
+        0.981154,
         1
       ],
-      "uses": 320,
-      "opportunities": 590,
-      "outlier": false
+      "uses": 3100,
+      "opportunities": 5700,
+      "outlier": true
     },
     {
       "dimension": "bari vs nightcrow",
-      "wins": 20,
-      "games": 20,
+      "wins": 200,
+      "games": 200,
       "winRate": 1,
       "ci95": [
-        0.83887,
+        0.981154,
         1
       ],
-      "uses": 250,
-      "opportunities": 460,
-      "outlier": false
+      "uses": 2500,
+      "opportunities": 4600,
+      "outlier": true
     },
     {
       "dimension": "bari vs real_armor",
-      "wins": 10,
-      "games": 20,
-      "winRate": 0.5,
+      "wins": 200,
+      "games": 200,
+      "winRate": 1,
       "ci95": [
-        0.299295,
-        0.700705
+        0.981154,
+        1
       ],
-      "uses": 500,
-      "opportunities": 900,
-      "outlier": false
+      "uses": 4000,
+      "opportunities": 7200,
+      "outlier": true
     },
     {
       "dimension": "bari vs sepia",
-      "wins": 20,
-      "games": 20,
+      "wins": 200,
+      "games": 200,
       "winRate": 1,
       "ci95": [
-        0.83887,
+        0.981154,
         1
       ],
-      "uses": 250,
-      "opportunities": 460,
-      "outlier": false
+      "uses": 2500,
+      "opportunities": 4600,
+      "outlier": true
     },
     {
       "dimension": "daewi vs daewi",
-      "wins": 20,
-      "games": 20,
+      "wins": 200,
+      "games": 200,
       "winRate": 1,
       "ci95": [
-        0.83887,
+        0.981154,
         1
       ],
-      "uses": 260,
-      "opportunities": 520,
-      "outlier": false
+      "uses": 2600,
+      "opportunities": 5200,
+      "outlier": true
     },
     {
       "dimension": "daewi vs nightcrow",
       "wins": 0,
-      "games": 20,
+      "games": 200,
       "winRate": 0,
       "ci95": [
         0,
-        0.16113
+        0.018846
       ],
-      "uses": 290,
-      "opportunities": 590,
-      "outlier": false
+      "uses": 3000,
+      "opportunities": 5700,
+      "outlier": true
     },
     {
       "dimension": "daewi vs real_armor",
       "wins": 0,
-      "games": 20,
+      "games": 200,
       "winRate": 0,
       "ci95": [
         0,
-        0.16113
+        0.018846
       ],
-      "uses": 300,
-      "opportunities": 600,
-      "outlier": false
+      "uses": 3100,
+      "opportunities": 6000,
+      "outlier": true
     },
     {
       "dimension": "daewi vs sepia",
       "wins": 0,
-      "games": 20,
+      "games": 200,
       "winRate": 0,
       "ci95": [
         0,
-        0.16113
+        0.018846
       ],
-      "uses": 290,
-      "opportunities": 590,
-      "outlier": false
+      "uses": 3000,
+      "opportunities": 5700,
+      "outlier": true
     },
     {
       "dimension": "nightcrow vs nightcrow",
       "wins": 0,
-      "games": 20,
+      "games": 200,
       "winRate": 0,
       "ci95": [
         0,
-        0.16113
+        0.018846
       ],
-      "uses": 320,
-      "opportunities": 580,
-      "outlier": false
+      "uses": 3200,
+      "opportunities": 5800,
+      "outlier": true
     },
     {
       "dimension": "nightcrow vs real_armor",
-      "wins": 10,
-      "games": 20,
+      "wins": 100,
+      "games": 200,
       "winRate": 0.5,
       "ci95": [
-        0.299295,
-        0.700705
+        0.43136,
+        0.56864
       ],
-      "uses": 460,
-      "opportunities": 830,
+      "uses": 4600,
+      "opportunities": 8300,
       "outlier": false
     },
     {
       "dimension": "nightcrow vs sepia",
-      "wins": 10,
-      "games": 20,
+      "wins": 100,
+      "games": 200,
       "winRate": 0.5,
       "ci95": [
-        0.299295,
-        0.700705
+        0.43136,
+        0.56864
       ],
-      "uses": 330,
-      "opportunities": 600,
+      "uses": 3300,
+      "opportunities": 6000,
       "outlier": false
     },
     {
       "dimension": "real_armor vs real_armor",
       "wins": 0,
-      "games": 20,
+      "games": 200,
       "winRate": 0,
       "ci95": [
         0,
-        0.16113
+        0.018846
       ],
-      "uses": 740,
-      "opportunities": 1320,
-      "outlier": false
+      "uses": 5200,
+      "opportunities": 9200,
+      "outlier": true
     },
     {
       "dimension": "real_armor vs sepia",
-      "wins": 10,
-      "games": 20,
+      "wins": 100,
+      "games": 200,
       "winRate": 0.5,
       "ci95": [
-        0.299295,
-        0.700705
+        0.43136,
+        0.56864
       ],
-      "uses": 460,
-      "opportunities": 830,
+      "uses": 4600,
+      "opportunities": 8300,
       "outlier": false
     },
     {
       "dimension": "sepia vs sepia",
       "wins": 0,
-      "games": 20,
+      "games": 200,
       "winRate": 0,
       "ci95": [
         0,
-        0.16113
+        0.018846
       ],
-      "uses": 320,
-      "opportunities": 580,
-      "outlier": false
+      "uses": 3200,
+      "opportunities": 5800,
+      "outlier": true
     }
   ],
-  "elapsedMs": 6385,
+  "elapsedMs": 62158,
   "recorded": true,
-  "createdAt": "2026-11-14T11:21:44.455Z"
+  "createdAt": "2026-11-14T13:50:50.672Z"
 }

@@ -7,7 +7,7 @@ import { performance } from 'node:perf_hooks';
 import { WebSocket } from 'ws';
 import { createRoomServer } from '../../services/room/server.js';
 import * as arena from '../../packages/games/action/index.js';
-import { chooseActions, chooseAction, botPolicyVersion } from '../../packages/games/action/bot.js';
+import { chooseActions, chooseAction, deriveBotSeed, botPolicyVersion } from '../../packages/games/action/bot.js';
 import { compareIds, hash, validate } from '../../packages/contracts/index.js';
 import { replayOnData } from '../../packages/sim/index.js';
 const enabled = process.env.RUN_SOCKET_TESTS === '1';
@@ -59,6 +59,7 @@ class Peer {
       this.seat = envelope.payload.you ?? this.seat;
     }
     if (envelope.type === 'match.started') {
+      this.matchSeed = envelope.payload.config.seed;
       this.lastBotTick = -1;
       this.lastAck = -1;
     }
@@ -130,7 +131,7 @@ class Peer {
     const view = envelope.payload.observation;
     if (view.tick <= this.lastBotTick) return;
     this.lastBotTick = view.tick;
-    for (const input of chooseActions(view, view.tick * 2, this.botVariant)) {
+    for (const input of chooseActions(view, view.tick * 2, deriveBotSeed(this.matchSeed, this.botVariant))) {
       this.send('input.submit', input);
       this.submitted++;
     }

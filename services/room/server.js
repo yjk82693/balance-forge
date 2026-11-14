@@ -9,10 +9,10 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Authority } from '../../packages/sim/index.js';
 import { hash, validate, validateSchema } from '../../packages/contracts/index.js';
 import { object } from '../../packages/contracts/shapes.js';
-import { runPlaytest, fullPlaytest } from './playtests.js';
+import { runPlaytest, fullPlaytest, PipelineError } from './playtests.js';
 import { replayViews } from './replay-views.js';
 import { games, cardAction } from '../runner/match.js';
-import { chooseActions } from '../../packages/games/action/bot.js';
+import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.js';
 import { Storage } from './storage.js';
 import { parseEnvelope, validatePayload, assertDepth, errorCode } from './protocol.js';
 import { messages } from './errors.js';
@@ -84,11 +84,11 @@ export class RoomServer {
     this.runningBatch = false;
     this.closed = false;
     this.http = createServer((req, res) => this.handleHttp(req, res).catch(error => {
-      const code = errorCode(error);
+      const code = error instanceof PipelineError ? error.code : errorCode(error);
       try {
         if (!res.headersSent) json(res, httpStatus(code), {
           code,
-          message: messages[code]
+          message: error instanceof PipelineError ? error.message : messages[code]
         });else res.destroy();
       } catch {
         try {
@@ -488,7 +488,7 @@ export class RoomServer {
       if (!seat.bot) continue;
       const inputs = authority.config.mode === 'turn' ? state.payload.activePlayer === seat.seat ? [cardAction(
         room.game, state, state.tick)] : [] : chooseActions(room.game.observe(state, seat.seat), state.tick * 2,
-        authority.config.players.indexOf(seat.seat));
+        deriveBotSeed(authority.config.seed, authority.config.players.indexOf(seat.seat)));
       for (const input of inputs) authority.submit(input);
     }
   }

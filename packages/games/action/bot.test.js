@@ -26,3 +26,51 @@ test('the old alias returns null when only movement is legal or the viewer has n
   assert.equal(bot.chooseAction(observe(next, 'p1'), 2, 0), null);
   assert.equal(bot.chooseAction(observe(next, 'display'), 2, 0), null);
 });
+test('incoming hostile projectiles trigger a generic legal guard without changing the view', () => {
+  for (const hero of data.characters) {
+    const config = makeConfig(data);
+    config.options.assignments.p1 = hero.id;
+    const state = initial(config, data);
+    const me = state.payload.entities[0];
+    state.payload.projectiles.push({
+      id: 'pr1', owner: 'p2', kind: 'projectile', moveId: 'projectile',
+      x: me.x + 1200, y: me.y, vx: -300, vy: 0, life: 20, power: 44, ignoresGuard: false
+    });
+    const view = observe(state, 'p1'), before = structuredClone(view);
+    assert.equal(bot.chooseAction(view, 0, bot.deriveBotSeed(2, 0)).actionId, 'guard');
+    assert.deepEqual(view, before);
+    view.payload.projectiles[0].ignoresGuard = true;
+    assert.equal(bot.chooseAction(view, 0, bot.deriveBotSeed(2, 0)).actionId, 'guard');
+    view.payload.projectiles[0].owner = 'p1';
+    assert.notEqual(bot.chooseAction(view, 0, bot.deriveBotSeed(2, 0)).actionId, 'guard');
+    view.payload.projectiles[0].owner = 'p2';
+    view.payload.projectiles[0].y += 2000;
+    assert.notEqual(bot.chooseAction(view, 0, bot.deriveBotSeed(2, 0)).actionId, 'guard');
+    view.payload.projectiles[0].y -= 2000;
+    view.payload.projectiles[0].vx = 300;
+    assert.notEqual(bot.chooseAction(view, 0, bot.deriveBotSeed(2, 0)).actionId, 'guard');
+    view.payload.projectiles[0].vx = -300;
+    view.payload.entities[0].cooldowns[2] = 100;
+    assert.notEqual(bot.chooseAction(view, 0, bot.deriveBotSeed(2, 0)).actionId, 'guard');
+  }
+  assert.equal(bot.botPolicyVersion, 'scripted-0.2.1');
+});
+test('bot seeds and choices are reproducible, seat-specific and independent of simulation RNG', () => {
+  assert.equal(bot.deriveBotSeed(1, 0), 1359504952);
+  assert.notEqual(bot.deriveBotSeed(1, 0), bot.deriveBotSeed(1, 1));
+  assert.notEqual(bot.deriveBotSeed(1, 0), bot.deriveBotSeed(2, 0));
+  for (const args of [[0, 0], [1, -1], [1, 64], [1.5, 0]]) {
+    assert.throws(() => bot.deriveBotSeed(...args), /INVALID_SCHEMA/);
+  }
+  const state = initial(makeConfig(data), data);
+  const before = structuredClone(state), view = observe(state, 'p1');
+  const choices = new Set();
+  for (let seed = 1; seed <= 100; seed++) {
+    const variant = bot.deriveBotSeed(seed, 0);
+    const inputs = bot.chooseActions(view, 0, variant);
+    assert.deepEqual(inputs, bot.chooseActions(structuredClone(view), 0, variant));
+    choices.add(JSON.stringify(inputs));
+  }
+  assert.ok(choices.size > 20);
+  assert.deepEqual(state, before);
+});

@@ -6,6 +6,12 @@ import { botPolicyVersion } from '../runner/match.js';
 import { hash, validateSchema } from '../../packages/contracts/index.js';
 import { integer, object } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
+export class PipelineError extends Error {
+  constructor(error) {
+    super(error.message);
+    this.code = error.code;
+  }
+}
 const gameId = {
   enum: ['hero_arena', 'hero_cards']
 };
@@ -29,7 +35,8 @@ export const fullRequest = object({
     type: 'boolean'
   },
   pairs: integer(1, 1000),
-  holdoutPairs: integer(1, 1000)
+  holdoutPairs: integer(1, 1000),
+  dataHash: digest
 }, ['gameId']);
 export async function matchBatch(server, {
   gameId,
@@ -119,7 +126,7 @@ export async function fullPlaytest(server, body) {
     holdoutSeedSetId = `holdout-1000001-${1000000 + holdoutPairs}`;
   const {
     data
-  } = server.storage.get(body.gameId);
+  } = server.storage.get(body.gameId, body.dataHash);
   const {
     createAdapter
   } = await import('../../packages/analysis/src/adapters.js');
@@ -157,7 +164,7 @@ export async function fullPlaytest(server, body) {
       return holdout.results;
     }
   });
-  if (!result.ok) throw Error(result.error?.code === 'INVALID_PATCH' ? 'PATCH_REJECTED' : 'TRANSPORT_UNAVAILABLE');
+  if (!result.ok) throw new PipelineError(result.error);
   return {
     ...result.value,
     runId,
@@ -165,7 +172,7 @@ export async function fullPlaytest(server, body) {
     elapsedMs: Math.round(performance.now() - start),
     seatWins: {
       baseline: baseline.metrics.seatWins,
-      holdout: holdout?.metrics.seatWins ?? 0
+      holdout: holdout?.metrics.seatWins ?? null
     }
   };
 }
