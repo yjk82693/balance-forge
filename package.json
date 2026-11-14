@@ -1,0 +1,38 @@
+{
+  "name": "balance-forge",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI playtesting platform for game developers \u2014 HackPrinceton Fall 2026",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check:secrets": "node tools/check-secrets.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0",
+    "vite": "^6.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.5.0",
+    "@types/qrcode": "^1.5.5"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "phaser": "^3.80.0",
+    "ws": "^8.18.0",
+    "qrcode": "^1.5.4",
+    "@fontsource/inter": "^5.1.0",
+    "@fontsource/noto-sans-kr": "^5.1.0"
+  }
+}
