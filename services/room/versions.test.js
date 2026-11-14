@@ -92,3 +92,27 @@ test('full runs record their actual parent, proposal, reports and verdict withou
   assert.equal(record.target.after.games, body.patched.validMatches);
   assert.equal(server.storage.get('hero_arena').dataHash, base.dataHash);
 });
+test('retained data imports as labelled branches without changing data or current pins', async t => {
+  const { server, root } = await localServer(t);
+  const base = server.storage.get('hero_arena');
+  const changed = server.storage.patch('hero_arena', patch(base.dataHash, 72));
+  const { rm } = await import('node:fs/promises');
+  await rm(join(root, 'data', 'versions', 'hero_arena.json'));
+  const restored = new Storage(root);
+  assert.equal(restored.get('hero_arena').dataHash, changed.dataHash);
+  const record = restored.versionStore.get('hero_arena', changed.dataHash);
+  assert.equal(record.parentHash, base.dataHash);
+  assert.match(record.note, /Original lineage is unavailable/);
+  assert.deepEqual(record.changes, [{ path: '/moves/1/power', old: 92, new: 72 }]);
+  assert.equal(restored.versionStore.list('hero_arena').length, 2);
+});
+test('false diff metadata and missing parent hashes are rejected without overwriting history', async t => {
+  const { server } = await localServer(t);
+  const base = server.storage.get('hero_arena');
+  const changed = server.storage.patch('hero_arena', patch(base.dataHash, 72));
+  const record = server.storage.versionStore.get('hero_arena', changed.dataHash);
+  assert.throws(() => server.storage.recordVersion({ ...record,
+    changes: [{ path: '/moves/1/power', old: 92, new: 1 }] }), /HASH_MISMATCH/);
+  assert.throws(() => server.storage.recordVersion({ ...record, parentHash: 'f'.repeat(64) }), /HASH_MISMATCH/);
+  assert.deepEqual(server.storage.versionStore.get('hero_arena', changed.dataHash), record);
+});

@@ -1,8 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { writeJson } from './files.js';
 export { writeJson } from './files.js';
-import { VersionStore, patchChanges, validateVersion } from './versions.js';
+import { VersionStore, patchChanges, validateVersion, numericDiff } from './versions.js';
 import { hash, validate, validateData, applyPatch } from '../../packages/contracts/index.js';
 import { pinData } from '../../packages/sim/index.js';
 import { games } from '../runner/match.js';
@@ -34,6 +34,24 @@ export class Storage {
       createdAt: new Date().toISOString(), origin: 'base', changes: [], rationale: 'Original game data.',
       target: null, verdict: null, approved: true
     });
+    this.restoreVersionRecords();
+  }
+  restoreVersionRecords() {
+    for (const [gameId, game] of Object.entries(games)) {
+      const folder = join(this.directory, 'data', gameId);
+      for (const name of readdirSync(folder).sort()) {
+        if (!/^[0-9a-f]{64}\.json$/.test(name)) continue;
+        const dataHash = name.slice(0, -5);
+        if (this.versionStore.get(gameId, dataHash)) continue;
+        const { data } = this.get(gameId, dataHash);
+        this.recordVersion({
+          gameId, dataHash, parentHash: hash(game.data), createdAt: new Date().toISOString(), origin: 'manual',
+          changes: numericDiff(game.data, data), rationale: 'Imported retained data into version history.',
+          target: null, verdict: null, approved: false,
+          note: 'Original lineage is unavailable; imported as a branch compared with base data.'
+        });
+      }
+    }
   }
   addVersion(data) {
     validateData(data);

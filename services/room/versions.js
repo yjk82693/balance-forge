@@ -29,8 +29,20 @@ export function validateVersion(record) {
   return record;
 }
 export function patchChanges(base, patched, proposal) {
-  const at = (data, path) => path.split('/').slice(1).reduce((value, key) => value[key], data);
+  const at = (data, path) => path.split('/').slice(1).reduce((value, key) => {
+    key = key.replaceAll('~1', '/').replaceAll('~0', '~');
+    if (!value || !Object.hasOwn(value, key)) throw Error('INVALID_SCHEMA');
+    return value[key];
+  }, data);
   return proposal.replacements.map(({ path }) => ({ path, old: at(base, path), new: at(patched, path) }));
+}
+export function numericDiff(base, data, path = '') {
+  if (typeof base === 'number' && typeof data === 'number') {
+    return base === data ? [] : [{ path, old: base, new: data }];
+  }
+  if (!base || !data || typeof base !== 'object' || typeof data !== 'object') return [];
+  return Object.keys(base).filter(key => Object.hasOwn(data, key)).sort().flatMap(key =>
+    numericDiff(base[key], data[key], `${path}/${key.replaceAll('~', '~0').replaceAll('/', '~1')}`));
 }
 export class VersionStore {
   constructor(directory) {

@@ -593,3 +593,11 @@ selection. Detail responses flatten the shared record and add diff; approval tak
 Selection atomically changes only the server-wide current pin, preserving retained data and existing room pins.
 Tests exercise every route, persistence/restart, missing hashes, cross-game pins and malformed input without
 state mutation. Initial version/persistence group: 8 passed, 0 failed; full/persistence group: 11 passed, 0 failed.
+
+Current step clean point: final service/runner/E2E discovery run has 62 passed, 0 failed, 7 socket-gated skips
+(5 room tests and 2 E2E scenarios), no TODO; 11,313.999083 ms. The focused version/auto group has 11 passed.
+Only the new analysis runAuto boundary is stubbed by explicit injection; real workers/storage/routes are used.
+Current /auto wiring follows Tony's FINAL interface, but the real module is absent until main 1736a3a is merged.
+The README/example-capture updates and real runAuto integration verification are not finished. Detailed file,
+function, interface, route and test handoff is in services/room/HANDOFF.md. No further feature edits started.
+Stopping at Tony's request for an outside commit/merge and continuation by another agent. No commits or network.

@@ -41,7 +41,9 @@ export async function autoPlaytest(server, body) {
   let progress = { round: 1, phase: 'scan' }, batchIndex = 0;
   const onProgress = update => {
     if (!Number.isInteger(update.round) || update.round < 1 || update.round > (body.rounds ?? 3) + 1 ||
-        typeof update.phase !== 'string' || !update.phase.length || update.phase.length > 64) throw Error('INVALID_SCHEMA');
+        typeof update.phase !== 'string' || !update.phase.length || update.phase.length > 64) {
+      throw Error('INVALID_SCHEMA');
+    }
     progress = { round: update.round, phase: update.phase };
     for (const session of server.sessions) server.send(session, 'playtest.progress', {
       ...update, ...progress, runId, gameId: body.gameId
@@ -72,7 +74,7 @@ export async function autoPlaytest(server, body) {
     seedsFor: autoSeeds, botPolicyVersion, onProgress, onRecord
   });
   if (!result || !Array.isArray(result.records) || !stops.has(result.stoppedBecause)) throw Error('INVALID_SCHEMA');
-  for (const record of result.records) onRecord(record);
+  const records = result.records.map(record => onRecord(record));
   if (result.finalCheck !== null) validate('Report', result.finalCheck);
-  return { ...result, runId, gameId: body.gameId };
+  return { ...result, records, runId, gameId: body.gameId };
 }

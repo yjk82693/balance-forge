@@ -28,7 +28,8 @@ test('two injected auto rounds persist two child records, stream phases and play
   assert.equal(body.records[0].parentHash, base.dataHash);
   assert.equal(body.records[1].parentHash, body.records[0].dataHash);
   assert.equal(server.storage.versionStore.list('hero_arena').length, 3);
-  const progress = host.messages.filter(message => message.type === 'playtest.progress').map(message => message.payload);
+  const progress = host.messages.filter(message => message.type === 'playtest.progress')
+    .map(message => message.payload);
   assert.ok(progress.length >= 8);
   assert.deepEqual([...new Set(progress.map(update => `${update.round}:${update.phase}`))],
     ['1:scan', '1:holdout', '2:scan', '2:holdout']);
