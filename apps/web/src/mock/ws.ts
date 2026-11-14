@@ -4,6 +4,8 @@ import type { ConnStatus, Role, Transport } from "./types";
 
 const MAX_ENVELOPE = 64 * 1024; // contract: maximum envelope 64 KiB
 const MAX_TRIES = 5;
+/** Latest message of these types is kept and replayed to screens that subscribe later (lobby -> arena). */
+const STICKY = ["room.status", "match.started", "state.view", "actions.available", "match.ended"];
 
 const origin = () => `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
 
@@ -69,6 +71,7 @@ class Conn {
   private closed = false;
   private held = false; // drop() was called: stay down until reconnect()
   private reqSeq = 0;
+  private last = new Map<string, Envelope>();
   sessionId = "";
   private roomId = "";
   private epoch = 1;
@@ -106,6 +109,7 @@ class Conn {
       this.ws = null;
       this.sessionId = "";
       this.roomId = "";
+      this.last.clear();
       if (this.closed || this.held) return;
       this.setStatus("lost");
       this.scheduleRetry();
@@ -125,6 +129,7 @@ class Conn {
     if (env.sessionId) this.sessionId = env.sessionId;
     if (env.roomId) this.roomId = env.roomId;
     if (Number.isInteger(env.epoch)) this.epoch = env.epoch;
+    if (STICKY.includes(env.type)) this.last.set(env.type, env);
     if (env.type === "error") this.onServerError?.(env);
     this.listeners.forEach((f) => f(env));
   }
@@ -157,8 +162,16 @@ class Conn {
     this.ws?.close();
   }
 
+  /**
+   * The server only sends room.status and the like when something changes, so a screen that mounts later would
+   * wait forever. New subscribers therefore get the latest sticky messages once, just after subscribing.
+   */
   subscribe(fn: (env: Envelope) => void) {
     this.listeners.add(fn);
+    const replay = STICKY.flatMap((t) => this.last.get(t) ?? []);
+    setTimeout(() => {
+      if (this.listeners.has(fn)) replay.forEach(fn);
+    }, 0);
     return () => this.listeners.delete(fn);
   }
   onStatus(fn: (s: ConnStatus) => void) {

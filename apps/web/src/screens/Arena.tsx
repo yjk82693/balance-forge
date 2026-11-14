@@ -8,6 +8,7 @@ import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardsCanvas } from "../components/CardsCanvas";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
+import { isMockMode } from "../mock/types";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -17,6 +18,12 @@ const fmtTime = (ticks: number) => {
   const s = Math.round(ticks / 60);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
+
+/** `live` while a real match runs (docs/ui-tone.md 4.4); the mock only ever replays a sample. */
+function PlayBadge({ mock, playing }: { mock: boolean; playing: boolean }) {
+  if (mock) return <span className="badge">sample replay</span>;
+  return playing ? <span className="badge live"><span className="dot" />live</span> : null;
+}
 
 /** Laptop main screen: the arena as the players see it. */
 export function Arena({ gameId }: { gameId: string }) {
@@ -66,7 +73,7 @@ export function Arena({ gameId }: { gameId: string }) {
             <ArenaCanvas observation={arenaObs} events={events} />
           )}
           <div className="arena-overlay">
-            {gameId !== "hero_cards" && <span className="badge">sample replay</span>}
+            {gameId !== "hero_cards" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
           {srv === "unreachable" ? (
