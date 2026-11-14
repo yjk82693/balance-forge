@@ -7,7 +7,7 @@ import type { EvidenceAction, EvidenceSide, RunEvidence } from "./api";
 import { botRows } from "./groups";
 import { heroName } from "./heroes";
 import { pct } from "./stats";
-import type { VerdictKind } from "./api";
+import type { VerdictKind, VerdictTarget } from "./api";
 
 /** A win rate with its 95% interval and the games behind it. */
 export interface Rate {
@@ -42,13 +42,11 @@ export interface ResultFacts {
   outlier: (Rate & { isOutlier: boolean }) | null;
   /** the matchup is fair: there is no patch, holdout or verdict, and the card says so */
   fair: boolean;
-  /** how this run was made, when that needs saying (e.g. the server ignored the chosen matchup) */
-  note?: string;
   /** one line of evidence for the outlier, from the run's `evidence`; null when the run has none */
   evidence: string | null;
   patch: PatchFact[];
   holdout: Rate | null;
-  verdict: { kind: VerdictKind; label: string; reasons: string[] } | null;
+  verdict: { kind: VerdictKind; label: string; reasons: string[]; targets: VerdictTarget[] } | null;
   /** other matchups from the recorded roster report that sit clearly away from 50% */
   others: Finding[] | null;
   /** set when the roster report exists but nothing in it can be called an outlier, and why */
@@ -104,7 +102,6 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
   return {
     ...sourceOf(run),
     fair: !!run.fair,
-    note: run.note,
     outlier: lead ? { ...lead, isOutlier: !!target?.outlier } : null,
     evidence: evidenceLine(run.evidence, target?.row.dimension),
     patch: run.proposal && !run.fair
@@ -120,7 +117,12 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
       : [],
     holdout: target && run.patched && !run.fair ? rateOf(target.row.dimension, run.patched.rows) : null,
     verdict: run.verdict && !run.fair
-      ? { kind: run.verdict.verdict, label: VERDICT_COPY[run.verdict.verdict].label, reasons: run.verdict.reasons }
+      ? {
+          kind: run.verdict.verdict,
+          label: VERDICT_COPY[run.verdict.verdict].label,
+          reasons: run.verdict.reasons,
+          targets: run.verdict.targets ?? [],
+        }
       : null,
     ...findingsFrom(roster, target?.row.dimension),
   };
@@ -169,7 +171,6 @@ export function summaryText(f: ResultFacts): string {
     lines.push(`${verb}: ${f.outlier.matchup}, first hero wins ${rateText(f.outlier)}`);
     if (f.evidence) lines.push(`Evidence: ${f.evidence}`);
   } else lines.push("Outlier: none, too few games per matchup.");
-  if (f.note) lines.push(`Note: ${f.note}`);
   for (const p of f.patch) {
     const change = `${p.field} ${p.old ?? "?"} -> ${p.next}`;
     lines.push(`Patch (${p.origin}): ${change}. ${p.rationale}`.trim());
@@ -183,6 +184,9 @@ export function summaryText(f: ResultFacts): string {
   if (f.verdict) {
     const why = f.verdict.reasons.length ? `. ${f.verdict.reasons.join(" ")}` : "";
     lines.push(`Verdict: ${f.verdict.label}${why}`);
+    for (const t of f.verdict.targets) {
+      lines.push(`- ${name(t.matchup)}: ${pct(t.before.rate)}% -> ${pct(t.after.rate)}% (${t.outcome})`);
+    }
   }
   if (f.others?.length) {
     lines.push("Other findings (recorded roster report):");

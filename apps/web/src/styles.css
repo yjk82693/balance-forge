@@ -2180,7 +2180,7 @@ p {
 .result .panel-head { margin-bottom: var(--space-3); }
 @media (min-width: 1100px) {
   /* the result card is taller than the old patch card, so the replays give up some height to keep one screen */
-  .dash-compact .replays { width: 80%; }
+  .dash-compact .replays { width: 58%; }
 }
 @media (min-width: 1100px) {
   .result-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
@@ -2256,3 +2256,14 @@ table.sr-only { display: block; max-width: 1px; }
   font: inherit;
 }
 .select:disabled { opacity: 0.5; }
+
+/* verdict targets: one row each, with a small before to after bar and an outcome chip */
+.target-rows { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-2) 0 0; border-top: 1px solid var(--line); display: grid; gap: var(--space-2); }
+.target-row { display: grid; grid-template-columns: minmax(120px, 1.2fr) 120px 88px auto; align-items: center; gap: var(--space-3); }
+@media (max-width: 600px) { .target-row { grid-template-columns: 1fr auto; } .target-row .ba-bar { grid-column: 1 / -1; } }
+.ba-bar { position: relative; display: inline-block; width: 120px; height: 10px; border-radius: var(--radius-pill); background: var(--surface-2); }
+.ba-band { position: absolute; left: 45%; width: 10%; top: 0; bottom: 0; background: var(--surface-3); }
+.ba-line { position: absolute; top: 4px; height: 2px; background: var(--text-2); }
+.ba-dot { position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; box-sizing: border-box; }
+.ba-dot.before { border: 2px solid var(--text-2); background: var(--surface-1); }
+.ba-dot.after { background: var(--accent); }
