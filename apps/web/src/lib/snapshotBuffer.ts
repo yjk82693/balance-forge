@@ -138,7 +138,8 @@ export class SnapshotBuffer {
       };
     } else {
       extrapolating = renderTick > a.tick;
-      if (extrapolating && renderTick < a.tick + MAX_EXTRAPOLATE_TICKS) this.stats.extrapolated += 1; // not while holding
+      const holding = renderTick >= a.tick + MAX_EXTRAPOLATE_TICKS; // past the cap the pose just stays
+      if (extrapolating && !holding) this.stats.extrapolated += 1;
       const pp = prev?.observation.payload as ArenaPayload | undefined;
       const span = prev ? a.tick - prev.tick : 0;
       blend = (id, from, kind) => {
