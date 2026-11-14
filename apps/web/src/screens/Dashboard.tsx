@@ -12,6 +12,7 @@ import { VersionToggle } from "../components/VersionToggle";
 import { rowStats } from "../components/WinRateChart";
 import { botRows } from "../lib/groups";
 import { useManifest } from "../lib/assets";
+import { useHeroStats } from "../lib/heroStats";
 import {
   SAMPLE_HUMAN_ID,
   pickTargetDimension,
@@ -46,6 +47,7 @@ function rowsWithJustPlayed(played: ReturnType<typeof loadJustPlayed>): MatchRow
 
 export function Dashboard() {
   useManifest();
+  useHeroStats();
   const mock = isMockMode();
   const version = useDemoVersion();
   const { run, busy, live, error, notice, elapsed, start } = useRunner();
