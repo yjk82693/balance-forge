@@ -13,6 +13,7 @@ import type { Rate, ResultFacts } from "./resultCard";
 import { VERDICT_COPY } from "./dashboardData";
 import { originLabel, targetsFrom } from "./fullRun";
 import { fixturePatch } from "./fixtures";
+import { parseDesigner, saveDesigner, type DesignerCase } from "./designer";
 import { isMockMode } from "../mock/types";
 
 export type HistorySource = "live run" | "recorded" | "sample data";
@@ -36,6 +37,8 @@ export type VersionRate = VerdictRate;
 export interface VersionList {
   versions: VersionRecord[];
   currentHash?: string;
+  /** heroes the auto-balance gave up on (`needs_designer`), when the server says */
+  needsDesigner?: DesignerCase[];
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object";
@@ -81,7 +84,8 @@ export function parseVersionList(raw: unknown): VersionList | null {
   if (!list) return null;
   const versions = list.map(parseVersion).filter((v): v is VersionRecord => v !== null);
   const currentHash = isObject(raw) && typeof raw.currentHash === "string" ? raw.currentHash : undefined;
-  return { versions, currentHash };
+  const cases = isObject(raw) ? parseDesigner(raw.needs_designer ?? raw.needsDesigner) : [];
+  return { versions, currentHash, ...(cases.length ? { needsDesigner: cases } : {}) };
 }
 
 export const shortHash = (hash: string) => hash.slice(0, 7);
@@ -295,7 +299,12 @@ export async function runAutoBalance(
   const { rounds, approval, fromHash } = opts;
   const body = { gameId: "hero_arena", rounds, requireApproval: approval, ...(fromHash ? { fromHash } : {}) };
   const done = await call<unknown>("/v1/playtest/auto", JSON_POST(body), signal);
-  return done === null ? null : fetchVersions(signal);
+  if (done === null) return null;
+  // The hand-overs ride on the auto result; the list is read again for the versions themselves.
+  const cases = isObject(done) ? parseDesigner(done.needs_designer ?? done.needsDesigner) : [];
+  saveDesigner(cases);
+  const list = await fetchVersions(signal);
+  return list && cases.length ? { ...list, needsDesigner: cases } : list;
 }
 
 /** Where the history comes from: the server, else the stored file, else (?mock=1) the sample. */

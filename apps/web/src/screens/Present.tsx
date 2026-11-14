@@ -20,6 +20,9 @@ import { DiffCard } from "../components/DiffCard";
 import { HeroProfile } from "../components/HeroProfile";
 import { VersionHistory } from "../components/VersionHistory";
 import { useManifest } from "../lib/assets";
+import { loadDesigner } from "../lib/designer";
+import { useHeroStats } from "../lib/heroStats";
+import { DesignerSection } from "../components/DesignerCard";
 import { fetchVersions, loadHistory, type HistorySource, type VersionList } from "../lib/versions";
 import { isMockMode } from "../mock/types";
 import type { PlaytestRun } from "../lib/api";
@@ -38,6 +41,7 @@ function sourceLabel(run: PlaytestRun | null, recorded: boolean, mock: boolean):
 
 export function Present({ auto }: { auto: boolean }) {
   useManifest();
+  useHeroStats();
   const mock = isMockMode();
   const { run, busy, live, error, notice, elapsed, start } = useRunner();
   const started = useRef(false);
@@ -61,7 +65,7 @@ export function Present({ auto }: { auto: boolean }) {
   );
   const history = useHistory(finished);
   const hasProfile = !!run?.diagnosis;
-  const hasHistory = !!history && history.list.versions.length > 1;
+  const hasHistory = !!history && (history.list.versions.length > 1 || designerCases(history).length > 0);
   const scenes = useMemo(() => scenesFor({ profile: hasProfile, history: hasHistory }), [hasProfile, hasHistory]);
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
   const source = sourceLabel(run, !!notice, mock);
@@ -167,6 +171,9 @@ function useHistory(runFinished: boolean): HistoryState | null {
   return state;
 }
 
+/** Heroes handed to a designer: from the list itself, else from the last auto-balance run in this tab. */
+const designerCases = (h: HistoryState) => h.list.needsDesigner ?? loadDesigner();
+
 /** Auto-balance rounds as the Versions screen shows them, read only. */
 function HistoryScene({ history }: { history: HistoryState | null }) {
   if (!history) return <Waiting what="the version history" />;
@@ -176,6 +183,7 @@ function HistoryScene({ history }: { history: HistoryState | null }) {
         <span className="eyebrow">Version history, newest first</span>
         <span className={`badge${history.source === "live run" ? "" : " recorded"}`}>{history.source}</span>
       </div>
+      <DesignerSection cases={designerCases(history)} />
       <VersionHistory versions={history.list.versions} currentHash={history.list.currentHash} />
     </section>
   );

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, runBotsOnVersion, subscribeProgress, type PlaytestRun } from "../lib/api";
 import { ResultCard } from "../components/ResultCard";
+import { DesignerSection } from "../components/DesignerCard";
 import { VersionHistory } from "../components/VersionHistory";
 import { FitStage } from "../components/FitStage";
 import { TopBar } from "../components/TopBar";
@@ -10,6 +11,8 @@ import { botRows } from "../lib/groups";
 import { go } from "../lib/router";
 import { pct } from "../lib/stats";
 import { useManifest } from "../lib/assets";
+import { loadDesigner } from "../lib/designer";
+import { useHeroStats } from "../lib/heroStats";
 import {
   approveVersion,
   factsFromVersion,
@@ -47,6 +50,7 @@ function BotResult({ run, target }: { run: PlaytestRun; target?: string }) {
 
 export function Versions() {
   useManifest();
+  useHeroStats();
   const [list, setList] = useState<VersionList | null>(null);
   const [source, setSource] = useState<HistorySource>("recorded");
   const [loading, setLoading] = useState(true);
@@ -188,6 +192,7 @@ export function Versions() {
                 <p className="text-2">Run auto-balance on the live server, or add a stored history file.</p>
               </div>
             )}
+            <DesignerSection cases={list?.needsDesigner ?? loadDesigner()} />
             <VersionHistory
               versions={list?.versions ?? []}
               currentHash={list?.currentHash}
