@@ -43,12 +43,16 @@ interface Profile {
   hero: string;
 }
 
-export function Controller({ initialCode }: { initialCode: string }) {
+export function Controller({ initialCode, game }: { initialCode: string; game?: string | null }) {
   useManifest();
   const { transport, status } = useTransport("controller");
   const { room, observation, events, config, result, error, lastAckSeq, views } = useRoom(transport);
   const [arenaOn, setArenaOn] = useState(true); // the small arena above the controls; one button turns it off
-  const [profile, setProfile] = useState<Profile>({ code: initialCode.toUpperCase(), name: "", hero: "bari" });
+  const [profile, setProfile] = useState<Profile>({
+    code: initialCode.toUpperCase(),
+    name: "",
+    hero: game === TENTACLE_GAME_ID ? "sepia" : "bari", // a solo game has one hero
+  });
   const [joined, setJoined] = useState<Profile | null>(null);
   const seat = room?.you;
   const tick = useRef(0);
@@ -80,6 +84,10 @@ export function Controller({ initialCode }: { initialCode: string }) {
   // A cards view means the cards hand, whatever the room status said about the game when this phone joined.
   const isCards = gameId === "hero_cards" || isCardsPayload(observation?.payload);
   const isTentacle = gameId === TENTACLE_GAME_ID || isTentaclePayload(observation?.payload);
+  // Sepia is the only hero of Sepia Tentacle Run: whatever the form said, the room is told Sepia.
+  useEffect(() => {
+    if (isTentacle && joined && joined.hero !== "sepia") setJoined({ ...joined, hero: "sepia" });
+  }, [isTentacle, joined]);
   usePreventPageGestures(playing && !isCards); // the cards hand scrolls sideways, so it is left alone
 
   useEffect(() => {
@@ -181,7 +189,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   if (!playing) {
     return (
       <JoinForm
-        gameId={gameId}
+        gameId={game ?? gameId}
         profile={profile}
         onChange={setProfile}
         onJoin={join}
@@ -221,7 +229,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
           </button>
         </div>
       )}
-      {room?.phase === "lobby" && (
+      {room?.phase === "lobby" && !isTentacle && (
         <fieldset className="heroes seated-heroes" disabled={!online}>
           <legend className="caption">Change hero</legend>
           {HEROES.map((h) => (
@@ -427,7 +435,7 @@ function JoinForm(props: {
       </label>
       <fieldset className="heroes">
         <legend className="caption">Hero</legend>
-        {HEROES.map((h) => {
+        {HEROES.filter((h) => gameId !== TENTACLE_GAME_ID || h.id === "sepia").map((h) => {
           const planned = !!h.plannedIn?.includes(gameId);
           return (
             <label

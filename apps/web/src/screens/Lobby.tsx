@@ -25,8 +25,9 @@ function startError(code: string, message?: string): string {
   return message ? `Couldn't start: ${message}` : "Couldn't start the match. Try again.";
 }
 
-function joinUrl(code: string) {
-  return `${location.origin}${location.pathname}#/play?code=${code}`;
+/** The phone's address; a solo game says its id so the form can offer the one hero it has. */
+function joinUrl(code: string, game?: string) {
+  return `${location.origin}${location.pathname}#/play?code=${code}${game ? `&game=${game}` : ""}`;
 }
 
 function Qr({ url }: { url: string }) {
@@ -131,7 +132,7 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
   const needed = solo ? 1 : PLAYERS_TO_START;
   const connecting = !room;
   const code = room?.joinCode ?? "····";
-  const url = joinUrl(code);
+  const url = joinUrl(code, solo ? gameId : undefined);
   const seats = room?.seats ?? [];
   const here = seats.filter((s) => s.connected).length;
   const arena = game.status === "ready";

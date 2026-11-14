@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ApiError, runPlaytest, subscribeProgress, type PlaytestRun } from "./api";
+import { ApiError, runPlaytest, subscribeProgress, type PlaytestRun, type RunGame } from "./api";
 import type { ReportRow } from "./contract";
 import { MATCHES, loadRun, saveRun } from "./dashboardData";
 import { isMockMode } from "../mock/types";
@@ -53,7 +53,7 @@ function playStoredRun(run: PlaytestRun, onProgress: (p: ProgressMsg) => void, s
 }
 
 /** Runs the bot batch, feeds live progress, and falls back to the stored run when the live run fails. */
-export function useRunner(game: "hero_arena" | "hero_cards" = "hero_arena") {
+export function useRunner(game: RunGame = "hero_arena") {
   const mock = isMockMode();
   const [run, setRun] = useState<PlaytestRun | null>(() => (mock ? null : loadRun(game)));
   const [busy, setBusy] = useState(false);

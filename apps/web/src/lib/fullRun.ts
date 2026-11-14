@@ -19,6 +19,7 @@ import type {
   VerdictTarget,
 } from "./api";
 import { cardDiagnosisFrom } from "./cardDiagnosis";
+import { tentacleResultFrom } from "./tentacleDash";
 import { parseTimeline } from "./replaySource";
 
 const ORIGINS: PatchOrigin[] = ["gemini", "grok", "fallback", "fake", "manual"];
@@ -237,12 +238,42 @@ function replayFrom(raw: unknown): ReplayInfo | undefined {
 }
 
 /**
+ * Sepia Tentacle Run: the body has a wave table instead of matchup rows, so the run carries `tentacle` and an empty
+ * baseline report; the patch, validation, verdict and fallback line are read like every other game's.
+ */
+function tentacleRunFrom(raw: Record<string, unknown>): PlaytestRun | null {
+  const tentacle = tentacleResultFrom(raw);
+  if (!tentacle) return null;
+  const baseline = cleanReportJson({ rows: [], validMatches: tentacle.runs, elapsedMs: raw.elapsedMs }, {
+    reportId: typeof raw.runId === "string" ? raw.runId : "run",
+    gameId: "tentacle_run",
+    botPolicyVersion: typeof raw.botPolicyVersion === "string" ? raw.botPolicyVersion : undefined,
+    seedSetId: typeof raw.seedSetId === "string" ? raw.seedSetId : undefined,
+  });
+  if (!baseline) return null;
+  const verdictRaw = isObject(raw.verdict) ? raw.verdict : null;
+  const kind = verdictRaw?.verdict as VerdictKind | undefined;
+  return {
+    baseline,
+    proposal: proposalFrom(raw.proposal, raw.validation),
+    verdict:
+      kind && VERDICTS.includes(kind)
+        ? { verdict: kind, reasons: Array.isArray(verdictRaw?.reasons) ? verdictRaw.reasons.map(String) : [] }
+        : undefined,
+    runId: typeof raw.runId === "string" ? raw.runId : undefined,
+    fair: raw.fair === true ? true : undefined,
+    tentacle,
+  };
+}
+
+/**
  * The response of POST /v1/playtest/full (and the recorded roster file, if it has the same shape) as a PlaytestRun.
  * Only `baseline` is required; proposal, patched report and verdict show when they are there.
  * A file that is a bare Report (rows at the top level) is accepted as a baseline-only run.
  */
 export function runFromFull(raw: unknown): PlaytestRun | null {
   if (!isObject(raw)) return null;
+  if (raw.gameId === "tentacle_run") return tentacleRunFrom(raw);
   const top: Partial<Report> = {
     reportId: typeof raw.runId === "string" ? raw.runId : undefined,
     gameId: typeof raw.gameId === "string" ? raw.gameId : undefined,

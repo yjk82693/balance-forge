@@ -1,4 +1,4 @@
-import type { PlaytestRun } from "./api";
+import type { PlaytestRun, RunGame } from "./api";
 import { runFromFull } from "./fullRun";
 import { staticRaw } from "./staticRaw";
 
@@ -10,7 +10,8 @@ const file = (name: string) =>
   Object.entries(stored).find(([path]) => path.endsWith(`/${name}`))?.[1] as (() => Promise<unknown>) | undefined;
 
 /** The static demo's result: a recorded full run, else the recorded roster with the recorded patch and verdict. */
-export async function loadStaticRun(game: "hero_arena" | "hero_cards" = "hero_arena"): Promise<PlaytestRun | null> {
+export async function loadStaticRun(game: RunGame = "hero_arena"): Promise<PlaytestRun | null> {
+  if (game === "tentacle_run") return null; // no recorded Tentacle Run in the static build
   if (game === "hero_cards") {
     // The recorded Hero Cards /full response, as it was.
     const cards = file("recorded-cards-run.json");

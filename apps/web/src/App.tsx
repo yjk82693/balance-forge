@@ -38,7 +38,7 @@ export function App() {
     );
   }
   if (screen === "play" || screen === "join") {
-    return <Controller key={location.hash} initialCode={route.query.get("code") ?? ""} />;
+    return <Controller key={location.hash} initialCode={route.query.get("code") ?? ""} game={route.query.get("game")} />;
   }
   return <Suspense fallback={<Loading />}>{screenFor(screen, route)}</Suspense>;
 }
