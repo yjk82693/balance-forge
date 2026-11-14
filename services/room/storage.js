@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { hash, validate, validateData, applyPatch } from '../../packages/contracts/index.js';
@@ -9,8 +9,16 @@ export function writeJson(path, value) {
     recursive: true
   });
   const temporary = `${path}.${randomUUID()}.tmp`;
-  writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n');
-  renameSync(temporary, path);
+  try {
+    writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n');
+    renameSync(temporary, path);
+  } finally {
+    try {
+      rmSync(temporary, {
+        force: true
+      });
+    } catch {}
+  }
 }
 export class Storage {
   constructor(directory) {
@@ -44,8 +52,8 @@ export class Storage {
     this.versions.set(digest, data);
     return digest;
   }
-  saveIndex() {
-    writeJson(join(this.directory, 'data', 'current.json'), Object.fromEntries(this.current));
+  saveIndex(current = this.current) {
+    writeJson(join(this.directory, 'data', 'current.json'), Object.fromEntries(current));
   }
   get(gameId, digest = this.current.get(gameId)) {
     if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
@@ -74,18 +82,22 @@ export class Storage {
       throw Error('PATCH_REJECTED');
     }
     const digest = this.addVersion(candidate);
-    this.current.set(gameId, digest);
-    this.saveIndex();
+    const nextCurrent = new Map(this.current);
+    nextCurrent.set(gameId, digest);
+    this.saveIndex(nextCurrent);
+    this.current = nextCurrent;
     return {
       dataHash: digest,
       baseDataHash: base.dataHash
     };
   }
   recordReplay(recording) {
+    if (!recording || !Array.isArray(recording.frames)) throw Error('INVALID_SCHEMA');
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(recording.matchId)) throw Error('INVALID_SCHEMA');
     validate('MatchConfig', recording.config);
     if (recording.seed !== recording.config.seed) throw Error('INVALID_SCHEMA');
-    recording.frames.forEach(frame => validate('InputFrame', frame));
+    if (!/^[0-9a-f]{64}$/.test(recording.finalStateHash ?? '')) throw Error('INVALID_SCHEMA');
+    for (const frame of recording.frames) validate('InputFrame', frame);
     const path = join(this.directory, 'replays', `${recording.matchId}.json`);
     if (existsSync(path)) {
       if (hash(JSON.parse(readFileSync(path, 'utf8'))) !== hash(recording)) throw Error('HASH_MISMATCH');
@@ -101,7 +113,11 @@ export class Storage {
   record(result, recording) {
     validate('MatchResult', result);
     if (this.humans.some(r => r.matchId === result.matchId)) return;
-    if (recording) this.recordReplay(recording);
+    if (recording) {
+      if (recording.matchId !== result.matchId || recording.finalStateHash !== result.finalStateHash || hash(
+        recording.config) !== hash(result.config)) throw Error('HASH_MISMATCH');
+      this.recordReplay(recording);
+    }
     const records = [...this.humans, result];
     writeJson(this.humanPath, records);
     this.humans = records;

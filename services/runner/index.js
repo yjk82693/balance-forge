@@ -31,6 +31,11 @@ export async function runBatch(jobs, {
 } = {}) {
   if (!Number.isInteger(workers) || workers < 1 || workers > 64 || !Array.isArray(jobs) || !jobs.length) throw Error(
     'INVALID_SCHEMA');
+  if (typeof onProgress !== 'undefined' && typeof onProgress !== 'function') throw Error('INVALID_SCHEMA');
+  for (const job of jobs) {
+    if (!job || typeof job !== 'object') throw Error('INVALID_SCHEMA');
+    validate('MatchConfig', job.config);
+  }
   const count = Math.min(workers, jobs.length),
     chunks = Array.from({
       length: count

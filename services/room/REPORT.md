@@ -118,7 +118,8 @@ runner tests passed without opening sockets, including original final-hash repro
 Completed N. Nightcrow is arena content only: crow_dive, crow_swarm, wing_shield use existing archetypes/tiers/effects
 and ordinary damage/shield values; no character-specific branches or new guard bypass. Only spirit_arrow retains
 its existing intended arena exception. The nightcrow card deck has mechanical_crows summons and a generic peek
-card; revealed next-card identity is private to its owner and expires at the next turn boundary. No boosted matchup rule.
+card; revealed next-card identity is private to its owner and expires at the next turn boundary. No boosted matchup
+rule.
 The expanded schemas remain closed and bounded; deck references and assignments are validated.
 All 28 selected game/sim/runner/replay tests passed, including the 100-seed matrix with all five heroes (48.33 s).
 

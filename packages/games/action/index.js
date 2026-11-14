@@ -1,4 +1,4 @@
-import { hash, validate, registerGame, validateGamePayload, validateConfig, validateFrame,
+import { hash, validate, validateData, registerGame, validateGamePayload, validateConfig, validateFrame,
   compareIds } from '../../contracts/index.js';
 import { clamp, xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta } from '../../sim/index.js';
 import { actions, schemas } from './schemas.js';
@@ -15,8 +15,13 @@ export const describe = () => ({
   maxPlayers: 2,
   actions: structuredClone(actions)
 });
-export function makeConfig(data, seed = 1, players = ['p1', 'p2'], maxTicks = 1800, assignments = Object.fromEntries(
-  players.map((id, i) => [id, data.characters[i % data.characters.length].id]))) {
+function defaultAssignments(data, players) {
+  validateData(data);
+  if (!data.characters.length || !Array.isArray(players)) throw Error('INVALID_SCHEMA');
+  return Object.fromEntries(players.map((id, index) => [id, data.characters[index % data.characters.length].id]));
+}
+export function makeConfig(data, seed = 1, players = ['p1', 'p2'], maxTicks = 1800, assignments) {
+  assignments ??= defaultAssignments(data, players);
   return {
     contractVersion: '0.1',
     schemaVersion: 1,
@@ -35,14 +40,12 @@ export function makeConfig(data, seed = 1, players = ['p1', 'p2'], maxTicks = 18
 export function initial(config, data) {
   validateConfig(config, data, describe(), simVersion);
   if (config.maxTicks > 1800) throw Error('INVALID_SCHEMA');
-  const assigned = config.options?.assignments ?? Object.fromEntries(config.players.map((id, i) => [id,
-    data.characters[i % data.characters.length].id]));
-  for (const [i, id] of config.players.map(id => assigned[id]).entries()) {
+  const assigned = config.options?.assignments ?? defaultAssignments(data, config.players);
+  for (const id of config.players.map(id => assigned[id])) {
     if (!data.characters.some(c => c.id === id)) throw Error('INVALID_SCHEMA');
     const c = data.characters.find(c => c.id === id);
-    if (ids.filter(a => a !== 'move').some(a => !c.moveIds.map(id => data.moves.find(m =>
-      m.id === id)?.archetype).includes(a))) throw Error('INVALID_SCHEMA');
-    if (i > 1) throw Error('INVALID_SCHEMA');
+    if (ids.some(a => !c.moveIds.map(id => data.moves.find(m => m.id === id)?.archetype).includes(a))) throw Error(
+      'INVALID_SCHEMA');
   }
   for (const t of data.gameRules.moveTraits) if (!data.moves.some(m => m.id === t.moveId)) throw Error(
     'INVALID_SCHEMA');
@@ -130,6 +133,242 @@ function moveFor(data, e, actionId) {
   const c = data.characters.find(c => c.id === e.hero);
   return data.moves.find(m => c.moveIds.includes(m.id) && m.archetype === actionId);
 }
+function applyMovement({
+  payload,
+  data
+}, frame) {
+  for (const a of frame.actions) {
+    const e = payload.entities.find(e => e.id === a.playerId);
+    e.lastSeq = a.seq;
+    if (a.actionId === 'move') {
+      const c = data.characters.find(c => c.id === e.hero);
+      e.x = clamp(e.x + quotient(a.params.moveX * c.speed, 1000), 0, 16000);
+      e.y = clamp(e.y + quotient(a.params.moveY * c.speed, 1000), 0, 9000);
+      if (a.params.moveX) e.facing = a.params.moveX < 0 ? 180 : 0;
+    }
+  }
+}
+function freezeTimers({
+  payload,
+  tick
+}) {
+  payload.hitStop--;
+  for (const e of payload.entities) {
+    for (const key of ['guardUntil', 'stunUntil', 'recoveryUntil']) if (e[key] >= tick) e[key]++;
+    e.cooldowns = e.cooldowns.map(n => n >= tick ? n + 1 : n);
+    if (e.pending.actionId) e.pending.due++;
+  }
+}
+function startAttacks({
+  payload,
+  data,
+  tick,
+  event,
+  statsFor
+}, frame) {
+  for (const a of frame.actions) {
+    const e = payload.entities.find(e => e.id === a.playerId);
+    if (a.actionId === 'move') continue;
+    const m = moveFor(data, e, a.actionId),
+      tier = data.weightTiers[m.weightTier];
+    if (a.params.aimX) e.facing = a.params.aimX < 0 ? 180 : 0;
+    e.pending = {
+      actionId: a.actionId,
+      due: tick + tier.startupTicks,
+      aimX: a.params.aimX ?? 0,
+      aimY: a.params.aimY ?? 0
+    };
+    e.cooldowns[ids.indexOf(a.actionId)] = tick + tier.cooldownTicks;
+    e.recoveryUntil = tick + tier.startupTicks + tier.recoveryTicks;
+    statsFor(e.id).actions[ids.indexOf(a.actionId)].uses++;
+    event('action.used', {
+      playerId: e.id,
+      actionId: a.actionId
+    });
+  }
+}
+function resolvePendingMoves({
+  payload,
+  data,
+  tick,
+  event
+}) {
+  const hits = [];
+  for (const e of payload.entities) {
+    if (!e.pending.actionId || e.pending.due > tick || e.hp <= 0) continue;
+    const pending = e.pending,
+      m = moveFor(data, e, pending.actionId);
+    e.pending = {
+      actionId: '',
+      due: 0,
+      aimX: 0,
+      aimY: 0
+    };
+    if (m.archetype === 'guard') {
+      const shield = m.effects.find(f => f.operator === 'shield');
+      e.guardUntil = tick + (shield?.durationTicks ?? data.gameRules.guardDuration);
+      e.shield = shield?.amount ?? 100;
+      event('combat.guard', {
+        playerId: e.id,
+        phase: 'activate',
+        x: e.x,
+        y: e.y,
+        until: e.guardUntil
+      });
+    } else if (m.archetype === 'melee') {
+      for (const target of payload.entities) if (target.id !== e.id && target.hp > 0 && distance(e,
+        target) <= data.gameRules.meleeRange ** 2) hits.push({
+        owner: e.id,
+        target: target.id,
+        moveId: m.id,
+        power: m.power,
+        ignoresGuard: false
+      });
+    } else {
+      const norm = Math.max(Math.abs(pending.aimX), Math.abs(pending.aimY), 1);
+      payload.projectiles.push({
+        id: `pr${payload.nextProjectile++}`,
+        owner: e.id,
+        kind: m.id,
+        x: e.x,
+        y: e.y,
+        vx: quotient(pending.aimX * data.gameRules.projectileSpeed, norm),
+        vy: quotient(pending.aimY * data.gameRules.projectileSpeed, norm),
+        life: data.gameRules.projectileLife,
+        power: m.power,
+        moveId: m.id,
+        ignoresGuard: data.gameRules.moveTraits.find(t => t.moveId === m.id)?.ignoresGuard ?? false
+      });
+      event('projectile.spawn', {
+        ...payload.projectiles.at(-1)
+      });
+    }
+  }
+  return hits;
+}
+function advanceProjectiles({
+  payload,
+  data,
+  event
+}, hits) {
+  const surviving = [];
+  for (const shot of payload.projectiles.sort((a, b) => compareIds(a.id, b.id))) {
+    shot.x += shot.vx;
+    shot.y += shot.vy;
+    shot.life--;
+    const target = payload.entities.find(e => e.id !== shot.owner && e.hp > 0 && distance(shot,
+      e) <= data.gameRules.projectileRadius ** 2);
+    if (target) {
+      hits.push({
+        ...shot,
+        target: target.id
+      });
+      event('projectile.expire', {
+        id: shot.id,
+        owner: shot.owner,
+        x: shot.x,
+        y: shot.y,
+        reason: 'hit'
+      });
+    } else if (shot.life > 0 && shot.x >= 0 && shot.x <= 16000 && shot.y >= 0 && shot.y <= 9000) {
+      surviving.push(shot);
+    } else {
+      event('projectile.expire', {
+        id: shot.id,
+        owner: shot.owner,
+        x: shot.x,
+        y: shot.y,
+        reason: shot.life <= 0 ? 'lifetime' : 'bounds'
+      });
+    }
+  }
+  payload.projectiles = surviving;
+}
+function applyHits({
+  payload,
+  data,
+  tick,
+  event,
+  statsFor
+}, hits) {
+  for (const hit of hits) {
+    const source = payload.entities.find(e => e.id === hit.owner),
+      target = payload.entities.find(e => e.id === hit.target),
+      m = data.moves.find(m => m.id === hit.moveId),
+      tier = data.weightTiers[m.weightTier];
+    const guarded = target.guardUntil > tick && !hit.ignoresGuard;
+    if (guarded) event('combat.guard', {
+      playerId: target.id,
+      phase: 'block',
+      source: source.id,
+      x: target.x,
+      y: target.y
+    });
+    let amount = quotient((hit.power + m.effects.filter(e => e.operator === 'damage').reduce((n, e) => n + e.amount,
+      0)) * data.tuning.damageScalePermille, 1000);
+    if (guarded) amount = quotient(amount * (100 - clamp(target.shield, 0, 100)), 100);
+    amount = clamp(amount, 0, target.hp);
+    target.hp -= amount;
+    statsFor(source.id).damage += amount;
+    if (amount > 0) {
+      target.stunUntil = Math.max(target.stunUntil, tick + tier.stunTicks);
+      target.pending = {
+        actionId: '',
+        due: 0,
+        aimX: 0,
+        aimY: 0
+      };
+      const knockback = tier.knockback + m.effects.filter(e => e.operator === 'knockback').reduce((n, e) =>
+        n + e.amount, 0);
+      target.x = clamp(target.x + (target.x >= source.x ? 1 : -1) * knockback, 0, 16000);
+      payload.hitStop = Math.max(payload.hitStop, tier.hitStopTicks);
+      for (const effect of m.effects) {
+        if (effect.operator === 'cooldown') target.cooldowns = target.cooldowns.map(n => clamp(n + effect.amount, 0,
+          2147483647));
+        if (effect.operator === 'shield') {
+          source.shield = clamp(effect.amount, 0, 1000000);
+          source.guardUntil = tick + effect.durationTicks;
+        }
+      }
+    }
+    event('combat.hit', {
+      source: source.id,
+      target: target.id,
+      amount,
+      guarded,
+      ignoresGuard: hit.ignoresGuard,
+      x: target.x,
+      y: target.y
+    });
+    if (amount > 0 && target.hp === 0) event('combat.ko', {
+      playerId: target.id,
+      source: source.id,
+      x: target.x,
+      y: target.y
+    });
+  }
+}
+function finishTick(payload, tick) {
+  const alive = payload.entities.filter(e => e.hp > 0);
+  if (alive.length < 2) payload.outcome = alive.length === 1 ? {
+    status: 'win',
+    winners: [alive[0].id],
+    reason: 'hp_zero'
+  } : {
+    status: 'draw',
+    winners: [],
+    reason: 'mutual_elimination'
+  };else if (tick >= payload.config.maxTicks) payload.outcome = {
+    status: 'draw',
+    winners: [],
+    reason: 'max_ticks'
+  };
+  payload.statistics.durationTicks = tick;
+  if (payload.outcome.status !== 'running') for (const s of payload.statistics.players) {
+    s.wins = payload.outcome.winners.includes(s.playerId) ? 1 : 0;
+    s.draws = payload.outcome.status === 'draw' ? 1 : 0;
+  }
+}
 export function step(state, frame, data) {
   assertPinned(state, data);
   if (state.payload.outcome.status !== 'running') throw Error('ILLEGAL_ACTION');
@@ -141,7 +380,7 @@ export function step(state, frame, data) {
   }, true);
   if (frame.systemInputs.length) throw Error('ILLEGAL_ACTION');
   const next = structuredClone(state),
-    p = next.payload,
+    payload = next.payload,
     tick = frame.tick,
     events = [];
   next.tick = tick;
@@ -151,213 +390,29 @@ export function step(state, frame, data) {
     kind,
     payload
   });
-  const statsFor = id => p.statistics.players.find(s => s.playerId === id);
-  for (const e of p.entities) for (const spec of available(e, tick, p.hitStop).filter(a =>
+  const statsFor = id => payload.statistics.players.find(s => s.playerId === id);
+  for (const e of payload.entities) for (const spec of available(e, tick, payload.hitStop).filter(a =>
     a.actionId !== 'move')) statsFor(e.id).actions[ids.indexOf(spec.actionId)].opportunities++;
-  for (const a of frame.actions) {
-    const e = p.entities.find(e => e.id === a.playerId);
-    e.lastSeq = a.seq;
-    if (a.actionId === 'move') {
-      const c = data.characters.find(c => c.id === e.hero);
-      e.x = clamp(e.x + quotient(a.params.moveX * c.speed, 1000), 0, 16000);
-      e.y = clamp(e.y + quotient(a.params.moveY * c.speed, 1000), 0, 9000);
-      if (a.params.moveX) e.facing = a.params.moveX < 0 ? 180 : 0;
-    }
-  }
-  if (p.hitStop > 0) {
-    p.hitStop--;
-    for (const e of p.entities) {
-      for (const key of ['guardUntil', 'stunUntil', 'recoveryUntil']) if (e[key] >= tick) e[key]++;
-      e.cooldowns = e.cooldowns.map(n => n >= tick ? n + 1 : n);
-      if (e.pending.actionId) e.pending.due++;
-    }
-  } else {
-    for (const a of frame.actions) {
-      const e = p.entities.find(e => e.id === a.playerId),
-        c = data.characters.find(c => c.id === e.hero);
-      if (a.actionId === 'move') continue;
-      const m = moveFor(data, e, a.actionId),
-        tier = data.weightTiers[m.weightTier];
-      if (a.params.aimX) e.facing = a.params.aimX < 0 ? 180 : 0;
-      e.pending = {
-        actionId: a.actionId,
-        due: tick + tier.startupTicks,
-        aimX: a.params.aimX ?? 0,
-        aimY: a.params.aimY ?? 0
-      };
-      e.cooldowns[ids.indexOf(a.actionId)] = tick + tier.cooldownTicks;
-      e.recoveryUntil = tick + tier.startupTicks + tier.recoveryTicks;
-      statsFor(e.id).actions[ids.indexOf(a.actionId)].uses++;
-      event('action.used', {
-        playerId: e.id,
-        actionId: a.actionId
-      });
-    }
-    const hits = [];
-    for (const e of p.entities) {
-      if (!e.pending.actionId || e.pending.due > tick || e.hp <= 0) continue;
-      const pending = e.pending,
-        m = moveFor(data, e, pending.actionId);
-      e.pending = {
-        actionId: '',
-        due: 0,
-        aimX: 0,
-        aimY: 0
-      };
-      if (m.archetype === 'guard') {
-        const shield = m.effects.find(f => f.operator === 'shield');
-        e.guardUntil = tick + (shield?.durationTicks ?? data.gameRules.guardDuration);
-        e.shield = shield?.amount ?? 100;
-        event('combat.guard', {
-          playerId: e.id,
-          phase: 'activate',
-          x: e.x,
-          y: e.y,
-          until: e.guardUntil
-        });
-      } else if (m.archetype === 'melee') {
-        for (const target of p.entities) if (target.id !== e.id && target.hp > 0 && distance(e,
-          target) <= data.gameRules.meleeRange ** 2) hits.push({
-          owner: e.id,
-          target: target.id,
-          moveId: m.id,
-          power: m.power,
-          ignoresGuard: false
-        });
-      } else {
-        const norm = Math.max(Math.abs(pending.aimX), Math.abs(pending.aimY), 1);
-        p.projectiles.push({
-          id: `pr${p.nextProjectile++}`,
-          owner: e.id,
-          kind: m.id,
-          x: e.x,
-          y: e.y,
-          vx: quotient(pending.aimX * data.gameRules.projectileSpeed, norm),
-          vy: quotient(pending.aimY * data.gameRules.projectileSpeed, norm),
-          life: data.gameRules.projectileLife,
-          power: m.power,
-          moveId: m.id,
-          ignoresGuard: data.gameRules.moveTraits.find(t => t.moveId === m.id)?.ignoresGuard ?? false
-        });
-        event('projectile.spawn', {
-          ...p.projectiles.at(-1)
-        });
-      }
-    }
-    const surviving = [];
-    for (const shot of p.projectiles.sort((a, b) => compareIds(a.id, b.id))) {
-      shot.x += shot.vx;
-      shot.y += shot.vy;
-      shot.life--;
-      const target = p.entities.find(e => e.id !== shot.owner && e.hp > 0 && distance(shot,
-        e) <= data.gameRules.projectileRadius ** 2);
-      if (target) {
-        hits.push({
-          ...shot,
-          target: target.id
-        });
-        event('projectile.expire', {
-          id: shot.id,
-          owner: shot.owner,
-          x: shot.x,
-          y: shot.y,
-          reason: 'hit'
-        });
-      } else if (shot.life > 0 && shot.x >= 0 && shot.x <= 16000 && shot.y >= 0 && shot.y <= 9000) {
-        surviving.push(shot);
-      } else {
-        event('projectile.expire', {
-          id: shot.id,
-          owner: shot.owner,
-          x: shot.x,
-          y: shot.y,
-          reason: shot.life <= 0 ? 'lifetime' : 'bounds'
-        });
-      }
-    }
-    p.projectiles = surviving;
-    // Resolve queued hits in stable source order; simultaneous attacks can produce a draw.
-    for (const hit of hits) {
-      const source = p.entities.find(e => e.id === hit.owner),
-        target = p.entities.find(e => e.id === hit.target),
-        m = data.moves.find(m => m.id === hit.moveId),
-        tier = data.weightTiers[m.weightTier];
-      const guarded = target.guardUntil > tick && !hit.ignoresGuard;
-      if (guarded) event('combat.guard', {
-        playerId: target.id,
-        phase: 'block',
-        source: source.id,
-        x: target.x,
-        y: target.y
-      });
-      let amount = quotient((hit.power + m.effects.filter(e => e.operator === 'damage').reduce((n, e) => n + e.amount,
-        0)) * data.tuning.damageScalePermille, 1000);
-      if (guarded) amount = quotient(amount * (100 - clamp(target.shield, 0, 100)), 100);
-      amount = clamp(amount, 0, target.hp);
-      target.hp -= amount;
-      statsFor(source.id).damage += amount;
-      if (amount > 0) {
-        target.stunUntil = Math.max(target.stunUntil, tick + tier.stunTicks);
-        target.pending = {
-          actionId: '',
-          due: 0,
-          aimX: 0,
-          aimY: 0
-        };
-        const knockback = tier.knockback + m.effects.filter(e => e.operator === 'knockback').reduce((n, e) =>
-          n + e.amount, 0);
-        target.x = clamp(target.x + (target.x >= source.x ? 1 : -1) * knockback, 0, 16000);
-        p.hitStop = Math.max(p.hitStop, tier.hitStopTicks);
-        for (const effect of m.effects) {
-          if (effect.operator === 'cooldown') target.cooldowns = target.cooldowns.map(n => clamp(n + effect.amount, 0,
-            2147483647));
-          if (effect.operator === 'shield') {
-            source.shield = clamp(effect.amount, 0, 1000000);
-            source.guardUntil = tick + effect.durationTicks;
-          }
-        }
-      }
-      event('combat.hit', {
-        source: source.id,
-        target: target.id,
-        amount,
-        guarded,
-        ignoresGuard: hit.ignoresGuard,
-        x: target.x,
-        y: target.y
-      });
-      if (amount > 0 && target.hp === 0) event('combat.ko', {
-        playerId: target.id,
-        source: source.id,
-        x: target.x,
-        y: target.y
-      });
-    }
-  }
-  const alive = p.entities.filter(e => e.hp > 0);
-  if (alive.length < 2) p.outcome = alive.length === 1 ? {
-    status: 'win',
-    winners: [alive[0].id],
-    reason: 'hp_zero'
-  } : {
-    status: 'draw',
-    winners: [],
-    reason: 'mutual_elimination'
-  };else if (tick >= p.config.maxTicks) p.outcome = {
-    status: 'draw',
-    winners: [],
-    reason: 'max_ticks'
+  const context = {
+    payload,
+    data,
+    tick,
+    event,
+    statsFor
   };
-  p.statistics.durationTicks = tick;
-  if (p.outcome.status !== 'running') for (const s of p.statistics.players) {
-    s.wins = p.outcome.winners.includes(s.playerId) ? 1 : 0;
-    s.draws = p.outcome.status === 'draw' ? 1 : 0;
+  applyMovement(context, frame);
+  if (payload.hitStop > 0) freezeTimers(context);else {
+    startAttacks(context, frame);
+    const hits = resolvePendingMoves(context);
+    advanceProjectiles(context, hits);
+    applyHits(context, hits);
   }
+  finishTick(payload, tick);
   return {
     state: next,
     events,
     outcome: outcome(next),
-    statisticsDelta: statisticsDelta(state.payload.statistics, p.statistics)
+    statisticsDelta: statisticsDelta(state.payload.statistics, payload.statistics)
   };
 }
 export const adapter = {

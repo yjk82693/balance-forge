@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pinData } from './index.js';
 import * as game from '../games/action/index.js';
-import { registerGame, validateData, validateGamePayload, validateFrame, canonicalJson } from '../contracts/index.js';
+import { validateData, validateGamePayload, canonicalJson } from '../contracts/index.js';
 test('pinning freezes descendants even if the caller already froze the outer object', () => {
   const data = Object.freeze(structuredClone(game.data));
   pinData(data);

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as game from './index.js';
 import { chooseActions } from './bot.js';
-import { hash, validate, validateGamePayload, restoreSnapshot, applyPatch, validateData, validateFrame,
+import { hash, validate, validateGamePayload, restoreSnapshot, applyPatch, validateData,
   validateOutcome } from '../../contracts/index.js';
-import { Authority, replay, statisticsDelta } from '../../sim/index.js';
+import { Authority, replay } from '../../sim/index.js';
 const make = (data = game.data, seed = 1, maxTicks = 1800, assignments) => game.initial(game.makeConfig(data, seed, [
   'p1', 'p2'], maxTicks, assignments), data);
 const frame = (state, actions = []) => ({

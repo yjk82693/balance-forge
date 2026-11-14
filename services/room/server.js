@@ -383,6 +383,7 @@ export class RoomServer {
     const authority = new Authority(game.adapter, config, data);
     room.authority = authority;
     room.game = game;
+    if (gameId !== room.gameId) room.selectedHash = undefined;
     room.gameId = gameId;
     room.phase = 'playing';
     room.result = null;

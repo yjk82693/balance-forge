@@ -26,15 +26,21 @@ function cardAction(game, state, seq) {
     }
   };
 }
+function getGame(gameId) {
+  if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
+  return games[gameId];
+}
 export function executeMatch(job, {
   captureReplay = false
 } = {}) {
+  if (!job || typeof job !== 'object') throw Error('INVALID_SCHEMA');
+  validate('MatchConfig', job.config);
   const {
       matchId,
       config,
       data
     } = job,
-    game = games[config.gameId];
+    game = Object.hasOwn(games, config.gameId) ? games[config.gameId] : null;
   let state;
   const frames = [];
   try {
@@ -109,22 +115,28 @@ export const runMatch = job => executeMatch(job).result;
 export function pairedJobs({
   seeds = Array.from({
     length: 100
-  }, (_, i) => i + 1),
-  heroes = ['bari', 'real_armor'],
+  }, (_, index) => index + 1),
+  heroes,
   gameId = 'hero_arena',
-  data = games[gameId]?.data
+  data
 } = {}) {
-  const game = games[gameId];
-  if (!game || heroes.length !== 2 || seeds.length === 0 || seeds.some(s => !Number.isInteger(s) || s < 1 ||
-    s > 4294967295)) throw Error('INVALID_SCHEMA');
+  const game = getGame(gameId);
+  data ??= game.data;
+  validate('GameData', data);
+  const selected = heroes === undefined ? gameId === 'hero_arena' ? ['bari', 'real_armor'] : ['standard',
+    'standard'] : heroes;
+  if (!Array.isArray(selected) || selected.length !== 2 || !Array.isArray(seeds) || !seeds.length || seeds.some(
+    seed => !Number.isInteger(seed) || seed < 1 || seed > 4294967295)) throw Error('INVALID_SCHEMA');
+  const roster = gameId === 'hero_arena' ? data.characters : data.gameRules.decks;
+  if (!Array.isArray(roster) || !roster.length || selected.some(id => !roster.some(item =>
+    item.id === id))) throw Error('INVALID_SCHEMA');
   const jobs = [];
   for (const seed of seeds) for (let swap = 0; swap < 2; swap++) {
     const players = ['p1', 'p2'],
-      order = swap ? [...heroes].reverse() : heroes;
+      order = swap ? [...selected].reverse() : selected;
     const config = game.makeConfig(data, seed, players);
     config.options = {
-      assignments: Object.fromEntries(players.map((id, i) => [id, gameId === 'hero_arena' ? order[
-        i] : data.gameRules.decks.some(d => d.id === order[i]) ? order[i] : 'standard']))
+      assignments: Object.fromEntries(players.map((id, index) => [id, order[index]]))
     };
     jobs.push({
       matchId: `m-${jobs.length + 1}`,
@@ -137,16 +149,20 @@ export function pairedJobs({
 export function rosterJobs({
   seeds = Array.from({
     length: 10
-  }, (_, i) => i + 1),
+  }, (_, index) => index + 1),
   gameId = 'hero_arena',
-  data = games[gameId]?.data
+  data
 } = {}) {
-  const roster = gameId === 'hero_arena' ? data.characters.map(c => c.id) : data.gameRules.decks.map(d => d.id);
+  const game = getGame(gameId);
+  data ??= game.data;
+  validate('GameData', data);
+  const roster = gameId === 'hero_arena' ? data.characters : data.gameRules.decks;
+  if (!Array.isArray(roster) || !roster.length) throw Error('INVALID_SCHEMA');
   const jobs = [];
-  for (let i = 0; i < roster.length; i++) for (let j = i; j < roster.length; j++) {
+  for (let left = 0; left < roster.length; left++) for (let right = left; right < roster.length; right++) {
     const pair = pairedJobs({
       seeds,
-      heroes: [roster[i], roster[j]],
+      heroes: [roster[left].id, roster[right].id],
       gameId,
       data
     });
