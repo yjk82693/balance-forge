@@ -112,6 +112,7 @@ export class Storage {
   }
   record(result, recording) {
     validate('MatchResult', result);
+    if(result.botSeats?.some(id=>!result.config.players.includes(id)))throw Error('INVALID_SCHEMA');
     if (this.humans.some(r => r.matchId === result.matchId)) return;
     if (recording) {
       if (recording.matchId !== result.matchId || recording.finalStateHash !== result.finalStateHash || hash(

@@ -12,3 +12,18 @@ Engine owns HTTP/WS/storage; analysis owns aggregation, numeric proposal validat
 Baseline seeds are 1..pairs; holdout is 1000001..1000000+holdoutPairs. Candidate data is retained by hash without
 silently promoting it over the baseline. Production selects Gemini with a key, fake without; tests pass env={}.
 No changes to shared spec or analysis-owned files were made by this branch.
+
+## Resolved analysis API
+
+Read the new analysis-worktree full.js: export runFull(input) returns {ok,value} or an error result.
+Updated bridge to supply baselineResults, baseData, adapter, holdoutSeeds, hashData, botPolicyVersion, seedSetId,
+holdoutSeedSetId, humanResults, measured elapsedMs/createdAt and runHoldout(patchedData,seeds) -> MatchResult[].
+Both baseline and holdout still use real matchBatch workers and phase-labelled progress. The bridge is ready
+for that exact module to land in this worktree; the provisional callback proposal above is superseded.
+
+## Solo result marker
+
+Round 6 explicitly asks recorded solo results to identify their bot seat. Added optional bounded/unique
+MatchResult.botSeats: string[] in the owned schema/types (normal bot/human result shapes remain unchanged).
+Room persistence verifies IDs reference config.players. Integrator should record this optional addition in the
+shared contract; spec and fixtures remain untouched by this branch.

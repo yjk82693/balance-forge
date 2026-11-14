@@ -300,3 +300,18 @@ and return player-safe display observations, accumulated public events, view has
 Replay observers receive copies so they cannot change simulation state. Responses are bounded to 601 samples and
 1 MiB; invalid intervals/unknown pins and incompatible replay frames fail explicitly. New tests cover events,
 deterministic candidate playback, original hashes, privacy and size rejection.
+
+## Solo play and lobby roster
+
+match.start {bot:true} now fills one empty arena seat with the stable chooseActions policy; card bots use the
+existing runner turn policy. Accepted bot inputs enter the same authority and replay stream. Solo results and
+replay metadata carry optional botSeats; normal two-human and worker MatchResult shapes remain unchanged.
+Reset removes virtual seats. New tests cover real bot uses, recording/hash replay, no-human rejection and no
+replacement of connected players. Thirteen focused solo/contract/reconnect tests passed.
+
+## Prejoin room metadata
+
+Room status includes gameId and playableHeroes before taking a seat via /ws?roomId=... or /ws?joinCode=....
+Unassociated sockets report gameId:null and an empty roster until a room is identified. Join validation uses the
+actual room/content roster, while starter cards retain their existing hero-to-standard-deck compatibility.
+No prejoin seat/token authority is granted; tests verify the arena and cards metadata and spectator status.

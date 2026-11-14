@@ -465,11 +465,11 @@ export class RoomServer {
   submitBots(room,systemInputs) {
     if(systemInputs.length)return;
     const authority=room.authority,state=authority.state;
-    for(const [index,seat] of room.seats.entries()){
+    for(const seat of room.seats){
       if(!seat.bot)continue;
       const inputs=authority.config.mode==='turn'?
         (state.payload.activePlayer===seat.seat?[cardAction(room.game,state,state.tick)]:[]):
-        chooseActions(room.game.observe(state,seat.seat),state.tick*2,index);
+        chooseActions(room.game.observe(state,seat.seat),state.tick*2,authority.config.players.indexOf(seat.seat));
       for(const input of inputs)authority.submit(input);
     }
   }

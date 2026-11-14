@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { runBatch, pairedJobs, rosterJobs } from '../runner/index.js';
 import { botPolicyVersion } from '../runner/match.js';
-import { applyPatch, hash, validateSchema } from '../../packages/contracts/index.js';
+import { hash, validateSchema } from '../../packages/contracts/index.js';
 import { integer, object } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
 
@@ -48,23 +48,26 @@ export async function fullPlaytest(server, body) {
     if (error.code === 'ERR_MODULE_NOT_FOUND') throw Error('TRANSPORT_UNAVAILABLE');
     throw error;
   }
-  const runFull = pipeline.runFullPlaytest ?? pipeline.runFull ?? pipeline.fullPlaytest;
-  if (typeof runFull !== 'function') throw Error('TRANSPORT_UNAVAILABLE');
-  const start = performance.now(), runId = randomUUID(), pairs = body.pairs ?? 50;
-  const holdoutPairs = body.holdoutPairs ?? 50;
-  const seeds = Array.from({ length: pairs }, (_, index) => index + 1);
-  const holdoutSeeds = Array.from({ length: holdoutPairs }, (_, index) => 1000001 + index);
-  const { data } = server.storage.get(body.gameId);
-  const { createAdapter } = await import('../../packages/analysis/src/adapters.js');
-  const adapter = createAdapter(server.analysisEnv.GEMINI_API_KEY ? 'gemini' : 'fake', server.analysisEnv);
-  const runMatches = async options => matchBatch(server, {
-    gameId: body.gameId, roster: body.roster ?? false, runId, ...options,
-    seeds: options.phase === 'holdout' ? holdoutSeeds : seeds
+  if(typeof pipeline.runFull!=='function')throw Error('TRANSPORT_UNAVAILABLE');
+  const start=performance.now(),runId=randomUUID(),pairs=body.pairs??50,holdoutPairs=body.holdoutPairs??50;
+  const seeds=Array.from({length:pairs},(_,index)=>index+1);
+  const holdoutSeeds=Array.from({length:holdoutPairs},(_,index)=>1000001+index);
+  const seedSetId=`paired-1-${pairs}`,holdoutSeedSetId=`holdout-1000001-${1000000+holdoutPairs}`;
+  const {data}=server.storage.get(body.gameId);
+  const {createAdapter}=await import('../../packages/analysis/src/adapters.js');
+  const adapter=createAdapter(server.analysisEnv.GEMINI_API_KEY?'gemini':'fake',server.analysisEnv);
+  const baseline=await matchBatch(server,{gameId:body.gameId,data,roster:body.roster??false,seeds,phase:'baseline',runId});
+  let holdout;
+  const result=await pipeline.runFull({baselineResults:baseline.results,baseData:data,adapter,holdoutSeeds,hashData:hash,
+    botPolicyVersion,seedSetId,holdoutSeedSetId,humanResults:structuredClone(server.storage.humans),
+    elapsedMs:Math.round(baseline.metrics.elapsedMs),createdAt:new Date().toISOString(),
+    runHoldout:async(patched,seeds)=>{
+      holdout=await matchBatch(server,{gameId:body.gameId,data:patched,roster:body.roster??false,
+        seeds,phase:'holdout',runId});
+      return holdout.results;
+    }
   });
-  const result = await runFull({ ...body, runId, pairs, holdoutPairs, data, baseData: data, seeds, holdoutSeeds,
-    adapter, botPolicyVersion, humanResults: structuredClone(server.storage.humans), runMatches,
-    hashData: hash, applyPatch: (base, proposal) => {
-      const patched = applyPatch(base, proposal); server.storage.addVersion(patched); return patched;
-    } });
-  return { ...result, runId, gameId: body.gameId, elapsedMs: Math.round(performance.now() - start) };
+  if(!result.ok)throw Error(result.error?.code==='INVALID_PATCH'?'PATCH_REJECTED':'TRANSPORT_UNAVAILABLE');
+  return {...result.value,runId,gameId:body.gameId,elapsedMs:Math.round(performance.now()-start),
+    seatWins:{baseline:baseline.metrics.seatWins,holdout:holdout?.metrics.seatWins??0}};
 }
