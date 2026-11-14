@@ -263,3 +263,19 @@ Nothing to change since Polish 03:14. Tests 153 pass, 6 skipped, 0 fail; build p
 **Checks.** `npm run build -w apps/web` passes; `npm test` 173 pass, 0 fail, 6 skipped. In the built app: mock run shows "Baseline · 550 of 1,000 matches · 2 s" and the counter in the report; against a local stub that answered 429 `RATE_LIMITED`, the dashboard showed "RATE_LIMITED: Too many requests. Wait before retrying. Showing the stored run instead." Phone width (390x844, in a frame) renders the live panel with the timer without overflow. Desktop was checked in a 1512x825 window, not 1920x1080.
 
 **Not verified:** the minute-long wait against the real `/v1/playtest/full` (only the mock and the stub), and the Bari vs Real Armor result, which is the engine's side. No recorded or benchmark file was regenerated.
+
+## Round 7 presenter
+
+**Route `#/present`** (`screens/Present.tsx`, `lib/presenter.ts`; the only edits to existing files are the route in `App.tsx` and new CSS at the end of `styles.css`). Five scenes: the match, bots play, the patch, same seed in both versions, verdict. It starts the same run as the dashboard button (`useRunner`: `POST /v1/playtest/full` on a real server, the mock with `?mock=1`, the stored run if the server fails) as soon as the page opens, so the minute-long request runs while the first scene shows.
+- *The match* shows the human match you just played (from the saved result) or, if there is none, a title card with no numbers.
+- *Bots* shows the live bars from `playtest.progress` and the elapsed seconds; it waits (progress bar) until the run has finished, however long that takes.
+- *Patch*, *replay* and *verdict* render only what the run contains: the proposal, the replay source (views, HP timeline or the labelled illustration) and `run.verdict` with its own reasons. Nothing is written in advance; with no verdict or patch the scene says so.
+- A badge in the top bar names the data source the whole time: `live run`, `recorded · N matches · T` (whenever the stored run is used) or `sample data` (`?mock=1`).
+
+**Keys and timing.** Space/Right next, Left back, P pause, R restart (re-runs the batch). Minimum times: 5 s, 8 s, 8 s, 12 s; the last scene stays. A scene advances on its own when its time is up and, for the bots scene, the data is in. Next/back always work, and later scenes show a waiting bar if the run is not done.
+
+**`?auto=1`** (in the query string or after the hash) runs the same flow to the end at those intervals, hides the key hints and the cursor.
+
+**Checks.** `npm run build -w apps/web` passes; `npm test` still has 0 failures. **1920x1080 for real:** headless Chrome (`--headless=new --window-size=1920,1080 --virtual-time-budget=...`) works here, so I took screenshots of the mock run (`?mock=1&auto=1`) at 3, 9, 15, 25 and 45 s (match, bots, patch, replay, verdict) and of the recorded fallback (no server) at the same times. One fix came out of it: the large verdict word overlapped its reason line. The recorded run (`recorded-roster-report.json`) has no proposal or patched run, so patch, replay and verdict scenes say there is none rather than showing anything; with the real server they fill in. The `recorded · 300 matches · 6 s` badge was on screen throughout. **Phone width:** headless Chrome will not go below about 500 px, so I used a 390x844 frame; it showed the first scene without overflow; the later scenes were not checked at 390 (the stage is built for the 1920x1080 projector).
+
+**Not verified:** the real `/v1/playtest/full` flow and its timing (left for the 10:00 demo), key presses (the handler is plain `keydown`, tested only by reading), and the human-match scene with a real just-played result.

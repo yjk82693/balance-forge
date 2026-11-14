@@ -2077,3 +2077,67 @@ p {
 .lobby-players .btn + .btn {
   margin-top: var(--space-2);
 }
+
+/* ---- presenter (#/present) ---- */
+.present {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.present-steps {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4) var(--space-6) 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-3);
+}
+.present-steps li { display: flex; flex-direction: column; gap: var(--space-1); opacity: 0.5; }
+.present-steps li.on, .present-steps li.done { opacity: 1; }
+.present-step-bar { height: 4px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.present-step-bar > span { display: block; height: 100%; background: var(--grad-2); }
+.present-steps li.done .present-step-bar > span { width: 100%; }
+.present-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+.present-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  text-align: center;
+  max-width: 1200px;
+  width: 100%;
+}
+.present-card .progress { width: 480px; }
+.present-wide { width: 100%; max-width: 1500px; }
+.present-bots { width: 100%; max-width: 1500px; display: grid; gap: var(--space-5); }
+.present-duel { display: flex; gap: var(--space-8, 96px); }
+.present-fighter { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.present-verdict { font-size: 96px; font-weight: 800; line-height: 1.2; margin: 0; display: flex; align-items: center; gap: var(--space-4); }
+.present-compare { width: 100%; max-width: 1100px; text-align: left; }
+.present-keys { text-align: center; padding: var(--space-3); color: var(--text-2); }
+.present.auto { cursor: none; }
+@media (max-width: 1099px) {
+  .present-steps { grid-template-columns: repeat(5, 1fr); padding: var(--space-3) var(--space-4) 0; }
+  .present-steps .caption { display: none; }
+  .present-stage { padding: var(--space-4); }
+  .present-duel { gap: var(--space-5); }
+  .present-verdict { font-size: 48px; }
+  .present-card .progress { width: 100%; }
+}
+.present, .present-stage { min-width: 0; max-width: 100%; }
+.present-stage > * { min-width: 0; max-width: 100%; }
+.present-bots { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1099px) {
+  .present { overflow-x: hidden; }
+  .present-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.present-wide .diff { zoom: 1.5; }
+@media (max-width: 1099px) {
+  .present-wide .diff { zoom: 1; }
+}
