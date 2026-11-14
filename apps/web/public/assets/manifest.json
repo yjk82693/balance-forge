@@ -18,6 +18,12 @@
       "role": "portrait"
     },
     {
+      "path": "assets/common/heroes/bari/portrait_128.png",
+      "width": 128,
+      "height": 128,
+      "role": "portrait_thumb"
+    },
+    {
       "path": "assets/common/heroes/daewi/full_body.png",
       "width": 512,
       "height": 512,
@@ -33,6 +39,12 @@
       "width": 256,
       "height": 256,
       "role": "portrait"
+    },
+    {
+      "path": "assets/common/heroes/daewi/portrait_128.png",
+      "width": 128,
+      "height": 128,
+      "role": "portrait_thumb"
     },
     {
       "path": "assets/common/heroes/nightcrow/full_body.png",
@@ -52,6 +64,12 @@
       "role": "portrait"
     },
     {
+      "path": "assets/common/heroes/nightcrow/portrait_128.png",
+      "width": 128,
+      "height": 128,
+      "role": "portrait_thumb"
+    },
+    {
       "path": "assets/common/heroes/real_armor/full_body.png",
       "width": 512,
       "height": 512,
@@ -67,6 +85,12 @@
       "width": 256,
       "height": 256,
       "role": "portrait"
+    },
+    {
+      "path": "assets/common/heroes/real_armor/portrait_128.png",
+      "width": 128,
+      "height": 128,
+      "role": "portrait_thumb"
     },
     {
       "path": "assets/common/heroes/sepia/full_body.png",
@@ -86,10 +110,23 @@
       "role": "portrait"
     },
     {
+      "path": "assets/common/heroes/sepia/portrait_128.png",
+      "width": 128,
+      "height": 128,
+      "role": "portrait_thumb"
+    },
+    {
       "path": "assets/hero_arena/backgrounds/arena_floor.png",
       "width": 1920,
       "height": 1080,
       "role": "backgrounds"
+    },
+    {
+      "path": "assets/hero_arena/backgrounds/arena_floor.webp",
+      "width": 1152,
+      "height": 648,
+      "role": "backgrounds",
+      "fallback": "assets/hero_arena/backgrounds/arena_floor.png"
     },
     {
       "path": "assets/hero_arena/effects/blade_slash.png",
