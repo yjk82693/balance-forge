@@ -166,6 +166,9 @@ test('progress and records are reported', async () => {
   const done = events.filter((e) => e.matchesDone > 0 && e.phase === 'scan')[0];
   assert.equal(done.matchesDone, done.totalMatches); // 4 matchups x 100 seeds x 2 seats
   assert.equal(done.totalMatches, 800);
+  // The room service rejects rounds outside 1..rounds+1, so the final check is reported as round rounds + 1.
+  assert.ok(events.every((e) => Number.isInteger(e.round) && e.round >= 1 && e.round <= 2), JSON.stringify(events));
+  assert.equal(events.find((e) => e.phase === 'final_check').round, 2);
 });
 
 test('bad input and failures are results with stoppedBecause "error", never throws', async () => {

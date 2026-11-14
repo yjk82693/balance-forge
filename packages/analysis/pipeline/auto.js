@@ -35,7 +35,8 @@ function targetOf(flagged, baselineReport, patchedReport) {
     .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0];
   if (!worst) return null;
   const now = after.get(worst.dimension);
-  return { matchup: worst.dimension, before: sideOf(worst), after: now ? sideOf(now) : null };
+  if (!now) return null; // the version record shape needs both sides; no holdout rows for it means no target
+  return { matchup: worst.dimension, before: sideOf(worst), after: sideOf(now) };
 }
 
 function checkInput(input) {
@@ -124,7 +125,7 @@ class Run {
   async finalCheck(head) {
     const { input } = this;
     if (head.hash === input.fromHash && this.firstScan) return { report: this.firstScan, regression: [] };
-    const results = await this.batch(0, 'final_check', head.hash, input.allMatchups, input.seedsFor(1, 'scan'));
+    const results = await this.batch(input.rounds + 1, 'final_check', head.hash, input.allMatchups, input.seedsFor(1, 'scan'));
     const report = this.reportOf(results, 'r-final');
     return { report, regression: this.firstScan ? newExtremeRows(this.firstScan, report) : [] };
   }
