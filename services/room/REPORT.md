@@ -604,7 +604,7 @@ Stopping at Tony's request for an outside commit/merge and continuation by anoth
 
 ### Round 8 continuation (handoff steps 1–8)
 
-- Main (with the real packages/analysis/pipeline/auto.js, per-hero rounds) merged into jokerstar/engine.
+- Main (with the real packages/analysis/pipeline/auto.js, per-hero rounds) merged into the engine branch.
 - Bug fixed (versions.js): a repeated record returned the stored one unchanged, so the analysis final roster
   check's downgrade to rejected was dropped and a regressed version stayed approved. A repeat may now only
   downgrade to rejected; provenance and approval are never rewritten or upgraded. Test: versions.test.js
