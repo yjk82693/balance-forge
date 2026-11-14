@@ -1,0 +1,57 @@
+{
+  "version": "2026-11-14-v1",
+  "matchups": {
+    "bari vs real_armor": {
+      "favored": "bari",
+      "strength": "clear"
+    },
+    "bari vs daewi": {
+      "favored": "bari",
+      "strength": "slight"
+    },
+    "bari vs sepia": {
+      "favored": "sepia",
+      "strength": "clear"
+    },
+    "bari vs nightcrow": {
+      "favored": "nightcrow",
+      "strength": "slight"
+    },
+    "daewi vs real_armor": {
+      "favored": "daewi",
+      "strength": "clear"
+    },
+    "real_armor vs sepia": {
+      "favored": "real_armor",
+      "strength": "clear"
+    },
+    "nightcrow vs real_armor": {
+      "favored": "real_armor",
+      "strength": "clear"
+    },
+    "daewi vs sepia": {
+      "favored": null,
+      "strength": "even"
+    },
+    "daewi vs nightcrow": {
+      "favored": "nightcrow",
+      "strength": "slight"
+    },
+    "nightcrow vs sepia": {
+      "favored": null,
+      "strength": "even"
+    }
+  },
+  "notes": {
+    "bari vs real_armor": "Bari's piercing arrow ignores Real Armor's block.",
+    "bari vs daewi": "Bari's piercing arrow reaches Daewi before his slow heavy swing starts.",
+    "bari vs sepia": "Sepia's fast attacks close the distance faster than Bari's arrow can be fired.",
+    "bari vs nightcrow": "Nightcrow's fast attacks outpace Bari's arrow at close range.",
+    "daewi vs real_armor": "Daewi's heavy attack breaks Real Armor's block.",
+    "real_armor vs sepia": "Real Armor's block beats Sepia's light and fast attacks.",
+    "nightcrow vs real_armor": "Real Armor's block beats Nightcrow's light and fast attacks.",
+    "daewi vs sepia": "Sepia's fast attacks beat Daewi's slow swing, but Daewi's heavy hits offset it.",
+    "daewi vs nightcrow": "Nightcrow's fast attacks beat Daewi's slow heavy swing.",
+    "nightcrow vs sepia": "Both are fast closers with the same tools."
+  }
+}

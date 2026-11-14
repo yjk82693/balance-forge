@@ -316,3 +316,63 @@ test('holdoutPairs defaults to pairs, and a thin holdout says so in the verdict 
   assert.equal(thin.json().verdict.verdict, 'inconclusive');
   assert.match(thin.json().verdict.reasons.join('; '), /bari vs daewi: holdout has 10 games; 200 needed/);
 });
+// --- botPolicy: scripted (default) or learned ---
+import { mkdtempSync as makeDir, rmSync as removeDir, writeFileSync as writeText } from 'node:fs';
+import { tmpdir as tempRoot } from 'node:os';
+import { DEFAULT_PARAMS, policyVersion } from '../../packages/games/action/bot-learned.js';
+import { resetLearnedCache } from '../runner/learn/load.js';
+
+async function withLearned(files, fn) {
+  const dir = makeDir(join(tempRoot(), 'room-learned-'));
+  const before = process.env.BALANCE_FORGE_LEARNED_DIR;
+  process.env.BALANCE_FORGE_LEARNED_DIR = dir;
+  resetLearnedCache();
+  try {
+    for (const [hero, over] of Object.entries(files)) writeText(join(dir, `${hero}.json`), JSON.stringify({
+      policy: 'learned-cem-1', hero, params: { ...DEFAULT_PARAMS, ...over } }));
+    return await fn(dir);
+  } finally {
+    if (before === undefined) delete process.env.BALANCE_FORGE_LEARNED_DIR;
+    else process.env.BALANCE_FORGE_LEARNED_DIR = before;
+    resetLearnedCache();
+    removeDir(dir, { recursive: true, force: true });
+  }
+}
+test('run and full accept botPolicy: scripted by default, learned with trained files, refused without', async t => {
+  const { server } = await localServer(t);
+  const post = (path, body) => http(server, path, { method: 'POST', body });
+  const scripted = await post('/v1/playtest/run', { gameId: 'hero_arena', pairs: 2 });
+  assert.equal(scripted.json().botPolicy, 'scripted');
+  assert.equal(scripted.json().botPolicyVersion, 'scripted-0.2.1');
+  assert.equal((await post('/v1/playtest/run', { gameId: 'hero_arena', pairs: 1, botPolicy: 'scripted' })).status, 200);
+  assert.equal((await post('/v1/playtest/run', { gameId: 'hero_arena', pairs: 1, botPolicy: 'trained' })).status, 400);
+  await withLearned({}, async () => { // an empty directory: nothing trained
+    const none = await post('/v1/playtest/run', { gameId: 'hero_arena', pairs: 1, botPolicy: 'learned' });
+    assert.equal(none.status, 400);
+    assert.equal(none.json().code, 'LEARNED_UNAVAILABLE');
+    const full = await post('/v1/playtest/full', { gameId: 'hero_arena', pairs: 2, botPolicy: 'learned' });
+    assert.equal(full.json().code, 'LEARNED_UNAVAILABLE');
+  });
+  await withLearned({ bari: { aggression: 100 }, daewi: { standOff: 1200 } }, async () => {
+    const version = policyVersion({ bari: { ...DEFAULT_PARAMS, aggression: 100 },
+      daewi: { ...DEFAULT_PARAMS, standOff: 1200 } });
+    const run = await post('/v1/playtest/run', { gameId: 'hero_arena', pairs: 2, heroes: ['bari', 'daewi'],
+      botPolicy: 'learned' });
+    assert.equal(run.status, 200, JSON.stringify(run.json()));
+    assert.equal(run.json().botPolicy, 'learned');
+    assert.equal(run.json().botPolicyVersion, version);
+    assert.match(version, /^learned-cem-1\+[0-9a-f]{8}$/);
+    const learnedResults = (await http(server, run.json().resultsPath)).json();
+    const scriptedRun = await post('/v1/playtest/run', { gameId: 'hero_arena', pairs: 2, heroes: ['bari', 'daewi'] });
+    const scriptedResults = (await http(server, scriptedRun.json().resultsPath)).json();
+    assert.notDeepEqual(learnedResults.map(r => r.finalStateHash), scriptedResults.map(r => r.finalStateHash));
+    const full = await post('/v1/playtest/full', { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15,
+      botPolicy: 'learned' });
+    assert.equal(full.status, 200);
+    assert.equal(full.json().botPolicy, 'learned');
+    assert.equal(full.json().baseline.botPolicyVersion, version); // every report says which bot made it
+    assert.equal(full.json().botPolicyVersion, version);
+    const cards = await post('/v1/playtest/run', { gameId: 'hero_cards', pairs: 1, botPolicy: 'learned' });
+    assert.equal(cards.status, 400);
+  });
+});
