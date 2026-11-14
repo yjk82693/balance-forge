@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { pct } from "../lib/stats";
-import { n } from "../lib/dashboardData";
-import { VERDICT_COPY } from "../lib/dashboardData";
+import { VERDICT_COPY, n } from "../lib/dashboardData";
+import type { VerdictTarget } from "../lib/api";
+import { matchupName as matchupLabel } from "../lib/versions";
 import { summaryText, type Rate, type ResultFacts } from "../lib/resultCard";
 
 const rateLine = (r: Rate) => (
@@ -72,6 +73,50 @@ function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
   );
 }
 
+const OUTCOME_CHIP: Record<VerdictTarget["outcome"], { cls: string; label: string }> = {
+  improved: { cls: "status ok", label: "improved" },
+  unchanged: { cls: "badge", label: "unchanged" },
+  worse: { cls: "status bad", label: "worse" },
+};
+
+const place = (rate: number) => `${Math.max(0, Math.min(100, rate * 100))}%`;
+
+/** A small bar from 0 to 100%: the 45-55% band, the rate before (hollow) and after (filled) joined by a line. */
+function BeforeAfterBar({ target }: { target: VerdictTarget }) {
+  const lo = Math.min(target.before.rate, target.after.rate);
+  const hi = Math.max(target.before.rate, target.after.rate);
+  return (
+    <span
+      className="ba-bar"
+      role="img"
+      aria-label={`${pct(target.before.rate)}% before, ${pct(target.after.rate)}% after`}
+    >
+      <span className="ba-band" />
+      <span className="ba-line" style={{ left: place(lo), width: `${(hi - lo) * 100}%` }} />
+      <span className="ba-dot before" style={{ left: place(target.before.rate) }} />
+      <span className="ba-dot after" style={{ left: place(target.after.rate) }} />
+    </span>
+  );
+}
+
+/** One row per target: the matchup, the small before to after bar, the numbers and an outcome chip. */
+function TargetRows({ targets }: { targets: VerdictTarget[] }) {
+  return (
+    <ul className="target-rows" aria-label="Targets, before and after the patch">
+      {targets.map((t) => (
+        <li key={t.matchup} className="target-row">
+          <span className="small">{matchupLabel(t.matchup)}</span>
+          <BeforeAfterBar target={t} />
+          <span className="caption">
+            {pct(t.before.rate)}% → {pct(t.after.rate)}%
+          </span>
+          <span className={OUTCOME_CHIP[t.outcome].cls}>{OUTCOME_CHIP[t.outcome].label}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verdict">) {
   return (
     <div>
@@ -117,7 +162,6 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
         <CopyButton facts={facts} />
       </div>
       {children}
-      {facts.note && <p className="caption">{facts.note}</p>}
       <div className="result-grid">
         <div>
           {fair && (
@@ -154,6 +198,7 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
           </div>
         )}
       </div>
+      {!fair && verdict && verdict.targets.length > 0 && <TargetRows targets={verdict.targets} />}
     </section>
   );
 }

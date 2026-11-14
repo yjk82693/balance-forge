@@ -1,9 +1,17 @@
-import { ApiError, failFrom, readJson, type PatchOrigin, type VerdictKind } from "./api";
+import {
+  ApiError,
+  failFrom,
+  readJson,
+  type PatchOrigin,
+  type VerdictKind,
+  type VerdictRate,
+  type VerdictTarget,
+} from "./api";
 import { describePath } from "../components/PatchCompare";
 import { heroName } from "./heroes";
 import type { Rate, ResultFacts } from "./resultCard";
 import { VERDICT_COPY } from "./dashboardData";
-import { originLabel } from "./fullRun";
+import { originLabel, targetsFrom } from "./fullRun";
 import { fixturePatch } from "./fixtures";
 import { isMockMode } from "../mock/types";
 
@@ -19,15 +27,11 @@ export interface VersionRecord {
   changes: { path: string; label?: string; old: number; new: number }[];
   rationale: string;
   target: { matchup: string; before: VersionRate; after: VersionRate } | null;
-  verdict: { verdict: VerdictKind; reasons: string[] } | null;
+  verdict: { verdict: VerdictKind; reasons: string[]; targets?: VerdictTarget[] } | null;
   approved: boolean;
   note?: string;
 }
-export interface VersionRate {
-  rate: number;
-  ci95: [number, number];
-  games: number;
-}
+export type VersionRate = VerdictRate;
 /** The history plus which version rooms and runs use by default (`currentHash`, when the server says). */
 export interface VersionList {
   versions: VersionRecord[];
@@ -49,6 +53,7 @@ export function parseVersion(raw: unknown): VersionRecord | null {
     ? {
         verdict: raw.verdict.verdict as VerdictKind,
         reasons: Array.isArray(raw.verdict.reasons) ? raw.verdict.reasons.map(String) : [],
+        targets: targetsFrom(raw.verdict.targets),
       }
     : null;
   return {
@@ -137,7 +142,12 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     })),
     holdout: t ? asRate(t.matchup, t.after) : null,
     verdict: v.verdict
-      ? { kind: v.verdict.verdict, label: VERDICT_COPY[v.verdict.verdict].label, reasons: v.verdict.reasons }
+      ? {
+          kind: v.verdict.verdict,
+          label: VERDICT_COPY[v.verdict.verdict].label,
+          reasons: v.verdict.reasons,
+          targets: v.verdict.targets ?? [],
+        }
       : null,
     others: null,
     othersNote: null,

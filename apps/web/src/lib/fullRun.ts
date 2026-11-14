@@ -9,6 +9,8 @@ import type {
   ReplayInfo,
   RunEvidence,
   VerdictKind,
+  VerdictRate,
+  VerdictTarget,
 } from "./api";
 import { parseTimeline } from "./replaySource";
 
@@ -94,6 +96,28 @@ function proposalFrom(raw: unknown, validation: unknown): Proposal | undefined {
   };
 }
 
+const OUTCOMES = ["improved", "unchanged", "worse"];
+
+function verdictRate(raw: unknown): VerdictRate | null {
+  if (!isObject(raw) || !Number.isFinite(raw.rate) || !Number.isFinite(raw.games)) return null;
+  const ci = Array.isArray(raw.ci95) && raw.ci95.length === 2 ? (raw.ci95 as [number, number]) : [raw.rate, raw.rate];
+  return { rate: Number(raw.rate), ci95: [Number(ci[0]), Number(ci[1])], games: Number(raw.games) };
+}
+
+/** `verdict.targets`: one row per target matchup; incomplete rows are dropped, and none left gives undefined. */
+export function targetsFrom(raw: unknown): VerdictTarget[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const rows: VerdictTarget[] = [];
+  for (const t of raw) {
+    if (!isObject(t) || typeof t.matchup !== "string" || !OUTCOMES.includes(String(t.outcome))) continue;
+    const before = verdictRate(t.before);
+    const after = verdictRate(t.after);
+    const outcome = t.outcome as VerdictTarget["outcome"];
+    if (before && after) rows.push({ matchup: t.matchup, before, after, outcome });
+  }
+  return rows.length ? rows : undefined;
+}
+
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 
 function evidenceSide(raw: unknown): EvidenceSide | null {
@@ -169,7 +193,11 @@ export function runFromFull(raw: unknown): PlaytestRun | null {
     proposal: proposalFrom(raw.proposal, raw.validation),
     verdict:
       kind && VERDICTS.includes(kind)
-        ? { verdict: kind, reasons: Array.isArray(verdictRaw?.reasons) ? verdictRaw.reasons.map(String) : [] }
+        ? {
+            verdict: kind,
+            reasons: Array.isArray(verdictRaw?.reasons) ? verdictRaw.reasons.map(String) : [],
+            targets: targetsFrom(verdictRaw?.targets),
+          }
         : undefined,
     runId: top.reportId,
     fair: raw.fair === true ? true : undefined,

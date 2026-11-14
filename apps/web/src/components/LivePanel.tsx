@@ -65,7 +65,7 @@ export function LivePanel({ busy, done, total, phase, elapsed, holdout }: Props)
         )}
         <p className="caption">Each bar settles as its games pile up.</p>
       </div>
-      <MiniArenas active={busy} />
+      {busy && <MiniArenas active />}
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import type { MatchResult, PatchProposal, Report, ReportRow } from "./contract";
 import { fixtureMatchConfig, fixturePatch } from "./fixtures";
+import { heroName } from "./heroes";
 import { mockTimeline } from "./replayGen";
 import { mockReport } from "./mockReport";
 import { isProgressMsg, mockProgress, type ProgressMsg } from "./progress";
@@ -27,9 +28,26 @@ export interface Proposal {
   validation: { ok: boolean; errors: string[] };
 }
 
+/** A win rate with its 95% interval and the games behind it, as the verdict carries it. */
+export interface VerdictRate {
+  rate: number;
+  ci95: [number, number];
+  games: number;
+}
+export type TargetOutcome = "improved" | "unchanged" | "worse";
+/** One matchup the patch was meant to fix: how it stood before, after, and how that is judged. */
+export interface VerdictTarget {
+  matchup: string;
+  before: VerdictRate;
+  after: VerdictRate;
+  outcome: TargetOutcome;
+}
+
 export interface Verdict {
   verdict: VerdictKind;
   reasons: string[];
+  /** one row per target; absent while the analysis does not send them */
+  targets?: VerdictTarget[];
 }
 
 /** What the dashboard needs from POST /v1/playtest/run. Only `baseline` is required. */
@@ -46,8 +64,6 @@ export interface PlaytestRun {
   replay?: ReplayInfo;
   /** the server said the matchup is fair (`fair: true`): no patch, no holdout, no verdict */
   fair?: boolean;
-  /** something to tell the viewer about how this run was made (e.g. the server ignored the chosen matchup) */
-  note?: string;
   /** client-side flag: data came from fixtures (?mock=1), not from a run */
   sample?: boolean;
 }
@@ -96,6 +112,8 @@ export class ApiError extends Error {
     readonly kind: "network" | "server" | "shape",
     /** the server's error code, when it sent one (e.g. RATE_LIMITED) */
     readonly code?: string,
+    /** a rejected matchup: do not fall back to a stored run or another matchup, show the error instead */
+    readonly keepMatchup = false,
   ) {
     super(message);
   }
@@ -174,32 +192,30 @@ export const FULL_RUN_PAIRS = 100;
  * server has no such endpoint (404/405), so the caller can fall back to the plain bot run.
  */
 async function runFullPlaytest(signal?: AbortSignal, heroes?: [string, string]): Promise<PlaytestRun | null> {
-  const post = async (withHeroes: boolean) => {
-    try {
-      return await fetch("/v1/playtest/full", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          gameId: "hero_arena",
-          ...(withHeroes && heroes ? { heroes } : {}),
-          pairs: FULL_RUN_PAIRS,
-        }),
-        signal,
-      });
-    } catch (e) {
-      if ((e as Error).name === "AbortError") throw e;
-      throw new ApiError("Couldn't reach the server.", "network");
-    }
-  };
-  let res = await post(true);
-  // A server that does not know `heroes` yet answers 400: ask again without it, and say the matchup was not honoured.
-  const ignoredHeroes = res.status === 400 && !!heroes;
-  if (ignoredHeroes) res = await post(false);
+  let res: Response;
+  try {
+    res = await fetch("/v1/playtest/full", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ gameId: "hero_arena", ...(heroes ? { heroes } : {}), pairs: FULL_RUN_PAIRS }),
+      signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new ApiError("Couldn't reach the server.", "network");
+  }
   if (res.status === 404 || res.status === 405) return null;
+  // A server that rejects `heroes` must not be answered with a different matchup than the one picked: show the error.
+  if (res.status === 400 && heroes) {
+    const { code, text } = await readError(res);
+    const names = heroes.map(heroName).join(" vs ");
+    const said = `${code ? `${code}: ` : ""}${text}`;
+    throw new ApiError(`The server didn't accept the matchup ${names}. ${said}`, "server", code, true);
+  }
   if (!res.ok) return failFrom(res);
   const run = runFromFull(await readJson<unknown>(res, "run reply"));
   if (!run) throw new ApiError("The server's reply had no report.", "shape");
-  return ignoredHeroes ? { ...run, note: "This server can't pick a matchup yet, so it ran its default one." } : run;
+  return run;
 }
 
 function playMockPhase(
@@ -237,12 +253,17 @@ export async function readJson<T>(res: Response, what: string): Promise<T> {
   }
 }
 
-/** Turns an error reply into an ApiError that carries the server's code and message, so the dashboard can show both. */
-export async function failFrom(res: Response): Promise<never> {
+/** The server's error code and message from an error reply (a plain status line if it sent neither). */
+async function readError(res: Response): Promise<{ code?: string; text: string }> {
   const body = (await res.json().catch(() => null)) as { code?: unknown; message?: unknown } | null;
   const code = typeof body?.code === "string" ? body.code : undefined;
   const said = typeof body?.message === "string" ? body.message : undefined;
-  const text = said ?? MESSAGES[code ?? ""] ?? `The server answered ${res.status}.`;
+  return { code, text: said ?? MESSAGES[code ?? ""] ?? `The server answered ${res.status}.` };
+}
+
+/** Turns an error reply into an ApiError that carries the server's code and message, so the dashboard can show both. */
+export async function failFrom(res: Response): Promise<never> {
+  const { code, text } = await readError(res);
   throw new ApiError(code ? `${code}: ${text}` : text, "server", code);
 }
 
