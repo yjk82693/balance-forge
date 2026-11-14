@@ -171,7 +171,10 @@ export interface CardsPayload {
   outcome: Outcome;
 }
 
+const isObject = (p: unknown): p is Record<string, unknown> => !!p && typeof p === "object";
+
+/** Shape checks for observation payloads: a malformed view is ignored instead of crashing a screen. */
 export const isArenaPayload = (p: unknown): p is ArenaPayload =>
-  !!p && typeof p === "object" && "arena" in p && "entities" in p;
+  isObject(p) && isObject(p.arena) && Array.isArray(p.entities) && Array.isArray(p.projectiles);
 export const isCardsPayload = (p: unknown): p is CardsPayload =>
-  !!p && typeof p === "object" && "hand" in p && "activePlayer" in p;
+  isObject(p) && Array.isArray(p.hand) && Array.isArray(p.entities) && typeof p.activePlayer === "string";

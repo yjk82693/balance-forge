@@ -43,7 +43,10 @@ export function CompareReplay({ seed, heroes, active, sample }: Props) {
         );
       })}
       <p className="caption replay-note">
-        Same seed {seed}. {sample ? "Illustrative replay (mock), not a recorded match." : "Replay of the same seed on both data versions."}
+        Same seed {seed}.{" "}
+        {sample
+          ? "Illustrative replay (mock), not a recorded match."
+          : "Replay of the same seed on both data versions."}
       </p>
     </section>
   );

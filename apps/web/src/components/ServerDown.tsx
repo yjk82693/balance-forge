@@ -30,7 +30,9 @@ export function ServerDown({ onRetry, compact }: Props) {
         Server unreachable
       </p>
       <h2 className="h3">Can't reach the server.</h2>
-      <p className="text-2">Check that it's running, then try again.{isMockMode() ? "" : " You can also look around with sample data."}</p>
+      <p className="text-2">
+        Check that it's running, then try again.{isMockMode() ? "" : " You can also look around with sample data."}
+      </p>
       <div className="server-down-actions">
         <button className="btn primary" onClick={onRetry}>
           Try again

@@ -5,7 +5,16 @@ import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath } from "../lib/as
 import { HEROES } from "../lib/heroes";
 import { ARENA_H, ARENA_W, ArenaScene, type ArenaAssets } from "./ArenaScene";
 
-const EFFECTS = ["spirit_arrow", "blaster_burst", "crow_dive", "hypnosis_ripple", "tentacle_lash", "blade_slash", "shield_bubble", "hit_spark"];
+const EFFECTS = [
+  "spirit_arrow",
+  "blaster_burst",
+  "crow_dive",
+  "hypnosis_ripple",
+  "tentacle_lash",
+  "blade_slash",
+  "shield_bubble",
+  "hit_spark",
+];
 
 /** Phaser canvas for Hero Arena. Pass the newest Observation; the scene redraws from it. */
 export function ArenaCanvas({ observation, compact = false }: { observation: Observation | null; compact?: boolean }) {

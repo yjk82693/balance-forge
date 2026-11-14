@@ -18,6 +18,17 @@ const fmtTime = (ticks: number) => {
 };
 const seatLabel = (row: MatchRow, seat: string) => row.names[seat] ?? "bot";
 
+function winnerLabel(r: MatchRow, winSeat: string): string {
+  const m = r.result;
+  if (m.outcome.status === "draw") return "Draw";
+  if (!m.valid) return "—";
+  return r.heroes[winSeat] ? heroName(r.heroes[winSeat]) : seatLabel(r, winSeat);
+}
+
+function rowClass(r: MatchRow, selected: boolean): string {
+  return [selected && "selected", !r.result.valid && "invalid", r.justPlayed && "just"].filter(Boolean).join(" ");
+}
+
 interface Props {
   rows: MatchRow[];
   selected: string;
@@ -44,11 +55,11 @@ export function MatchesTable({ rows, selected, onSelect, compact }: Props) {
           const { result: m } = r;
           const [p1, p2] = m.config.players;
           const win = m.outcome.winners[0];
-          const winner = m.outcome.status === "draw" ? "Draw" : !m.valid ? "—" : r.heroes[win] ? heroName(r.heroes[win]) : seatLabel(r, win);
+          const winner = winnerLabel(r, win);
           return (
             <tr
               key={m.matchId}
-              className={`${selected === m.matchId ? "selected" : ""}${!m.valid ? " invalid" : ""}${r.justPlayed ? " just" : ""}`}
+              className={rowClass(r, selected === m.matchId)}
               tabIndex={0}
               aria-selected={selected === m.matchId}
               onClick={() => onSelect(m.matchId)}

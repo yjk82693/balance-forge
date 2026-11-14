@@ -30,10 +30,19 @@ export function rowStats(row: ReportRow): RowStats {
   const [lo, hi] = wilson(row.wins, row.games);
   const small = row.games < MIN_GAMES;
   const outlier = !small && (lo > BAND[1] || hi < BAND[0]);
-  return { row, rate: row.games ? row.wins / row.games : 0, lo, hi, small, outlier, matchup: parseMatchup(row.dimension) };
+  return {
+    row,
+    rate: row.games ? row.wins / row.games : 0,
+    lo,
+    hi,
+    small,
+    outlier,
+    matchup: parseMatchup(row.dimension),
+  };
 }
 
-export const ciText = (s: RowStats) => `95% CI ${pct(s.lo)}–${pct(s.hi)}% · n = ${s.row.games.toLocaleString("en-US")}`;
+export const ciText = (s: RowStats) =>
+  `95% CI ${pct(s.lo)}–${pct(s.hi)}% · n = ${s.row.games.toLocaleString("en-US")}`;
 
 const AXIS = [0, 25, 50, 75, 100];
 

@@ -20,7 +20,10 @@ const messages = wsMessages as unknown as Envelope[];
 const byType = (t: string) => messages.find((m) => m.type === t)!;
 
 export const fixtureRoomStatus = byType("room.status") as Envelope<RoomStatusPayload>;
-export const fixtureInputSubmit = byType("input.submit") as Envelope<{ actionId: string; params: Record<string, number> }>;
+export const fixtureInputSubmit = byType("input.submit") as Envelope<{
+  actionId: string; params: Record<string,
+  number>,
+}>;
 export const fixtureInputAck = byType("input.ack") as Envelope<{ status: string; acceptedTick: number }>;
 export const fixtureStateView = byType("state.view") as Envelope<{ observation: Observation; viewHash: string }>;
 export const fixtureMatchEnded = byType("match.ended") as Envelope<{ result: MatchResult }>;

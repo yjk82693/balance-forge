@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from "react";
 
-/** Tiny WebAudio blips: no audio files. Starts after the first user gesture (browser rule); respects the mute toggle. */
+/**
+ * Tiny WebAudio blips: no audio files. Starts after the first user gesture (browser rule);
+ * respects the mute toggle.
+ */
 export type Blip = "hit" | "ko" | "shoot" | "guard" | "turn" | "play";
 
 let ctx: AudioContext | null = null;
@@ -72,7 +75,8 @@ export function useMuted(): boolean {
   );
 }
 
-export const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+export const reducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Haptic pulse where supported. */
 export const buzz = (pattern: number | number[]) => {

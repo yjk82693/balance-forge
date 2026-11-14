@@ -26,7 +26,10 @@ export interface CardsMeta {
   names: Record<string, string>;
 }
 
-/** Hero Cards table: both sides' HP, ward, energy orbs, hand backs, deck count and two summon slots. Reads Observations only. */
+/**
+ * Hero Cards table: both sides' HP, ward, energy orbs, hand backs, deck count and two summon slots.
+ * Reads Observations only.
+ */
 export class CardsScene extends Phaser.Scene {
   private layer!: Phaser.GameObjects.Container;
   private ready = false;
@@ -115,7 +118,18 @@ export class CardsScene extends Phaser.Scene {
       this.layer.add(orb);
     }
 
-    this.layer.add(this.add.nineslice(x0 + 160, y0 + 86, "deck-counter", undefined, 148, 50, 36, 36, 31, 24).setOrigin(0, 0));
+    this.layer.add(this.add.nineslice(
+      x0 + 160,
+      y0 + 86,
+      "deck-counter",
+      undefined,
+      148,
+      50,
+      36,
+      36,
+      31,
+      24,
+    ).setOrigin(0, 0));
     this.text(x0 + 160 + 74, y0 + 100, `Deck ${e.deckCount}`, 15).setOrigin(0.5, 0);
 
     // hand backs, fanned
@@ -125,7 +139,11 @@ export class CardsScene extends Phaser.Scene {
     const cx = x0 + 156;
     for (let i = 0; i < n; i++) {
       const x = cx + (i - (n - 1) / 2) * (cw * 0.6);
-      this.layer.add(this.add.image(x, 470, "card-back").setOrigin(0.5, 0).setDisplaySize(cw, ch).setAngle((i - (n - 1) / 2) * 3));
+      this.layer.add(this.add.image(
+        x,
+        470,
+        "card-back",
+      ).setOrigin(0.5, 0).setDisplaySize(cw, ch).setAngle((i - (n - 1) / 2) * 3));
     }
     this.text(cx, 470 + ch + 6, `${n} in hand`, 13, "#A3AFBD", "500").setOrigin(0.5, 0);
 

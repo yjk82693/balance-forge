@@ -82,7 +82,11 @@ class Conn {
   send(type: string, payload: unknown) {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
     const seq = (payload as { seq?: number } | null)?.seq ?? 0;
-    this.ws.send(JSON.stringify(makeEnvelope(type, payload, { roomId: this.roomId, sessionId: this.sessionId, requestId: `q${++this.reqSeq}`, seq })));
+    this.ws.send(JSON.stringify(makeEnvelope(
+      type,
+      payload,
+      { roomId: this.roomId, sessionId: this.sessionId, requestId: `q${++this.reqSeq}`, seq },
+    )));
   }
 
   subscribe(fn: (env: Envelope) => void) {

@@ -13,6 +13,7 @@ import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 
 const fmtTime = (ticks: number) => {
+  if (!Number.isFinite(ticks)) return "—";
   const s = Math.round(ticks / 60);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
@@ -24,7 +25,8 @@ export function Arena({ gameId }: { gameId: string }) {
   const { room, observation, result } = useRoom(transport);
   const srv = useServerState(status);
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
-  const cardsObs = observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
+  const cardsObs =
+    observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
   // Remember the finished match so the dashboard can show "you just played this".
   useEffect(() => {
@@ -38,7 +40,10 @@ export function Arena({ gameId }: { gameId: string }) {
   }, [result, room, gameId]);
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
-  const winnerHero = (isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === winnerSeat)?.hero : undefined) ?? winner?.hero;
+  const winnerEntity = isArenaPayload(observation?.payload)
+    ? observation.payload.entities.find((e) => e.id === winnerSeat)
+    : undefined;
+  const winnerHero = winnerEntity?.hero ?? winner?.hero;
 
   return (
     <div className="screen" style={{ ["--game" as string]: `var(${game?.accentVar ?? "--game-arena"})` }}>
@@ -55,7 +60,11 @@ export function Arena({ gameId }: { gameId: string }) {
       </TopBar>
       <main className="arena-screen">
         <div className="arena-stage">
-          {gameId === "hero_cards" ? <CardsCanvas observation={cardsObs} names={names} /> : <ArenaCanvas observation={arenaObs} />}
+          {gameId === "hero_cards" ? (
+            <CardsCanvas observation={cardsObs} names={names} />
+          ) : (
+            <ArenaCanvas observation={arenaObs} />
+          )}
           <div className="arena-overlay">
             {gameId !== "hero_cards" && <span className="badge">sample replay</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
@@ -69,7 +78,9 @@ export function Arena({ gameId }: { gameId: string }) {
               <div className="stage-overlay" aria-busy="true">
                 <div className="panel">
                   <p className="eyebrow">{srv === "connecting" ? "Connecting" : "Waiting"}</p>
-                  <p className="h3">{srv === "connecting" ? "Reaching the server…" : "Waiting for the match to start."}</p>
+                  <p className="h3">
+                    {srv === "connecting" ? "Reaching the server…" : "Waiting for the match to start."}
+                  </p>
                   <p className="text-2">Start it from the lobby.</p>
                   <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => go(`/lobby/${gameId}`)}>
                     Back to lobby

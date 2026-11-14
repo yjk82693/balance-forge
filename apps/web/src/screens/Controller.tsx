@@ -20,6 +20,13 @@ const ERRORS: Record<string, string> = {
   ROOM_FULL: "This room is full. Ask the host to open a slot.",
 };
 
+/** This seat's entity in an arena observation, if the payload is one. */
+function myArenaEntity(payload: unknown, seat: string | undefined) {
+  return isArenaPayload(payload) ? payload.entities.find((e) => e.id === seat) : undefined;
+}
+
+const hpPercent = (hp: number, maxHp = 100) => Math.max(0, Math.min(100, (hp / maxHp) * 100));
+
 interface Profile {
   code: string;
   name: string;
@@ -56,7 +63,9 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const padName = useGamepad(pipeline, playing && online);
 
   useEffect(() => {
-    if (import.meta.env.DEV && transport) (window as unknown as { __bf?: unknown }).__bf = { drop: () => transport.drop() };
+    if (import.meta.env.DEV && transport) {
+      (window as unknown as { __bf?: unknown }).__bf = { drop: () => transport.drop() }; // dev-only test hook
+    }
   }, [transport]);
 
   const join = (p: Profile) => {
@@ -81,7 +90,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   }, [error, joined, seat]);
 
   // Phone haptics and blips follow our own HP in the observation: a short pulse on a hit, a longer one on KO.
-  const myHp = isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === seat)?.hp : undefined;
+  const myHp = myArenaEntity(observation?.payload, seat)?.hp;
   const lastHp = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (myHp === undefined) return;
@@ -115,7 +124,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
 
   const me = room?.seats.find((s) => s.seat === seat);
   const hero = me?.hero ?? joined.hero;
-  const mine = isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === seat) : undefined;
+  const mine = myArenaEntity(observation?.payload, seat);
   const ended = !!result || room?.phase === "ended";
   const gameOn = room?.phase === "playing";
 
@@ -164,7 +173,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
           <div className="hp" aria-label={`HP ${mine.hp}`}>
             <span className="caption">HP</span>
             <span className="hp-track">
-              <span className="hp-fill" style={{ width: `${Math.max(0, Math.min(100, (mine.hp / (mine.maxHp ?? 100)) * 100))}%` }} />
+              <span className="hp-fill" style={{ width: `${hpPercent(mine.hp, mine.maxHp)}%` }} />
             </span>
             <span className="small">{mine.hp}</span>
           </div>
@@ -299,7 +308,12 @@ function JoinForm(props: {
         </p>
       )}
       {offline && <p className="form-error">Lost the connection. Tap Join to try again.</p>}
-      <button className="btn primary touch" type="submit" aria-disabled={!ok || busy || srv === "connecting"} aria-busy={busy || srv === "connecting"}>
+      <button
+        className="btn primary touch"
+        type="submit"
+        aria-disabled={!ok || busy || srv === "connecting"}
+        aria-busy={busy || srv === "connecting"}
+      >
         {srv === "connecting" ? "Connecting…" : busy ? "Joining…" : "Join"}
       </button>
     </form>

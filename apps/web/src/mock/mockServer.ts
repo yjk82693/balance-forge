@@ -158,7 +158,11 @@ export class MockServer {
     else if (a.actionId === "end_turn") err = cards.endTurn(s.seat!);
     if (err) return this.error(s, env, err, false);
     this.inputCount += 1;
-    const receipt = makeEnvelope("input.ack", { status: "accepted", acceptedTick: a.tick }, { roomId: this.roomId, sessionId: s.id, requestId: env.requestId, seq: a.seq, epoch: 1 });
+    const receipt = makeEnvelope(
+      "input.ack",
+      { status: "accepted", acceptedTick: a.tick },
+      { roomId: this.roomId, sessionId: s.id, requestId: env.requestId, seq: a.seq, epoch: 1 },
+    );
     this.lastSeq.set(s.seat!, { seq: a.seq, receipt });
     s.deliver(receipt);
     this.afterCardsChange();
@@ -169,12 +173,24 @@ export class MockServer {
     if (!cards) return;
     for (const s of this.sessions.values()) {
       const viewer = s.role === "display" ? "display" : (s.seat ?? "p?");
-      this.to(s, "state.view", { observation: { tick: cards.tick, viewerId: viewer, payload: cards.view(viewer) }, viewHash: fixtureStateView.payload.viewHash });
+      this.to(
+        s,
+        "state.view",
+        {
+          observation: { tick: cards.tick, viewerId: viewer, payload: cards.view(viewer) },
+          viewHash: fixtureStateView.payload.viewHash,
+        },
+      );
     }
     if (!cards.running) {
       this.phase = "ended";
       const base = fixtureMatchEnded.payload.result;
-      const result: MatchResult = { ...base, config: { ...base.config, gameId: "hero_cards", mode: "turn" }, outcome: cards.outcome, statistics: { ...base.statistics, durationTicks: cards.tick } };
+      const result: MatchResult = {
+        ...base,
+        config: { ...base.config, gameId: "hero_cards", mode: "turn" },
+        outcome: cards.outcome,
+        statistics: { ...base.statistics, durationTicks: cards.tick },
+      };
       for (const s of this.sessions.values()) this.to(s, "match.ended", { result });
       this.broadcastStatus();
       return;
@@ -196,7 +212,11 @@ export class MockServer {
       this.phase = "playing";
       this.cards = new CardsMock(["p1", "p2"]);
       this.broadcastStatus();
-      for (const s of this.sessions.values()) this.to(s, "match.started", { config: { ...fixtureMatchConfig, gameId: "hero_cards", mode: "turn", players: ["p1", "p2"] } });
+      for (const s of this.sessions.values()) this.to(
+        s,
+        "match.started",
+        { config: { ...fixtureMatchConfig, gameId: "hero_cards", mode: "turn", players: ["p1", "p2"] } },
+      );
       this.afterCardsChange();
       return;
     }
@@ -205,7 +225,17 @@ export class MockServer {
     this.frame = 0;
     this.broadcastStatus();
     for (const s of this.sessions.values()) {
-      this.to(s, "match.started", { config: { ...fixtureMatchConfig, gameId: this.gameId, players: this.seats.filter((x) => x.connected).map((x) => x.seat) } });
+      this.to(
+        s,
+        "match.started",
+        {
+          config: {
+            ...fixtureMatchConfig,
+            gameId: this.gameId,
+            players: this.seats.filter((x) => x.connected).map((x) => x.seat),
+          },
+        },
+      );
     }
     this.stopReplay();
     this.sendFrame();
@@ -231,7 +261,12 @@ export class MockServer {
   private sendFrame() {
     this.frame += 1;
     const heroOf = (id: string, d: string) => this.seats.find((x) => x.seat === id)?.hero ?? d;
-    const obs = frameAt(this.frame, this.version, fixtureMatchConfig.seed, [heroOf("p1", "bari"), heroOf("p2", "real_armor")]);
+    const obs = frameAt(
+      this.frame,
+      this.version,
+      fixtureMatchConfig.seed,
+      [heroOf("p1", "bari"), heroOf("p2", "real_armor")],
+    );
     for (const s of this.sessions.values()) {
       const view: Observation = { ...obs, viewerId: s.role === "display" ? "display" : (s.seat ?? "p?") };
       this.to(s, "state.view", { observation: view, viewHash: fixtureStateView.payload.viewHash });
@@ -246,7 +281,13 @@ export class MockServer {
   }
 
   private statusPayload(you?: string): RoomStatusPayload {
-    return { joinCode: this.joinCode, gameId: this.gameId, phase: this.phase, seats: this.seats.map((x) => ({ ...x })), ...(you ? { you } : {}) };
+    return {
+      joinCode: this.joinCode,
+      gameId: this.gameId,
+      phase: this.phase,
+      seats: this.seats.map((x) => ({ ...x })),
+      ...(you ? { you } : {}),
+    };
   }
 
   private broadcastStatus(joiner?: string, seat?: string, requestId = "") {

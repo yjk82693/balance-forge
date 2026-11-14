@@ -17,7 +17,9 @@ interface Metrics {
  */
 export async function loadRecordedRun(): Promise<PlaytestRun> {
   const [results, metrics] = await Promise.all([
-    import("../../../../services/runner/recorded-match-results.json").then((m) => m.default as unknown as MatchResult[]),
+    import("../../../../services/runner/recorded-match-results.json").then(
+      (m) => m.default as unknown as MatchResult[],
+    ),
     import("../../../../services/runner/recorded-metrics.json").then((m) => m.default as unknown as Metrics),
   ]);
   const first = results.find((r) => r.matchId === "m-1") ?? results[0];
@@ -41,7 +43,16 @@ export async function loadRecordedRun(): Promise<PlaytestRun> {
     validMatches: metrics.validMatches,
     invalidMatches: metrics.invalidMatches,
     draws,
-    rows: [{ dimension: "bari vs real_armor", wins, games, winRate: games ? wins / games : 0, ci95: [0, 1], uses: 0, opportunities: 0, outlier: false }],
+    rows: [{
+      dimension: "bari vs real_armor",
+      wins,
+      games,
+      winRate: games ? wins / games : 0,
+      ci95: [0, 1],
+      uses: 0,
+      opportunities: 0,
+      outlier: false,
+    }],
     elapsedMs: Math.round(metrics.elapsedMs),
     recorded: true,
   };

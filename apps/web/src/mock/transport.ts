@@ -29,7 +29,11 @@ chan?.addEventListener("message", (ev: MessageEvent<Wire>) => {
   if (m.k === "hello" && server && displaysHere > 0) chan.postMessage({ k: "host", to: m.from } satisfies Wire);
   else if (m.k === "host" || m.k === "down") remoteHandlers.get(m.to)?.(m);
   else if (m.k === "up" && server && displaysHere > 0) {
-    if (m.connect) server.connect(m.from, m.connect, (env) => chan.postMessage({ k: "down", to: m.from, env } satisfies Wire));
+    if (m.connect) server.connect(
+      m.from,
+      m.connect,
+      (env) => chan.postMessage({ k: "down", to: m.from, env } satisfies Wire),
+    );
     else if (m.bye) server.disconnect(m.from);
     else if (m.env) server.receive(m.from, m.env);
   }
@@ -37,7 +41,10 @@ chan?.addEventListener("message", (ev: MessageEvent<Wire>) => {
 
 const getServer = () => (server ??= new MockServer());
 let counter = 0;
-const newId = (role: MockRole) => `${role === "display" ? "display" : "ctrl"}-${Math.random().toString(36).slice(2, 7)}${++counter}`;
+const newId = (role: MockRole) => {
+  const prefix = role === "display" ? "display" : "ctrl";
+  return `${prefix}-${Math.random().toString(36).slice(2, 7)}${++counter}`;
+};
 
 function createMockTransport(role: MockRole): Transport {
   const sessionId = newId(role);

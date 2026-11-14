@@ -1,4 +1,4 @@
-import type { PatchProposal, Report } from "./contract";
+import type { PatchProposal, Report, ReportRow } from "./contract";
 import { fixturePatch } from "./fixtures";
 import { mockReport } from "./mockReport";
 import { mockProgress, type ProgressMsg } from "./progress";
@@ -47,8 +47,24 @@ export class ApiError extends Error {
   }
 }
 
+const isRow = (r: unknown): r is ReportRow => {
+  const row = r as ReportRow;
+  return (
+    !!row &&
+    typeof row.dimension === "string" &&
+    Number.isFinite(row.wins) &&
+    Number.isFinite(row.games) &&
+    row.games >= 0 &&
+    row.wins >= 0 &&
+    row.wins <= row.games
+  );
+};
+
 const isReport = (r: unknown): r is Report =>
   !!r && typeof r === "object" && Array.isArray((r as Report).rows) && typeof (r as Report).validMatches === "number";
+
+/** Drops rows with impossible counts (wins > games, NaN, negatives) so charts never draw nonsense. */
+const cleanReport = (r: Report): Report => ({ ...r, rows: r.rows.filter(isRow) });
 
 const ORIGINS: PatchOrigin[] = ["gemini", "fallback", "manual"];
 const VERDICTS: VerdictKind[] = ["accepted", "rejected", "inconclusive"];
@@ -63,7 +79,11 @@ export function normalizeRun(raw: unknown): PlaytestRun {
   const proposal: Proposal | undefined =
     p && p.patch
       ? {
-          patch: p.patch as PatchProposal,
+          patch: {
+            baseDataHash: String(p.patch.baseDataHash ?? ""),
+            replacements: Array.isArray(p.patch.replacements) ? p.patch.replacements : [],
+            rationale: String(p.patch.rationale ?? ""),
+          } as PatchProposal,
           changes: Array.isArray(p.changes) ? p.changes : undefined,
           origin: ORIGINS.includes(p.origin) ? p.origin : "manual",
           validation: {
@@ -77,10 +97,18 @@ export function normalizeRun(raw: unknown): PlaytestRun {
   const verdict: Verdict | undefined = VERDICTS.includes(verdictKind)
     ? { verdict: verdictKind, reasons: Array.isArray(v?.reasons) ? v.reasons.map(String) : [] }
     : undefined;
-  return { baseline, patched: isReport(patched) ? patched : undefined, proposal, verdict };
+  return {
+    baseline: cleanReport(baseline),
+    patched: isReport(patched) ? cleanReport(patched) : undefined,
+    proposal,
+    verdict,
+  };
 }
 
-/** Real mode: listen to the `playtest.progress` topic while a run is in flight. Mock mode feeds progress from runPlaytest itself. */
+/**
+ * Real mode: listen to the `playtest.progress` topic while a run is in flight.
+ * Mock mode feeds progress from runPlaytest itself.
+ */
 export function subscribeProgress(onMsg: (p: ProgressMsg) => void): () => void {
   if (isMockMode()) return () => {};
   const t = createTransport("observer");
@@ -95,7 +123,11 @@ export function subscribeProgress(onMsg: (p: ProgressMsg) => void): () => void {
   };
 }
 
-export async function runPlaytest(matches = 1000, signal?: AbortSignal, onProgress?: (p: ProgressMsg) => void): Promise<PlaytestRun> {
+export async function runPlaytest(
+  matches = 1000,
+  signal?: AbortSignal,
+  onProgress?: (p: ProgressMsg) => void,
+): Promise<PlaytestRun> {
   if (isMockMode()) {
     const final = mockReport("broken");
     await new Promise<void>((resolve, reject) => {

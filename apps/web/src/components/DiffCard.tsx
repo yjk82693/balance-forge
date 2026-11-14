@@ -5,7 +5,12 @@ import { describePath } from "./PatchCompare";
 export function DiffCard({ proposal, sample }: { proposal: Proposal; sample?: boolean }) {
   const changes =
     proposal.changes ??
-    proposal.patch.replacements.map((r) => ({ path: r.path, label: undefined, old: undefined as number | undefined, new: r.value }));
+    proposal.patch.replacements.map((r) => ({
+      path: r.path,
+      label: undefined,
+      old: undefined as number | undefined,
+      new: r.value,
+    }));
   return (
     <section className="panel diff" aria-labelledby="diff-title">
       <div className="panel-head">

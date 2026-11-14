@@ -1,6 +1,9 @@
 import type { CardDef } from "./contract";
 
-/** Mirror of packages/games/cards/data.js (ids, costs, powers). Used for labels, art and the mock only; the server stays authoritative. */
+/**
+ * Mirror of packages/games/cards/data.js (ids, costs, powers).
+ * Used for labels, art and the mock only; the server stays authoritative.
+ */
 export const CARDS: CardDef[] = [
   { id: "spark", cost: 1, kind: "damage", power: 3, ignoresWard: false },
   { id: "ward", cost: 1, kind: "ward", power: 5, ignoresWard: false },
@@ -10,7 +13,13 @@ export const CARDS: CardDef[] = [
 ];
 export const CARDS_RULES = { energy: 3, handSize: 5, summonSlots: 2, rounds: 6, health: 20 };
 
-const NAMES: Record<string, string> = { spark: "Spark", ward: "Ward", sentinel: "Sentinel", hypnosis: "Hypnosis", pulse: "Pulse" };
+const NAMES: Record<string, string> = {
+  spark: "Spark",
+  ward: "Ward",
+  sentinel: "Sentinel",
+  hypnosis: "Hypnosis",
+  pulse: "Pulse",
+};
 export const cardName = (id: string) => NAMES[id] ?? id;
 
 export function cardEffect(c: CardDef): string {

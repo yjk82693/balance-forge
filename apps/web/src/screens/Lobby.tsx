@@ -127,7 +127,11 @@ export function Lobby({ gameId }: { gameId: string }) {
           </h1>
           <div className="join-row">
             <div className="qr-card">
-              {connecting ? <div className="sk" style={{ aspectRatio: "1", width: "100%" }} aria-label="Getting the room ready" /> : <Qr url={url} />}
+              {connecting ? (
+                <div className="sk" style={{ aspectRatio: "1", width: "100%" }} aria-label="Getting the room ready" />
+              ) : (
+                <Qr url={url} />
+              )}
             </div>
             <div className="join-code">
               <p className="eyebrow text-2" style={{ color: "var(--text-2)" }}>
@@ -150,7 +154,7 @@ export function Lobby({ gameId }: { gameId: string }) {
             </span>
           </div>
           <ul className="chips" aria-live="polite" aria-busy={connecting}>
-            {connecting && Array.from({ length: SLOTS }, (_, i) => <li key={`sk-${i}`} className="chip sk" style={{ animation: undefined }} />)}
+            {connecting && Array.from({ length: SLOTS }, (_, i) => <li key={`sk-${i}`} className="chip sk" />)}
             {!connecting && Array.from({ length: SLOTS }, (_, i) => {
               const s = seats[i];
               if (!s) {
@@ -165,7 +169,11 @@ export function Lobby({ gameId }: { gameId: string }) {
                 );
               }
               return (
-                <li key={s.seat} className={`chip${s.connected ? "" : " away"}`} style={{ ["--hero-chip" as string]: heroColorVar(s.hero) }}>
+                <li
+                  key={s.seat}
+                  className={`chip${s.connected ? "" : " away"}`}
+                  style={{ ["--hero-chip" as string]: heroColorVar(s.hero) }}
+                >
                   <HeroPortrait hero={s.hero} size={56} />
                   <div className="chip-name">
                     <p className="small" style={{ fontWeight: 700 }}>

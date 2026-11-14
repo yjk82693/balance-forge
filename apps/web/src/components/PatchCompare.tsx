@@ -47,7 +47,11 @@ export function PatchCompare({ before, after, showAfter }: Props) {
             <Plot>
               <div className="viz-bar before-bar" title={ciText(b)} style={{ width: `${b.rate * 100}%` }} />
               <Interval s={b} />
-              <div className={`viz-bar after-bar${showAfter ? "" : " hidden"}`} title={ciText(a)} style={{ width: showAfter ? `${a.rate * 100}%` : 0 }} />
+              <div
+                className={`viz-bar after-bar${showAfter ? "" : " hidden"}`}
+                title={ciText(a)}
+                style={{ width: showAfter ? `${a.rate * 100}%` : 0 }}
+              />
               {showAfter && <Interval s={a} />}
             </Plot>
             <span className="viz-value small delta">

@@ -117,7 +117,11 @@ export class ArenaScene extends Phaser.Scene {
         v?.sprite.destroy();
         v?.shadow.destroy();
         const shadow = this.add.ellipse(p.x, p.y, 90 * this.k, 26 * this.k, 0x000000, 0.28).setDepth(1);
-        const sprite = this.add.image(p.x, p.y, this.textures.exists(key) ? key : "__MISSING").setOrigin(0.5, 498 / 512).setScale(HERO_SCALE * this.k);
+        const sprite = this.add.image(
+          p.x,
+          p.y,
+          this.textures.exists(key) ? key : "__MISSING",
+        ).setOrigin(0.5, 498 / 512).setScale(HERO_SCALE * this.k);
         v = { sprite, shadow, tx: p.x, ty: p.y, px: p.x, py: p.y, hp: e.hp, squash: 0, phase: i * 1.7, ko: false };
         this.heroes.set(e.id, v);
         this.makeHud(e.id, e.hero, i === 0 ? "left" : "right");
@@ -156,7 +160,11 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private addTrail(src: Phaser.GameObjects.Image, tex: string) {
-    const t = this.add.image(src.x, src.y, tex).setScale(src.scaleX * 0.9).setFlipX(src.flipX).setAlpha(0.45).setDepth(4990);
+    const t = this.add.image(
+      src.x,
+      src.y,
+      tex,
+    ).setScale(src.scaleX * 0.9).setFlipX(src.flipX).setAlpha(0.45).setDepth(4990);
     this.trails.push({ img: t, life: 1 });
     if (this.trails.length > 24) this.trails.shift()?.img.destroy();
   }
@@ -169,8 +177,18 @@ export class ArenaScene extends Phaser.Scene {
     v.sprite.setTintFill(0xffffff);
     this.time.delayedCall(80, () => v.sprite.clearTint());
     v.squash = 1;
-    const spark = this.add.image(v.sprite.x, v.sprite.y - 70 * k, this.textures.exists("fx:hit_spark") ? "fx:hit_spark" : "fx:spirit_arrow").setScale(0.35 * k).setDepth(9000);
-    this.tweens.add({ targets: spark, alpha: 0, scale: spark.scale * 1.4, duration: 220, onComplete: () => spark.destroy() });
+    const spark = this.add.image(
+      v.sprite.x,
+      v.sprite.y - 70 * k,
+      this.textures.exists("fx:hit_spark") ? "fx:hit_spark" : "fx:spirit_arrow",
+    ).setScale(0.35 * k).setDepth(9000);
+    this.tweens.add({
+      targets: spark,
+      alpha: 0,
+      scale: spark.scale * 1.4,
+      duration: 220,
+      onComplete: () => spark.destroy(),
+    });
     this.floatText(v.sprite.x, v.sprite.y - 120 * k, `-${dmg}`, tier >= 3 ? "#FF6B6B" : "#E6EBF1", 20 + tier * 4);
     if (!this.reduce) this.cameras.main.shake(100 + tier * 50, 0.0015 * tier);
     this.sfx("hit");
@@ -195,7 +213,13 @@ export class ArenaScene extends Phaser.Scene {
       this.time.timeScale = 1;
       this.tweens.timeScale = 1;
     }, 1100);
-    this.tweens.add({ targets: v.sprite, angle: v.sprite.flipX ? -80 : 80, alpha: 0.55, duration: 500, ease: "Quad.easeOut" });
+    this.tweens.add({
+      targets: v.sprite,
+      angle: v.sprite.flipX ? -80 : 80,
+      alpha: 0.55,
+      duration: 500,
+      ease: "Quad.easeOut",
+    });
   }
 
   private revive(v: HeroView) {
@@ -205,11 +229,23 @@ export class ArenaScene extends Phaser.Scene {
 
   private floatText(x: number, y: number, s: string, color: string, size: number) {
     const t = this.add
-      .text(x, y, s, { fontFamily: FONT, fontSize: `${Math.round(size * (this.k < 1 ? 1.3 : 1))}px`, fontStyle: "700", color })
+      .text(
+        x,
+        y,
+        s,
+        { fontFamily: FONT, fontSize: `${Math.round(size * (this.k < 1 ? 1.3 : 1))}px`, fontStyle: "700", color },
+      )
       .setOrigin(0.5)
       .setDepth(9500)
       .setShadow(0, 2, "#0D1219", 4, false, true);
-    this.tweens.add({ targets: t, y: this.reduce ? y : y - 46 * this.k, alpha: 0, duration: 800, ease: "Cubic.easeOut", onComplete: () => t.destroy() });
+    this.tweens.add({
+      targets: t,
+      y: this.reduce ? y : y - 46 * this.k,
+      alpha: 0,
+      duration: 800,
+      ease: "Cubic.easeOut",
+      onComplete: () => t.destroy(),
+    });
   }
 
   // ---- HUD ----
@@ -224,13 +260,35 @@ export class ArenaScene extends Phaser.Scene {
     this.add.image(x, y, "hp-track").setOrigin(0, 0).setDisplaySize(trackW, trackH).setDepth(10000);
     const fullW = trackW - 24 * k;
     const fullH = (18 / 320) * fullW;
-    const fill = this.add.image(x + 12 * k, y + trackH / 2 - fullH / 2, "hp-fill").setOrigin(0, 0).setDisplaySize(fullW, fullH).setDepth(10001);
+    const fill = this.add.image(
+      x + 12 * k,
+      y + trackH / 2 - fullH / 2,
+      "hp-fill",
+    ).setOrigin(0, 0).setDisplaySize(fullW, fullH).setDepth(10001);
     this.add.circle(x + 8 * k, y + trackH + 6 * k + 11 * k, 5 * k, HERO_HEX[hero] ?? 0xffffff).setDepth(10002);
+    const plate = {
+      fontFamily: FONT,
+      fontSize: fs,
+      fontStyle: "700",
+      color: "#E6EBF1",
+      backgroundColor: "rgba(13,18,25,0.78)", // dark plate so the text reads on the busy floor art
+      padding: { x: 8 * k, y: 3 * k },
+    };
     const name = this.add
-      .text(x + 18 * k, y + trackH + 6 * k, heroName(hero), { fontFamily: FONT, fontSize: fs, fontStyle: "700", color: "#E6EBF1", backgroundColor: "rgba(13,18,25,0.78)", padding: { x: 8 * k, y: 3 * k } })
+      .text(
+        x + 18 * k,
+        y + trackH + 6 * k,
+        heroName(hero),
+        plate,
+      )
       .setDepth(10001);
     const hp = this.add
-      .text(x + trackW, y + trackH + 6 * k, "", { fontFamily: FONT, fontSize: fs, fontStyle: "700", color: "#E6EBF1", backgroundColor: "rgba(13,18,25,0.78)", padding: { x: 8 * k, y: 3 * k } })
+      .text(
+        x + trackW,
+        y + trackH + 6 * k,
+        "",
+        plate,
+      )
       .setOrigin(1, 0)
       .setDepth(10001);
     this.huds.set(id, { fill, name, hp, fullW, fullH, shown: 1, target: 1 });

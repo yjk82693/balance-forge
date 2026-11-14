@@ -15,6 +15,10 @@ interface Props {
   send: (input: ActionInput) => void;
 }
 
+function unitLabel(u: { power: number; sleepUntil: number }, turnId: number): string {
+  return `Unit · ${u.power} per turn${u.sleepUntil > turnId ? " · asleep" : ""}`;
+}
+
 function Orbs({ n }: { n: number }) {
   return (
     <span className="orbs" role="img" aria-label={`${n} of ${CARDS_RULES.energy} energy`}>
@@ -55,12 +59,20 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
     emit("play", card.kind === "summon" ? { handIndex: picked, slot: me.units.length } : { handIndex: picked });
     setPicked(null);
   };
-  const turnLabel = over ? "Match over" : mine ? "Your turn" : `Waiting for ${names[payload?.activePlayer ?? ""] ?? "the other player"}`;
+  const other = names[payload?.activePlayer ?? ""] ?? "the other player";
+  const turnLabel = over ? "Match over" : mine ? "Your turn" : `Waiting for ${other}`;
+  const endTurn = () => {
+    if (!mine) return;
+    setPicked(null);
+    emit("end_turn", {});
+  };
 
   return (
     <div className="hand">
       <section className="hand-top" aria-live="polite">
-        <p className="caption">{payload ? `Round ${payload.round} of ${CARDS_RULES.rounds}` : "Waiting for the host to start"}</p>
+        <p className="caption">
+          {payload ? `Round ${payload.round} of ${CARDS_RULES.rounds}` : "Waiting for the host to start"}
+        </p>
         <p className="h3">{payload ? turnLabel : "Hold tight."}</p>
         {me && (
           <div className="hand-stats">
@@ -76,7 +88,7 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
               const u = me.units[i];
               return (
                 <span key={i} className={`slot${u ? " full" : ""}`}>
-                  {u ? `Unit · ${u.power} per turn${u.sleepUntil > payload!.turnId ? " · asleep" : ""}` : "Open summon slot"}
+                  {u ? unitLabel(u, payload!.turnId) : "Open summon slot"}
                 </span>
               );
             })}
@@ -118,7 +130,7 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
         <button className="btn primary touch" aria-disabled={!mine || !card || !!blocked} onClick={play}>
           Play card
         </button>
-        <button className="btn secondary touch" aria-disabled={!mine} onClick={() => mine && (setPicked(null), emit("end_turn", {}))}>
+        <button className="btn secondary touch" aria-disabled={!mine} onClick={endTurn}>
           End turn
         </button>
       </div>

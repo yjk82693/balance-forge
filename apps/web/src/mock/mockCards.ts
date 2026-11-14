@@ -19,7 +19,8 @@ interface Side {
 
 /**
  * Stand-in for the cards engine, used only with ?mock=1 so the table and the phone hand can be exercised
- * without the server. Same rules shape as packages/games/cards, but deterministic and simplified; never a source of results.
+ * without the server. Same rules shape as packages/games/cards, but deterministic and simplified;
+ * never a source of results.
  */
 export class CardsMock {
   turnId = 0;
@@ -32,7 +33,16 @@ export class CardsMock {
     this.sides = ids.map((id, i) => {
       const deck = Array.from({ length: 3 }, () => CARDS).flat();
       const rotated = [...deck.slice(i * 2), ...deck.slice(0, i * 2)];
-      const s: Side = { id, hp: CARDS_RULES.health, energy: 3, ward: 0, hand: [], deck: rotated, discard: [], units: [] };
+      const s: Side = {
+        id,
+        hp: CARDS_RULES.health,
+        energy: 3,
+        ward: 0,
+        hand: [],
+        deck: rotated,
+        discard: [],
+        units: [],
+      };
       this.refill(s);
       return s;
     });
@@ -92,7 +102,11 @@ export class CardsMock {
     if (enemy.hp === 0) this.outcome = { status: "win", winners: [s.id], reason: "hp_zero" };
     else if (this.turnId >= CARDS_RULES.rounds * 2) {
       const [a, b] = this.sides;
-      this.outcome = a.hp === b.hp ? { status: "draw", winners: [], reason: "six_rounds" } : { status: "win", winners: [a.hp > b.hp ? a.id : b.id], reason: "six_rounds" };
+      this.outcome = a.hp === b.hp ? {
+        status: "draw",
+        winners: [],
+        reason: "six_rounds",
+      } : { status: "win", winners: [a.hp > b.hp ? a.id : b.id], reason: "six_rounds" };
     } else {
       const next = this.active;
       next.energy = CARDS_RULES.energy;

@@ -8,7 +8,16 @@ export interface ProgressMsg {
 }
 
 export const toRows = (p: ProgressMsg): ReportRow[] | null =>
-  p.rows?.map((r) => ({ dimension: r.dimension, wins: r.wins, games: r.games, winRate: r.games ? r.wins / r.games : 0, ci95: [0, 1], uses: 0, opportunities: 0, outlier: false })) ?? null;
+  p.rows?.map((r) => ({
+    dimension: r.dimension,
+    wins: r.wins,
+    games: r.games,
+    winRate: r.games ? r.wins / r.games : 0,
+    ci95: [0, 1],
+    uses: 0,
+    opportunities: 0,
+    outlier: false,
+  })) ?? null;
 
 function xorshift32(x: number): number {
   x ^= x << 13;
@@ -22,7 +31,11 @@ function xorshift32(x: number): number {
  * Mock progress for ?mock=1: counts grow monotonically toward the final report's wins/games with a noise term that
  * shrinks to zero, so the last tick equals the stored report exactly. Deterministic (seeded), integers only.
  */
-export function mockProgress(final: Report, onTick: (p: ProgressMsg) => void, opts: { steps?: number; stepMs?: number } = {}): () => void {
+export function mockProgress(
+  final: Report,
+  onTick: (p: ProgressMsg) => void,
+  opts: { steps?: number; stepMs?: number } = {},
+): () => void {
   const steps = opts.steps ?? 50;
   const total = final.validMatches;
   let s = 20261113;
