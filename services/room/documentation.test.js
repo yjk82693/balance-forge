@@ -44,6 +44,15 @@ test('reference covers every HTTP route, retained versions and static HEAD with 
   assert.equal(examples.http.staticHead.response.body, '');
   assert.equal(examples.http.full.response.status, existsSync(new URL('../../packages/analysis/pipeline/full.js',
     import.meta.url)) ? 200 : 503);
+  assert.equal(examples.http.full.response.body.fair, true); // 2 games: no outlier, baseline only
+  assert.equal(examples.http.full.response.body.proposal, null);
+  const pair = examples.http.fullPair.response.body;
+  assert.equal(pair.fair, false);
+  assert.equal(pair.proposal.origin, 'fake');
+  assert.deepEqual(pair.baseline.rows.map(row => row.dimension).filter(name => !name.startsWith('human: ')),
+    ['bari vs daewi']);
+  assert.equal(examples.http.mirrorInvalid.response.status, 400);
+  assert.equal(examples.http.mirrorInvalid.response.body.code, 'MIRROR_MATCHUP');
   assert.equal(examples.http.views.response.status, 200);
   const results = examples.http.results.response.body;
   results.forEach(result => validate('MatchResult', result));

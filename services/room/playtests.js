@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { runBatch, pairedJobs, rosterJobs } from '../runner/index.js';
 import { botPolicyVersion } from '../runner/match.js';
 import { hash, validateSchema } from '../../packages/contracts/index.js';
-import { integer, object } from '../../packages/contracts/shapes.js';
+import { array, integer, object, text } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
 import { patchChanges } from './versions.js';
 export class PipelineError extends Error {
@@ -26,6 +26,7 @@ export const runRequest = object({
   roster: {
     type: 'boolean'
   },
+  heroes: array(text(64), 2, 2),
   dataHash: digest
 }, ['gameId', 'pairs']);
 export const fullRequest = object({
@@ -37,13 +38,31 @@ export const fullRequest = object({
   },
   pairs: integer(1, 1000),
   holdoutPairs: integer(1, 1000),
+  heroes: array(text(64), 2, 2),
   dataHash: digest
 }, ['gameId']);
+
+// heroes: [a, b] picks one matchup. Both must be playable in this data version and different (a mirror only measures
+// the first-seat advantage). Errors keep their own codes so the screen can say what is wrong.
+export function checkHeroes(gameId, data, body) {
+  const { heroes, roster } = body;
+  if (heroes === undefined) return undefined;
+  if (roster) throw new PipelineError({ code: 'INVALID_SCHEMA', message: 'Use either heroes or roster, not both.' });
+  const known = (gameId === 'hero_arena' ? data.characters : data.gameRules.decks).map(item => item.id);
+  for (const hero of heroes) if (!known.includes(hero)) throw new PipelineError({
+    code: 'HERO_NOT_PLAYABLE', message: `Hero ${hero} is not playable in this version of the game.`
+  });
+  if (heroes[0] === heroes[1]) throw new PipelineError({
+    code: 'MIRROR_MATCHUP', message: 'Choose two different heroes: a mirror matchup does not test hero balance.'
+  });
+  return [...heroes];
+}
 export async function matchBatch(server, {
   gameId,
   data,
   pairs,
   roster = false,
+  heroes,
   matchups,
   seeds,
   phase,
@@ -57,7 +76,7 @@ export async function matchBatch(server, {
   const dataHash = server.storage.addVersion(data);
   const jobs = matchups ? matchups.flatMap(matchup => pairedJobs({
     gameId, data, seeds, heroes: matchup.split(' vs ')
-  })) : (roster ? rosterJobs : pairedJobs)({ gameId, data, seeds });
+  })) : (roster ? rosterJobs : pairedJobs)({ gameId, data, seeds, ...(heroes ? { heroes } : {}) });
   batchId ??= runId;
   jobs.forEach((job, index) => {
     job.matchId = `bot-${batchId}-${phase ?? 'run'}-${index + 1}`;
@@ -93,6 +112,7 @@ export async function runPlaytest(server, body) {
   const {
     data
   } = server.storage.get(body.gameId, body.dataHash);
+  checkHeroes(body.gameId, data, body);
   const batch = await matchBatch(server, {
     ...body,
     data
@@ -131,6 +151,7 @@ export async function fullPlaytest(server, body) {
   const {
     data
   } = server.storage.get(body.gameId, body.dataHash);
+  const heroes = checkHeroes(body.gameId, data, body);
   const {
     createAdapter
   } = await import('../../packages/analysis/src/adapters.js');
@@ -139,6 +160,7 @@ export async function fullPlaytest(server, body) {
     gameId: body.gameId,
     data,
     roster: body.roster ?? false,
+    heroes,
     seeds,
     phase: 'baseline',
     runId
@@ -161,6 +183,7 @@ export async function fullPlaytest(server, body) {
         gameId: body.gameId,
         data: patched,
         roster: body.roster ?? false,
+        heroes,
         seeds,
         phase: 'holdout',
         runId

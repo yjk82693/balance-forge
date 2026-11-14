@@ -25,7 +25,7 @@ test('full playtest awaits the real analysis module rather than fabricating dash
   assert.equal(response.json().code, 'TRANSPORT_UNAVAILABLE');
   assert.equal(server.runningBatch, false);
 });
-test('full playtest streams baseline and disjoint holdout phases into the shared response', {
+test('a thin roster scan is a fair result: baseline only, no proposal, no holdout phase', {
   todo: fullAvailable ? false : 'Waiting for packages/analysis/pipeline/full.js as explicitly requested.'
 }, async t => {
   if (!fullAvailable) return;
@@ -39,6 +39,7 @@ test('full playtest streams baseline and disjoint holdout phases into the shared
   });
   server.advance(room);
   const originalHash = server.storage.get('hero_arena').dataHash;
+  const versionsBefore = server.storage.versionStore.list('hero_arena').length;
   const response = await http(server, '/v1/playtest/full', {
     method: 'POST',
     body: {
@@ -50,12 +51,46 @@ test('full playtest streams baseline and disjoint holdout phases into the shared
   });
   assert.equal(response.status, 200);
   const body = response.json();
+  assert.equal(body.fair, true); // 4 games per matchup: under 30 there is no outlier
+  assert.equal(body.proposal, null);
+  assert.equal(body.patched, null);
+  assert.equal(body.patchedDataHash, null);
+  assert.deepEqual(body.verdict, { verdict: 'inconclusive',
+    reasons: ['no outlier: the matchup is within the fair band'] });
+  validate('Report', body.baseline);
+  assert.equal(body.humanMatches, 1);
+  assert.equal(body.baseline.humanMatches, 1);
+  assert.equal(server.storage.get('hero_arena').dataHash, originalHash);
+  assert.equal(server.storage.versionStore.list('hero_arena').length, versionsBefore); // no version was recorded
+  const baseline = JSON.parse(await readFile(join(server.storage.directory, 'playtests',
+    `${body.runId}-baseline.json`), 'utf8'));
+  assert.equal(baseline.length, 60);
+  const final = host.messages.filter(message => message.type === 'playtest.progress' &&
+    message.payload.phase === 'baseline').at(-1).payload;
+  assert.equal(final.matchesDone, baseline.length);
+  assert.equal(final.matchups.length, 15);
+  assert.equal(body.seatWins.holdout, null);
+  const phases = new Set(host.messages.filter(e => e.type === 'playtest.progress').map(e => e.payload.phase));
+  assert.deepEqual([...phases], ['baseline']);
+});
+test('full playtest for one flagged hero pair streams baseline and disjoint holdout phases', {
+  todo: fullAvailable ? false : 'Waiting for packages/analysis/pipeline/full.js as explicitly requested.'
+}, async t => {
+  if (!fullAvailable) return;
+  const { server, host } = await localServer(t);
+  const originalHash = server.storage.get('hero_arena').dataHash;
+  const response = await http(server, '/v1/playtest/full', {
+    method: 'POST',
+    body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15, holdoutPairs: 15 }
+  });
+  assert.equal(response.status, 200);
+  const body = response.json();
+  assert.equal(body.fair, false); // 30 games, Bari wins about all of them
   assert.equal(body.proposal.origin, 'fake');
   assert.equal(body.validation.ok, true);
   validate('Report', body.baseline);
   validate('Report', body.patched);
-  assert.equal(body.humanMatches, 1);
-  assert.equal(body.baseline.humanMatches, 1);
+  assert.deepEqual(body.baseline.rows.map(row => row.dimension), ['bari vs daewi']);
   assert.ok(body.proposal.changes.every(change => typeof change.old === 'number' && typeof change.new === 'number'));
   assert.equal(server.storage.get('hero_arena').dataHash, originalHash);
   assert.equal(server.storage.get('hero_arena', body.patchedDataHash).dataHash, body.patchedDataHash);
@@ -63,15 +98,15 @@ test('full playtest streams baseline and disjoint holdout phases into the shared
     `${body.runId}-${phase}.json`), 'utf8'));
   const baseline = await records('baseline'),
     holdout = await records('holdout');
-  assert.equal(baseline.length, 60);
-  assert.equal(holdout.length, 60);
+  assert.equal(baseline.length, 30);
+  assert.equal(holdout.length, 30);
   const baselineSeeds = new Set(baseline.map(result => result.config.seed));
   assert.ok(holdout.every(result => !baselineSeeds.has(result.config.seed)));
   for (const [phase, results] of [['baseline', baseline], ['holdout', holdout]]) {
     const final = host.messages.filter(message => message.type === 'playtest.progress' &&
       message.payload.phase === phase).at(-1).payload;
     assert.equal(final.matchesDone, results.length);
-    assert.equal(final.matchups.length, 15);
+    assert.equal(final.matchups.length, 1);
     assert.equal(body.seatWins[phase], results.filter(result => result.outcome.winners.includes(result.config.players[
       0])).length);
   }
@@ -79,6 +114,34 @@ test('full playtest streams baseline and disjoint holdout phases into the shared
   assert.ok(['accepted', 'rejected', 'inconclusive'].includes(body.verdict.verdict));
   const phases = new Set(host.messages.filter(e => e.type === 'playtest.progress').map(e => e.payload.phase));
   assert.deepEqual([...phases].sort(), ['baseline', 'holdout']);
+});
+test('heroes picks one matchup on run and full; bad pairs get their own error codes', async t => {
+  const { server } = await localServer(t);
+  const post = (path, body) => http(server, path, { method: 'POST', body });
+  const run = await post('/v1/playtest/run', { gameId: 'hero_arena', heroes: ['sepia', 'nightcrow'], pairs: 2 });
+  assert.equal(run.status, 200);
+  assert.equal(run.json().matchCount, 4);
+  const results = await http(server, run.json().resultsPath);
+  assert.deepEqual([...new Set(results.json().map(result => Object.values(result.config.options.assignments)
+    .sort().join(' vs ')))], ['nightcrow vs sepia']);
+  const full = await post('/v1/playtest/full', { gameId: 'hero_arena', heroes: ['sepia', 'nightcrow'], pairs: 2 });
+  assert.equal(full.status, 200);
+  assert.equal(full.json().fair, true);
+  for (const path of ['/v1/playtest/run', '/v1/playtest/full']) {
+    const mirror = await post(path, { gameId: 'hero_arena', heroes: ['bari', 'bari'], pairs: 2 });
+    assert.equal(mirror.status, 400);
+    assert.equal(mirror.json().code, 'MIRROR_MATCHUP');
+    const unknown = await post(path, { gameId: 'hero_arena', heroes: ['bari', 'nobody'], pairs: 2 });
+    assert.equal(unknown.status, 400);
+    assert.equal(unknown.json().code, 'HERO_NOT_PLAYABLE');
+    const both = await post(path, { gameId: 'hero_arena', heroes: ['bari', 'daewi'], roster: true, pairs: 2 });
+    assert.equal(both.status, 400);
+    assert.equal(both.json().code, 'INVALID_SCHEMA');
+    for (const heroes of [['bari'], ['bari', 'daewi', 'sepia'], 'bari', [1, 2]]) {
+      assert.equal((await post(path, { gameId: 'hero_arena', heroes, pairs: 2 })).status, 400);
+    }
+  }
+  assert.equal(server.runningBatch, false);
 });
 test('run endpoint accepts roster scans and an explicit retained content pin', async t => {
   const {

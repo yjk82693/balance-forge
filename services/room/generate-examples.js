@@ -108,6 +108,24 @@ export async function collectExamples() {
         holdoutPairs: 1
       }
     });
+    // One flagged pair goes through proposal, holdout and verdict; the call above (2 games) is a fair stop.
+    await capture('fullPair', '/v1/playtest/full', {
+      method: 'POST',
+      body: {
+        gameId: 'hero_arena',
+        heroes: ['bari', 'daewi'],
+        pairs: 15,
+        holdoutPairs: 15
+      }
+    });
+    await capture('mirrorInvalid', '/v1/playtest/run', {
+      method: 'POST',
+      body: {
+        gameId: 'hero_arena',
+        heroes: ['bari', 'bari'],
+        pairs: 1
+      }
+    });
     request(host, 'match.reset', {});
     host.request('unsupported.message', {});
     examples.websocket.server.error = host.take('error');

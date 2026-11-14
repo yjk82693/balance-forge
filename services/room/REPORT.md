@@ -660,3 +660,14 @@ replays and MatchResults stay deterministic, and it makes no receipt and no chan
 - Follow-up (Tony): simVersion stays arena-0.1.1 for now. The held-move seq rule change (a move may repeat the
   seat's latest seq) is bumped once, together with the final recorded regeneration, so recorded files and their
   metadata change only once.
+
+## Any two heroes and fair stop
+
+POST /v1/playtest/full and /v1/playtest/run accept `heroes: [a, b]`. Both must be playable in the data version and different:
+`MIRROR_MATCHUP` (mirrors only measure the first-seat advantage) and `HERO_NOT_PLAYABLE` are new public error codes (HTTP
+400, readable message); `heroes` with `roster` or a wrong shape is INVALID_SCHEMA. Without heroes the default matchup is
+unchanged. A fair matchup (no outlier, so also anything under 30 games) now stops after the baseline in the analysis module:
+`fair: true`, no proposal, no holdout, no version record. Three existing tests used 2-pair runs that are now fair, so they
+were adapted, not weakened: the roster test asserts the fair response, the versions test and the e2e dashboard use one
+lopsided pair (bari vs daewi, 30 to 40 games) so a patch is still proposed and recorded. The socket-gated e2e change could
+not be run here.

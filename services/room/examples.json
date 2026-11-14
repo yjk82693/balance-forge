@@ -172,8 +172,8 @@
       "response": {
         "status": 201,
         "body": {
-          "roomId": "22194e90-6152-445c-a838-d6de50cbfa3b",
-          "joinCode": "BHS8",
+          "roomId": "89293863-ed10-4c43-afc4-5ad6f7832331",
+          "joinCode": "GSGD",
           "hostToken": "REDACTED_PRIVATE_HOST_TOKEN_00000000",
           "epoch": 1
         }
@@ -422,11 +422,11 @@
     },
     "replay": {
       "method": "GET",
-      "path": "/v1/replay/human-71b67df3-b730-4890-882f-75d2fc27e7d7",
+      "path": "/v1/replay/human-37f14aa4-b650-43cd-ae6b-cf74d89cd5b6",
       "response": {
         "status": 200,
         "body": {
-          "matchId": "human-71b67df3-b730-4890-882f-75d2fc27e7d7",
+          "matchId": "human-37f14aa4-b650-43cd-ae6b-cf74d89cd5b6",
           "seed": 1,
           "config": {
             "contractVersion": "0.1",
@@ -490,11 +490,11 @@
     },
     "views": {
       "method": "GET",
-      "path": "/v1/replay/human-71b67df3-b730-4890-882f-75d2fc27e7d7/views?every=6",
+      "path": "/v1/replay/human-37f14aa4-b650-43cd-ae6b-cf74d89cd5b6/views?every=6",
       "response": {
         "status": 200,
         "body": {
-          "matchId": "human-71b67df3-b730-4890-882f-75d2fc27e7d7",
+          "matchId": "human-37f14aa4-b650-43cd-ae6b-cf74d89cd5b6",
           "gameId": "hero_arena",
           "seed": 1,
           "sourceDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
@@ -707,8 +707,8 @@
               }
             ],
             "humanMatches": 1,
-            "elapsedMs": 271,
-            "createdAt": "2026-11-14T15:00:58.872Z"
+            "elapsedMs": 136,
+            "createdAt": "2026-11-14T15:18:41.833Z"
           },
           "evidence": {
             "missing": [
@@ -717,6 +717,163 @@
             ],
             "rows": []
           },
+          "fair": true,
+          "proposal": null,
+          "validation": null,
+          "patchedDataHash": null,
+          "patched": null,
+          "verdict": {
+            "verdict": "inconclusive",
+            "reasons": [
+              "no outlier: the matchup is within the fair band"
+            ]
+          },
+          "humanMatches": 1,
+          "runId": "b30bef02-d047-410d-a12c-b59b788eb4a0",
+          "gameId": "hero_arena",
+          "elapsedMs": 155,
+          "seatWins": {
+            "baseline": 1,
+            "holdout": null
+          }
+        }
+      }
+    },
+    "fullPair": {
+      "method": "POST",
+      "path": "/v1/playtest/full",
+      "request": {
+        "gameId": "hero_arena",
+        "heroes": [
+          "bari",
+          "daewi"
+        ],
+        "pairs": 15,
+        "holdoutPairs": 15
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "botPolicyVersion": "scripted-0.2.1",
+          "seedSetId": "paired-1-15",
+          "holdoutSeedSetId": "holdout-1000001-1000015",
+          "baseline": {
+            "reportId": "r-baseline",
+            "gameId": "hero_arena",
+            "simVersion": "arena-0.1.1",
+            "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+            "botPolicyVersion": "scripted-0.2.1",
+            "seedSetId": "paired-1-15",
+            "validMatches": 30,
+            "invalidMatches": 0,
+            "draws": 0,
+            "rows": [
+              {
+                "dimension": "bari vs daewi",
+                "wins": 30,
+                "games": 30,
+                "winRate": 1,
+                "ci95": [
+                  0.886483,
+                  1
+                ],
+                "uses": 636,
+                "opportunities": 1152,
+                "outlier": true
+              },
+              {
+                "dimension": "human: bari vs real_armor",
+                "wins": 0,
+                "games": 1,
+                "winRate": 0,
+                "ci95": [
+                  0,
+                  0.793457
+                ],
+                "uses": 0,
+                "opportunities": 6,
+                "outlier": false
+              }
+            ],
+            "humanMatches": 1,
+            "elapsedMs": 837,
+            "createdAt": "2026-11-14T15:18:42.741Z"
+          },
+          "evidence": {
+            "missing": [
+              "damageByAction",
+              "hitsThroughGuard"
+            ],
+            "rows": [
+              {
+                "dimension": "bari vs daewi",
+                "games": 30,
+                "winRate": 1,
+                "ci95": [
+                  0.886483,
+                  1
+                ],
+                "mirror": false,
+                "focal": {
+                  "hero": "bari",
+                  "damage": 17400,
+                  "damageShare": 0.817208,
+                  "actions": [
+                    {
+                      "actionId": "guard",
+                      "opportunities": 467,
+                      "uses": 169,
+                      "useRate": 0.361884,
+                      "damage": null
+                    },
+                    {
+                      "actionId": "melee",
+                      "opportunities": 355,
+                      "uses": 286,
+                      "useRate": 0.805634,
+                      "damage": null
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 330,
+                      "uses": 181,
+                      "useRate": 0.548485,
+                      "damage": null
+                    }
+                  ]
+                },
+                "other": {
+                  "hero": "daewi",
+                  "damage": 3892,
+                  "damageShare": 0.182792,
+                  "actions": [
+                    {
+                      "actionId": "guard",
+                      "opportunities": 331,
+                      "uses": 71,
+                      "useRate": 0.214502,
+                      "damage": null
+                    },
+                    {
+                      "actionId": "melee",
+                      "opportunities": 234,
+                      "uses": 159,
+                      "useRate": 0.679487,
+                      "damage": null
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 212,
+                      "uses": 170,
+                      "useRate": 0.801887,
+                      "damage": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "fair": false,
           "proposal": {
             "baseDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
             "replacements": [
@@ -748,40 +905,59 @@
             "simVersion": "arena-0.1.1",
             "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
             "botPolicyVersion": "scripted-0.2.1",
-            "seedSetId": "holdout-1000001-1000001",
-            "validMatches": 2,
+            "seedSetId": "holdout-1000001-1000015",
+            "validMatches": 30,
             "invalidMatches": 0,
             "draws": 0,
             "rows": [
               {
-                "dimension": "bari vs real_armor",
-                "wins": 2,
-                "games": 2,
+                "dimension": "bari vs daewi",
+                "wins": 30,
+                "games": 30,
                 "winRate": 1,
                 "ci95": [
-                  0.342372,
+                  0.886483,
                   1
                 ],
-                "uses": 68,
-                "opportunities": 121,
-                "outlier": false
+                "uses": 894,
+                "opportunities": 1614,
+                "outlier": true
               }
             ],
-            "createdAt": "2026-11-14T15:00:58.872Z"
+            "createdAt": "2026-11-14T15:18:42.741Z"
           },
           "verdict": {
             "verdict": "inconclusive",
             "reasons": [
-              "no target: no outlier in the baseline report"
+              "bari vs daewi: only 30 games after patch (need 200)"
             ]
           },
-          "runId": "37683836-70e1-457f-a116-f825e0f401b3",
+          "runId": "2be0036d-ef36-47b0-b0e6-3719bc23c9d4",
           "gameId": "hero_arena",
-          "elapsedMs": 564,
+          "elapsedMs": 2122,
           "seatWins": {
-            "baseline": 1,
-            "holdout": 1
+            "baseline": 15,
+            "holdout": 15
           }
+        }
+      }
+    },
+    "mirrorInvalid": {
+      "method": "POST",
+      "path": "/v1/playtest/run",
+      "request": {
+        "gameId": "hero_arena",
+        "heroes": [
+          "bari",
+          "bari"
+        ],
+        "pairs": 1
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "code": "MIRROR_MATCHUP",
+          "message": "Choose two different heroes: a mirror matchup does not test hero balance."
         }
       }
     },
@@ -1060,7 +1236,7 @@
               "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "parentHash": null,
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:00:58.501Z",
+              "createdAt": "2026-11-14T15:18:41.657Z",
               "origin": "base",
               "changes": [],
               "rationale": "Original game data.",
@@ -1072,7 +1248,7 @@
               "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
               "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:00:59.086Z",
+              "createdAt": "2026-11-14T15:18:43.955Z",
               "origin": "fake",
               "changes": [
                 {
@@ -1084,28 +1260,28 @@
               ],
               "rationale": "Offline placeholder proposal: lower one move power to pull the most one-sided matchup toward 50%.",
               "target": {
-                "matchup": "bari vs real_armor",
+                "matchup": "bari vs daewi",
                 "before": {
                   "rate": 1,
                   "ci95": [
-                    0.342372,
+                    0.886483,
                     1
                   ],
-                  "games": 2
+                  "games": 30
                 },
                 "after": {
                   "rate": 1,
                   "ci95": [
-                    0.342372,
+                    0.886483,
                     1
                   ],
-                  "games": 2
+                  "games": 30
                 }
               },
               "verdict": {
                 "verdict": "inconclusive",
                 "reasons": [
-                  "no target: no outlier in the baseline report"
+                  "bari vs daewi: only 30 games after patch (need 200)"
                 ]
               },
               "approved": false
@@ -1124,7 +1300,7 @@
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
           "gameId": "hero_arena",
-          "createdAt": "2026-11-14T15:00:59.086Z",
+          "createdAt": "2026-11-14T15:18:43.955Z",
           "origin": "fake",
           "changes": [
             {
@@ -1136,28 +1312,28 @@
           ],
           "rationale": "Offline placeholder proposal: lower one move power to pull the most one-sided matchup toward 50%.",
           "target": {
-            "matchup": "bari vs real_armor",
+            "matchup": "bari vs daewi",
             "before": {
               "rate": 1,
               "ci95": [
-                0.342372,
+                0.886483,
                 1
               ],
-              "games": 2
+              "games": 30
             },
             "after": {
               "rate": 1,
               "ci95": [
-                0.342372,
+                0.886483,
                 1
               ],
-              "games": 2
+              "games": 30
             }
           },
           "verdict": {
             "verdict": "inconclusive",
             "reasons": [
-              "no target: no outlier in the baseline report"
+              "bari vs daewi: only 30 games after patch (need 200)"
             ]
           },
           "approved": false,
@@ -1182,7 +1358,7 @@
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
           "gameId": "hero_arena",
-          "createdAt": "2026-11-14T15:00:59.086Z",
+          "createdAt": "2026-11-14T15:18:43.955Z",
           "origin": "fake",
           "changes": [
             {
@@ -1194,28 +1370,28 @@
           ],
           "rationale": "Offline placeholder proposal: lower one move power to pull the most one-sided matchup toward 50%.",
           "target": {
-            "matchup": "bari vs real_armor",
+            "matchup": "bari vs daewi",
             "before": {
               "rate": 1,
               "ci95": [
-                0.342372,
+                0.886483,
                 1
               ],
-              "games": 2
+              "games": 30
             },
             "after": {
               "rate": 1,
               "ci95": [
-                0.342372,
+                0.886483,
                 1
               ],
-              "games": 2
+              "games": 30
             }
           },
           "verdict": {
             "verdict": "inconclusive",
             "reasons": [
-              "no target: no outlier in the baseline report"
+              "bari vs daewi: only 30 games after patch (need 200)"
             ]
           },
           "approved": true
@@ -1247,8 +1423,8 @@
       "response": {
         "status": 200,
         "body": {
-          "resultsPath": "/v1/playtest/results/794e8910-a948-4709-911f-2e30a33f12d9.json",
-          "elapsedMs": 309.08958299999995,
+          "resultsPath": "/v1/playtest/results/26dcd516-7113-429d-b543-f4e604bd78fd.json",
+          "elapsedMs": 143.25,
           "matchCount": 2,
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "recorded": true,
@@ -1258,12 +1434,12 @@
     },
     "results": {
       "method": "GET",
-      "path": "/v1/playtest/results/794e8910-a948-4709-911f-2e30a33f12d9.json",
+      "path": "/v1/playtest/results/26dcd516-7113-429d-b543-f4e604bd78fd.json",
       "response": {
         "status": 200,
         "body": [
           {
-            "matchId": "bot-794e8910-a948-4709-911f-2e30a33f12d9-run-1",
+            "matchId": "bot-26dcd516-7113-429d-b543-f4e604bd78fd-run-1",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -1347,7 +1523,7 @@
             "errorCode": ""
           },
           {
-            "matchId": "bot-794e8910-a948-4709-911f-2e30a33f12d9-run-2",
+            "matchId": "bot-26dcd516-7113-429d-b543-f4e604bd78fd-run-2",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -1447,7 +1623,7 @@
               "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "parentHash": null,
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:00:58.501Z",
+              "createdAt": "2026-11-14T15:18:41.657Z",
               "origin": "base",
               "changes": [],
               "rationale": "Original game data.",
@@ -1459,7 +1635,7 @@
               "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
               "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:00:59.086Z",
+              "createdAt": "2026-11-14T15:18:43.955Z",
               "origin": "fake",
               "changes": [
                 {
@@ -1471,28 +1647,28 @@
               ],
               "rationale": "Offline placeholder proposal: lower one move power to pull the most one-sided matchup toward 50%.",
               "target": {
-                "matchup": "bari vs real_armor",
+                "matchup": "bari vs daewi",
                 "before": {
                   "rate": 1,
                   "ci95": [
-                    0.342372,
+                    0.886483,
                     1
                   ],
-                  "games": 2
+                  "games": 30
                 },
                 "after": {
                   "rate": 1,
                   "ci95": [
-                    0.342372,
+                    0.886483,
                     1
                   ],
-                  "games": 2
+                  "games": 30
                 }
               },
               "verdict": {
                 "verdict": "inconclusive",
                 "reasons": [
-                  "no target: no outlier in the baseline report"
+                  "bari vs daewi: only 30 games after patch (need 200)"
                 ]
               },
               "approved": true
@@ -1524,13 +1700,13 @@
       "room.join": {
         "protocolVersion": "0.1",
         "type": "room.join",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "698a88e0-0a49-40f0-ad15-40c54088fc95",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "2fd96ed5-c294-46ea-b054-60788a95a23f",
         "requestId": "r2",
         "seq": 2,
         "epoch": 1,
         "payload": {
-          "joinCode": "AKNP",
+          "joinCode": "77PT",
           "name": "Two",
           "hero": "real_armor"
         }
@@ -1538,8 +1714,8 @@
       "game.select": {
         "protocolVersion": "0.1",
         "type": "game.select",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r4",
         "seq": 4,
         "epoch": 1,
@@ -1551,8 +1727,8 @@
       "ping": {
         "protocolVersion": "0.1",
         "type": "ping",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r5",
         "seq": 5,
         "epoch": 1,
@@ -1561,8 +1737,8 @@
       "match.start": {
         "protocolVersion": "0.1",
         "type": "match.start",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r6",
         "seq": 6,
         "epoch": 1,
@@ -1575,20 +1751,20 @@
         "protocolVersion": "0.1",
         "type": "reconnect",
         "roomId": "",
-        "sessionId": "6425f496-d21c-40d7-9070-4c498b5fdd42",
+        "sessionId": "f9e62cf6-98d2-4328-b44b-34066f415f29",
         "requestId": "r1",
         "seq": 1,
         "epoch": 1,
         "payload": {
-          "joinCode": "AKNP",
+          "joinCode": "77PT",
           "seatToken": "REDACTED_PRIVATE_SEAT_TOKEN_00000000"
         }
       },
       "input.submit": {
         "protocolVersion": "0.1",
         "type": "input.submit",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r12",
         "seq": 12,
         "epoch": 2,
@@ -1607,10 +1783,10 @@
       "match.reset": {
         "protocolVersion": "0.1",
         "type": "match.reset",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
-        "requestId": "r26",
-        "seq": 26,
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
+        "requestId": "r45",
+        "seq": 45,
         "epoch": 2,
         "payload": {}
       },
@@ -1618,7 +1794,7 @@
         "protocolVersion": "0.1",
         "type": "room.create",
         "roomId": "",
-        "sessionId": "a4464c1b-d1c1-493a-b3df-701986f83e3f",
+        "sessionId": "b60d497b-d127-4744-b6b7-6b8b58627455",
         "requestId": "r1",
         "seq": 1,
         "epoch": 1,
@@ -1631,13 +1807,13 @@
       "room.status": {
         "protocolVersion": "0.1",
         "type": "room.status",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "698a88e0-0a49-40f0-ad15-40c54088fc95",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "2fd96ed5-c294-46ea-b054-60788a95a23f",
         "requestId": "r2",
         "seq": 2,
         "epoch": 1,
         "payload": {
-          "joinCode": "AKNP",
+          "joinCode": "77PT",
           "phase": "lobby",
           "gameId": "hero_arena",
           "playableHeroes": [
@@ -1668,8 +1844,8 @@
       "pong": {
         "protocolVersion": "0.1",
         "type": "pong",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r5",
         "seq": 5,
         "epoch": 1,
@@ -1678,8 +1854,8 @@
       "match.started": {
         "protocolVersion": "0.1",
         "type": "match.started",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r6",
         "seq": 7,
         "epoch": 2,
@@ -1709,8 +1885,8 @@
       "input.ack": {
         "protocolVersion": "0.1",
         "type": "input.ack",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "r12",
         "seq": 0,
         "epoch": 2,
@@ -1723,8 +1899,8 @@
       "state.view": {
         "protocolVersion": "0.1",
         "type": "state.view",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "",
         "seq": 12,
         "epoch": 2,
@@ -1808,8 +1984,8 @@
       "actions.available": {
         "protocolVersion": "0.1",
         "type": "actions.available",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "",
         "seq": 13,
         "epoch": 2,
@@ -1924,14 +2100,14 @@
       "match.ended": {
         "protocolVersion": "0.1",
         "type": "match.ended",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "",
         "seq": 16,
         "epoch": 2,
         "payload": {
           "result": {
-            "matchId": "human-71b67df3-b730-4890-882f-75d2fc27e7d7",
+            "matchId": "human-37f14aa4-b650-43cd-ae6b-cf74d89cd5b6",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -2017,34 +2193,34 @@
       "error": {
         "protocolVersion": "0.1",
         "type": "error",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
-        "requestId": "r27",
-        "seq": 26,
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
+        "requestId": "r46",
+        "seq": 45,
         "epoch": 3,
         "payload": {
           "code": "INVALID_SCHEMA",
           "message": "Invalid message shape or parameter. Check actions.available for the current action domain.",
-          "requestId": "r27",
+          "requestId": "r46",
           "retryable": false
         }
       },
       "playtest.progress": {
         "protocolVersion": "0.1",
         "type": "playtest.progress",
-        "roomId": "d3402cbe-8e56-43ea-9304-ff90caa98e01",
-        "sessionId": "827fe287-e057-469e-ada4-45949aab8f47",
+        "roomId": "72baf559-636f-4f02-be34-9b3b4d4aa886",
+        "sessionId": "9031f1b5-ad2b-412d-a35b-842f154a2c27",
         "requestId": "",
-        "seq": 31,
+        "seq": 48,
         "epoch": 3,
         "payload": {
-          "runId": "794e8910-a948-4709-911f-2e30a33f12d9",
+          "runId": "26dcd516-7113-429d-b543-f4e604bd78fd",
           "gameId": "hero_arena",
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "matchesDone": 2,
           "totalMatches": 2,
           "seatWins": 1,
-          "elapsedMs": 309,
+          "elapsedMs": 143,
           "matchups": [
             {
               "matchup": "bari vs real_armor",

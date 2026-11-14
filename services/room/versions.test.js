@@ -84,7 +84,9 @@ test('full runs record their actual parent, proposal, reports and verdict withou
   const { server } = await localServer(t);
   const base = server.storage.get('hero_arena');
   const response = await http(server, '/v1/playtest/full', {
-    method: 'POST', body: { gameId: 'hero_arena', pairs: 2, holdoutPairs: 2 }
+    // 30 games of one lopsided pair: enough for an outlier, so a patch is proposed and recorded (a thin or fair
+    // matchup stops after the baseline and records no version).
+    method: 'POST', body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15, holdoutPairs: 15 }
   });
   assert.equal(response.status, 200);
   const body = response.json(), record = server.storage.versionStore.get('hero_arena', body.patchedDataHash);
