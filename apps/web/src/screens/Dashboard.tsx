@@ -77,8 +77,10 @@ export function Dashboard() {
   };
   const [diagnoseChoice, setDiagnoseChoice] = useState<boolean | null>(null);
   const diagnose = diagnoseChoice ?? currentDiagnose(matchup, roster);
+  // With a hero profile on the card the screen is full: the finished live panel and the matches table make room.
   const facts = useMemo(() => (run ? buildFacts(run, roster) : null), [run, roster]);
 
+  const hasProfile = !!facts?.diagnosis;
   const canPatch = !!run?.patched;
   const showPatched = canPatch && version === "patched";
   const replaySource = useReplaySource(run);
@@ -91,7 +93,7 @@ export function Dashboard() {
 
   return (
     <FitStage>
-      <div className="screen dash dash-compact">
+      <div className={`screen dash dash-compact${hasProfile ? " has-profile" : ""}`}>
         <TopBar>
           <span className="eyebrow" style={{ color: "var(--game-arena)" }}>
             HERO ARENA
@@ -112,7 +114,7 @@ export function Dashboard() {
           />
           <label
             className="small toggle"
-            title={mock ? "Sample data: no diagnosis." : "Profile each hero against every opponent and suggest a change."}
+            title={mock ? "Sample data: no diagnosis." : "Profile each hero and suggest a change."}
           >
             <input
               type="checkbox"
@@ -167,28 +169,32 @@ export function Dashboard() {
               active={showPatched ? "patched" : "broken"}
               source={replaySource}
             />
-            <LivePanel
-              busy={busy}
-              done={live.done}
-              total={live.total}
-              phase={live.phase}
-              elapsed={elapsed}
-              holdout={live.holdout}
-              diagnose={live.diagnose}
-            />
-            <section className="panel matches-panel" aria-labelledby="matches-title">
-              <div className="panel-head">
-                <span id="matches-title" className="eyebrow">
-                  Matches
-                </span>
-                <span className="meta">{mock ? "sample matches" : "from the last run"}</span>
-              </div>
-              {mock ? (
-                <MatchesTable rows={rows} selected={selected} onSelect={setSelected} compact />
-              ) : (
-                <RunTable run={run} played={played} />
-              )}
-            </section>
+            {(!hasProfile || busy) && (
+              <LivePanel
+                busy={busy}
+                done={live.done}
+                total={live.total}
+                phase={live.phase}
+                elapsed={elapsed}
+                holdout={live.holdout}
+                diagnose={live.diagnose}
+              />
+            )}
+            {!hasProfile && (
+              <section className="panel matches-panel" aria-labelledby="matches-title">
+                <div className="panel-head">
+                  <span id="matches-title" className="eyebrow">
+                    Matches
+                  </span>
+                  <span className="meta">{mock ? "sample matches" : "from the last run"}</span>
+                </div>
+                {mock ? (
+                  <MatchesTable rows={rows} selected={selected} onSelect={setSelected} compact />
+                ) : (
+                  <RunTable run={run} played={played} />
+                )}
+              </section>
+            )}
           </div>
 
           <div className="dash-right">

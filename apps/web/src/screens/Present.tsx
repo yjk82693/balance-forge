@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompareReplay } from "../components/CompareReplay";
-import { DiffCard } from "../components/DiffCard";
 import { FitStage } from "../components/FitStage";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { LivePanel } from "../components/LivePanel";
@@ -17,6 +16,8 @@ import { loadRecordedRun } from "../lib/recorded";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
+import { DiffCard } from "../components/DiffCard";
+import { HeroProfile } from "../components/HeroProfile";
 import { VersionRow } from "../components/VersionRow";
 import { useManifest } from "../lib/assets";
 import { fetchVersions, layoutRows, loadHistory, type HistorySource, type VersionList } from "../lib/versions";
@@ -59,7 +60,9 @@ export function Present({ auto }: { auto: boolean }) {
     [start, matchup],
   );
   const history = useHistory(finished);
-  const scenes = useMemo(() => scenesFor(!!history && history.list.versions.length > 1), [history]);
+  const hasProfile = !!run?.diagnosis;
+  const hasHistory = !!history && history.list.versions.length > 1;
+  const scenes = useMemo(() => scenesFor({ profile: hasProfile, history: hasHistory }), [hasProfile, hasHistory]);
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
   const source = sourceLabel(run, !!notice, mock);
 
@@ -122,6 +125,8 @@ function SceneBody({ id, run, busy, live, elapsed, error, notice, history }: Bod
   switch (id) {
     case "history":
       return <HistoryScene history={history} />;
+    case "profile":
+      return <ProfileScene run={run} />;
     case "match":
       return <MatchScene />;
     case "bots":
@@ -177,6 +182,18 @@ function HistoryScene({ history }: { history: HistoryState | null }) {
           <VersionRow key={r.record.dataHash} row={r} current={r.record.dataHash === history.list.currentHash} />
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** The hero profile of the run's diagnosis, large; the scene is left out when the run has none. */
+function ProfileScene({ run }: { run: PlaytestRun | null }) {
+  if (!run?.diagnosis) return <Waiting what="the hero profile" />;
+  const paths = (run.proposal?.changes ?? []).map((c) => c.path);
+  const fallback = run.proposal?.patch.replacements.map((r) => r.path) ?? [];
+  return (
+    <section className="present-wide panel present-profile">
+      <HeroProfile diagnosis={run.diagnosis} patchPaths={paths.length ? paths : fallback} />
     </section>
   );
 }
