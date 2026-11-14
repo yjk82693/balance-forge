@@ -1,5 +1,6 @@
 import type { Proposal } from "../lib/api";
 import { originHint, originLabel } from "../lib/fullRun";
+import { rangeNote } from "../lib/statPaths";
 import { describePath } from "./PatchCompare";
 
 /** The patch in one card: what changed (field, old -> new), why (the model's rationale), and where it came from. */
@@ -40,7 +41,10 @@ export function DiffCard({ proposal, sample }: { proposal: Proposal; sample?: bo
         <ul className="diff-list">
           {changes.slice(0, 3).map((c) => (
             <li key={c.path}>
-              <span className="small diff-field">{c.label ?? describePath(c.path)}</span>
+              <span className="small diff-field">
+                {c.label ?? describePath(c.path)}
+                {rangeNote(c.path) && <span className="caption"> · {rangeNote(c.path)}</span>}
+              </span>
               <span className="diff-vals">
                 <span className="old">{c.old ?? "—"}</span>
                 <span aria-hidden="true"> → </span>

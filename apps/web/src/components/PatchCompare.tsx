@@ -1,11 +1,14 @@
 import type { Report } from "../lib/contract";
 import { heroName } from "../lib/heroes";
+import { statLabel } from "../lib/statPaths";
 import { pct } from "../lib/stats";
 import { botRows } from "../lib/groups";
 import { Axis, Interval, Plot, ciText, rowStats } from "./WinRateChart";
 
-/** "/moves/1/power" -> "Move 1 power"; "/tuning/damageScalePermille" -> "Damage scale". */
+/** "/moves/1/power" -> "Move 1 power"; "/characters/2/speed" -> "Daewi · Speed"; the global damage scale likewise. */
 export function describePath(path: string): string {
+  const stat = statLabel(path);
+  if (stat) return stat;
   const m = path.match(/^\/moves\/(\d+)\/power$/);
   if (m) return `Move ${m[1]} power`;
   if (path === "/tuning/damageScalePermille") return "Damage scale (‰)";

@@ -2290,3 +2290,8 @@ table.sr-only { display: block; max-width: 1px; }
 @media (max-width: 600px) { .profile-grid { grid-template-columns: 1fr; } }
 .present-profile .hero-profile { border-top: 0; margin-top: 0; }
 @media (min-width: 1100px) { .present-profile { zoom: 1.35; } }
+
+/* sibling candidates side by side */
+.sibling-group { list-style: none; background: var(--surface-1); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3) var(--space-3); }
+.sibling-grid { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
+.sibling-grid .version-row { height: 100%; }

@@ -3,6 +3,7 @@ import { pct } from "../lib/stats";
 import { VERDICT_COPY, n } from "../lib/dashboardData";
 import type { VerdictTarget } from "../lib/api";
 import { matchupName as matchupLabel } from "../lib/versions";
+import { rangeNote } from "../lib/statPaths";
 import { HeroProfile } from "./HeroProfile";
 import { summaryText, type Rate, type ResultFacts } from "../lib/resultCard";
 
@@ -52,22 +53,32 @@ function CopyButton({ facts }: { facts: ResultFacts }) {
 }
 
 /** The finished run in one card: outlier, patch, holdout and verdict, then other findings from the recorded roster. */
+function PatchLine({ p }: { p: ResultFacts["patch"][number] }) {
+  const range = rangeNote(p.path);
+  return (
+    <div>
+      <p className="result-line">
+        {p.field} <span className="old">{p.old ?? "—"}</span> → <span className="new">{p.next}</span>{" "}
+        <span className="badge origin">{p.origin}</span>{" "}
+        {p.valid !== undefined && (
+          <span className={`status ${p.valid ? "ok" : "bad"}`}>
+            <span className="dot" />
+            {p.valid ? "valid" : "failed validation"}
+          </span>
+        )}
+      </p>
+      {range && <p className="caption">{range}</p>}
+    </div>
+  );
+}
+
 function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
   return (
     <div>
       <p className="caption">AI patch</p>
       {patch.length === 0 && <p className="small text-2">This run has no patch.</p>}
       {patch.map((p) => (
-        <p key={p.field} className="result-line">
-          {p.field} <span className="old">{p.old ?? "—"}</span> → <span className="new">{p.next}</span>{" "}
-          <span className="badge origin">{p.origin}</span>{" "}
-          {p.valid !== undefined && (
-            <span className={`status ${p.valid ? "ok" : "bad"}`}>
-              <span className="dot" />
-              {p.valid ? "valid" : "failed validation"}
-            </span>
-          )}
-        </p>
+        <PatchLine key={p.path} p={p} />
       ))}
       {patch[0]?.rationale && <p className="caption result-why">{patch[0].rationale}</p>}
     </div>

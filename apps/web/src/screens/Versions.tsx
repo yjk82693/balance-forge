@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ApiError, runBotsOnVersion, subscribeProgress, type PlaytestRun } from "../lib/api";
 import { ResultCard } from "../components/ResultCard";
-import { VersionRow } from "../components/VersionRow";
+import { VersionHistory } from "../components/VersionHistory";
 import { FitStage } from "../components/FitStage";
 import { TopBar } from "../components/TopBar";
 import { rowStats } from "../components/WinRateChart";
@@ -14,7 +14,6 @@ import {
   approveVersion,
   factsFromVersion,
   fetchVersion,
-  layoutRows,
   loadHistory,
   makeCurrent,
   matchupName,
@@ -91,7 +90,7 @@ export function Versions() {
     });
   }, [busy]);
 
-  const rows = useMemo(() => layoutRows(list?.versions ?? []), [list]);
+  const rows = list?.versions ?? [];
   const record = list?.versions.find((v) => v.dataHash === selected);
   const parent = record?.parentHash ? list?.versions.find((v) => v.dataHash === record.parentHash) : undefined;
   const live = source === "live run";
@@ -189,17 +188,12 @@ export function Versions() {
                 <p className="text-2">Run auto-balance on the live server, or add a stored history file.</p>
               </div>
             )}
-            <ul className="version-list">
-              {rows.map((r) => (
-                <VersionRow
-                  key={r.record.dataHash}
-                  row={r}
-                  selected={r.record.dataHash === selected}
-                  current={r.record.dataHash === list?.currentHash}
-                  onPick={() => setSelected(r.record.dataHash)}
-                />
-              ))}
-            </ul>
+            <VersionHistory
+              versions={list?.versions ?? []}
+              currentHash={list?.currentHash}
+              selected={selected}
+              onPick={setSelected}
+            />
           </section>
 
           <section aria-label="Selected version">

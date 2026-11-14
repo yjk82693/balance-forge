@@ -3,6 +3,7 @@ import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
 import { HeroPortrait } from "./HeroPortrait";
 import { BAND, MIN_GAMES } from "./WinRateChart";
+import { rangeNote } from "../lib/statPaths";
 import { describePath } from "./PatchCompare";
 
 /** Which side of the fair band the whole interval sits on, if either (and only with enough games to say). */
@@ -80,6 +81,7 @@ function RecommendationItem({ r, first, used }: { r: Recommendation; first: bool
         {used && <span className="badge origin">used by the AI patch</span>}
       </p>
       {r.why && <p className="caption">{r.why}</p>}
+      {rangeNote(r.path) && <p className="caption">{rangeNote(r.path)}</p>}
       {r.expected && <p className="caption">Expected: {r.expected}</p>}
       {r.alsoAffects && <p className="caption">also changes {nameList(r.alsoAffects)}</p>}
     </li>
