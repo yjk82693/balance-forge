@@ -155,3 +155,119 @@ Second polish pass after the pre-merge check. Everything was already clean, so n
 
 Still blocked (needs others): see "Pre-merge check" and `CHANGE_REQUEST.md` (engine run endpoint glue, web progress and
 origin mapping, per-card statistics); Gemini and Grok are unverified against live APIs.
+
+## Round 6, step 1: `pipeline/full.js`
+
+`runFull({ baselineResults, humanResults, baseData, adapter, runHoldout, holdoutSeeds, hashData, botPolicyVersion,
+seedSetId, holdoutSeedSetId, elapsedMs, createdAt })` returns `{ ok: true, value }` (or an error result, never a throw).
+`value` is the `POST /v1/playtest/full` body minus the transport fields (`runId`, `gameId`, `elapsedMs`; the server adds them):
+`botPolicyVersion, seedSetId, holdoutSeedSetId, baseline, proposal{...patch, origin, changes[{path, label, old, new}]},
+validation, patchedDataHash, patched, verdict, humanMatches`.
+- `runHoldout(patchedData, seeds)` is injected (the server runs the engine there). `hashData` is injected too, so no clock,
+  network or engine import lives in this file.
+- Guards: holdout seeds must be non-empty integers and must not overlap the baseline seeds; the holdout results must use
+  only the requested seeds and be pinned to the patched data hash (`DATA_HASH_MISMATCH` otherwise); a throwing
+  `runHoldout` becomes `SIMULATION_FAILED`.
+- Invalid patch: no holdout run; `validation.ok` is false, `patched` and `patchedDataHash` are `null`, verdict `inconclusive`
+  with the reason. The shared interface does not say what to send here, so this is my choice; the server and web must
+  handle `patched: null`.
+- Verdict change: `judgePatch` returns `inconclusive` when seed sets differ. A holdout uses fresh seeds by design, so
+  `judgePatch(..., { holdoutSeeds: true })` skips only that one check (all other gates stay). The default is unchanged and
+  `full.js` is the only caller that sets it. The patched report carries `holdoutSeedSetId`.
+- `changes[].label` reads the move id and its hero from `baseData` ("Bari · Spirit Arrow power"); `old` comes from `baseData`.
+- Tests: `test/full.test.js` (fake adapter, stub `runHoldout`; accepted, rejected, human rows, invalid patch, 9 bad-input cases).
+
+## Round 6, step 2: recorded roster report
+
+`packages/analysis/recorded/recorded-roster-report.json` is a real `Report` made by `cli.js propose` from
+`services/runner/recorded-roster-match-results.json` and its metrics (300 matches, 15 matchups, real Wilson 95% intervals,
+`recorded: true`, `elapsedMs: 4319`, `createdAt` from the recorded metrics, bot policy `scripted-0.1.1`). The engine's
+`validate('Report')` accepts it. `test/recorded.test.js` rebuilds it and fails if the file drifts.
+- **Path:** the request named `services/runner/recorded-roster-report.json`, but that folder is not mine, so the file is in
+  my folder. The integrator can copy it:
+  `cp packages/analysis/recorded/recorded-roster-report.json services/runner/recorded-roster-report.json`.
+- CLI change: `--metrics` now also reads `createdAt` (when the run was measured) instead of using the current time.
+- At 20 games per matchup every row is below the n>=30 rule, so no row is an outlier; that is true for this sample, not a bug.
+
+## Round 6 review
+
+Read-only review of `services/room/playtests.js` `fullPlaytest` and the route in `server.js` (engine 3d52381). I also ran
+`runFull` against the real engine runner (outside the server, same calls) with the fake adapter.
+
+What is right: seeds are disjoint (baseline 1..pairs, holdout from 1000001); `hash` as `hashData` matches the stored version
+hash (no `DATA_HASH_MISMATCH`); the adapter choice is `GEMINI_API_KEY` or fake; `humanResults` are copied; progress carries `phase`;
+a second request gets `RATE_LIMITED`; `runningBatch` is cleared in `finally`.
+
+Problems, most important first:
+1. **The live path cannot reach accepted or rejected with the current data.** Non-roster `pairs: 50` gives one matchup,
+   `bari vs real_armor`, 100 games, win rate 0.50, no outlier, so the verdict is `inconclusive` ("no target: no outlier in the
+   baseline report"). `pairs: 100` (200 games) gives the same. The data is already balanced for the scripted bots, so there
+   is nothing to fix. The demo story needs an unbalanced starting version (or recorded data) from the engine/integrator.
+2. **Roster mode is `inconclusive` for thin data.** `roster: true, pairs: 50` gives 100 games per matchup; the verdict gate
+   needs 200 per target, so every target says "only 100 games after patch (need 200)". It needs `pairs >= 100`, but see 3.
+3. **Roster mode is slow.** `roster: true, pairs: 50` is 1,500 matches per phase and took about 63 s here (2 workers) for
+   both phases; `pairs: 100` is about double. That is one HTTP request with no streaming of the response, so a client or proxy
+   timeout is likely. Progress over `/ws` is the only sign of life.
+4. **Mirror matchups become verdict targets.** In roster mode `bari vs bari` etc. are 100% (first-seat advantage), flagged as
+   outliers, and become targets that a hero-power patch cannot fix, so `accepted` is unlikely. This is my verdict rule
+   (`targets` = outlier rows). I did not change it tonight; suggested fix: leave mirror rows out of default targets, keep them
+   in the "new extreme" check. Tell me if you want it.
+5. **Errors lose their cause.** `if (!result.ok) throw Error(... 'INVALID_PATCH' ? 'PATCH_REJECTED' : 'TRANSPORT_UNAVAILABLE')`
+   turns `NO_RESULTS`, `DATA_HASH_MISMATCH`, `SIMULATION_FAILED` and `INVALID_INPUT` into one generic code, and the
+   `INVALID_PATCH` branch is dead (`runFull` returns a body with `validation.ok: false` instead). Pass `result.error.code`
+   and message through (or log them) so a failure is diagnosable.
+6. **Invalid patch response:** `patched` and `patchedDataHash` are `null`, and `seatWins.holdout` is `0` (number) while
+   `seatWins.baseline` is an object. Make the holdout value `null` or the same shape.
+7. **Minor:** `createdAt` is `new Date()` (fine as metadata, only not in simulation); the Gemini adapter falls back to the
+   fake one on failure, and `proposal.origin` says `fallback`, which the web shows as `manual` for `fake` (already in
+   `CHANGE_REQUEST.md`); the route reads `body.dataHash` only for `/run`, so `/full` always starts from the current version.
+
+## Polish 01:05
+
+Everything was already clean; only this report changed:
+- 93 of 93 tests pass, none skipped, none changed. No line over 120 characters, no TODO/FIXME/debugger, no console output
+  except the CLI's JSON line. `check:secrets` passes.
+- Performance: `runFull` on 20,000 synthetic matches (10,000 per phase, injected holdout) takes 76 ms; analysis cost is
+  negligible next to the engine. Real engine, `runFull` end to end with the fake adapter: `pairs: 50` non-roster (200
+  matches) 5.1 s; `pairs: 100` (400 matches) 9.9 s; roster `pairs: 50` (3,000 matches) about 63 s.
+- Round 6 review written above (7 findings; 1, 3 and 5 matter most for the demo).
+
+Still blocked (needs others): the review findings above; web mapping of `fake`/`grok` origins; Gemini and Grok untested
+against live APIs.
+
+## Polish 01:55
+
+Nothing changed since Polish 01:05, so everything is still clean: 93 of 93 tests pass (none skipped or edited), no line over
+120 characters in code or tests, no TODO/FIXME/debugger, no console output except the CLI's JSON line, `check:secrets`
+passes, and the working tree was clean. Performance numbers above are unchanged. Still blocked: the Round 6 review findings
+(engine/integrator) and the live Gemini/Grok check.
+
+## Polish 02:55
+
+Still clean, no code changes since Polish 01:55: 93 of 93 tests pass (none skipped or edited), no line over 120 characters,
+no TODO/FIXME/debugger, `check:secrets` passes, tree was clean. Performance numbers unchanged. Blocked on others: Round 6
+review findings and the live Gemini/Grok check.
+
+## Polish 03:55
+
+Still clean, no code changes since Polish 02:55: 93 of 93 tests pass (none skipped or edited), no line over 120 characters,
+no TODO/FIXME/debugger, `check:secrets` passes, tree was clean. Performance numbers unchanged. Blocked on others: Round 6
+review findings and the live Gemini/Grok check.
+
+## Polish 04:55
+
+Still clean, no code changes since Polish 03:55: 93 of 93 tests pass (none skipped or edited), no line over 120 characters,
+no TODO/FIXME/debugger, `check:secrets` passes, tree was clean. Performance numbers unchanged. Blocked on others: Round 6
+review findings and the live Gemini/Grok check.
+
+## Polish 05:55
+
+Still clean, no code changes since Polish 04:55: 93 of 93 tests pass (none skipped or edited), no line over 120 characters,
+no TODO/FIXME/debugger, `check:secrets` passes, tree was clean. Performance numbers unchanged. Blocked on others: Round 6
+review findings and the live Gemini/Grok check.
+
+## Polish 06:55
+
+Still clean, no code changes since Polish 05:55: 93 of 93 tests pass (none skipped or edited), no line over 120 characters,
+no TODO/FIXME/debugger, `check:secrets` passes, tree was clean. Performance numbers unchanged. Blocked on others: Round 6
+review findings and the live Gemini/Grok check.

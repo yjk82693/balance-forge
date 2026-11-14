@@ -31,7 +31,8 @@ export function judgePatch(before, after, options = {}) {
     reasons.push('reports are not comparable (gameId, simVersion or botPolicyVersion differ)');
     return out('inconclusive');
   }
-  if (before.seedSetId !== after.seedSetId) {
+  // A holdout run uses fresh seeds on purpose (options.holdoutSeeds); otherwise the seed sets must match.
+  if (before.seedSetId !== after.seedSetId && !options.holdoutSeeds) {
     reasons.push('seed sets differ; a matched-seed rerun is required');
     return out('inconclusive');
   }
