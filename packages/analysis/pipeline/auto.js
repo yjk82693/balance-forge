@@ -8,6 +8,7 @@
 //
 // input: { gameId, fromHash, data (the data for fromHash), rounds (1..5, default 3), requireApproval (default true),
 //   rootData (the original game data that hero-stat bounds are measured against; default: `data`),
+//   intent (optional design intent: rows are judged against their intended rates, see src/intent.js),
 //   adapter, hashData, applyPatch(data, proposal) -> { data, dataHash }, runBatch(dataHash, matchups, seeds) ->
 //   MatchResult[], seedsFor(round, 'scan' | 'holdout') -> seeds (never overlapping), allMatchups (dimension strings,
 //   e.g. "bari vs daewi"), botPolicyVersion, seedSetId, onProgress({ round, phase, matchesDone, totalMatches }),
@@ -102,11 +103,14 @@ export function improvement(targets = []) {
 const sideOf = (row) => ({ rate: row.winRate, ci95: row.ci95, games: row.games });
 
 /** The flagged matchup furthest from 50% is the record's target. */
+// How far a row is from its target (50% without a design intent).
+const gapOf = (row) => Math.abs(row.deltaToTarget ?? row.winRate - 0.5);
+
 function targetOf(flagged, baselineReport, patchedReport) {
   const before = new Map(baselineReport.rows.map((r) => [r.dimension, r]));
   const after = new Map((patchedReport?.rows ?? []).map((r) => [r.dimension, r]));
   const worst = flagged.map((d) => before.get(d)).filter(Boolean)
-    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0];
+    .sort((a, b) => gapOf(b) - gapOf(a) || (a.dimension < b.dimension ? -1 : 1))[0];
   if (!worst) return null;
   const now = after.get(worst.dimension);
   if (!now) return null; // the version record shape needs both sides; no holdout rows for it means no target
@@ -154,7 +158,8 @@ class Run {
     const extra = missing.length ? await this.batch(round, 'diagnose', head.hash, missing,
       this.input.seedsFor(round, 'scan')) : [];
     const built = buildDiagnosis([...scanResults, ...extra], { matchup, data: head.data,
-      rootData: this.input.rootData ?? this.input.data });
+      rootData: this.input.rootData ?? this.input.data,
+      ...(this.input.intent !== undefined && { intent: this.input.intent }) });
     this.diagnosisCache.set(key, built.ok ? built.value : null);
     return built.ok ? built.value : null;
   }
@@ -165,7 +170,7 @@ class Run {
    * open. Null when every flagged hero has been escalated.
    */
   async pickFocus(round, head, scanReport, results, flagged) {
-    const distance = (d) => Math.abs((scanReport.rows.find((r) => r.dimension === d)?.winRate ?? 0.5) - 0.5);
+    const distance = (d) => gapOf(scanReport.rows.find((r) => r.dimension === d) ?? { winRate: 0.5 });
     const ranked = [...flagged].sort((a, b) => distance(b) - distance(a) || (a < b ? -1 : 1));
     let anyDiagnosis = false;
     for (const matchup of ranked) {
@@ -205,7 +210,7 @@ class Run {
   reportOf(results, name) {
     const { botPolicyVersion, seedSetId } = this.input;
     return analyzePhase(results, { reportId: name, ...(botPolicyVersion && { botPolicyVersion }),
-      ...(seedSetId && { seedSetId }) }).report;
+      ...(seedSetId && { seedSetId }), ...(this.input.intent !== undefined && { intent: this.input.intent }) }).report;
   }
 
   emit(record) {
@@ -288,6 +293,7 @@ class Run {
     let patched = null;
     const rootData = input.rootData ?? input.data;
     const full = await runFull({ baselineResults, baseData: head.data, rootData, diagnosis, adapter: input.adapter,
+      ...(input.intent !== undefined && { intent: input.intent }),
       hashData: input.hashData,
       applyPatch: (data, proposal) => {
         patched = input.applyPatch(data, proposal);

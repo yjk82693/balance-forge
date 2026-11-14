@@ -144,7 +144,7 @@ test('a target that really got worse rejects the patch even if another improved'
   const v = judgePatch(b2, a2);
   assert.deepEqual(outcomes(v), ['bari vs daewi:worse', 'bari vs sepia:improved']);
   assert.equal(v.verdict, 'rejected');
-  assert.match(v.reasons.join(), /moved away from 50% beyond noise/);
+  assert.match(v.reasons.join(), /moved away from their target beyond noise/);
 });
 
 test('moves inside the noise are unchanged: small shifts with overlapping intervals', () => {
@@ -152,7 +152,7 @@ test('moves inside the noise are unchanged: small shifts with overlapping interv
   const v = judgePatch(b, a);
   assert.deepEqual(outcomes(v), ['bari vs daewi:unchanged']);
   assert.equal(v.verdict, 'rejected'); // enough games, nothing moved
-  assert.match(v.reasons.join(), /no target moved toward 50% beyond noise/);
+  assert.match(v.reasons.join(), /no matchup moved toward its target beyond noise/);
 });
 
 test('improved by five points, or by an interval that clears the old one', () => {

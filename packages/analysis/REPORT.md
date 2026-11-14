@@ -621,3 +621,21 @@ Sepia under both new policies: once his heavy melee is really in range it lands 
 about 2,600-2,800 times (10-tick startup against 3-tick jabs). A balance verdict is therefore a verdict about a data version
 played by one policy; the platform records `botPolicyVersion` with every report for exactly this reason.
 Tests: `test/bot-compare.test.js`.
+
+## Design intent (counter chart)
+
+Heroes have intended counters (Bari is meant to beat Real Armor), so a matchup's target is the designer's intended rate, not always
+50%. `src/intent.js`: an intent is `{ version, matchups: { "a vs b": { favored, strength } }, notes? }`; `strength` maps to the favored
+side's target 50 / 55 / 60 / 65% (`even`, `slight`, `clear`, `strong`), the fair band is 5 points around it, no entry means even,
+each pair appears once in either order (`normalizeIntent` gives canonical keys), mirrors have no intent.
+- **Report rows** carry `target` and `deltaToTarget` (the first, alphabetical, hero's side), the outlier rule is "the whole 95%
+  interval outside the target band, n >= 30", and the report records `intentVersion`. All of this only when an intent is given; without
+  one nothing changes, and an all-even intent gives today's rows, outliers and verdicts exactly (tests strip the new fields and compare).
+- **Verdict:** a target is judged "toward its target"; a new extreme is more than 15 points from the row's own target (65% for an even
+  matchup, as before; exactly 15 is not more). Reason texts now say "toward/away from their target".
+- **Diagnosis:** the hero ahead of its target in the flagged matchup is the winner to nerf; opponent rows carry the hero's own target
+  and delta; "outside the band" is measured against the target; with an intent each hero also gets `overallOutsideBand` (a counter system
+  is balanced overall, so a hero outside 45-55% overall is flagged even if every matchup is intended). `heroOverallRows` and the
+  `heroOverall` field of the `runFull` body list every hero's overall rate.
+- **Prompt and rounds:** rows carry their targets and the prompt says "toward their own targets, not toward 50%" only when some target
+  is not 50%; `runFull` and `runAuto` take `intent`; the focus matchup is the one furthest from its target. Tests: `test/intent.test.js`.
