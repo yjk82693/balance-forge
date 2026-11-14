@@ -70,7 +70,18 @@ export class VersionStore {
     validateVersion(record);
     const records = this.list(record.gameId);
     const previous = records.find(item => item.dataHash === record.dataHash);
-    if (previous) return previous;
+    if (previous) {
+      // A repeat never rewrites provenance or upgrades approval. The one allowed change is a downgrade to rejected
+      // (the final roster check found a regression), so a regressed version cannot stay approved.
+      const downgrade = record.verdict?.verdict === 'rejected' && record.approved === false &&
+        (previous.verdict?.verdict !== 'rejected' || previous.approved);
+      if (!downgrade) return previous;
+      const rejected = { ...previous, verdict: structuredClone(record.verdict), approved: false,
+        ...(record.note === undefined ? {} : { note: record.note }) };
+      validateVersion(rejected);
+      writeJson(this.path(record.gameId), records.map(item => item.dataHash === record.dataHash ? rejected : item));
+      return structuredClone(rejected);
+    }
     if (record.parentHash !== null && !records.some(item => item.dataHash === record.parentHash)) {
       throw Error('HASH_MISMATCH');
     }
