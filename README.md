@@ -50,7 +50,7 @@ All on one laptop. Throughput includes worker startup.
 - **Real:** the simulation, bot runs, statistics, patch validation, replays and the phone controller over WebSocket.
 - **Recorded:** a run marked `recorded` was played earlier by this code and stored. The dashboard plays it back when the live server is unavailable.
 - **Intentional:** each sample game ships with one deliberate flaw for the platform to find, marked in its data.
-- **LLM:** the Gemini adapter reads `GEMINI_API_KEY` from the environment (optional `GEMINI_MODEL`). Without a key, the fallback patch is used and labelled as such.
+- **LLM:** the Gemini adapter reads `GEMINI_API_KEY` from the environment and the model from `GEMINI_MODEL` (we use `gemini-flash-lite-latest`; `npm run demo:gemini` reads the key from the macOS Keychain item `GEMINI_API_KEY`). Without a key, the fallback patch is used and labelled as such.
 
 ## Layout
 - `spec/`: shared game contract v0.1 and the v0.1.1 addendum

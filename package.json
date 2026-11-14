@@ -17,7 +17,7 @@
     "check:secrets": "node tools/check-secrets.mjs",
     "demo": "node tools/demo.mjs",
     "test:e2e": "RUN_SOCKET_TESTS=1 node --test tests/e2e/",
-    "demo:gemini": "GEMINI_API_KEY=\"$(security find-generic-password -s balance-forge-gemini -w)\" node tools/demo.mjs"
+    "demo:gemini": "GEMINI_API_KEY=\"$(security find-generic-password -s GEMINI_API_KEY -w)\" GEMINI_MODEL=\"${GEMINI_MODEL:-gemini-flash-lite-latest}\" node tools/demo.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
