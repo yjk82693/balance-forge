@@ -507,3 +507,22 @@ Opening `#/present` now shows the last stored live result, else the recorded one
 "Run live" button of the bots scene, or when `?auto=1` is set. `?mock=1` (no server) still plays its sample run. The rule
 lives in `src/lib/presentStart.ts` and is tested in `apps/web/test/present-start.test.mjs`. Checked in a browser: no
 `/v1/playtest` request on a plain open, two with `?auto=1`.
+
+## Second genre on the dashboard: Hero Cards
+
+- A game switch (Hero Arena | Hero Cards) sits first in the dashboard top bar; `#/dashboard?game=cards` opens the cards
+  dashboard directly. The choice lives in `lib/dashGame.ts` (session storage); the screens are separate components, so
+  each keeps its own run (a cards run never replaces the arena run in the tab).
+- Cards run: `POST /v1/playtest/full {gameId: "hero_cards", heroes: [deckA, deckB], pairs: 100, holdoutPairs: 100}`.
+  No `diagnose` and no `botPolicy` are sent (the card probe is part of the run; learned bots are arena only). There is
+  no recorded cards run, so a failed cards run shows the error and no stored fallback.
+- Same headline strip as the arena (deck vs deck, rate, target, verdict, fallback line). Accordions: Card table
+  (thumbnails, play rate, win when played / held and not played with n, flags against the deck's own rate), Levers
+  (sorted by effect toward the target, significant marked, sample size said), Patch (`Pulse · cost 1 → 2`), Targets.
+  The right column shows the deck matchup against its band.
+- `#/present` gets one optional scene "Same platform, a card game" (headline and patch) after the verdict, only when the
+  tab holds a cards result. It never makes a request.
+- Checked against a local stub that answers with the engine's field names (`kind: "cards"`, `levers`, `cards.cards`,
+  `proposal.changes`, `verdict.targets`) and in `?mock=1` (sample data, labelled so). Not yet against the live engine.
+- Screenshots: `cards-dashboard-sample.png` and `cards-dashboard-phone-sample.png` (sample data),
+  `cards-present-scene-stub.png` (stub numbers). None of them are results.

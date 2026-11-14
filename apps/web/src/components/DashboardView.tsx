@@ -15,6 +15,7 @@ import { Collapsible } from "./Collapsible";
 import { CompareReplay } from "./CompareReplay";
 import { DesignerSection } from "./DesignerCard";
 import { FitStage } from "./FitStage";
+import { GameSwitch } from "./GameSwitch";
 import { HeadlineStrip } from "./HeadlineStrip";
 import { HeroProfile } from "./HeroProfile";
 import { IntendedChips } from "./IntendedChips";
@@ -262,7 +263,7 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
     <FitStage>
       <div className="screen dash2">
         <TopBar>
-          <span className="eyebrow">HERO ARENA</span>
+          <GameSwitch disabled={ctx.busy} />
           <span className="spacer" />
           <MatchupPicker
             value={pickerValue}

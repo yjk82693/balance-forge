@@ -51,9 +51,9 @@ function playStoredRun(run: PlaytestRun, onProgress: (p: ProgressMsg) => void, s
 }
 
 /** Runs the bot batch, feeds live progress, and falls back to the stored run when the live run fails. */
-export function useRunner() {
+export function useRunner(game: "hero_arena" | "hero_cards" = "hero_arena") {
   const mock = isMockMode();
-  const [run, setRun] = useState<PlaytestRun | null>(() => (mock ? null : loadRun()));
+  const [run, setRun] = useState<PlaytestRun | null>(() => (mock ? null : loadRun(game)));
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState<LiveState>({ done: 0, total: 0, rows: null });
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export function useRunner() {
     const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
-      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes, diagnose, botPolicy);
+      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes, diagnose, botPolicy, game);
       finish(result);
       if (!mock) saveRun(result);
     } catch (e) {
@@ -97,6 +97,7 @@ export function useRunner() {
       const why = e instanceof ApiError ? e.message : "Something went wrong.";
       if (e instanceof ApiError && e.keepMatchup) return setError(why); // keep the picked matchup, no stored run
       try {
+        if (game === "hero_cards") throw e; // there is no recorded Hero Cards run to fall back to
         const stored = await loadRecordedRun();
         await playStoredRun(stored, onProgress, controller.signal);
         finish(stored);

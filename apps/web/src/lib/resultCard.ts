@@ -1,5 +1,6 @@
 import type { PlaytestRun } from "./api";
 import { rowStats } from "../components/WinRateChart";
+import { cardChangeLabel } from "./cards";
 import { describePath } from "../components/PatchCompare";
 import { VERDICT_COPY, fmtSeconds, n, outliersFirst, pickTargetDimension } from "./dashboardData";
 import { originLabel } from "./fullRun";
@@ -135,7 +136,7 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
     evidence: evidenceLine(run.evidence, target?.row.dimension),
     patch: run.proposal && !run.fair
       ? changes.slice(0, 3).map((c) => ({
-          field: c.label ?? describePath(c.path),
+          field: cardChangeLabel(c.path, c.label) ?? describePath(c.path),
           path: c.path,
           old: c.old,
           next: c.new,

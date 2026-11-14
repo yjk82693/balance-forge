@@ -19,8 +19,11 @@ export function heroInfo(id: string | undefined): HeroInfo | undefined {
   return HEROES.find((h) => h.id === id);
 }
 
+/** Hero Cards decks that are not heroes: the plain deck every hero's rivals share. */
+const DECK_NAMES: Record<string, string> = { standard: "Standard deck" };
+
 export function heroName(id: string | undefined): string {
-  return heroInfo(id)?.name ?? (id ? id.replace(/_/g, " ") : "Unknown");
+  return heroInfo(id)?.name ?? (id ? (DECK_NAMES[id] ?? id.replace(/_/g, " ")) : "Unknown");
 }
 
 export function heroColorVar(id: string | undefined): string {

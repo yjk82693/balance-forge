@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { CardsDashboard } from "../components/CardsDashboard";
 import { DashboardView } from "../components/DashboardView";
+import { useDashGame } from "../lib/dashGame";
 import { type MatchRow } from "../components/MatchesTable";
 import { rowStats } from "../components/WinRateChart";
 import { botRows } from "../lib/groups";
@@ -40,17 +42,8 @@ function rowsWithJustPlayed(played: ReturnType<typeof loadJustPlayed>): MatchRow
 }
 
 export function Dashboard() {
-  useManifest();
-  useIntent();
-  useHeroStats();
-  const mock = isMockMode();
-  const version = useDemoVersion();
-  const { run, busy, live, error, notice, elapsed, start, replace } = useRunner();
+  const game = useDashGame();
   const [theme, setTheme] = useState<Theme>(readTheme);
-  const [selected, setSelected] = useState(SAMPLE_HUMAN_ID);
-  const played = useMemo(loadJustPlayed, []);
-  const rows = useMemo(() => rowsWithJustPlayed(played), [played]);
-
   // Light is for projecting this screen only; every other screen stays dark.
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -59,6 +52,24 @@ export function Dashboard() {
       document.documentElement.dataset.theme = "dark";
     };
   }, [theme]);
+  const onTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  return game === "hero_cards" ? (
+    <CardsDashboard theme={theme} onTheme={onTheme} />
+  ) : (
+    <ArenaDashboard theme={theme} onTheme={onTheme} />
+  );
+}
+
+function ArenaDashboard({ theme, onTheme }: { theme: Theme; onTheme: () => void }) {
+  useManifest();
+  useIntent();
+  useHeroStats();
+  const mock = isMockMode();
+  const version = useDemoVersion();
+  const { run, busy, live, error, notice, elapsed, start, replace } = useRunner();
+  const [selected, setSelected] = useState(SAMPLE_HUMAN_ID);
+  const played = useMemo(loadJustPlayed, []);
+  const rows = useMemo(() => rowsWithJustPlayed(played), [played]);
 
   // The all-matchups table and "other findings" come from the stored roster run, never from the live one.
   const [roster, setRoster] = useState<PlaytestRun | null>(null);
@@ -116,7 +127,7 @@ export function Dashboard() {
         onRun: go,
         onReplace: replace,
         theme,
-        onTheme: () => setTheme(theme === "dark" ? "light" : "dark"),
+        onTheme,
         showPatched,
         canPatch,
         replay: {
@@ -129,5 +140,4 @@ export function Dashboard() {
       }}
     />
   );
-
 }

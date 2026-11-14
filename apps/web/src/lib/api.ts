@@ -3,6 +3,7 @@ import { fixtureMatchConfig, fixturePatch } from "./fixtures";
 import { heroName } from "./heroes";
 import { mockTimeline } from "./replayGen";
 import { mockReport } from "./mockReport";
+import { mockCardsReport, mockCardsRun } from "./mockCards";
 import { isProgressMsg, mockProgress, type ProgressMsg } from "./progress";
 import { runFromFull } from "./fullRun";
 import type { HpTimeline } from "./replaySource";
@@ -86,6 +87,58 @@ export interface Diagnosis {
   recommendations: Recommendation[];
 }
 
+/** One side of a card's split: the games where the deck's player played it (or held it and did not). */
+export interface CardSide {
+  wins: number;
+  games: number;
+  winRate: number | null;
+  ci95: [number, number];
+}
+
+/** A card of one deck, from the baseline games of the focus matchup. dominant/weak compare the card with its deck. */
+export interface CardRow {
+  deck: string;
+  cardId: string;
+  plays: number;
+  opportunities: number;
+  playRate: number | null;
+  played: CardSide;
+  notPlayed: CardSide;
+  deckWinRate: number | null;
+  dominant: boolean;
+  weak: boolean;
+}
+
+/** One card change (cost or power, one step) run on the same seeds as the unchanged data. */
+export interface CardLever {
+  path: string;
+  cardId: string;
+  field: "cost" | "power";
+  from: number;
+  to: number;
+  rate: number;
+  games: number;
+  /** the first deck's win rate with the change minus without it, in points of 1.0 */
+  effect: number;
+  significant: boolean;
+  towardTarget: boolean;
+}
+
+/** Hero Cards `diagnosis` (kind "cards"): the card table and the measured levers of the focus deck matchup. */
+export interface CardDiagnosis {
+  matchup: string;
+  focalDeck: string;
+  focalRate: number;
+  target: number;
+  direction: "up" | "down";
+  probeBaseline: { rate: number; games: number; ci95: [number, number] };
+  levers: CardLever[];
+  probed: number;
+  significantLevers: number;
+  decks: { deck: string; wins: number; games: number; winRate: number | null }[];
+  cards: CardRow[];
+}
+
 export interface Verdict {
   verdict: VerdictKind;
   reasons: string[];
@@ -101,6 +154,8 @@ export interface PlaytestRun {
   verdict?: Verdict;
   /** hero profiles and recommendations, when the request asked to diagnose */
   diagnosis?: Diagnosis;
+  /** Hero Cards: the card table and card levers (the run's diagnosis for that game) */
+  cardDiagnosis?: CardDiagnosis;
   /** per-matchup evidence from the run body (`evidence`), when the server sent it */
   evidence?: RunEvidence;
   /** id of the run, when the server gave one */
@@ -204,7 +259,13 @@ export async function runPlaytest(
   heroes?: [string, string],
   diagnose = false,
   botPolicy?: string,
+  gameId: "hero_arena" | "hero_cards" = "hero_arena",
 ): Promise<PlaytestRun> {
+  if (isMockMode() && gameId === "hero_cards") {
+    await playMockPhase(mockCardsReport("broken"), "baseline", onProgress, signal);
+    await playMockPhase(mockCardsReport("patched"), "holdout", onProgress, signal);
+    return mockCardsRun();
+  }
   if (isMockMode()) {
     // Baseline run, then the holdout run on the patched data, like the real /full endpoint.
     await playMockPhase(mockReport("broken"), "baseline", onProgress, signal);
@@ -226,6 +287,12 @@ export async function runPlaytest(
         : undefined,
     };
   }
+  if (gameId === "hero_cards") {
+    // Hero Cards has one endpoint only: no plain-run fallback, no learned bots, the card probe is always part of it.
+    const cards = await runFullPlaytest(signal, heroes, false, undefined, gameId);
+    if (!cards) throw new ApiError("This server can't run Hero Cards yet.", "server");
+    return cards;
+  }
   const full = await runFullPlaytest(signal, heroes, diagnose, botPolicy);
   return full ?? runRealPlaytest(matches, signal, undefined, botPolicy);
 }
@@ -244,6 +311,7 @@ async function runFullPlaytest(
   heroes?: [string, string],
   diagnose = false,
   botPolicy?: string,
+  gameId: "hero_arena" | "hero_cards" = "hero_arena",
 ): Promise<PlaytestRun | null> {
   let res: Response;
   try {
@@ -251,7 +319,7 @@ async function runFullPlaytest(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        gameId: "hero_arena",
+        gameId,
         ...(heroes ? { heroes } : {}),
         ...(diagnose ? { diagnose: true } : {}),
         ...(botPolicy ? { botPolicy } : {}),

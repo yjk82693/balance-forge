@@ -89,3 +89,13 @@ export function effectWords(c: CardDef, who: string, foe: string, dealt?: number
       return name;
   }
 }
+
+/**
+ * A card change in words, "Pulse · cost" (the numbers follow): the server's label ("Pulse · Cost") with the field in
+ * lower case. Any other path keeps its label unchanged.
+ */
+export function cardChangeLabel(path: string, label: string | undefined): string | undefined {
+  if (!/^\/gameRules\/cards\/\d+\/(cost|power)$/.test(path) || !label) return label;
+  const [name, field] = label.split(" · ");
+  return field ? `${name} · ${field.toLowerCase()}` : label;
+}
