@@ -1,8 +1,9 @@
+import type { SchemaNode } from './types.ts';
 import { schema } from './schema.ts';
-const fail = () => {
+const fail = (): never => {
   throw Error('INVALID_SCHEMA');
 };
-function validateAlternatives(alternatives, value, exactlyOne) {
+function validateAlternatives(alternatives: SchemaNode[], value: any, exactlyOne: boolean): void {
   if (!Array.isArray(alternatives) || !alternatives.length) fail();
   let matches = 0;
   for (const alternative of alternatives) {
@@ -15,13 +16,13 @@ function validateAlternatives(alternatives, value, exactlyOne) {
   }
   if (matches === 0 || exactlyOne && matches !== 1) fail();
 }
-function validateString(definition, value) {
+function validateString(definition: SchemaNode, value: any): void {
   if (typeof value !== 'string') fail();
   const length = Array.from(value).length;
   if (length < (definition.minLength ?? 0) || length > (definition.maxLength ?? Infinity)) fail();
   if (definition.pattern && !new RegExp(definition.pattern).test(value)) fail();
 }
-function validateArray(definition, value) {
+function validateArray(definition: SchemaNode, value: any): void {
   if (!Array.isArray(value)) fail();
   if (value.length < (definition.minItems ?? 0) || value.length > (definition.maxItems ?? Infinity)) fail();
   if (definition.uniqueItems && new Set(value.map(item => JSON.stringify(item))).size !== value.length) fail();
@@ -30,7 +31,7 @@ function validateArray(definition, value) {
     if (definition.items) validateSchema(definition.items, value[index]);
   }
 }
-function validateObject(definition, value) {
+function validateObject(definition: SchemaNode, value: any): void {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail();
   if (Object.getPrototypeOf(value) !== Object.prototype) fail();
   const keys = Object.keys(value);
@@ -47,7 +48,7 @@ function validateObject(definition, value) {
     }
   }
 }
-export function validateSchema(definition, value) {
+export function validateSchema(definition: SchemaNode, value: any): any {
   if (!definition || typeof definition !== 'object' || Array.isArray(definition)) fail();
   if (definition.$ref) {
     const match = definition.$ref.match(/^#\/\$defs\/([^/]+)$/);
@@ -69,7 +70,7 @@ export function validateSchema(definition, value) {
   if (definition.type === 'object') validateObject(definition, value);
   return value;
 }
-export function validate(name, value) {
+export function validate(name: string, value: any): any {
   if (!Object.hasOwn(schema.$defs, name)) fail();
   return validateSchema(schema.$defs[name], value);
 }

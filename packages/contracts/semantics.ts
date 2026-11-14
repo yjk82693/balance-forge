@@ -1,23 +1,25 @@
 import { hash } from './canonical.ts';
 import { validate, validateSchema } from './validation.ts';
-const fail = (code = 'INVALID_SCHEMA') => {
+import type { ActionSpec, ErrorCode, GameData, GameDescriptor, GameSchemas, InputFrame, MatchConfig, Outcome,
+  PatchProposal, Snapshot, State } from './types.ts';
+const fail = (code: ErrorCode = 'INVALID_SCHEMA'): never => {
   throw Error(code);
 };
-export const compareIds = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-const unique = values => {
+export const compareIds = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
+const unique = (values: unknown[]): void => {
   if (new Set(values).size !== values.length) fail();
 };
-const registries = new Map();
-export function registerGame(gameId, schemaVersion, schemas) {
+const registries = new Map<string, GameSchemas>();
+export function registerGame(gameId: string, schemaVersion: number, schemas: GameSchemas): void {
   for (const name of ['state', 'observation', 'rules']) if (!schemas[name]) fail();
   registries.set(`${gameId}/${schemaVersion}`, structuredClone(schemas));
 }
-export function validateGamePayload(gameId, schemaVersion, kind, payload) {
+export function validateGamePayload(gameId: string, schemaVersion: number, kind: string, payload: unknown) {
   const entry = registries.get(`${gameId}/${schemaVersion}`);
   if (!entry || !Object.hasOwn(entry, kind)) fail();
   return validateSchema(entry[kind], payload);
 }
-export function validateData(data) {
+export function validateData(data: GameData): GameData {
   validate('GameData', data);
   unique(data.characters.map(x => x.id));
   unique(data.moves.map(x => x.id));
@@ -25,12 +27,13 @@ export function validateData(data) {
   const provenance = new Set(data.provenance.map(x => `${x.authorKey}/${x.licenseKey}`));
   for (const item of [...data.characters, ...data.moves]) {
     if (!provenance.has(`${item.authorKey}/${item.licenseKey}`)) fail();
-    if (item.moveIds?.some(id => !moves.has(id))) fail();
+    if ((item as { moveIds?: string[] }).moveIds?.some(id => !moves.has(id))) fail();
   }
   validateGamePayload(data.gameId, 1, 'rules', data.gameRules);
   return data;
 }
-export function validateConfig(config, data, descriptor, simVersion) {
+export function validateConfig(config: MatchConfig, data: GameData, descriptor: Pick<GameDescriptor, 'gameId' | 'mode' |
+  'minPlayers' | 'maxPlayers'>, simVersion: string): MatchConfig {
   validate('MatchConfig', config);
   validateData(data);
   if (config.gameId !== data.gameId || config.gameId !== descriptor.gameId || config.simVersion !== simVersion ||
@@ -43,14 +46,15 @@ export function validateConfig(config, data, descriptor, simVersion) {
   }
   return config;
 }
-export function validateOutcome(outcome, players) {
+export function validateOutcome(outcome: Outcome, players: string[]): void {
   validate('Outcome', outcome);
   if (outcome.winners.some(id => !players.includes(id))) fail();
   const hasWinners = outcome.winners.length > 0;
   if (outcome.status === 'win' && !hasWinners) fail();
   if (outcome.status !== 'win' && hasWinners) fail();
 }
-export function validateFrame(state, frame, players, specs, legal, allowMoveAndAttack = false) {
+export function validateFrame(state: Pick<State, 'tick' | 'turnId'>, frame: InputFrame, players: string[],
+  specs: ActionSpec[], legal: (action: InputFrame['actions'][number]) => boolean, allowMoveAndAttack = false): void {
   validate('InputFrame', frame);
   if (frame.tick !== state.tick + 1) fail('LATE_INPUT');
   unique(frame.actions.map(x => allowMoveAndAttack ? JSON.stringify([x.playerId, x.actionId === 'move' ?
@@ -71,7 +75,7 @@ export function validateFrame(state, frame, players, specs, legal, allowMoveAndA
     if (!players.includes(input.playerId) || input.turnId !== state.turnId) fail('STALE_TURN');
   }
 }
-export function restoreSnapshot(snapshot, config) {
+export function restoreSnapshot(snapshot: Snapshot, config: MatchConfig): State {
   validate('Snapshot', snapshot);
   for (const key of ['contractVersion', 'schemaVersion', 'gameId', 'simVersion', 'dataHash']) if (snapshot.config[
     key] !== config[key]) fail('VERSION_MISMATCH');
@@ -84,8 +88,9 @@ export function restoreSnapshot(snapshot, config) {
 // Hero stats (contract v0.1.2): absolute bounds, and within 40% of the ROOT data value, so that repeated rounds cannot
 // move a hero further than that. `root` is the original game data (default: the data being patched).
 const HERO_STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] };
-const withinFortyPercent = (value, rootValue) => 10 * value >= 6 * rootValue && 10 * value <= 14 * rootValue;
-function heroStatPatch(result, root, path, value) {
+const withinFortyPercent = (value: number, rootValue: number): boolean =>
+  10 * value >= 6 * rootValue && 10 * value <= 14 * rootValue;
+function heroStatPatch(result: GameData, root: GameData, path: string, value: number): void {
   const [, , index, stat] = path.split('/');
   const rootHero = root.characters[Number(index)];
   const [low, high] = HERO_STAT_BOUNDS[stat];
@@ -95,14 +100,14 @@ function heroStatPatch(result, root, path, value) {
 }
 // Hero Cards (contract v0.1.4): cost 1..3, power 1..10; a peek card has no power to change.
 const CARD_BOUNDS = { cost: [1, 3], power: [1, 10] };
-function cardPatch(result, path, value) {
+function cardPatch(result: GameData, path: string, value: number): void {
   const [, , , index, field] = path.split('/');
   const card = result.gameRules?.cards?.[Number(index)];
   const [low, high] = CARD_BOUNDS[field];
   if (!card || value < low || value > high || (field === 'power' && card.kind === 'peek')) fail('PATCH_REJECTED');
   card[field] = value;
 }
-export function applyPatch(data, proposal, root = data) {
+export function applyPatch(data: GameData, proposal: PatchProposal, root: GameData = data): GameData {
   validate('PatchProposal', proposal);
   if (proposal.baseDataHash !== hash(data)) fail('PATCH_REJECTED');
   const result = structuredClone(data),

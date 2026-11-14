@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { canonicalJson, hash, validate } from './index.ts';
-const fixture = n => JSON.parse(readFileSync(new URL('../../fixtures/' + n + '.json', import.meta.url)));
+const fixture = (n: string) =>
+  JSON.parse(readFileSync(new URL('../../fixtures/' + n + '.json', import.meta.url), 'utf8'));
 test('all shared fixtures validate', () => {
   for (const [f, t] of [['match_config', 'MatchConfig'], ['observation', 'Observation'], ['patch_proposal',
     'PatchProposal'], ['report_baseline', 'Report'], ['report_patched', 'Report']]) validate(t, fixture(f));
@@ -27,12 +28,12 @@ test('canonical keys, Unicode code points, integer rejection, SHA-256', () => {
   assert.match(hash({}), /^[a-f0-9]{64}$/);
   for (const v of [undefined, NaN, Infinity, -0, 0.5, {
     x: undefined
-  }, new Date()]) assert.throws(() => canonicalJson(v));
+  }, new Date()]) assert.throws(() => canonicalJson(v as never));
 });
 test('schema extends normative bundle only with approved addendum fields and transport fixture payloads validate', (
   ) => {
   const spec = readFileSync(new URL('../../spec/contract-v0.1.md', import.meta.url), 'utf8');
-  const extended = JSON.parse(readFileSync(new URL('./schema.json', import.meta.url)));
+  const extended = JSON.parse(readFileSync(new URL('./schema.json', import.meta.url), 'utf8'));
   delete extended.$defs.MatchConfig.properties.options;
   assert.deepEqual(extended.$defs.MatchResult.properties.botSeats, {
     type: 'array',
@@ -76,7 +77,7 @@ test('malformed closed shapes and recursive values are rejected', () => {
     ...config,
     players: ['p1', 'p1']
   }));
-  const cycle = {};
+  const cycle: any = {};
   cycle.self = cycle;
   assert.throws(() => canonicalJson(cycle));
 });

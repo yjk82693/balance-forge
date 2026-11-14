@@ -8,8 +8,9 @@ const patchOf = (data, path, value) => ({ baseDataHash: hash(data), replacements
   rationale: 'test' });
 const bari = root.characters.findIndex(c => c.id === 'bari');
 const health = root.characters[bari].health, speed = root.characters[bari].speed;
-const rejects = (data, path, value, base) => assert.throws(() => applyPatch(data, patchOf(data, path, value), base),
-  /PATCH_REJECTED|INVALID_SCHEMA/, `${path}=${value}`);
+const rejects = (data: any, path: string, value: number, base?: any) =>
+  assert.throws(() => applyPatch(data, patchOf(data, path, value), base), /PATCH_REJECTED|INVALID_SCHEMA/,
+    `${path}=${value}`);
 
 test('the patch schema accepts hero stat paths and nothing else new', () => {
   validate('PatchProposal', patchOf(root, `/characters/${bari}/health`, health));

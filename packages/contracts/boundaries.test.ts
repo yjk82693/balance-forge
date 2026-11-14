@@ -16,7 +16,7 @@ test('schema names and references cannot resolve inherited object properties', (
   }, {}), /INVALID_SCHEMA/);
 });
 test('the schema bundle rejects unknown wire shapes and sparse arrays', () => {
-  const config = JSON.parse(readFileSync(new URL('../../fixtures/match_config.json', import.meta.url)));
+  const config = JSON.parse(readFileSync(new URL('../../fixtures/match_config.json', import.meta.url), 'utf8'));
   assert.deepEqual(validateSchema(schema, config), config);
   assert.throws(() => validateSchema(schema, {
     unknown: true
