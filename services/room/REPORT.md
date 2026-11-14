@@ -768,3 +768,29 @@ per-target verdict. Without `heroes` or `roster` the matchup is `nightcrow vs st
 runtime intent in `services/room/data/design/` (git-ignored); GET answers with the runtime intent when there is one,
 else the default. A PUT without `notes` keeps the notes of the intent it replaces. Tools that must be stable
 (recorded.test, benchmark.ts) read the committed file directly.
+
+## Human-style bot (round 9, part B: cloned-lr-1)
+`services/runner/learned/human-style.json` is a hand-written multinomial logistic regression (14 features, 20 classes
+= attack none/melee/projectile/guard x move still/toward/away/up/down) fitted to recorded human Hero Arena matches.
+The policy is `packages/games/action/bot-cloned.ts`; the trainer is `services/runner/learn/train-human.ts`, the
+comparison `services/runner/eval-human-style.ts`. Decisions are rebuilt by re-simulating the recorded input frames of
+each human seat (a bot seat is never trained on). The trainer only reads the paths it is given: it was run on COPIES
+of `human-results.json`, the `human-*` recordings and the retained data version, never on the live folder.
+- **Data, honestly:** 15 Hero Arena recordings existed; 9 are usable (about 6,000 ticks, 10 human seats: 8 wins by the
+  bot seat, 1 draw, i.e. mostly short losses of one player, mostly Real Armor against the room bot). 6 were excluded
+  because their recording was made under arena-0.1.1 and re-simulation does not reproduce the recorded final state
+  (the file lists each with the reason). 9 is below the 10 matches the plan asked for: `readiness.ready` is false and
+  the file says it is an exploratory style. Human play is mostly movement: 0.5% melee and no projectile in the rows.
+- **Split by match** (seed 1): 6 matches train, 3 test. Test accuracy 21.0% against 23.4% for always guessing the
+  training majority class (`none/still`): on that single split the model is NOT better than the baseline. Match-wise
+  5-fold cross-validation: 31.4% against 19.8% (+12 points), noisy (folds from 20.6% to 50.6%). Training accuracy is
+  59.9%, so it overfits its 6 training matches. Read it as "slightly better than guessing", not as a good predictor.
+- **It plays differently** (Bari vs Real Armor, 100 seed pairs, both seat orders, 95% Wilson): scripted vs scripted
+  79.5% [73.4, 84.5] for Bari; human-style Bari vs scripted Real Armor 0.0% [0.0, 1.9]; scripted Bari vs human-style
+  Real Armor 97.0% [93.6, 98.6]; human-style vs human-style 0.5% [0.1, 2.8]. Style (Bari, 30 seed pairs): melee 0.43
+  vs 3.42 per 100 ticks, projectile 0.26 vs 2.17, guard 0.22 vs 1.99, moving 45% vs 93% of the ticks, mean distance
+  2,451 vs 2,105. The cloned bot is passive, as the people in the data were while losing.
+- **Not a balance number.** It is a style fitted to a handful of matches. It is not used by the runner, /run, /full,
+  auto or the trainers, and its results never enter a report. The class is sampled from the model's probabilities with
+  a roll from (match seed, tick), so the same seed plays the same match.
+
