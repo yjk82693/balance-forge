@@ -20,7 +20,7 @@ const dist = join(root, 'apps/web/dist');
 const port = Number(process.env.PORT ?? 3000);
 const forceRecorded = process.argv.includes('--recorded');
 
-function newestMtime(dir) {
+function newestMtime(dir: string): number {
   let newest = 0;
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
@@ -40,7 +40,7 @@ function buildWebIfStale() {
   if (build.status !== 0) throw Error('web build failed; fix it or run `npm run build -w apps/web` to see why');
 }
 
-function lanAddress() {
+function lanAddress(): string {
   for (const list of Object.values(networkInterfaces())) {
     for (const net of list ?? []) {
       if (net.family === 'IPv4' && !net.internal) return net.address;
@@ -49,7 +49,7 @@ function lanAddress() {
   return 'localhost';
 }
 
-async function waitForHealth(url, ms) {
+async function waitForHealth(url: string, ms: number): Promise<boolean> {
   const until = Date.now() + ms;
   while (Date.now() < until) {
     try {
@@ -66,14 +66,14 @@ const SECRETS = ['GEMINI_API_KEY', 'XAI_API_KEY', 'MONGODB_URI', 'TIGER_DATABASE
 
 // `security -w` prints a value that contains newlines (a PEM certificate) as hex.
 // Decode it only when the hex turns out to be printable text, so ordinary keys stay as they are.
-export function fromKeychain(value) {
+export function fromKeychain(value: string): string {
   if (!/^[0-9a-f]+$/i.test(value) || value.length % 2) return value;
   const text = Buffer.from(value, 'hex').toString('utf8');
   return /^[\x09\x0a\x0d\x20-\x7e]+$/.test(text) && text.includes('-----BEGIN') ? text : value;
 }
 
-function secretEnv() {
-  const env = {};
+function secretEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
   for (const name of SECRETS) {
     if (process.env[name]) {
       env[name] = process.env[name];
@@ -121,7 +121,7 @@ function startRecorded() {
   return new Promise((ok, fail) => server.once('error', fail).listen(port, '0.0.0.0', () => ok(server)));
 }
 
-async function printUrls(mode) {
+async function printUrls(mode: 'live' | 'recorded'): Promise<void> {
   const base = (process.env.PUBLIC_URL ?? `http://${lanAddress()}:${port}`).replace(/\/$/, '');
   const query = mode === 'recorded' ? '?mock=1' : '';
   const laptop = `${base}/${query}#/lobby`;
@@ -150,7 +150,7 @@ try {
   process.exit(1);
 } catch {}
 
-let live = null;
+let live: import('node:child_process').ChildProcess | null = null;
 if (!forceRecorded) {
   live = startLive();
   const up = await Promise.race([
@@ -166,7 +166,7 @@ if (!forceRecorded) {
   } else {
     console.error('live: room server did not answer in 8 s; switching to recorded mode');
     live.kill();
-    await new Promise((r) => (live.exitCode !== null ? r() : live.once('exit', r)));
+    await new Promise<void>((r) => (live.exitCode !== null ? r() : live.once('exit', () => r())));
     live = null;
   }
 }
