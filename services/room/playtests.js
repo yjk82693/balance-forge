@@ -127,6 +127,8 @@ export async function matchBatch(server, {
   const fileId = phase ? `${batchId}-${phase}` : batchId;
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.json`), batch.results);
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.metrics.json`), batch.metrics);
+  server.sinks.emit('matches', { results: batch.results, dataHash, phase: phase ?? 'run', runId, at: Date.now(),
+    botPolicyVersion: batch.metrics.botPolicyVersion ?? botPolicyVersion });
   return {
     ...batch,
     resultsPath: `/v1/playtest/results/${fileId}.json`,
@@ -257,6 +259,7 @@ export async function fullPlaytest(server, body) {
   // Kept so the analysis can be re-run on these results under another design intent (POST /v1/playtest/reanalyze).
   const folder = join(server.storage.directory, 'playtests');
   writeJson(join(folder, `${runId}-full.json`), output);
+  server.sinks.emit('report', output);
   if (humanSnapshot.length) writeJson(join(folder, `${runId}-humans.json`), humanSnapshot);
   return output;
 }
