@@ -38,6 +38,8 @@ export interface PlaytestRun {
   proposal?: Proposal;
   patched?: Report;
   verdict?: Verdict;
+  /** per-matchup evidence from the run body (`evidence`), when the server sent it */
+  evidence?: RunEvidence;
   /** id of the run, when the server gave one */
   runId?: string;
   /** GET /v1/replay/:matchId for one finished bot match: the stored seed and accepted inputs, not views */
@@ -54,6 +56,34 @@ export interface ReplayInfo {
   finalStateHash?: string;
   /** from the analysis: HP over time for the baseline data and the patched data (see lib/replaySource.ts) */
   timeline?: HpTimeline;
+}
+
+/** One action of one side in the evidence; null numbers from the server are left out, never estimated. */
+export interface EvidenceAction {
+  actionId: string;
+  opportunities?: number;
+  uses?: number;
+  /** 0..1 */
+  useRate?: number;
+}
+export interface EvidenceSide {
+  hero: string;
+  damage?: number;
+  /** 0..1 */
+  damageShare?: number;
+  actions: EvidenceAction[];
+}
+/** One matchup: `focal` is the side the matchup is about, `other` its opponent (packages/analysis evidence). */
+export interface EvidenceRow {
+  dimension: string;
+  games?: number;
+  focal: EvidenceSide;
+  other: EvidenceSide;
+}
+export interface RunEvidence {
+  rows: EvidenceRow[];
+  /** field names the server could not measure; they are never shown */
+  missing: string[];
 }
 
 export class ApiError extends Error {

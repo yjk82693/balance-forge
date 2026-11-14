@@ -58,7 +58,7 @@ interface CardProps {
 }
 
 export function ResultCard({ facts, title = "Result", children }: CardProps) {
-  const { outlier, patch, holdout, verdict, others, othersNote } = facts;
+  const { outlier, evidence, patch, holdout, verdict, others, othersNote } = facts;
   return (
     <section className="panel result" aria-labelledby="result-title">
       <div className="panel-head">
@@ -83,6 +83,7 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
           ) : (
             <p className="small text-2">Too few games per matchup to name one.</p>
           )}
+          {evidence && <p className="caption result-why">{evidence}</p>}
         </div>
         <div>
           <p className="caption">AI patch</p>

@@ -1,5 +1,15 @@
 import type { PatchProposal, Report, ReportRow } from "./contract";
-import type { Change, PatchOrigin, PlaytestRun, Proposal, ReplayInfo, VerdictKind } from "./api";
+import type {
+  Change,
+  EvidenceRow,
+  EvidenceSide,
+  PatchOrigin,
+  PlaytestRun,
+  Proposal,
+  ReplayInfo,
+  RunEvidence,
+  VerdictKind,
+} from "./api";
 import { parseTimeline } from "./replaySource";
 
 const ORIGINS: PatchOrigin[] = ["gemini", "grok", "fallback", "fake", "manual"];
@@ -84,6 +94,43 @@ function proposalFrom(raw: unknown, validation: unknown): Proposal | undefined {
   };
 }
 
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+
+function evidenceSide(raw: unknown): EvidenceSide | null {
+  if (!isObject(raw) || typeof raw.hero !== "string") return null;
+  const actions = Array.isArray(raw.actions) ? raw.actions : [];
+  return {
+    hero: raw.hero,
+    damage: num(raw.damage),
+    damageShare: num(raw.damageShare),
+    actions: actions
+      .filter((a): a is Record<string, unknown> => isObject(a) && typeof a.actionId === "string")
+      .map((a) => ({
+        actionId: String(a.actionId),
+        opportunities: num(a.opportunities),
+        uses: num(a.uses),
+        useRate: num(a.useRate),
+      })),
+  };
+}
+
+/**
+ * `evidence` of the run body: `{ missing: [...], rows: [{ dimension, games, focal: Side, other: Side }] }`.
+ * Rows without both sides are dropped; null numbers stay absent. Null when there is no usable evidence.
+ */
+export function evidenceFrom(raw: unknown): RunEvidence | null {
+  if (!isObject(raw) || !Array.isArray(raw.rows)) return null;
+  const rows: EvidenceRow[] = [];
+  for (const r of raw.rows) {
+    if (!isObject(r) || typeof r.dimension !== "string") continue;
+    const focal = evidenceSide(r.focal);
+    const other = evidenceSide(r.other);
+    if (focal && other) rows.push({ dimension: r.dimension, games: num(r.games), focal, other });
+  }
+  const missing = Array.isArray(raw.missing) ? raw.missing.map(String) : [];
+  return rows.length ? { rows, missing } : null;
+}
+
 /** Optional `replay` in the response: the match to replay and, if the analysis gave one, its HP timeline. */
 function replayFrom(raw: unknown): ReplayInfo | undefined {
   if (!isObject(raw) || typeof raw.matchId !== "string") return undefined;
@@ -125,6 +172,7 @@ export function runFromFull(raw: unknown): PlaytestRun | null {
         ? { verdict: kind, reasons: Array.isArray(verdictRaw?.reasons) ? verdictRaw.reasons.map(String) : [] }
         : undefined,
     runId: top.reportId,
+    evidence: evidenceFrom(raw.evidence) ?? undefined,
     replay: replayFrom(raw.replay),
   };
 }
