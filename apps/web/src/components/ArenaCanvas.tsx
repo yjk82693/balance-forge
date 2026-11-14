@@ -50,7 +50,10 @@ export function ArenaCanvas({
     loadManifest().then(() => {
       if (cancelled || !host.current) return;
       const heroes: Record<string, string> = {};
-      for (const h of HEROES) heroes[h.id] = manifestUrl(heroFullBodyPath(h.id)) ?? assetUrl(heroFullBodyPath(h.id));
+      for (const h of HEROES) {
+        const path = preferWebp(heroFullBodyPath(h.id));
+        heroes[h.id] = manifestUrl(path) ?? assetUrl(path);
+      }
       const poses: NonNullable<ArenaAssets["poses"]> = {};
       for (const h of HEROES) {
         for (const pose of POSES) {

@@ -4,7 +4,7 @@ import { CARDS_RULES } from "../lib/cards";
 
 export const TABLE_W = 1152;
 export const TABLE_H = 648;
-const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
+const FONT = '"UI Symbols", "Inter", "Noto Sans KR", system-ui, sans-serif';
 const VIOLET = 0xa98bff;
 // Slot centres measured on table.png (1920x1080 art), scaled to the 1152x648 canvas.
 const GameSlots = { left: [[138, 205], [138, 408]], right: [[1013, 205], [1013, 408]] } as const;

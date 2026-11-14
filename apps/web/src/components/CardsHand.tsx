@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { CardDef, CardsPayload } from "../lib/contract";
 import { CARDS_RULES, cardArtPath, cardEffect, cardName } from "../lib/cards";
-import { manifestUrl } from "../lib/assets";
+import { manifestUrl, preferWebp } from "../lib/assets";
 import type { ActionInput } from "../lib/contract";
 import { blip, buzz } from "../lib/sfx";
 
@@ -99,7 +99,7 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
       <ul className="cards" role="listbox" aria-label="Your hand">
         {hand.map((c, i) => {
           const why = reasonFor(c);
-          const art = manifestUrl(cardArtPath(hero, c));
+          const art = manifestUrl(preferWebp(cardArtPath(hero, c)));
           const sel = picked === i;
           return (
             <li key={`${c.id}-${i}`}>
