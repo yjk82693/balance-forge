@@ -232,3 +232,12 @@ The captures use real handlers, persistence and workers, with private tokens red
 Added a reproducible generator and three tests checking schema-valid examples, complete message/route coverage,
 and fresh handler responses against the documented catalog, data and observation. All three pass.
 README examples explain host/phone ownership, tokens, input/transport sequences, reconnect, progress and errors.
+
+## Round 4 verification
+
+Full `node --test`: 86 passed, 0 failed, 5 unchanged opt-in TCP skips; 48,257.040708 ms, including the complete
+100-seed determinism matrix. New checks cover both bot exports, attack-only compatibility, graceful port/config
+failure, readiness, shutdown, complete protocol examples and fresh-handler agreement. Final in-memory catalog
+readiness: 0.54 ms after listening; real OS port contention and TCP latency are not claimed as verified.
+No new skips or weakened assertions. Every owned file remains within 120 columns. No commits, dependencies,
+network calls, pushes, web/spec/fixture/root changes. Files remain available for the external commit process.
