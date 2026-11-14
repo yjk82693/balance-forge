@@ -76,6 +76,7 @@ function extrasFrom(flags) {
     }
     if (Number.isFinite(m.elapsedMs)) extras.elapsedMs = Math.round(m.elapsedMs);
     if (m.kind === 'recorded') extras.recorded = true;
+    if (typeof m.createdAt === 'string') extras.createdAt = m.createdAt; // when the run was measured, not now
   }
   return extras;
 }

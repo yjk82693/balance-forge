@@ -176,3 +176,15 @@ validation, patchedDataHash, patched, verdict, humanMatches`.
   `full.js` is the only caller that sets it. The patched report carries `holdoutSeedSetId`.
 - `changes[].label` reads the move id and its hero from `baseData` ("Bari · Spirit Arrow power"); `old` comes from `baseData`.
 - Tests: `test/full.test.js` (fake adapter, stub `runHoldout`; accepted, rejected, human rows, invalid patch, 9 bad-input cases).
+
+## Round 6, step 2: recorded roster report
+
+`packages/analysis/recorded/recorded-roster-report.json` is a real `Report` made by `cli.js propose` from
+`services/runner/recorded-roster-match-results.json` and its metrics (300 matches, 15 matchups, real Wilson 95% intervals,
+`recorded: true`, `elapsedMs: 4319`, `createdAt` from the recorded metrics, bot policy `scripted-0.1.1`). The engine's
+`validate('Report')` accepts it. `test/recorded.test.js` rebuilds it and fails if the file drifts.
+- **Path:** the request named `services/runner/recorded-roster-report.json`, but that folder is not mine, so the file is in
+  my folder. The integrator can copy it:
+  `cp packages/analysis/recorded/recorded-roster-report.json services/runner/recorded-roster-report.json`.
+- CLI change: `--metrics` now also reads `createdAt` (when the run was measured) instead of using the current time.
+- At 20 games per matchup every row is below the n>=30 rule, so no row is an outlier; that is true for this sample, not a bug.
