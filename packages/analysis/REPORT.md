@@ -402,3 +402,35 @@ accepted record (`awaiting_approval`, `approved: false`, no final check); resumi
 **Tests:** `test/auto.test.js` (10 tests, fake adapter and a stub runner with a win-rate model): clean run and parent chain,
 scan scope and fresh seeds, approval, not accepted, no-change patch, regression, round limit, branching from a non-head
 version, progress/record callbacks, bad input and failures.
+
+## Round 8 review (preliminary, engine branch f476ec2, before the merge to main)
+
+Read-only review of `services/room/auto.js`, `versions.js`, `storage.js` and the routes in `server.js`, against `runAuto` and
+the record shape. I also ran `runAuto` once against the real engine runner in process (1 round, offline stand-in adapter).
+
+Problems, most important first:
+1. **A regression mark is not stored.** `VersionStore.add` returns the existing record when the hash is already stored, so the
+   revised record that `runAuto` emits after a failed final check (verdict `rejected`, `approved: false`) is dropped. With
+   `requireApproval: false` the stored record stays `approved: true`. Needs an update path (or `add` replacing a record with
+   the same hash when only `verdict`, `approved` and `note` differ).
+2. **`POST /v1/versions/:gameId/:hash/approve` approves anything.** It also approves `rejected` or `inconclusive` records and
+   records whose parent is not approved. Suggest: only `verdict.verdict === 'accepted'` records can be approved.
+3. **Progress rounds.** `onProgress` throws `INVALID_SCHEMA` outside rounds 1..rounds+1. My final check reported round 0, which
+   would have ended every run as an error; fixed here (it is now round rounds+1) with a test. Keep that range check in sync.
+4. **Manual `apply-patch` selects the new version globally** (`this.select(...)`), unlike the auto path. Intended? A manual
+   patch changes the current version for every room.
+5. **Cosmetic:** unknown version replies use `HASH_MISMATCH` with HTTP 404; `GET /v1/versions/:gameId/:hash` adds a `diff`
+   field that equals `changes`.
+
+What matches: seed plan (`autoSeeds`: scan 1..100, holdout 101..200, +200 per round) never overlaps and round 1 scan seeds equal
+the final check seeds; `allMatchups` strings equal report dimensions; `recordVersion` re-checks old/new numbers against data;
+`target.after` is never null on my side now.
+
+**Real-engine finding that changed `runAuto`.** On the recorded roster data 14 of 15 rows are flagged, and one patch to one
+move cannot make all of them improve: the first real run was `rejected` ("bari vs daewi ... did not improve", plus two rows
+without Bari). `runAuto` now targets one hero per round (`focusTargets`: the hero in the most flagged matchups, ties
+alphabetical); later scans still cover all flagged matchups, so `fair` is never claimed while something is flagged. 2 new tests.
+
+**History script.** `pipeline/record-auto-history.js --out file.json [--rounds 3]` runs `runAuto` in process against the real
+engine runner with an offline stand-in adapter (origin `fake`, lowers one move by 20%) and writes `[base, ...records]`. First run
+(1 round, before the focus change): 3 min 17 s, one record, `rejected`. Not committed as data.
