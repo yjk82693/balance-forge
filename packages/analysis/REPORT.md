@@ -1,6 +1,9 @@
 # packages/analysis report
 
-Branch `analysis`. 80 `node:test` tests, all offline: `node --test packages/analysis/test/*.test.js`.
+Branch `analysis`. About 210 `node:test` tests, all offline: `node --test packages/analysis/test/*.test.ts`.
+
+> Since the TypeScript conversion every file named `*.js` below is `*.ts` (same path, `.ts` import specifiers).
+> Test counts in the older sections are the counts of their day.
 No dependencies added, no network calls in tests, nothing pushed.
 
 ## What exists
@@ -658,3 +661,23 @@ hit the 8 s timeout and `gemini-flash-latest` returned 503. `GEMINI_MODEL` still
 `proposal.fallbackReason` in the `runFull` body (for example "LLM request failed after 2 attempts: HTTP 404"; never a response body
 or a key), and `runAuto` returns `candidates: [{ round, candidate, origin, fallbackReason?, outcome, dataHash | reason }]` plus `origin`
 and `fallbackReason` on every `needs_designer` lever. Tests with a stub fetch: `test/full.test.js`, `test/auto.test.js`.
+
+## Hero Cards, and what changed after the first rounds
+- Hero Cards goes through the same pipeline (`pipeline/full.ts`): baseline, diagnosis by card, proposal, validation,
+  holdout, per-target verdict. The diagnosis is measured, not read from a table: `src/card-diagnose.ts` builds one
+  probe per card lever (cost and power, one step up and down, within the contract bounds) and the server runs each on
+  the same fresh seeds as the unchanged data. `diagnosis.levers` carries the effect on the first deck's win rate and
+  whether it is beyond 1.96 standard errors. A play-rate table cannot do this: every card of a winning deck "wins when
+  played".
+- `src/cards.ts` has `analyzeCardsByDeck`: per deck and card the play rate, win rate when played vs not played (Wilson
+  intervals) and a dominant/weak flag against the card's own deck (the whole played interval above or below the whole
+  interval of the deck's win rate). Finding: Hypnosis is not dominant (it plays 24% of its opportunities, wins 65% vs
+  62% for its deck; its cost and power steps move the matchup less than noise).
+- Patch allowlist v0.1.4: `/gameRules/cards/N/cost` 1..3 and `/gameRules/cards/N/power` 1..10, no power on a peek card;
+  the validator here and the engine's `applyPatch` agree (`test/card-game.test.ts` cross-checks them).
+- The offline stand-in adapter follows the best measured lever when the context has a card diagnosis.
+- Design intent (`src/intent.ts`), reanalysis without simulation (`pipeline/reanalyze.ts`) and the `--intent` flag of the
+  CLI are described in the sections above; the committed intent file is read-only for the server, a PUT writes the
+  runtime intent under `services/room/data/design/`.
+- Learned bots (self-play, held-out Nightcrow) live in the engine: `services/runner/learned/`, results in
+  `services/room/REPORT.md`. The analysis only reads their `botPolicyVersion` (`learned-cem-1+<8 hex>`).
