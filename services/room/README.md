@@ -621,6 +621,17 @@ matchup instead of the default; each seed still runs twice with swapped seats. `
 first-seat advantage), `HERO_NOT_PLAYABLE` (unknown id), `INVALID_SCHEMA` (not exactly two strings, or heroes with
 roster). The same field works on /v1/playtest/run. Captured: http.fullPair, http.mirrorInvalid.
 
+Diagnosis: `diagnose: true` (with a flagged matchup) also measures both heroes against every other hero before the
+patch is proposed: 3 + 3 other matchups for five heroes, `pairs` seeds each (seeds from 2000001, never overlapping
+the baseline or holdout seeds), streamed as `playtest.progress` with `phase: "diagnose"`. The body gets `diagnosis`:
+`{focusHero, matchup, heroes: [{hero, overall, opponents: [{opponent, rate, ci95, games}], strength: {role,
+overallRate, marginPts, opponentsOutsideBand, worstOpponent}}], classification, recommendations: [{hero, role, path,
+direction, sizePct, why, expected, scope}]}`. `classification` is `overall_strong` (the winner beats most other
+heroes: nerf it), `overall_weak` (the loser loses to most: buff it) or `counter_specific` (only this pairing is off:
+change the interaction). The adapter receives the diagnosis as context (aggregate numbers only); the patch it
+proposes still goes through validation and the holdout. Without the flag, on a fair stop, or if it cannot be built,
+`diagnosis` is null. Captured: http.fullPair.
+
 Fair matchups stop early: when the baseline has no outlier for the tested matchup (95% interval wholly outside 45-55%
 with at least 30 games; mirror rows do not count), the response has `fair: true`, `proposal: null`,
 `validation: null`, `patched: null`, `patchedDataHash: null` and verdict `inconclusive` with the reason "no outlier:

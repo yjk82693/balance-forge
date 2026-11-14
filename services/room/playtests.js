@@ -39,6 +39,9 @@ export const fullRequest = object({
   pairs: integer(1, 1000),
   holdoutPairs: integer(1, 1000),
   heroes: array(text(64), 2, 2),
+  diagnose: {
+    type: 'boolean'
+  },
   dataHash: digest
 }, ['gameId']);
 
@@ -175,6 +178,17 @@ export async function fullPlaytest(server, body) {
     botPolicyVersion,
     seedSetId,
     holdoutSeedSetId,
+    ...(body.diagnose ? {
+      diagnoseSeeds: Array.from({ length: pairs }, (_, index) => 2000001 + index),
+      runDiagnose: async (matchups, diagnoseSeeds) => (await matchBatch(server, {
+        gameId: body.gameId,
+        data,
+        matchups,
+        seeds: diagnoseSeeds,
+        phase: 'diagnose',
+        runId
+      })).results
+    } : {}),
     humanResults: structuredClone(server.storage.humans),
     elapsedMs: Math.round(baseline.metrics.elapsedMs),
     createdAt: new Date().toISOString(),

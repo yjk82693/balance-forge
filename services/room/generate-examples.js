@@ -115,7 +115,8 @@ export async function collectExamples() {
         gameId: 'hero_arena',
         heroes: ['bari', 'daewi'],
         pairs: 15,
-        holdoutPairs: 15
+        holdoutPairs: 15,
+        diagnose: true
       }
     });
     await capture('mirrorInvalid', '/v1/playtest/run', {

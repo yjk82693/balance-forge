@@ -245,3 +245,52 @@ test('real pipeline validation errors pass through the full route without generi
   assert.ok(body.message.includes('human results'));
   assert.equal(server.runningBatch, false);
 });
+test('diagnose: true measures both heroes against every other hero and streams phase diagnose', {
+  todo: fullAvailable ? false : 'Waiting for packages/analysis/pipeline/full.js as explicitly requested.'
+}, async t => {
+  if (!fullAvailable) return;
+  const { server, host } = await localServer(t);
+  const response = await http(server, '/v1/playtest/full', {
+    method: 'POST',
+    body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15, holdoutPairs: 15, diagnose: true }
+  });
+  assert.equal(response.status, 200);
+  const body = response.json();
+  const d = body.diagnosis;
+  assert.equal(d.matchup, 'bari vs daewi');
+  assert.ok(['overall_strong', 'overall_weak', 'counter_specific'].includes(d.classification));
+  assert.deepEqual(d.heroes.map(hero => hero.hero).sort(), ['bari', 'daewi']);
+  assert.ok(d.heroes.every(hero => hero.opponents.length === 4)); // the three other heroes plus the flagged partner
+  assert.ok(d.heroes.every(hero => ['winner', 'loser'].includes(hero.strength.role)));
+  assert.ok(d.recommendations.length >= 1);
+  assert.ok(d.recommendations.every(rec => typeof rec.path === 'string' && ['up', 'down'].includes(rec.direction)));
+  assert.equal(d.focusHero, d.recommendations[0].hero);
+  const diagnose = JSON.parse(await readFile(join(server.storage.directory, 'playtests',
+    `${body.runId}-diagnose.json`), 'utf8'));
+  assert.equal(diagnose.length, 6 * 30); // 6 matchups, 15 pairs each, both seat orders
+  const used = new Set(diagnose.map(result => result.config.seed));
+  const others = [...JSON.parse(await readFile(join(server.storage.directory, 'playtests',
+    `${body.runId}-baseline.json`), 'utf8')), ...JSON.parse(await readFile(join(server.storage.directory,
+    'playtests', `${body.runId}-holdout.json`), 'utf8'))].map(result => result.config.seed);
+  assert.ok(others.every(seed => !used.has(seed))); // fresh seeds, disjoint from baseline and holdout
+  const phases = new Set(host.messages.filter(e => e.type === 'playtest.progress').map(e => e.payload.phase));
+  assert.deepEqual([...phases].sort(), ['baseline', 'diagnose', 'holdout']);
+  const final = host.messages.filter(message => message.type === 'playtest.progress' &&
+    message.payload.phase === 'diagnose').at(-1).payload;
+  assert.equal(final.matchesDone, diagnose.length);
+  assert.equal(final.matchups.length, 6);
+});
+test('without diagnose the body has no diagnosis, and a fair matchup never runs one', async t => {
+  const { server } = await localServer(t);
+  const plain = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15, holdoutPairs: 15 }
+  });
+  assert.equal(plain.json().diagnosis, null);
+  const fair = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 2, diagnose: true }
+  });
+  assert.equal(fair.json().fair, true);
+  assert.equal(fair.json().diagnosis, null);
+  assert.equal((await http(server, '/v1/playtest/full', { method: 'POST',
+    body: { gameId: 'hero_arena', diagnose: 'yes' } })).status, 400);
+});
