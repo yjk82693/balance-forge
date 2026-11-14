@@ -693,3 +693,13 @@ Levers in the diagnosis: moves are shared between heroes, so a hero's own moves 
 carries `alsoAffects` and ranks lower, and the global damage scale is no longer recommended for a single hero.
 Change labels come from the analysis module: "Projectile power (shared: Daewi, Real Armor, Sepia)" for a shared
 move.
+
+## Hero stats in the patch allowlist (contract v0.1.2)
+
+`/characters/N/health` (100..3000) and `/characters/N/speed` (30..400), integers, and within 40% of the ROOT data value
+(10 x value between 6 x and 14 x the root value, integer arithmetic), so repeated rounds cannot drift further. The patch
+schema pattern, `applyPatch(data, proposal, root = data)` in the contracts, `storage.patch` and the auto route all
+use it;
+callers pass the game's original data as `root`. Tests: packages/contracts/hero-stats.test.js, a room test for
+apply-patch
+and refused drift, and the normative-bundle test now states the extended path pattern exactly.

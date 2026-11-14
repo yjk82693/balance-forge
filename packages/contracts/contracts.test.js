@@ -47,6 +47,10 @@ test('schema extends normative bundle only with approved addendum fields and tra
   delete extended.$defs.MatchResult.properties.botSeats;
   for (const key of ['elapsedMs', 'recorded', 'createdAt', 'humanMatches']) delete extended.$defs.Report.properties[
     key];
+  // Addendum v0.1.2: the patch allowlist also holds /characters/N/health and /characters/N/speed (exact pattern).
+  const path = extended.$defs.PatchProposal.properties.replacements.items.properties.path;
+  assert.equal(path.pattern, '^/(tuning/damageScalePermille|moves/[0-9]+/power|characters/[0-9]+/(health|speed))$');
+  path.pattern = '^/(tuning/damageScalePermille|moves/[0-9]+/power)$';
   assert.deepEqual(JSON.parse(spec.match(/```json\n([\s\S]*?)```/)[1]), extended);
   for (const message of fixture('ws_messages')) {
     if (message.type === 'input.submit') validate('ActionInput', message.payload);

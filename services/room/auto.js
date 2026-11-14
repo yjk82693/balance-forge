@@ -59,7 +59,7 @@ export async function autoPlaytest(server, body) {
     requireApproval: body.requireApproval ?? true, adapter, hashData: hash, allMatchups,
     applyPatch: (base, proposal) => {
       if (base.gameId !== body.gameId) throw Error('INVALID_SCHEMA');
-      const data = applyPatch(base, proposal);
+      const data = applyPatch(base, proposal, games[body.gameId].data);
       return { data, dataHash: server.storage.addVersion(data) };
     },
     runBatch: async (dataHash, matchups, seeds) => {
