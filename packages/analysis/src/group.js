@@ -11,6 +11,12 @@ export function groupByDataHash(results) {
   return new Map([...groups.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
+/**
+ * A match counts toward rates only when the runner marked it valid AND it actually finished.
+ * A "valid" match still running is a runner bug; it is counted as invalid, never as a loss.
+ */
+export const isCountable = (result) => result?.valid === true && result.outcome?.status !== 'running';
+
 export const assignmentsOf = (result) => result.config.options?.assignments ?? null;
 
 /** Hero-aware matchup: heroes sorted alphabetically, focal side = first hero. Null without assignments. */
@@ -37,9 +43,9 @@ export function pairBySeed(results) {
   const buckets = new Map();
   const unpaired = [];
   for (const r of results) {
-    const m = r.valid ? heroMatchup(r) : null;
+    const m = isCountable(r) ? heroMatchup(r) : null;
     if (!m) {
-      if (r.valid) unpaired.push(r);
+      if (isCountable(r)) unpaired.push(r);
       continue;
     }
     const key = `${r.config.dataHash}|${r.config.seed}|${m.dimension}`;

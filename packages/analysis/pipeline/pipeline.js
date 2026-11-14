@@ -2,7 +2,7 @@
 // produces a new dataHash and runs holdout seeds) -> analyze -> verdict.
 // Steps are plain functions; only the adapter call is async. No clock: callers pass timing/time in.
 import { analyze } from '../src/analyzer.js';
-import { groupByDataHash, hasAssignments, pairBySeed } from '../src/group.js';
+import { groupByDataHash, hasAssignments, isCountable, pairBySeed } from '../src/group.js';
 import { validatePatch } from '../src/validator.js';
 import { judgePatch } from '../src/verdict.js';
 import { fail, safely } from '../src/errors.js';
@@ -11,7 +11,7 @@ import { assertMatchResults, assertReport } from '../src/input-check.js';
 /** Exactly one dataHash allowed per phase (one per content version, addendum 1). */
 export function singleGroup(results) {
   assertMatchResults(results);
-  const groups = groupByDataHash(results.filter((r) => r.valid));
+  const groups = groupByDataHash(results.filter(isCountable));
   if (groups.size === 0) fail('NO_RESULTS', 'no valid matches in this phase');
   if (groups.size !== 1) {
     const short = [...groups.keys()].map((h) => h.slice(0, 8)).join(', ');
@@ -23,8 +23,8 @@ export function singleGroup(results) {
 /** Analyze one phase. With hero assignments, only complete seed pairs count; the rest is reported as unpaired. */
 export function analyzePhase(results, options = {}) {
   singleGroup(results);
-  const invalid = results.filter((r) => !r.valid);
-  let counted = results.filter((r) => r.valid);
+  const invalid = results.filter((r) => !isCountable(r));
+  let counted = results.filter(isCountable);
   const meta = { paired: false, pairs: 0, unpairedMatches: 0 };
   if (hasAssignments(counted)) {
     const { pairs, unpaired } = pairBySeed(counted);

@@ -5,6 +5,7 @@
 import { wilson95, round6 } from './wilson.js';
 import { isOutlier, useRate } from './analyzer.js';
 import { assertMatchResults } from './input-check.js';
+import { isCountable } from './group.js';
 
 const CARD_PREFIX = 'play:';
 export const cardIdOf = (actionId) => (actionId.startsWith(CARD_PREFIX) ? actionId.slice(CARD_PREFIX.length) : null);
@@ -23,7 +24,7 @@ const side = (wins, games) => {
  */
 export function analyzeCards(results) {
   assertMatchResults(results);
-  const valid = results.filter((r) => r.valid === true);
+  const valid = results.filter(isCountable);
   const cards = new Map();
   const get = (id) => {
     if (!cards.has(id)) cards.set(id, { plays: 0, opportunities: 0, pw: 0, pg: 0, nw: 0, ng: 0 });

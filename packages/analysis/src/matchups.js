@@ -3,7 +3,7 @@
 // Outlier rule is unchanged: n >= 30 and the whole 95% interval outside 45-55%.
 import { wilson95, round6 } from './wilson.js';
 import { isOutlier, tooFewGames } from './analyzer.js';
-import { heroMatchup } from './group.js';
+import { heroMatchup, isCountable } from './group.js';
 import { fail, safely } from './errors.js';
 
 const cell = (row, col, dimension, mirror, wins, losses, draws) => {
@@ -26,7 +26,7 @@ export const buildMatchupTable = safely((results, options = {}) => {
   const tally = new Map(); // "a|b" with a <= b -> { aWins, bWins, draws }
   const seen = new Set();
   for (const r of results) {
-    if (!r?.valid) continue;
+    if (!isCountable(r)) continue;
     const m = heroMatchup(r);
     if (!m) fail('INVALID_INPUT', `match ${r.matchId ?? '?'} has no hero assignments (config.options.assignments)`);
     const [a, b] = m.dimension.split(' vs ');

@@ -16,7 +16,7 @@ import { withExtras } from '../src/extras.js';
 import { addHumanRows, humanResultsOf, buildHumanGroup } from '../src/human.js';
 import { buildBeforeAfter, matchupResolver, pickLopsidedMatch, resolveDataVariants } from '../src/replay.js';
 import { fail, isError, toErrorResult } from '../src/errors.js';
-import { assertMatchResults } from '../src/input-check.js';
+import { assertMatchResults, assertReport } from '../src/input-check.js';
 import { loadArenaSimulator } from './arena-simulator.js';
 import { buildMatchupTable } from '../src/matchups.js';
 import { validatePatch } from '../src/validator.js';
@@ -71,6 +71,9 @@ function extrasFrom(flags) {
   const extras = {};
   if (flags['metrics']) {
     const m = readJson(flags['metrics']);
+    if (m === null || typeof m !== 'object' || Array.isArray(m)) {
+      fail('INVALID_INPUT', `${flags.metrics} must hold a JSON object (runner metrics)`);
+    }
     if (Number.isFinite(m.elapsedMs)) extras.elapsedMs = Math.round(m.elapsedMs);
     if (m.kind === 'recorded') extras.recorded = true;
   }
@@ -156,7 +159,7 @@ async function run(argv, env, now) {
       patchErrors: step.errors });
   }
   if (cmd === 'verify' || cmd === 'run') {
-    const baseline = readJson(f('report_baseline.json'));
+    const baseline = assertReport(readJson(f('report_baseline.json')), 'report_baseline.json');
     const prior = existsSync(f('pipeline-meta.json')) ? readJson(f('pipeline-meta.json')) : {};
     const out = verifyStep(baseline, resultsOf(flags.holdout), { reportId: 'r-patched',
       botPolicyVersion: baseline.botPolicyVersion, seedSetId: baseline.seedSetId, ...reportOptions });

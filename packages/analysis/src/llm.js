@@ -2,6 +2,7 @@
 // Keys come from environment variables only; fetch is injectable so tests never touch the network.
 import { boundsFor, MAX_REPLACEMENTS, validatePatch } from './validator.js';
 import { HUMAN_PREFIX } from './extras.js';
+import { assertReport } from './input-check.js';
 
 export const TIMEOUT_MS = 8000;
 export const RETRIES = 1;
@@ -53,6 +54,7 @@ export const GEMINI_RESPONSE_SCHEMA = {
  * allowlisted paths. Human-match rows are left out.
  */
 export function buildPrompt(report) {
+  assertReport(report);
   const rows = report.rows
     .filter((r) => !r.dimension.startsWith(HUMAN_PREFIX))
     .map(({ dimension, wins, games, winRate, ci95, uses, opportunities, outlier }) => ({ dimension, wins, games,

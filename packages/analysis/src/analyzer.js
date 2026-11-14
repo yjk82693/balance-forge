@@ -1,5 +1,5 @@
 import { wilson95, round6 } from './wilson.js';
-import { heroMatchup } from './group.js';
+import { heroMatchup, isCountable } from './group.js';
 import { fail } from './errors.js';
 import { assertMatchResults } from './input-check.js';
 
@@ -39,7 +39,7 @@ export function analyze(results, options = {}) {
   assertMatchResults(results);
   const dimensionOf = options.dimensionOf ?? defaultDimension;
   const focalOf = options.focalOf ?? defaultFocal;
-  const valid = results.filter((r) => r.valid === true);
+  const valid = results.filter(isCountable);
   const invalidMatches = results.length - valid.length;
 
   const first = valid[0]?.config ?? results[0]?.config;

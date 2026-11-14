@@ -1,5 +1,6 @@
 // LLM adapter boundary. The model only ever returns a PatchProposal (data); nothing here executes it.
 // Offline fake lives here; network adapters are in llm.js and are never called in tests.
+import { assertReport } from './input-check.js';
 
 /**
  * @typedef {{ proposePatch(report: object): Promise<object> }} PatchAdapter
@@ -12,6 +13,7 @@ export class FakePatchAdapter {
     this.#proposal = proposal;
   }
   async proposePatch(report) {
+    assertReport(report);
     // Keep the pin honest: the proposal must be based on the report's data.
     return { ...structuredClone(this.#proposal), baseDataHash: report.dataHash };
   }

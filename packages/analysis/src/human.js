@@ -1,9 +1,11 @@
 // Human-match rows. Input format (assumed, see REPORT.md): services/room/human-results.json is a
 // MatchResult[] (or {results: MatchResult[]}) - the same shape as the match.ended payload.
-import { analyze } from './analyzer.js';
+import { analyze, isOutlier, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
 import { HUMAN_PREFIX, withExtras } from './extras.js';
 import { assertMatchResults } from './input-check.js';
 import { fail, safely } from './errors.js';
+import { heroMatchup, isCountable } from './group.js';
+import { wilson95, round6 } from './wilson.js';
 
 export function humanResultsOf(json) {
   const list = Array.isArray(json) ? json : json?.results;
@@ -13,7 +15,7 @@ export function humanResultsOf(json) {
 
 /** Appends "human: <matchup>" rows and sets humanMatches (valid human matches). Bot totals are untouched. */
 export function addHumanRows(report, humanResults, options = {}) {
-  const valid = humanResults.filter((r) => r.valid === true);
+  const valid = humanResults.filter(isCountable);
   if (valid.length === 0) return withExtras(report, { humanMatches: 0 });
   const human = analyze(valid, { allowMixed: true, ...options });
   const rows = human.rows.map((row) => ({ ...row, dimension: HUMAN_PREFIX + row.dimension }));
@@ -24,9 +26,6 @@ export const botRows = (report) => report.rows.filter((r) => !r.dimension.starts
 export const humanRows = (report) => report.rows.filter((r) => r.dimension.startsWith(HUMAN_PREFIX));
 
 // ---- Human group summary: "Humans: Bari vs Real Armor 4–1 (n=5)" -----------------------------------
-import { wilson95, round6 } from './wilson.js';
-import { isOutlier, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
-import { heroMatchup } from './group.js';
 
 /** "real_armor" -> "Real Armor". Unknown ids (e.g. seat ids "p1") pass through readable. */
 export const heroDisplayName = (id) =>
@@ -48,7 +47,7 @@ export function smallSampleNote(n) {
  */
 export const buildHumanGroup = safely((humanResults) => {
   assertMatchResults(humanResults, 'human results');
-  const valid = humanResults.filter((r) => r?.valid === true);
+  const valid = humanResults.filter(isCountable);
   const tally = new Map();
   for (const r of valid) {
     if (!r.config?.players || !r.outcome) fail('INVALID_INPUT', `human match ${r.matchId ?? '?'} is malformed`);

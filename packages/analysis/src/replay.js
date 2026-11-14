@@ -7,7 +7,7 @@
 //   timeline: [{ tick, hp: { p1: 540, p2: 700 } }]   // on-change samples, first = tick 0, last = final tick
 // }
 import { analyze } from './analyzer.js';
-import { heroMatchup } from './group.js';
+import { heroMatchup, isCountable } from './group.js';
 import { validatePatch } from './validator.js';
 import { fail, safely } from './errors.js';
 
@@ -70,7 +70,7 @@ export const pickLopsidedMatch = safely((results, options = {}) => {
   const dimensionOf = options.dimensionOf ?? ((r) => heroMatchup(r)?.dimension ?? r.config.players.join(' vs '));
   const focalOf = options.focalOf ?? ((r) => heroMatchup(r)?.focal ?? r.config.players[0]);
   const candidates = pool.filter((r) => {
-    if (!r.valid || r.outcome.status !== 'win' || dimensionOf(r) !== row.dimension) return false;
+    if (!isCountable(r) || r.outcome.status !== 'win' || dimensionOf(r) !== row.dimension) return false;
     const focalWon = r.outcome.winners.includes(focalOf(r));
     return focalWon === focalDominates;
   });
