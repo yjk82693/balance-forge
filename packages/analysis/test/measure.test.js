@@ -99,11 +99,10 @@ test('stand-in follows the first recommendation of the diagnosis: path, directio
   const down = await adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
     rec({ role: 'winner', hero: 'bari', path: '/moves/1/power', direction: 'down', sizePct: 30 }));
   assert.deepEqual(down.proposal.replacements, [{ path: '/moves/1/power', value: 64 }]); // arrow 92 -> -30%
-  const data = standInData();
-  data.tuning = { damageScalePermille: 1000 };
-  const global = await steppingAdapter(() => data).proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
+  // the global lever is not a lever for one hero: such a recommendation is ignored and the plain rule applies
+  const global = await adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
     rec({ path: '/tuning/damageScalePermille', direction: 'down', sizePct: 30, scope: 'global' }));
-  assert.deepEqual(global.proposal.replacements, [{ path: '/tuning/damageScalePermille', value: 700 }]);
+  assert.match(global.proposal.rationale, /^Offline stand-in: (lower|raise) /);
   // a recommendation it cannot apply falls back to the plain stand-in rule
   const bad = await adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
     rec({ path: '/moves/99/power' }));

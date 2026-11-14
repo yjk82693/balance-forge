@@ -24,10 +24,12 @@ function describeChange(baseData, { path, value }) {
   const moveId = baseData.moves?.[index]?.id;
   // The engine lists a hero's moves in `moveIds`; `moves` is accepted too.
   const ownsMove = (c) => [c.moveIds, c.moves].some((ids) => Array.isArray(ids) && ids.includes(moveId));
-  const hero = baseData.characters?.find(ownsMove)?.id;
+  const owners = (baseData.characters ?? []).filter(ownsMove).map((c) => c.id);
   const name = moveId ? `${titleCase(moveId)} power` : `Move ${index} power`;
-  return { path, label: hero ? `${titleCase(hero)} · ${name}` : name, old: baseData.moves?.[index]?.power,
-    new: value };
+  // A move that several heroes own changes all of them; the label says so instead of naming one owner.
+  const label = owners.length === 1 ? `${titleCase(owners[0])} · ${name}`
+    : owners.length > 1 ? `${name} (shared: ${owners.map(titleCase).join(', ')})` : name;
+  return { path, label, old: baseData.moves?.[index]?.power, new: value };
 }
 
 const seedsOf = (results) => new Set(results.map((r) => r.config.seed));

@@ -32,12 +32,11 @@ const ATTACKS = ['melee', 'projectile'];
 /** Applies a diagnosis recommendation: its path, its direction and its size in percent of the current value. */
 function followRecommendation(report, data, rec) {
   if (!rec) return null;
-  const global = rec.path === '/tuning/damageScalePermille';
-  const current = global ? data.tuning?.damageScalePermille : data.moves[Number(rec.path.split('/')[2])]?.power;
+  if (!/^\/moves\/\d+\/power$/.test(rec.path)) return null; // only a move's power is a lever (no global scaling)
+  const current = data.moves[Number(rec.path.split('/')[2])]?.power;
   if (!Number.isInteger(current)) return null;
-  const [low, high] = global ? [100, 3000] : [0, MAX_POWER];
   const factor = 100 + (rec.direction === 'up' ? rec.sizePct : -rec.sizePct);
-  const value = Math.min(high, Math.max(low, Math.round((current * factor) / 100)));
+  const value = Math.min(MAX_POWER, Math.max(0, Math.round((current * factor) / 100)));
   return { origin: 'fake', proposal: { baseDataHash: report.dataHash, replacements: [{ path: rec.path, value }],
     rationale: `Offline stand-in follows the first recommendation (${rec.direction} ${rec.sizePct}%): ${rec.why}` } };
 }

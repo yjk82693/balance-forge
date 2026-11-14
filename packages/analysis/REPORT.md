@@ -486,10 +486,13 @@ only; nothing is applied. Output `{ focusHero, matchup, heroes, classification, 
 - `recommendations[]` (ranked, one or two per hero): `{ hero, role, path, direction 'up'|'down', sizePct, why, expected, scope }`.
   The first one follows the classification (strong: the winner's nerf; weak: the loser's buff; counter: the winner's most-used
   attack in this matchup), then the other hero's. `sizePct` is 0.8 x the overall gap in points (0.5 x for an interaction),
-  rounded to 5, within 5..30. The lever is the hero's most-used attack (melee or projectile) from the use counts in the
-  results, because damage per move is not recorded yet (engine request in `CHANGE_REQUEST.md`); `why` says so. A second,
-  global recommendation (`/tuning/damageScalePermille`, `scope: 'global'`, it scales every hero) is added only for a hero that
-  is off against at least 75% of its opponents. `expected` is a plain sentence ("brings 4 of 4 matchups toward the band"), an
+  rounded to 5, within 5..30. The lever is chosen by use count (melee or projectile) from the use counts in the
+  results, because damage per move is not recorded yet (engine request in `CHANGE_REQUEST.md`); `why` says so.
+  Moves are shared (melee, projectile and guard each belong to several heroes), so levers are ranked: the hero's own unique
+  attacks first (most used first), then its other unique moves, then shared attacks (most used first). A shared move carries
+  `alsoAffects: [heroes it would also change]` and its `why` says it ranks below the hero's own moves; an own move has
+  `alsoAffects: []`. At most two levers per hero. There is no global lever (`damageScalePermille` scales every hero, so it is not
+  a way to change one hero's strength); that option was dropped. `expected` is a plain sentence ("brings 4 of 4 matchups toward the band"), an
   expectation not a measurement.
 - Use: `runFull` accepts `runDiagnose(matchups, seeds)` and `diagnoseSeeds` (must not overlap baseline or holdout seeds), puts
   `diagnosis` in the body (`null` without `runDiagnose`, on a fair stop or if it cannot be built, then with `diagnosisError`)
@@ -499,3 +502,7 @@ only; nothing is applied. Output `{ focusHero, matchup, heroes, classification, 
   `diagnose`), targets the matchups of the hero it recommends, and returns `diagnoses: [{ round, diagnosis }]`. So "Bari beats
   Daewi, Daewi loses to everyone" becomes a Daewi buff. The offline stand-in follows the first recommendation. Tests:
   `test/diagnose.test.js` (each classification, lever, size, global, errors, prompt), `test/full.test.js`, `test/auto.test.js`.
+
+Change labels in `runFull` follow the same ownership: a move only one hero owns reads "Bari · Spirit Arrow power"; a shared move
+reads "Projectile power (shared: Daewi, Real Armor, Sepia)" instead of naming whichever hero happens to be listed first. 5 new
+diagnose tests (shared-move ranking, own non-attack move first, hero with only shared moves, no global lever) and a label test.
