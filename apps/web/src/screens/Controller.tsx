@@ -59,10 +59,16 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const rejoin = () => {
     transport?.reconnect();
   };
-  // After a dropped connection comes back, take the same seat again.
+  // After a dropped connection comes back, take a seat again (not on the first join).
+  const wasLost = useRef(false);
   useEffect(() => {
-    if (online && joined && !seat) transport?.send("room.join", { joinCode: joined.code, name: joined.name.trim() || "Player", hero: joined.hero });
-  }, [online, joined, seat, transport]);
+    if (status === "lost") {
+      wasLost.current = true;
+    } else if (status === "online" && wasLost.current && joined) {
+      wasLost.current = false;
+      transport?.send("room.join", { joinCode: joined.code, name: joined.name.trim() || "Player", hero: joined.hero });
+    }
+  }, [status, joined, transport]);
   useEffect(() => {
     if (error && joined && !seat) setJoined(null);
   }, [error, joined, seat]);
