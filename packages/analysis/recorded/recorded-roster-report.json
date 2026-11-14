@@ -20,7 +20,9 @@
       ],
       "uses": 3892,
       "opportunities": 7024,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.14
     },
     {
       "dimension": "bari vs daewi",
@@ -33,7 +35,9 @@
       ],
       "uses": 4614,
       "opportunities": 8335,
-      "outlier": true
+      "outlier": true,
+      "target": 0.55,
+      "deltaToTarget": 0.44
     },
     {
       "dimension": "bari vs nightcrow",
@@ -46,7 +50,9 @@
       ],
       "uses": 4593,
       "opportunities": 8274,
-      "outlier": true
+      "outlier": true,
+      "target": 0.45,
+      "deltaToTarget": 0.43
     },
     {
       "dimension": "bari vs real_armor",
@@ -59,7 +65,9 @@
       ],
       "uses": 5614,
       "opportunities": 10042,
-      "outlier": true
+      "outlier": true,
+      "target": 0.6,
+      "deltaToTarget": 0.195
     },
     {
       "dimension": "bari vs sepia",
@@ -72,7 +80,9 @@
       ],
       "uses": 4593,
       "opportunities": 8274,
-      "outlier": true
+      "outlier": true,
+      "target": 0.4,
+      "deltaToTarget": 0.48
     },
     {
       "dimension": "daewi vs daewi",
@@ -85,7 +95,9 @@
       ],
       "uses": 4512,
       "opportunities": 9066,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.18
     },
     {
       "dimension": "daewi vs nightcrow",
@@ -98,7 +110,9 @@
       ],
       "uses": 4727,
       "opportunities": 9237,
-      "outlier": true
+      "outlier": true,
+      "target": 0.45,
+      "deltaToTarget": -0.285
     },
     {
       "dimension": "daewi vs real_armor",
@@ -111,7 +125,9 @@
       ],
       "uses": 5069,
       "opportunities": 9822,
-      "outlier": true
+      "outlier": true,
+      "target": 0.6,
+      "deltaToTarget": -0.575
     },
     {
       "dimension": "daewi vs sepia",
@@ -124,7 +140,9 @@
       ],
       "uses": 4727,
       "opportunities": 9237,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.335
     },
     {
       "dimension": "nightcrow vs nightcrow",
@@ -137,7 +155,9 @@
       ],
       "uses": 9304,
       "opportunities": 16512,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.18
     },
     {
       "dimension": "nightcrow vs real_armor",
@@ -150,7 +170,9 @@
       ],
       "uses": 10045,
       "opportunities": 17816,
-      "outlier": true
+      "outlier": false,
+      "target": 0.4,
+      "deltaToTarget": -0.095
     },
     {
       "dimension": "nightcrow vs sepia",
@@ -163,7 +185,9 @@
       ],
       "uses": 9299,
       "opportunities": 16503,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.185
     },
     {
       "dimension": "real_armor vs real_armor",
@@ -176,7 +200,9 @@
       ],
       "uses": 12180,
       "opportunities": 21576,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.21
     },
     {
       "dimension": "real_armor vs sepia",
@@ -189,7 +215,9 @@
       ],
       "uses": 10037,
       "opportunities": 17803,
-      "outlier": false
+      "outlier": false,
+      "target": 0.6,
+      "deltaToTarget": -0.05
     },
     {
       "dimension": "sepia vs sepia",
@@ -202,9 +230,12 @@
       ],
       "uses": 9304,
       "opportunities": 16512,
-      "outlier": true
+      "outlier": true,
+      "target": 0.5,
+      "deltaToTarget": -0.18
     }
   ],
+  "intentVersion": "2026-11-14-v1",
   "elapsedMs": 133553,
   "recorded": true,
   "createdAt": "2026-11-14T17:56:29.517Z"
