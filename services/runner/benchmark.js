@@ -1,7 +1,8 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { rosterJobs, runBatch } from './index.js';
 import { analyzePhase } from '../../packages/analysis/pipeline/pipeline.js';
 import { withExtras } from '../../packages/analysis/src/extras.js';
+import { normalizeIntent } from '../../packages/analysis/src/intent.js';
 const seedsPerMatchup = 100;
 const jobs = rosterJobs({ seeds: Array.from({ length: seedsPerMatchup }, (_, index) => index + 1) }),
   {
@@ -24,7 +25,10 @@ writeFileSync(new URL('./recorded-roster-match-results.json', import.meta.url), 
   2) + '\n');
 writeFileSync(new URL('./recorded-roster-metrics.json', import.meta.url), JSON.stringify(details, null, 2) + '\n');
 const { report } = analyzePhase(results, {
-  reportId: 'r-baseline', botPolicyVersion: details.botPolicyVersion, seedSetId: details.seedSetId
+  reportId: 'r-baseline', botPolicyVersion: details.botPolicyVersion, seedSetId: details.seedSetId,
+  // judged against the designer's approved intent (rows get target and deltaToTarget)
+  intent: normalizeIntent(JSON.parse(readFileSync(new URL('../room/design/hero_arena-intent.json',
+    import.meta.url), 'utf8')))
 });
 const recordedReport = withExtras(report, {
   elapsedMs: Math.round(details.elapsedMs), recorded: true, createdAt: details.createdAt
