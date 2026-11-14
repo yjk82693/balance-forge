@@ -1,6 +1,7 @@
+import type { GameData } from '../../contracts/types.ts';
 import { deepFreeze } from '../../sim/index.ts';
 // Original event rules. Six rounds: one resolved turn per seat per round.
-export const data = deepFreeze({
+export const data: GameData = deepFreeze({
   v: 1,
   gameId: 'hero_cards',
   characters: [],

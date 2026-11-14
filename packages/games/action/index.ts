@@ -2,11 +2,13 @@ import { hash, validate, validateData, registerGame, validateGamePayload, valida
   compareIds } from '../../contracts/index.ts';
 import { clamp, xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta } from '../../sim/index.ts';
 import { actions, schemas } from './schemas.ts';
+import type { ActionSpec, GameData, InputFrame, MatchConfig, Observation, Outcome, State, Statistics,
+  StepResult } from '../../contracts/types.ts';
 export { data } from './data.ts';
 export { hash };
 export const simVersion = 'arena-0.1.2';
 registerGame('hero_arena', 1, schemas);
-const ids = actions.filter(a => a.actionId !== 'move').map(a => a.actionId);
+const ids: string[] = actions.filter(a => a.actionId !== 'move').map(a => a.actionId);
 export const describe = () => ({
   gameId: 'hero_arena',
   titleKey: 'game.hero_arena',
@@ -15,12 +17,13 @@ export const describe = () => ({
   maxPlayers: 2,
   actions: structuredClone(actions)
 });
-function defaultAssignments(data, players) {
+function defaultAssignments(data: GameData, players: string[]): Record<string, string> {
   validateData(data);
   if (!data.characters.length || !Array.isArray(players)) throw Error('INVALID_SCHEMA');
   return Object.fromEntries(players.map((id, index) => [id, data.characters[index % data.characters.length].id]));
 }
-export function makeConfig(data, seed = 1, players = ['p1', 'p2'], maxTicks = 1800, assignments) {
+export function makeConfig(data: GameData, seed = 1, players: string[] = ['p1', 'p2'], maxTicks = 1800,
+  assignments?: Record<string, string>): MatchConfig {
   assignments ??= defaultAssignments(data, players);
   return {
     contractVersion: '0.1',
@@ -37,14 +40,15 @@ export function makeConfig(data, seed = 1, players = ['p1', 'p2'], maxTicks = 18
     }
   };
 }
-export function initial(config, data) {
+export function initial(config: MatchConfig, data: GameData): State {
   validateConfig(config, data, describe(), simVersion);
   if (config.maxTicks > 1800) throw Error('INVALID_SCHEMA');
   const assigned = config.options?.assignments ?? defaultAssignments(data, config.players);
   for (const id of config.players.map(id => assigned[id])) {
     if (!data.characters.some(c => c.id === id)) throw Error('INVALID_SCHEMA');
     const c = data.characters.find(c => c.id === id);
-    if (ids.some(a => !c.moveIds.map(id => data.moves.find(m => m.id === id)?.archetype).includes(a))) throw Error(
+    const archetypes = c.moveIds.map(id => data.moves.find(m => m.id === id)?.archetype as string);
+    if (ids.some(a => !archetypes.includes(a))) throw Error(
       'INVALID_SCHEMA');
   }
   for (const t of data.gameRules.moveTraits) if (!data.moves.some(m => m.id === t.moveId)) throw Error(
@@ -100,7 +104,7 @@ function available(e, tick, hitStop) {
   if (e.hp <= 0 || e.stunUntil > tick) return [];
   return actions.filter((a, i) => a.actionId === 'move' || ready(e, tick, hitStop) && e.cooldowns[i] <= tick);
 }
-export function observe(state, viewerId) {
+export function observe(state: State, viewerId: string): Observation {
   const view = {
     tick: state.tick,
     viewerId,
@@ -119,14 +123,14 @@ export function observe(state, viewerId) {
   validateGamePayload('hero_arena', 1, 'observation', view.payload);
   return view;
 }
-export function legalActions(view) {
+export function legalActions(view: Observation): ActionSpec[] {
   validateGamePayload('hero_arena', 1, 'observation', view.payload);
   if (view.payload.outcome.status !== 'running') return [];
   const e = view.payload.entities.find(e => e.id === view.viewerId);
   return e ? structuredClone(available(e, view.tick + 1, view.payload.hitStop)) : [];
 }
-export const outcome = state => structuredClone(state.payload.outcome);
-export const statistics = state => structuredClone(state.payload.statistics);
+export const outcome = (state: State): Outcome => structuredClone(state.payload.outcome);
+export const statistics = (state: State): Statistics => structuredClone(state.payload.statistics);
 const distance = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
 const quotient = (a, b) => Math.trunc(a / b) || 0;
 function moveFor(data, e, actionId) {
@@ -369,7 +373,7 @@ function finishTick(payload, tick) {
     s.draws = payload.outcome.status === 'draw' ? 1 : 0;
   }
 }
-export function step(state, frame, data) {
+export function step(state: State, frame: InputFrame, data: GameData): StepResult {
   assertPinned(state, data);
   if (state.payload.outcome.status !== 'running') throw Error('ILLEGAL_ACTION');
   const players = state.payload.config.players;

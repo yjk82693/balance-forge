@@ -2,6 +2,8 @@ import { hash, validate, validateConfig, validateFrame, registerGame, validateGa
   compareIds } from '../../contracts/index.ts';
 import { xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta, clamp } from '../../sim/index.ts';
 import { schemas, actions } from './schemas.ts';
+import type { ActionSpec, GameData, InputFrame, MatchConfig, Observation, Outcome, State, Statistics,
+  StepResult } from '../../contracts/types.ts';
 export { data } from './data.ts';
 export { hash };
 export const simVersion = 'cards-0.1.2';
@@ -14,7 +16,7 @@ export const describe = () => ({
   maxPlayers: 2,
   actions: structuredClone(actions)
 });
-export const makeConfig = (data, seed = 1, players = ['p1', 'p2']) => ({
+export const makeConfig = (data: GameData, seed = 1, players: string[] = ['p1', 'p2']): MatchConfig => ({
   contractVersion: '0.1',
   schemaVersion: 1,
   gameId: 'hero_cards',
@@ -43,7 +45,7 @@ function refill(state, e, data) {
     e.hand.push(e.deck.pop());
   }
 }
-export function initial(config, data) {
+export function initial(config: MatchConfig, data: GameData): State {
   validateConfig(config, data, describe(), simVersion);
   pinData(data);
   const decks = data.gameRules.decks;
@@ -99,7 +101,7 @@ export function initial(config, data) {
   validateGamePayload('hero_cards', 1, 'state', state.payload);
   return state;
 }
-export function observe(state, viewerId) {
+export function observe(state: State, viewerId: string): Observation {
   const p = state.payload,
     e = p.entities.find(e => e.id === viewerId);
   // Only the viewer's hand is serialized; neither deck order nor private PRNG is exposed.
@@ -136,7 +138,7 @@ export function observe(state, viewerId) {
 function playable(card, e) {
   return card && card.cost <= e.energy && (card.kind !== 'summon' || e.units.length < 2);
 }
-export function legalActions(view) {
+export function legalActions(view: Observation): ActionSpec[] {
   validateGamePayload('hero_cards', 1, 'observation', view.payload);
   const p = view.payload,
     e = p.entities.find(e => e.id === view.viewerId);
@@ -150,9 +152,9 @@ export function legalActions(view) {
   }
   return result;
 }
-export const outcome = state => structuredClone(state.payload.outcome);
-export const statistics = state => structuredClone(state.payload.statistics);
-export function step(state, frame, data) {
+export const outcome = (state: State): Outcome => structuredClone(state.payload.outcome);
+export const statistics = (state: State): Statistics => structuredClone(state.payload.statistics);
+export function step(state: State, frame: InputFrame, data: GameData): StepResult {
   assertPinned(state, data);
   if (hash(state.payload.cards) !== hash(data.gameRules.cards)) throw Error('HASH_MISMATCH');
   if (state.payload.outcome.status !== 'running') throw Error('ILLEGAL_ACTION');
