@@ -5,6 +5,7 @@ import { validate } from '../../packages/contracts/index.js';
 import { replayOnData } from '../../packages/sim/index.js';
 import * as arena from '../../packages/games/action/index.js';
 import { hash } from '../../packages/contracts/index.js';
+import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.js';
 test('solo arena fills only the empty seat, runs the standard bot and records its seat explicitly', async t => {
   const {
     server,
@@ -97,4 +98,16 @@ test('solo card turns advance with the runner bot policy and retain the bot-seat
   const result = host.take('match.ended').payload.result;
   assert.equal(result.valid, true);
   assert.deepEqual(result.botSeats, ['p2']);
+});
+
+test('solo room uses the same match-seeded seat policy as the runner', async t => {
+  const { server, host, phone, room } = await localServer(t);
+  phone.close();
+  host.request('match.start', { bot: true, seed: 91, maxTicks: 20 });
+  for (let tick = 0; tick < 20; tick++) {
+    const expected = chooseActions(arena.observe(room.authority.state, 'p2'), tick * 2, deriveBotSeed(91, 1));
+    server.advance(room);
+    const actions = room.authority.frames[tick].actions.filter(input => input.playerId === 'p2');
+    assert.deepEqual(actions, expected);
+  }
 });
