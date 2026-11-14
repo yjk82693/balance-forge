@@ -11,6 +11,7 @@ import { hash, validate, validateSchema } from '../../packages/contracts/index.j
 import { object } from '../../packages/contracts/shapes.js';
 import { runPlaytest, fullPlaytest, reanalyzePlaytest, PipelineError } from './playtests.js';
 import { DesignStore, DesignError } from './design.js';
+import { createSinks } from '../sinks/index.js';
 import { replayViews } from './replay-views.js';
 import { games, cardAction } from '../runner/match.js';
 import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.js';
@@ -69,6 +70,7 @@ export class RoomServer {
     workers = 2,
     analysisEnv = process.env,
     designDir,
+    sinks = createSinks(process.env),
     runAuto,
     clock = () => performance.now()
   } = {}) {
@@ -78,6 +80,8 @@ export class RoomServer {
     this.pendingRecords = new Map();
     this.failures = [];
     this.storage = new Storage(storageDir);
+    this.sinks = sinks; // outside stores (MongoDB, Tiger Data): off without their env vars, never throw
+    this.storage.sinks = sinks;
     this.staticDir = resolve(staticDir);
     this.turnTimeoutMs = turnTimeoutMs;
     this.workers = workers;
@@ -729,6 +733,22 @@ export class RoomServer {
         return;
       }
     }
+    if (request.method === 'GET' && path === '/v1/sinks') {
+      // Names and counts only: never a connection string or an error text that could carry one.
+      const status = Object.fromEntries(Object.entries(this.sinks.status).map(([name, item]) => [name,
+        { written: item.written, failed: item.failed }]));
+      json(response, 200, { enabled: this.sinks.enabled, status });
+      return;
+    }
+    const trendRoute = path.match(/^\/v1\/trend\/(hero_arena|hero_cards)$/);
+    if (request.method === 'GET' && trendRoute) {
+      const matchup = url.searchParams.get('matchup') ?? '';
+      if (!/^[a-z_]{1,32} vs [a-z_]{1,32}$/.test(matchup)) throw Error('INVALID_SCHEMA');
+      const trend = await this.sinks.trend(matchup).catch(() => null);
+      json(response, trend ? 200 : 404, trend ? { gameId: trendRoute[1], matchup, points: trend } :
+        { code: 'TRANSPORT_UNAVAILABLE', message: 'The trend needs Tiger Data (TIGER_DATABASE_URL).' });
+      return;
+    }
     const designRoute = path.match(/^\/v1\/design\/(hero_arena|hero_cards)\/intent$/);
     if (designRoute && ['GET', 'PUT'].includes(request.method)) {
       const gameId = designRoute[1];
@@ -884,6 +904,7 @@ export class RoomServer {
     this.http.closeAllConnections();
     await Promise.allSettled([...this.tasks]);
     await new Promise(resolve => this.ws.close(resolve));
+    await this.sinks.close().catch(() => {});
     if (this.http.listening) await new Promise((resolve, reject) => this.http.close(error => error ? reject(
       error) : resolve()));
   }
