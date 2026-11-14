@@ -173,23 +173,24 @@ export class RoomServer {
     this.send(session,'input.ack',receipt,env,env.payload.seq);
     if(authority.config.mode==='turn'&&!previous)this.advance(room);
   }
-  view(session) {
+  view(session,events=[]) {
     const room=session.room,authority=room.authority,viewerId=session.seat??'display';
     if(!authority)return;
     const observation=room.game.observe(authority.state,viewerId);
     this.send(session,'state.view',{observation,tick:observation.tick,turnId:authority.state.turnId,
-      epoch:room.epoch,viewHash:hash(observation)});
+      epoch:room.epoch,viewHash:hash(observation),
+      events:events.filter(event=>event.audience.length===0||event.audience.includes(viewerId))});
     this.send(session,'actions.available',{playerId:viewerId,tick:observation.tick,turnId:authority.state.turnId,
       actions:room.game.legalActions(observation)});
   }
-  views(room){for(const session of room.members)this.view(session);}
+  views(room,events=[]){for(const session of room.members)this.view(session,events);}
   advance(room,systemInputs=[]) {
     if(room.phase!=='playing')return;
     try {
       const turn=room.authority.state.turnId;
-      room.authority.advance(systemInputs);
+      const result=room.authority.advance(systemInputs);
       if(room.authority.state.turnId!==turn)room.deadline=performance.now()+this.turnTimeoutMs;
-      this.views(room);
+      this.views(room,result.events);
       if(room.game.outcome(room.authority.state).status!=='running')this.finish(room);
     }catch(error){this.finish(room,errorCode(error));}
   }

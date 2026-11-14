@@ -208,6 +208,13 @@ export function step(state, frame, data) {
         const shield = m.effects.find(f => f.operator === 'shield');
         e.guardUntil = tick + (shield?.durationTicks ?? data.gameRules.guardDuration);
         e.shield = shield?.amount ?? 100;
+        event('combat.guard', {
+          playerId: e.id,
+          phase: 'activate',
+          x: e.x,
+          y: e.y,
+          until: e.guardUntil
+        });
       } else if (m.archetype === 'melee') {
         for (const target of p.entities) if (target.id !== e.id && target.hp > 0 && distance(e,
           target) <= data.gameRules.meleeRange ** 2) hits.push({
@@ -232,6 +239,9 @@ export function step(state, frame, data) {
           moveId: m.id,
           ignoresGuard: data.gameRules.moveTraits.find(t => t.moveId === m.id)?.ignoresGuard ?? false
         });
+        event('projectile.spawn', {
+          ...p.projectiles.at(-1)
+        });
       }
     }
     const surviving = [];
@@ -241,11 +251,29 @@ export function step(state, frame, data) {
       shot.life--;
       const target = p.entities.find(e => e.id !== shot.owner && e.hp > 0 && distance(shot,
         e) <= data.gameRules.projectileRadius ** 2);
-      if (target) hits.push({
-        ...shot,
-        target: target.id
-      });else if (shot.life > 0 && shot.x >= 0 && shot.x <= 16000 && shot.y >= 0 && shot.y <= 9000) surviving.push(
-        shot);
+      if (target) {
+        hits.push({
+          ...shot,
+          target: target.id
+        });
+        event('projectile.expire', {
+          id: shot.id,
+          owner: shot.owner,
+          x: shot.x,
+          y: shot.y,
+          reason: 'hit'
+        });
+      } else if (shot.life > 0 && shot.x >= 0 && shot.x <= 16000 && shot.y >= 0 && shot.y <= 9000) {
+        surviving.push(shot);
+      } else {
+        event('projectile.expire', {
+          id: shot.id,
+          owner: shot.owner,
+          x: shot.x,
+          y: shot.y,
+          reason: shot.life <= 0 ? 'lifetime' : 'bounds'
+        });
+      }
     }
     p.projectiles = surviving;
     // Resolve queued hits in stable source order; simultaneous attacks can produce a draw.
@@ -255,6 +283,13 @@ export function step(state, frame, data) {
         m = data.moves.find(m => m.id === hit.moveId),
         tier = data.weightTiers[m.weightTier];
       const guarded = target.guardUntil > tick && !hit.ignoresGuard;
+      if (guarded) event('combat.guard', {
+        playerId: target.id,
+        phase: 'block',
+        source: source.id,
+        x: target.x,
+        y: target.y
+      });
       let amount = quotient((hit.power + m.effects.filter(e => e.operator === 'damage').reduce((n, e) => n + e.amount,
         0)) * data.tuning.damageScalePermille, 1000);
       if (guarded) amount = quotient(amount * (100 - clamp(target.shield, 0, 100)), 100);
@@ -287,7 +322,15 @@ export function step(state, frame, data) {
         target: target.id,
         amount,
         guarded,
-        ignoresGuard: hit.ignoresGuard
+        ignoresGuard: hit.ignoresGuard,
+        x: target.x,
+        y: target.y
+      });
+      if (amount > 0 && target.hp === 0) event('combat.ko', {
+        playerId: target.id,
+        source: source.id,
+        x: target.x,
+        y: target.y
       });
     }
   }

@@ -126,3 +126,11 @@ Measured `node services/runner/benchmark.js`: 15 unordered matchups including mi
 = 300 matches, 300 valid, 0 invalid, 2 workers. Recorded at 2026-11-14T03:39:53.643Z: 4,805.539334 ms,
 62.427956 matches/s including worker startup. Actual outputs: services/runner/recorded-roster-match-results.json
 and recorded-roster-metrics.json. Previous smaller-roster samples are historical, not current balance evidence.
+
+## Live playtest progress
+
+Completed G. Workers report individual completions; runBatch emits initial, ~100 ms, and final progress snapshots.
+Room WebSockets receive playtest.progress with runId/gameId/dataHash, matchesDone, totalMatches, elapsedMs and
+per-matchup wins/games/draws/invalid counts. Final ordered MatchResult arrays retain their existing shape and
+values; progress observers cannot change simulation outcomes. Eight runner/replay/room tests passed, including
+cadence, monotonicity, all 15 matchup totals, equal streamed/plain results, and persisted bot replays.
