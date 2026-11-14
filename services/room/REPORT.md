@@ -430,3 +430,16 @@ Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wi
 Updated recorded metrics; deterministic result data is unchanged. Web is outside ownership, so no build/FPS
 measurement. Existing blockers: analysis pipeline full.js is absent here; socket tests retain their opt-in gate.
 No dependencies, network calls, commits or pushes. Stopping with report and metrics only.
+
+## Polish 06:21
+
+Already clean; no code changes needed after reviewing bad-input validation, empty-data errors, disconnect
+handling and replay persistence. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated skips,
+1 existing pending integration; 47,718.663584 ms. Determinism and 120-column readability checks pass.
+No dead code or console noise found; no tests weakened, skipped or deleted this pass.
+
+Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+6,385.128458 ms, 46.984176 matches/s including startup, recorded 2026-11-14T11:21:44.455Z.
+Updated recorded metrics; deterministic result data stayed unchanged. Web is outside ownership, so no
+web build/FPS measurement. Existing blockers: analysis pipeline full.js remains absent here; live socket
+tests retain their opt-in gate. No dependencies, network calls, commits or pushes. Stopping.
