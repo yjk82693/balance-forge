@@ -91,3 +91,53 @@ test('runFull: change labels find the hero through the engine field moveIds', as
   const out = await runFull(input({ baseData: engineShaped }));
   assert.equal(out.value.proposal.changes[0].label, 'Bari · Spirit Arrow power');
 });
+
+// --- fair matchups: stop after the baseline, no LLM call ---
+const fairResults = () => pairedResults({ seeds: 100, winner: (seed) => (seed % 2 ? 'a' : 'b') }); // 50%
+
+test('a fair matchup stops after the baseline: fair, no proposal, no adapter call, no holdout run', async () => {
+  let adapterCalled = false;
+  let holdoutCalled = false;
+  const spy = { async proposeWithOrigin() { adapterCalled = true; throw new Error('must not be called'); },
+    async proposePatch() { adapterCalled = true; throw new Error('must not be called'); } };
+  const out = await runFull(input({ baselineResults: fairResults(), adapter: spy,
+    runHoldout: async () => { holdoutCalled = true; return []; } }));
+  assert.equal(out.ok, true, JSON.stringify(out));
+  const b = out.value;
+  assert.equal(adapterCalled, false);
+  assert.equal(holdoutCalled, false);
+  assert.equal(b.fair, true);
+  assert.equal(b.proposal, null);
+  assert.equal(b.validation, null);
+  assert.equal(b.patched, null);
+  assert.equal(b.patchedDataHash, null);
+  assert.deepEqual(b.verdict, { verdict: 'inconclusive',
+    reasons: ['no outlier: the matchup is within the fair band'] });
+  assert.equal(b.baseline.rows.every((r) => !r.outlier), true);
+  assert.equal(b.humanMatches, 0);
+  assert.deepEqual(b.evidence.rows, []);
+});
+
+test('a flagged matchup still goes through and says fair: false', async () => {
+  const out = await runFull(input());
+  assert.equal(out.value.fair, false);
+  assert.ok(out.value.proposal);
+});
+
+test('only a mirror outlier counts as fair (first-seat advantage is not a hero imbalance)', async () => {
+  let called = false;
+  const mirror = pairedResults({ heroes: ['bari', 'bari'], seeds: 100, winner: () => 'a' });
+  const out = await runFull(input({ baselineResults: mirror, adapter: { async proposeWithOrigin() {
+    called = true;
+    return {};
+  } } }));
+  assert.equal(out.value.fair, true);
+  assert.equal(called, false);
+  assert.equal(out.value.baseline.rows[0].outlier, true);
+});
+
+test('a fair baseline with a thin sample is fair too (under 30 games there is no outlier)', async () => {
+  const out = await runFull(input({ baselineResults: pairedResults({ seeds: 5, winner: () => 'a' }),
+    holdoutSeeds: holdoutSeeds.slice(0, 5) }));
+  assert.equal(out.value.fair, true);
+});

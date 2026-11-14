@@ -434,3 +434,12 @@ alphabetical); later scans still cover all flagged matchups, so `fair` is never 
 **History script.** `pipeline/record-auto-history.js --out file.json [--rounds 3]` runs `runAuto` in process against the real
 engine runner with an offline stand-in adapter (origin `fake`, lowers one move by 20%) and writes `[base, ...records]`. First run
 (1 round, before the focus change): 3 min 17 s, one record, `rejected`. Not committed as data.
+
+## Fair matchups stop early
+
+`runFull` stops after the baseline when no bot row is an outlier (mirror rows do not count, as for verdict targets): the body
+has `fair: true`, `proposal: null`, `validation: null`, `patched: null`, `patchedDataHash: null` and verdict
+`inconclusive` with the reason "no outlier: the matchup is within the fair band". The adapter is never called (no LLM cost)
+and no holdout run is made. A flagged matchup goes through as before and now says `fair: false`. Under 30 games there is no
+outlier, so a thin sample is also reported as fair. `measureFull`'s tiny wiring test changed accordingly. Tests in
+`test/full.test.js` (fair without adapter call, flagged still goes through, mirror-only, thin sample).

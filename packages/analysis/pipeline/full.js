@@ -4,7 +4,8 @@
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
 import { buildEvidence } from '../src/evidence.js';
-import { withExtras } from '../src/extras.js';
+import { isMirror } from '../src/verdict.js';
+import { HUMAN_PREFIX, withExtras } from '../src/extras.js';
 import { applyPatchToData } from '../src/replay.js';
 import { fail, safely } from '../src/errors.js';
 import { assertMatchResults } from '../src/input-check.js';
@@ -69,6 +70,28 @@ function patchData({ baseData, hashData, applyPatch }, proposal) {
   return patched;
 }
 
+/**
+ * A matchup inside the fair band needs no patch: stop after the baseline. No adapter call (no LLM cost) and no
+ * holdout run.
+ * `validation`, `patched` and `patchedDataHash` are null because nothing was proposed or applied.
+ */
+function fairBody(baseline, evidence, holdoutSeedSetId) {
+  return {
+    botPolicyVersion: baseline.botPolicyVersion,
+    seedSetId: baseline.seedSetId,
+    holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
+    baseline,
+    evidence,
+    fair: true,
+    proposal: null,
+    validation: null,
+    patchedDataHash: null,
+    patched: null,
+    verdict: { verdict: 'inconclusive', reasons: ['no outlier: the matchup is within the fair band'] },
+    humanMatches: baseline.humanMatches ?? 0,
+  };
+}
+
 async function runFullUnsafe(input) {
   const { baselineResults, humanResults = [], baseData, adapter, runHoldout, holdoutSeeds, hashData,
     botPolicyVersion, seedSetId, holdoutSeedSetId, elapsedMs, createdAt } = input ?? {};
@@ -83,13 +106,17 @@ async function runFullUnsafe(input) {
   const base = analyzePhase(baselineResults, { reportId: 'r-baseline', ...options });
   const baseline = withExtras(addHumanRows(base.report, humanResults), { createdAt, elapsedMs });
   const evidence = buildEvidence(base.counted, baseline);
+  const evidenceBody = evidence.ok ? evidence.value : null; // null only if it could not be built
+  const flagged = baseline.rows.some((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r));
+  if (!flagged) return fairBody(baseline, evidenceBody, holdoutSeedSetId);
   const step = await proposeStep(baseline, adapter);
   const body = {
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
-    evidence: evidence.ok ? evidence.value : null, // per outlier row; null only if it could not be built
+    evidence: evidenceBody,
+    fair: false,
     proposal: { ...step.proposal, origin: step.origin,
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },
     validation: { ok: step.ok, errors: step.errors },

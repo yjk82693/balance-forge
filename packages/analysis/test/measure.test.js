@@ -8,16 +8,17 @@ const arena = await importEngine('packages/games/action/index.js');
 const bot = await importEngine('packages/games/action/bot.js');
 const { hash, compareIds } = await importEngine('packages/contracts/index.js');
 
-test('measureFull wiring on a tiny run (2 pairs, not a measurement)', async () => {
+test('measureFull wiring on a tiny run (2 pairs, not a measurement): too few games, so it stops as fair', async () => {
   const out = await measureFull({ mode: 'nonroster', pairs: 2, engineRoot });
   assert.equal(out.ok, true, JSON.stringify(out));
   const v = out.value;
   assert.equal(v.baseline.games, 4);
-  assert.equal(v.holdout.games, 4);
   assert.equal(v.phases.baseline.matches, 4);
-  assert.equal(v.proposal.origin, 'fake');
-  assert.equal(v.validation.ok, true);
-  assert.ok(['accepted', 'rejected', 'inconclusive'].includes(v.verdict.verdict));
+  assert.equal(v.fair, true); // no outlier under 30 games: no proposal, no holdout run
+  assert.equal(v.proposal, null);
+  assert.equal(v.holdout, null);
+  assert.equal(v.phases.holdout, undefined);
+  assert.equal(v.verdict.verdict, 'inconclusive');
   assert.equal(v.botPolicyVersion, bot.botPolicyVersion);
 });
 
