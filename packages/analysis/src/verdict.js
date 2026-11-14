@@ -8,6 +8,11 @@ import { HUMAN_PREFIX } from './extras.js';
 import { assertReport } from './input-check.js';
 
 const isBot = (row) => !row.dimension.startsWith(HUMAN_PREFIX); // human rows never gate a patch
+// A mirror matchup ("bari vs bari") measures first-seat advantage, which a hero patch cannot fix.
+export const isMirror = (row) => {
+  const [a, b, ...rest] = row.dimension.split(' vs ');
+  return rest.length === 0 && b !== undefined && a === b;
+};
 const dist = (row) => Math.abs(row.winRate - 0.5);
 const worstSide = (row) => Math.max(row.winRate, 1 - row.winRate);
 const invalidRate = (r) => {
@@ -17,7 +22,8 @@ const invalidRate = (r) => {
 
 /**
  * @returns {{verdict: 'accepted'|'rejected'|'inconclusive', reasons: string[], targets: object[]}}
- * options.targets: dimensions to judge; default = rows flagged outlier in `before`.
+ * options.targets: dimensions to judge; default = non-mirror rows flagged outlier in `before`. Mirror rows are
+ * not default targets, but they still count in the "new extreme matchup" check below.
  */
 export function judgePatch(before, after, options = {}) {
   assertReport(before, 'before');
@@ -44,9 +50,11 @@ export function judgePatch(before, after, options = {}) {
   const afterBy = new Map(after.rows.filter(isBot).map((r) => [r.dimension, r]));
   const beforeBy = new Map(before.rows.filter(isBot).map((r) => [r.dimension, r]));
 
-  const targetDims = options.targets ?? before.rows.filter((r) => isBot(r) && r.outlier).map((r) => r.dimension);
+  const outliers = before.rows.filter((r) => isBot(r) && r.outlier);
+  const targetDims = options.targets ?? outliers.filter((r) => !isMirror(r)).map((r) => r.dimension);
   if (targetDims.length === 0) {
-    reasons.push('no target: no outlier in the baseline report');
+    reasons.push(outliers.length ? 'no target: the only outliers are mirror matchups (first-seat advantage)'
+      : 'no target: no outlier in the baseline report');
     return out('inconclusive');
   }
 
