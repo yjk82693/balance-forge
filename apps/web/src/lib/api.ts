@@ -1,12 +1,22 @@
 import type { PatchProposal, Report } from "./contract";
-import { fixturePatch, fixtureReportBaseline, fixtureReportPatched } from "./fixtures";
+import { fixturePatch } from "./fixtures";
+import { mockReport } from "./mockReport";
 import { isMockMode } from "../mock/types";
 
 export type PatchOrigin = "gemini" | "fallback" | "manual";
 export type VerdictKind = "accepted" | "rejected" | "inconclusive";
 
+export interface Change {
+  path: string;
+  label?: string;
+  old?: number;
+  new: number;
+}
+
 export interface Proposal {
   patch: PatchProposal;
+  /** optional: field-level old -> new values; without it the UI shows the new values only */
+  changes?: Change[];
   origin: PatchOrigin;
   validation: { ok: boolean; errors: string[] };
 }
@@ -52,6 +62,7 @@ export function normalizeRun(raw: unknown): PlaytestRun {
     p && p.patch
       ? {
           patch: p.patch as PatchProposal,
+          changes: Array.isArray(p.changes) ? p.changes : undefined,
           origin: ORIGINS.includes(p.origin) ? p.origin : "manual",
           validation: {
             ok: p.validation?.ok !== false && !(p.validation?.errors?.length > 0),
@@ -74,9 +85,14 @@ export async function runPlaytest(matches = 1000, signal?: AbortSignal): Promise
     await delay(1200);
     return {
       sample: true,
-      baseline: fixtureReportBaseline,
-      patched: fixtureReportPatched,
-      proposal: { patch: fixturePatch, origin: "manual", validation: { ok: true, errors: [] } },
+      baseline: mockReport("broken"),
+      patched: mockReport("patched"),
+      proposal: {
+        patch: fixturePatch,
+        origin: "manual",
+        changes: [{ path: "/moves/1/power", label: "Bari · Spirit arrow power", old: 100, new: 72 }],
+        validation: { ok: true, errors: [] },
+      },
       verdict: { verdict: "accepted", reasons: ["sample verdict for the fixtures; not computed"] },
     };
   }

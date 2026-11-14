@@ -6,8 +6,8 @@ export const ARENA_W = 1152;
 export const ARENA_H = 648;
 
 // Playable rectangle inside arena_floor.png (1920x1080 art), measured by eye, scaled to the 1152x648 canvas.
-const ART_SCALE = ARENA_W / 1920;
-const FIELD = { x: 150 * ART_SCALE, y: 140 * ART_SCALE, w: (1770 - 150) * ART_SCALE, h: (1000 - 140) * ART_SCALE };
+// Art-space playfield rectangle (1920x1080); multiplied by the canvas scale at runtime.
+const FIELD_ART = { x: 150, y: 140, w: 1770 - 150, h: 1000 - 140 };
 const HERO_SCALE = 0.3;
 const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
 
@@ -35,6 +35,8 @@ interface HudView {
 
 /** Draws the arena floor and heroes from an Observation. Reads data only; it never advances state. */
 export class ArenaScene extends Phaser.Scene {
+  /** canvas width / 1152: 1 on the full screen, smaller in the compare view */
+  private k = 1;
   private heroes = new Map<string, HeroView>();
   private huds = new Map<string, HudView>();
   private arrows = new Map<string, Phaser.GameObjects.Image>();
@@ -58,7 +60,8 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.image(0, 0, "floor").setOrigin(0, 0).setDisplaySize(ARENA_W, ARENA_H).setDepth(0);
+    this.k = this.scale.width / ARENA_W;
+    this.add.image(0, 0, "floor").setOrigin(0, 0).setDisplaySize(this.scale.width, this.scale.height).setDepth(0);
     this.ready = true;
     this.registry.events.on("changedata", this.onData);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.registry.events.off("changedata", this.onData));
@@ -67,7 +70,8 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private toScreen(x: number, y: number, arena: { w: number; h: number }) {
-    return { x: FIELD.x + (x / arena.w) * FIELD.w, y: FIELD.y + (y / arena.h) * FIELD.h };
+    const a = (this.scale.width / 1920);
+    return { x: (FIELD_ART.x + (x / arena.w) * FIELD_ART.w) * a, y: (FIELD_ART.y + (y / arena.h) * FIELD_ART.h) * a };
   }
 
   private apply(obs: Observation) {
@@ -82,8 +86,8 @@ export class ArenaScene extends Phaser.Scene {
       if (!v || v.sprite.texture.key !== key) {
         v?.sprite.destroy();
         v?.shadow.destroy();
-        const shadow = this.add.ellipse(p.x, p.y, 90, 26, 0x000000, 0.28).setDepth(1);
-        const sprite = this.add.image(p.x, p.y, this.textures.exists(key) ? key : "__MISSING").setOrigin(0.5, 498 / 512).setScale(HERO_SCALE);
+        const shadow = this.add.ellipse(p.x, p.y, 90 * this.k, 26 * this.k, 0x000000, 0.28).setDepth(1);
+        const sprite = this.add.image(p.x, p.y, this.textures.exists(key) ? key : "__MISSING").setOrigin(0.5, 498 / 512).setScale(HERO_SCALE * this.k);
         v = { sprite, shadow, tx: p.x, ty: p.y };
         this.heroes.set(e.id, v);
         this.makeHud(e.id, e.hero, i === 0 ? "left" : "right");
@@ -100,11 +104,11 @@ export class ArenaScene extends Phaser.Scene {
       const p = this.toScreen(pr.x, pr.y, arena);
       let img = this.arrows.get(pr.id);
       if (!img) {
-        img = this.add.image(p.x, p.y - 40, "arrow").setScale(0.3).setDepth(5000);
+        img = this.add.image(p.x, p.y - 40 * this.k, "arrow").setScale(0.3 * this.k).setDepth(5000);
         this.arrows.set(pr.id, img);
       }
       const owner = entities.find((e) => e.id === pr.owner);
-      img.setPosition(p.x, p.y - 40).setFlipX(owner?.facing === 180);
+      img.setPosition(p.x, p.y - 40 * this.k).setFlipX(owner?.facing === 180);
     }
     for (const [id, img] of this.arrows) {
       if (!live.has(id)) {
@@ -115,22 +119,24 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private makeHud(id: string, hero: string, side: "left" | "right") {
-    const trackW = 300;
+    const k = this.k;
+    const trackW = 300 * k * (k < 1 ? 1.25 : 1);
+    const fs = `${Math.round(14 * (k < 1 ? 1.5 : 1))}px`;
     const trackH = (38 / 340) * trackW;
-    const x = side === "left" ? 24 : ARENA_W - 24 - trackW;
-    const y = 18;
+    const x = side === "left" ? 24 * k : this.scale.width - 24 * k - trackW;
+    const y = 18 * k;
     this.add.image(x, y, "hp-track").setOrigin(0, 0).setDisplaySize(trackW, trackH).setDepth(10000);
-    const fullW = trackW - 24;
+    const fullW = trackW - 24 * k;
     const fullH = (18 / 320) * fullW;
-    const fill = this.add.image(x + 12, y + trackH / 2 - fullH / 2, "hp-fill").setOrigin(0, 0).setDisplaySize(fullW, fullH).setDepth(10001);
+    const fill = this.add.image(x + 12 * k, y + trackH / 2 - fullH / 2, "hp-fill").setOrigin(0, 0).setDisplaySize(fullW, fullH).setDepth(10001);
     const ring = HERO_HEX[hero] ?? 0xffffff;
-    this.add.circle(x + 6, y + trackH + 14, 5, ring).setDepth(10001);
+    this.add.circle(x + 6 * k, y + trackH + 14 * k, 5 * k, ring).setDepth(10001);
     const name = this.add
-      .text(x + 18, y + trackH + 5, heroName(hero), { fontFamily: FONT, fontSize: "14px", fontStyle: "700", color: "#E6EBF1" })
+      .text(x + 18 * k, y + trackH + 5 * k, heroName(hero), { fontFamily: FONT, fontSize: fs, fontStyle: "700", color: "#E6EBF1" })
       .setDepth(10001)
       .setShadow(0, 1, "#0D1219", 4, false, true);
     const hp = this.add
-      .text(side === "left" ? x + trackW : x + trackW, y + trackH + 5, "", { fontFamily: FONT, fontSize: "14px", fontStyle: "500", color: "#E6EBF1" })
+      .text(x + trackW, y + trackH + 5 * k, "", { fontFamily: FONT, fontSize: fs, fontStyle: "500", color: "#E6EBF1" })
       .setOrigin(1, 0)
       .setDepth(10001)
       .setShadow(0, 1, "#0D1219", 4, false, true);

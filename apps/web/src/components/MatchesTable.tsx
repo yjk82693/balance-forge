@@ -20,13 +20,14 @@ interface Props {
   rows: MatchRow[];
   selected: string;
   onSelect: (matchId: string) => void;
+  compact?: boolean;
 }
 
-export function MatchesTable({ rows, selected, onSelect }: Props) {
+export function MatchesTable({ rows, selected, onSelect, compact }: Props) {
   // Human matches pin to the top.
   const ordered = [...rows].sort((a, b) => Number(b.human) - Number(a.human));
   return (
-    <table className="matches">
+    <table className={`matches${compact ? " compact" : ""}`}>
       <thead>
         <tr>
           <th>Match</th>

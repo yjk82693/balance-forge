@@ -71,10 +71,10 @@ export function Interval({ s }: { s: RowStats }) {
   );
 }
 
-export function WinRateChart({ rows }: { rows: ReportRow[] }) {
+export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense?: boolean }) {
   const stats = rows.map(rowStats);
   return (
-    <div className="viz">
+    <div className={`viz${dense ? " dense" : ""}`}>
       <div className="viz-row head">
         <span />
         <Axis />
@@ -83,7 +83,7 @@ export function WinRateChart({ rows }: { rows: ReportRow[] }) {
       {stats.map((s) => (
         <div key={s.row.dimension} className={`viz-row${s.outlier ? " outlier" : ""}`}>
           <div className="viz-label">
-            <HeroPortrait hero={s.matchup.a} size={32} />
+            <HeroPortrait hero={s.matchup.a} size={dense ? 20 : 32} />
             <span className="small viz-name">
               {heroName(s.matchup.a)} <span className="text-2">vs</span> {heroName(s.matchup.b)}
             </span>

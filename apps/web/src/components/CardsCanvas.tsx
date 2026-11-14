@@ -38,7 +38,7 @@ export function CardsCanvas({ observation, names }: Props) {
         width: TABLE_W,
         height: TABLE_H,
         backgroundColor: "#0D1219",
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scale: { mode: Phaser.Scale.NONE },
         scene: CardsScene,
         audio: { noAudio: true },
         banner: false,

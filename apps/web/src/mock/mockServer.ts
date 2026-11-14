@@ -14,13 +14,13 @@ import {
   fixtureStateView,
 } from "../lib/fixtures";
 import { makeEnvelope } from "./envelope";
+import { frameAt, loopLength, FRAME_MS as REPLAY_MS, type Version } from "../lib/replayGen";
 import { CardsMock } from "./mockCards";
 
 /** Actions the mock accepts; mirrors the action ids in fixtures (melee, projectile, guard) plus movement. */
 export const ARENA_ACTIONS = ["move", "melee", "projectile", "guard"] as const;
 const MAX_SEATS = 4;
-const FRAME_MS = 100;
-const REPLAY_FRAMES = 60;
+const FRAME_MS = REPLAY_MS;
 
 type Deliver = (env: Envelope) => void;
 
@@ -48,6 +48,7 @@ export class MockServer {
   readonly joinCode = fixtureRoomStatus.payload.joinCode;
   inputCount = 0;
   private gameId = "hero_arena";
+  private version: Version = "broken";
   private cards: CardsMock | null = null;
   private botTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -93,6 +94,7 @@ export class MockServer {
       case "game.select":
         if (session.role === "display") {
           this.gameId = String((env.payload as { gameId?: string }).gameId ?? "hero_arena");
+          this.version = (env.payload as { dataVersion?: string }).dataVersion === "patched" ? "patched" : "broken";
           this.broadcastStatus();
         }
         return;
@@ -228,12 +230,13 @@ export class MockServer {
 
   private sendFrame() {
     this.frame += 1;
-    const obs = replayObservation(this.frame, this.seats);
+    const heroOf = (id: string, d: string) => this.seats.find((x) => x.seat === id)?.hero ?? d;
+    const obs = frameAt(this.frame, this.version, fixtureMatchConfig.seed, [heroOf("p1", "bari"), heroOf("p2", "real_armor")]);
     for (const s of this.sessions.values()) {
       const view: Observation = { ...obs, viewerId: s.role === "display" ? "display" : (s.seat ?? "p?") };
       this.to(s, "state.view", { observation: view, viewHash: fixtureStateView.payload.viewHash });
     }
-    if (this.frame >= REPLAY_FRAMES) {
+    if (this.frame >= loopLength(this.version) - 1) {
       this.stopReplay();
       this.phase = "ended";
       const result: MatchResult = fixtureMatchEnded.payload.result;
@@ -275,22 +278,3 @@ export class MockServer {
   }
 }
 
-/** Deterministic visual replay of the fixture Observation: integer positions, the arrow flies p1 -> p2 on a loop. */
-export function replayObservation(frame: number, seats: Seat[]): Observation {
-  const base = fixtureObservation;
-  const [p1, p2] = base.payload.entities;
-  const span = p2.x - p1.x;
-  const cycle = 20;
-  const t = frame % cycle;
-  const arrowX = p1.x + Math.trunc((span * t) / cycle);
-  const heroOf = new Map(seats.map((s) => [s.seat, s.hero]));
-  return {
-    tick: base.tick + frame * 6,
-    viewerId: "display",
-    payload: {
-      ...base.payload,
-      entities: base.payload.entities.map((e) => ({ ...e, hero: heroOf.get(e.id) ?? e.hero })),
-      projectiles: base.payload.projectiles.map((p) => ({ ...p, x: arrowX })),
-    },
-  };
-}

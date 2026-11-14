@@ -23,7 +23,7 @@ export function PatchCompare({ before, after, showAfter }: Props) {
     .filter((p) => p.a && (p.a.wins !== p.b.row.wins || p.a.games !== p.b.row.games))
     .map((p) => ({ b: p.b, a: rowStats(p.a!) }))
     .sort((x, y) => Math.abs(y.a.rate - y.b.rate) - Math.abs(x.a.rate - x.b.rate))
-    .slice(0, 2);
+    .slice(0, 1);
 
   return (
     <div className="viz patch">
