@@ -804,13 +804,25 @@ p {
   pointer-events: none;
 }
 .stick-area {
+  /* the whole left half of the controller, top to bottom; the buttons and the header sit above it */
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 1;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+.stick-idle {
   position: relative;
   flex: 1 1 50%;
-  touch-action: none;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  pointer-events: none;
 }
 .stick-area .stick-ring,
-.stick-area .stick-knob {
+.stick-area .stick-knob,
+.stick-idle .stick-ring,
+.stick-idle .stick-knob {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
@@ -2211,3 +2223,8 @@ p {
 .phone-foot .btn { white-space: nowrap; padding-inline: var(--space-3); }
 /* a table cannot be shrunk to 1px by width alone; as a block it can, so it never widens the page */
 table.sr-only { display: block; max-width: 1px; }
+
+/* controls stay above the stick's touch area */
+.phone-head, .phone-foot, .lost-bar, .btn-cluster { position: relative; z-index: 2; }
+.phone { touch-action: manipulation; overscroll-behavior: none; }
+.pad-btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
