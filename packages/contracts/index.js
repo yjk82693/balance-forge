@@ -18,6 +18,8 @@ export function canonicalJson(value) {
 }
 export const hash = value => createHash('sha256').update(canonicalJson(value),'utf8').digest('hex');
 export function validateSchema(s,v) {
+ if(s.anyOf) { for (const candidate of s.anyOf) { try { return validateSchema(candidate,v); } catch {} } throw Error('INVALID_SCHEMA'); }
+ if(s.type==='null' && v!==null) throw Error('INVALID_SCHEMA');
  if(s.$ref) return validateSchema(schema.$defs[s.$ref.split('/').at(-1)],v);
  const fail=()=>{throw Error('INVALID_SCHEMA');};
  if('const'in s && v!==s.const) fail();
@@ -25,10 +27,10 @@ export function validateSchema(s,v) {
  if(s.type==='integer'&&(!Number.isSafeInteger(v)||Object.is(v,-0))) fail();
  if(s.type==='number'&&(typeof v!=='number'||!Number.isFinite(v))) fail();
  if(s.type==='boolean'&&typeof v!=='boolean') fail();
- if(s.type==='string') { if(typeof v!=='string'||v.length<(s.minLength??0)||v.length>(s.maxLength??Infinity)||(s.pattern&&!new RegExp(s.pattern).test(v))) fail(); }
+ if(s.type==='string') { if(typeof v!=='string'||Array.from(v).length<(s.minLength??0)||Array.from(v).length>(s.maxLength??Infinity)||(s.pattern&&!new RegExp(s.pattern).test(v))) fail(); }
  if(typeof v==='number'&&(v<(s.minimum??-Infinity)||v>(s.maximum??Infinity))) fail();
  if(s.type==='array') { if(!Array.isArray(v)||v.length<(s.minItems??0)||v.length>(s.maxItems??Infinity)) fail(); if(s.uniqueItems&&new Set(v.map(x=>JSON.stringify(x))).size!==v.length) fail(); v.forEach(x=>validateSchema(s.items,x)); }
- if(s.type==='object') { if(!v||typeof v!=='object'||Array.isArray(v)) fail(); if(Object.keys(v).length>(s.maxProperties??Infinity)) fail(); for(const k of s.required??[]) if(!Object.hasOwn(v,k)) fail(); for(const k of Object.keys(v)) { if(s.properties?.[k]) validateSchema(s.properties[k],v[k]); else if(s.additionalProperties===false) fail(); } }
+ if(s.type==='object') { if(!v||typeof v!=='object'||Array.isArray(v)) fail(); if(Object.keys(v).length>(s.maxProperties??Infinity)) fail(); for(const k of s.required??[]) if(!Object.hasOwn(v,k)) fail(); for(const k of Object.keys(v)) { if(Object.hasOwn(s.properties??{},k)) validateSchema(s.properties[k],v[k]); else if(s.additionalProperties===false) fail(); } }
  return v;
 }
 export const validate=(name,value)=>validateSchema(schema.$defs[name]??(()=>{throw Error('INVALID_SCHEMA');})(),value);
