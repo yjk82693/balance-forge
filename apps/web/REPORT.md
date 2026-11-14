@@ -362,3 +362,6 @@ Approved by the asset owner (`apps/web/public/assets` is in the web folder); ori
 | PNG originals: `arena_floor`, `rooftop`, `table` (2.0-2.8 MB each), 15 card PNGs (340-430 KB), `full_body` of Sepia, Bari and Nightcrow (209-232 KB) | | only as the fallback when WebP cannot be decoded |
 | `hero_cards/summons/spirit_wisp.png` | 282 KB | not referenced by the web app at all (the table uses `turret_drone.png`, 185 KB) |
 Everything else loaded on any screen is under 200 KB.
+
+## Round 8 controls
+**1. Move sends.** `InputPipeline` now sends a move at once when it is a release (0,0), a start from standstill, or a change of 150/1000 or more in the vector (direction or strength); only small changes wait for the 33 ms cap (about 30/s, still far under the 120/s/seat limit). Checked in node with a fake clock: start at 0 ms sent, a small change at 5 ms held, a direction change at 10 ms sent at 10 ms, a small one at 12 ms held, the release at 14 ms sent at 14 ms.

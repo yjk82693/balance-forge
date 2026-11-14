@@ -3,7 +3,9 @@ import type { ActionInput } from "./contract";
 export type ButtonAction = "melee" | "projectile" | "guard";
 export type InputSource = "touch" | "gamepad" | "keyboard";
 
-const MOVE_INTERVAL_MS = 33; // ~30 sends/s, well under the 120/s/seat cap in the contract
+const MOVE_INTERVAL_MS = 33; // ~30 sends/s for small changes, well under the 120/s/seat cap in the contract
+/** A change in the move vector (of 1000) this large, a stop, or a start is sent at once; smaller ones wait for the cap. */
+const BIG_CHANGE = 150;
 const clampInt = (v: number) => Math.max(-1000, Math.min(1000, Math.round(v * 1000)));
 
 /**
@@ -56,7 +58,21 @@ export class InputPipeline {
     return [clampInt(best[0]), clampInt(best[1])];
   }
 
+  /** Release, a start from standstill or a change in direction or strength: worth sending without waiting. */
+  private isBigChange(x: number, y: number): boolean {
+    const [lx, ly] = this.lastSent;
+    if (x === 0 && y === 0) return lx !== 0 || ly !== 0;
+    if (lx === 0 && ly === 0) return true;
+    return Math.hypot(x - lx, y - ly) >= BIG_CHANGE;
+  }
+
   private scheduleMove() {
+    const [x, y] = this.effective();
+    if (this.isBigChange(x, y)) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+      return this.flushMove();
+    }
     const wait = this.lastSentAt + MOVE_INTERVAL_MS - this.now();
     if (wait <= 0) return this.flushMove();
     this.timer ??= setTimeout(() => {
