@@ -58,3 +58,10 @@ Actual recorded sample: Bari versus Real Armor, seeds 1–100, both seat assignm
 Public adapter entry points: packages/games/action/index.js and packages/games/cards/index.js. Authority/replay helpers: packages/sim/index.js. Runner entry points: services/runner/index.js and cli.js. Usage and controls are documented in packages/sim/README.md and services/runner/README.md.
 
 v0.1 has no per-match hero assignment field. Current compatible selection lives in immutable GameData.gameRules.seats, so seat-swapped variants have distinct dataHash values. Analysis must preserve this distinction. A proposed optional v0.2 config extension is recorded in packages/games/action/CHANGE_REQUEST.md; shared spec/fixtures were not changed. No remaining execution blocker.
+
+## Expanded engine verification
+
+Round 3 added finished-match replay archives, a data-only fifth arena hero, a private next-card peek deck,
+worker progress, deterministic view events, and ten-second seat reconnect. Assignments use the approved optional
+MatchConfig.options; the older seat-in-GameData limitation above is resolved. See services/room/REPORT.md for
+per-step results and current measured runs. Full node:test run: 68 passed, 0 failed, 5 no-network listener skips.

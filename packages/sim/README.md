@@ -1,27 +1,32 @@
 # Deterministic simulation
 
-Node ESM, built-ins only. `xorshift32` implements xorshift32-v1 (nonzero uint32 seeds). Game adapters are pure;
-Authority owns state and accepted frame history. Controllers and bots use the same ActionInput. Authority deduplicates
-accepted sequence receipts and rejects late, stale, unauthorized, or additional same-tick input. Turn timeout frames
-are supplied only by the authority. Adapters never use I/O or wall clocks during step.
+Node ESM, built-ins only. xorshift32-v1 uses nonzero uint32 seeds. Adapters never read a clock or ambient RNG.
+Authority owns state, receipts and accepted frame history; clients and bots share ActionInput.
+Rejected inputs never mutate simulation state. Arrays/entities have stable order; full state uses integer values.
 
-`node --test packages/contracts/*.test.js packages/sim/*.test.js packages/games/action/*.test.js
-packages/games/cards/*.test.js services/runner/*.test.js`
+Game adapters: packages/games/action/index.js and packages/games/cards/index.js. Each exports describe, initial,
+observe, legalActions, step, outcome, statistics, hash, data, makeConfig and adapter.
+Character/deck assignments use MatchConfig.options.assignments; seat swaps share an immutable content hash.
+Data is frozen when pinned. Snapshots require exact config/version/content identity and a registered payload schema.
 
-Public adapter entry points: packages/games/action/index.js and packages/games/cards/index.js. Each exports describe,
-initial, observe, legalActions, step, outcome, statistics, hash, data, makeConfig, and adapter. Data is frozen when
-pinned. Snapshot restore requires exact config/content identity, a registered payload schema, and a matching full-state
-hash. Events with empty audience are public.
+Arena has five heroes and four action IDs. `move {moveX, moveY}` uses integer axes -1000..1000 independently of
+startup/recovery/cooldown. `melee`, `projectile`, `guard` use bounded aimX/aimY. Projectile aim cannot be zero.
+A frame accepts one move plus one attack per seat with distinct sequences; other games accept one action per seat.
+Movement consumes no cooldown and is absent from attack uses/opportunities. Stun/elimination prevents movement;
+missing movement is neutral. Attacks, projectiles, shield, stun and hit-stop use logical integer timing.
+Matches end by tick 1800. Nightcrow uses existing archetypes/effects; spirit_arrow remains the only guard bypass.
+Positions use thousandths of a world unit. Ordered public events do not alter state hashes or consume RNG.
 
-Action controls have three IDs: melee, projectile, guard. Optional moveX/moveY axes are integer -1000..1000 on each
-accepted action; projectile requires aimX/aimY in that domain with a nonzero aim vector. Missing input is neutral.
-Positions use thousandths of a world unit. Timings and cooldowns use logical ticks; hit-stop freezes simulation timers
-while the logical tick still advances. Maximum match length is 1800 ticks; surviving players draw at the cap. Weight
-tiers and the spirit_arrow guard exception are content data. Character selection is in gameRules.seats; see the action
-CHANGE_REQUEST for its v0.1 limitation.
+Cards use `play {handIndex, slot?}` and `end_turn {}`. Energy is 3, hand size 5, summon slots 2.
+A summon uses the next free dense slot. Six rounds give each seat six resolved turns; remaining health breaks ties.
+Only end_turn/zero energy/authoritative timeout advances turnId; every accepted play still increments tick.
+The nightcrow deck has mechanical crows and a generic peek effect. Opponent deck order/hand/RNG stay private;
+a peek reveals one next-card identity only to its owner until the next turn boundary. Hypnosis rules are unchanged.
 
-Cards use play {handIndex, slot?} and end_turn {}. A summon must specify the next free dense slot (0 or 1). Energy
-starts at 3 each turn, hand refills to 5, and summons attack at their owner's turn end. Card plays increment tick, but
-only end_turn/zero energy/timeout increments turnId. Six rounds give each seat six turns. Remaining health breaks ties
-after round six. Only a viewer's own hand is exposed; deck order and RNG remain private. Hypnosis bypasses ward and
-sleeps enemy summons for one enemy turn.
+`replay(adapter, config, data, frames)` restores the same full state from accepted frames.
+`replayOnData(adapter, recording, data)` changes the content pin for counterfactual playback; illegal frames throw.
+No input is silently replaced. Replays must retain both base and candidate data hashes for meaningful comparison.
+
+Run `node --test`. The 100-seed test independently generates input streams and compares 1000 tick hashes twice,
+using legal high health values to keep combat active throughout. Readability tests enforce 120 columns here and
+in packages/games. Room and worker usage is documented under services/room and services/runner.

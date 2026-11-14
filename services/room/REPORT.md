@@ -118,7 +118,7 @@ runner tests passed without opening sockets, including original final-hash repro
 Completed N. Nightcrow is arena content only: crow_dive, crow_swarm, wing_shield use existing archetypes/tiers/effects
 and ordinary damage/shield values; no character-specific branches or new guard bypass. Only spirit_arrow retains
 its existing intended arena exception. The nightcrow card deck has mechanical_crows summons and a generic peek
-card; revealed next-card identity is private to its owner and expires on the next draw. No boosted matchup rule.
+card; revealed next-card identity is private to its owner and expires at the next turn boundary. No boosted matchup rule.
 The expanded schemas remain closed and bounded; deck references and assignments are validated.
 All 28 selected game/sim/runner/replay tests passed, including the 100-seed matrix with all five heroes (48.33 s).
 
@@ -160,3 +160,23 @@ Per the current no-network instruction, the five real-listener integration tests
 opt-in: `RUN_SOCKET_TESTS=1 node --test services/room/room.test.js`. They are skipped in the default suite, not
 claimed as verified. New socket-free tests invoke the actual message handlers and HTTP request listener using
 in-memory streams, while real worker_threads and persistence still execute.
+
+## Final verification
+
+Round 3 completed in order H → N → G → I → K. No dependency additions, network calls, listener attempts, pushes
+or commits in this round. Only packages/contracts, packages/sim, packages/games and services files were written.
+`node --test`: 68 passed, 0 failed, 5 explicitly skipped listener tests; total duration 49,019.812 ms. The final
+five-hero determinism matrix compared every tick of two independent 1,000-tick runs across 100 seeds and passed
+in 48,752.986875 ms. A final documentation-only readability check also passed; all game/sim lines stay <=120.
+
+After all code changes, re-ran `node services/runner/benchmark.js`: 300/300 valid matches across 15 matchups,
+0 invalid, 2 workers, recorded at 2026-11-14T03:54:09.218Z. Elapsed 6,273.891542 ms; throughput 47.817212 matches/s
+including worker startup. This final measurement supersedes the earlier step-N throughput for the final code.
+Actual result/metadata artifacts remain recorded-roster-match-results.json and recorded-roster-metrics.json under
+services/runner. Metadata includes game/simulation/content identity; all 300 results share exactly one dataHash.
+
+Start remains `node services/room/cli.js`. New usage/protocol details are in services/room/README.md.
+Real TCP/WebSocket transport remains unverified here: five opt-in tests require an environment permitting local
+listeners. Production handlers, HTTP routing/static confinement, workers, persistence/retries, replay, progress,
+private events and reconnect behavior were exercised without network. The UI transport/build remains the web
+owner's responsibility; this task did not change apps/web.

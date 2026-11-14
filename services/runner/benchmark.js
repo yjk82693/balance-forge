@@ -9,6 +9,9 @@ const jobs = rosterJobs(),
   });
 const details = {
   ...metrics,
+  gameId: results[0].config.gameId,
+  simVersion: results[0].config.simVersion,
+  dataHash: results[0].config.dataHash,
   createdAt: new Date().toISOString(),
   matchups: 15,
   includesMirrors: true,
