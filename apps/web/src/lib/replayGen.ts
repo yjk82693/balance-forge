@@ -1,4 +1,4 @@
-import type { ArenaPayload, Observation } from "./contract";
+import type { ArenaPayload, GameEvent, Observation } from "./contract";
 
 /**
  * Deterministic visual replay for ?mock=1 and for the side-by-side compare view when the API sends no replay.
@@ -109,4 +109,42 @@ export function frameAt(frame: number, v: Version, seed: number, heroes: [string
       projectiles,
     },
   };
+}
+
+/**
+ * The step events the real server would send with this frame (same kinds and payload fields as the room server's
+ * state.view `events`), derived by comparing a frame with the one before it. No events on the first frame of a loop.
+ */
+export function eventsAt(frame: number, v: Version, seed: number, heroes: [string, string]): GameEvent[] {
+  const f = frame % loopLength(v);
+  if (f === 0) return [];
+  const prev = frameAt(frame - 1, v, seed, heroes).payload;
+  const cur = frameAt(frame, v, seed, heroes).payload;
+  const events: GameEvent[] = [];
+  const add = (kind: string, payload: GameEvent["payload"]) =>
+    events.push({ eventId: `${frame * 6}:${events.length}`, audience: [], kind, payload });
+  for (const pr of cur.projectiles) {
+    if (!prev.projectiles.some((q) => q.id === pr.id)) add("projectile.spawn", { ...pr });
+  }
+  for (const pr of prev.projectiles) {
+    if (!cur.projectiles.some((q) => q.id === pr.id)) {
+      add("projectile.expire", { id: pr.id, owner: pr.owner, x: pr.x, y: pr.y, reason: "hit" });
+    }
+  }
+  for (const e of cur.entities) {
+    const before = prev.entities.find((q) => q.id === e.id);
+    if (!before || e.hp >= before.hp) continue;
+    const source = e.id === "p1" ? "p2" : "p1";
+    add("combat.hit", {
+      source,
+      target: e.id,
+      amount: before.hp - e.hp,
+      guarded: false,
+      ignoresGuard: false,
+      x: e.x,
+      y: e.y,
+    });
+    if (e.hp === 0) add("combat.ko", { playerId: e.id, source, x: e.x, y: e.y });
+  }
+  return events;
 }

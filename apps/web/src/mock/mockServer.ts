@@ -14,7 +14,7 @@ import {
   fixtureStateView,
 } from "../lib/fixtures";
 import { makeEnvelope } from "./envelope";
-import { frameAt, loopLength, FRAME_MS as REPLAY_MS, type Version } from "../lib/replayGen";
+import { eventsAt, frameAt, loopLength, FRAME_MS as REPLAY_MS, type Version } from "../lib/replayGen";
 import { CardsMock } from "./mockCards";
 
 /** Actions the mock accepts; mirrors the action ids in fixtures (melee, projectile, guard) plus movement. */
@@ -306,9 +306,19 @@ export class MockServer {
       fixtureMatchConfig.seed,
       [heroOf("p1", "bari"), heroOf("p2", "real_armor")],
     );
+    const heroes: [string, string] = [heroOf("p1", "bari"), heroOf("p2", "real_armor")];
+    const events = eventsAt(this.frame, this.version, fixtureMatchConfig.seed, heroes);
     for (const s of this.sessions.values()) {
       const view: Observation = { ...obs, viewerId: s.role === "display" ? "display" : (s.seat ?? "p?") };
-      this.to(s, "state.view", { observation: view, viewHash: fixtureStateView.payload.viewHash });
+      // Same fields as the room server's state.view.
+      this.to(s, "state.view", {
+        observation: view,
+        tick: obs.tick,
+        turnId: 0,
+        epoch: 1,
+        viewHash: fixtureStateView.payload.viewHash,
+        events,
+      });
     }
     if (this.frame >= loopLength(this.version) - 1) {
       this.stopReplay();

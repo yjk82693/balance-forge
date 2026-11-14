@@ -22,7 +22,7 @@ const fmtTime = (ticks: number) => {
 export function Arena({ gameId }: { gameId: string }) {
   const game = gameById(gameId);
   const { transport, status } = useTransport("display");
-  const { room, observation, result } = useRoom(transport);
+  const { room, observation, events, result } = useRoom(transport);
   const srv = useServerState(status);
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const cardsObs =
@@ -63,7 +63,7 @@ export function Arena({ gameId }: { gameId: string }) {
           {gameId === "hero_cards" ? (
             <CardsCanvas observation={cardsObs} names={names} />
           ) : (
-            <ArenaCanvas observation={arenaObs} />
+            <ArenaCanvas observation={arenaObs} events={events} />
           )}
           <div className="arena-overlay">
             {gameId !== "hero_cards" && <span className="badge">sample replay</span>}

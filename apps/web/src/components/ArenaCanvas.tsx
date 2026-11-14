@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import Phaser from "phaser";
-import type { Observation } from "../lib/contract";
+import type { GameEvent, Observation } from "../lib/contract";
 import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath } from "../lib/assets";
 import { HEROES } from "../lib/heroes";
 import { ARENA_H, ARENA_W, ArenaScene, type ArenaAssets } from "./ArenaScene";
@@ -17,7 +17,15 @@ const EFFECTS = [
 ];
 
 /** Phaser canvas for Hero Arena. Pass the newest Observation; the scene redraws from it. */
-export function ArenaCanvas({ observation, compact = false }: { observation: Observation | null; compact?: boolean }) {
+export function ArenaCanvas({
+  observation,
+  events,
+  compact = false,
+}: {
+  observation: Observation | null;
+  events?: GameEvent[];
+  compact?: boolean;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
   const latest = useRef<Observation | null>(observation);
@@ -64,8 +72,10 @@ export function ArenaCanvas({ observation, compact = false }: { observation: Obs
   }, [compact]);
 
   useEffect(() => {
+    // Events first: the scene reads them when the matching observation arrives.
+    game.current?.registry.set("events", events);
     if (observation) game.current?.registry.set("obs", observation);
-  }, [observation]);
+  }, [observation, events]);
 
   return <div ref={host} className="arena-host" role="img" aria-label="Hero Arena match view" />;
 }

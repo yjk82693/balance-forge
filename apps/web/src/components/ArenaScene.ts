@@ -1,10 +1,19 @@
 import Phaser from "phaser";
-import type { ArenaEntity, Observation } from "../lib/contract";
+import type { ArenaPayload, GameEvent, Observation } from "../lib/contract";
 import { HERO_HEX, heroName } from "../lib/heroes";
 import { blip, reducedMotion } from "../lib/sfx";
 
 export const ARENA_W = 1152;
 export const ARENA_H = 648;
+
+/** Signature effect per hero, used when a projectile kind has no sprite of its own. */
+const HERO_FX: Record<string, string> = {
+  bari: "spirit_arrow",
+  real_armor: "blaster_burst",
+  daewi: "hypnosis_ripple",
+  sepia: "tentacle_lash",
+  nightcrow: "crow_dive",
+};
 
 // Art-space playfield rectangle (1920x1080); multiplied by the canvas scale at runtime.
 const FIELD_ART = { x: 150, y: 140, w: 1770 - 150, h: 1000 - 140 };
@@ -61,6 +70,7 @@ export class ArenaScene extends Phaser.Scene {
   private arrows = new Map<string, Phaser.GameObjects.Image>();
   private trails: Trail[] = [];
   private latest: Observation | null = null;
+  private handled = new WeakSet<GameEvent[]>();
   private ready = false;
   private onData = (_p: unknown, key: string, value: Observation | null) => {
     if (key === "obs" && value) this.apply(value);
@@ -106,8 +116,14 @@ export class ArenaScene extends Phaser.Scene {
   private apply(obs: Observation) {
     this.latest = obs;
     if (!this.ready) return;
-    const payload = obs.payload as import("../lib/contract").ArenaPayload;
+    const payload = obs.payload as ArenaPayload;
     const { arena, entities, projectiles } = payload;
+    // state.view carries the step's events (hit, guard, KO, projectile spawn/expire). Use them when present, so
+    // damage numbers are the real amounts; without them, fall back to watching HP change.
+    const events = this.registry.get("events") as GameEvent[] | undefined;
+    const fresh = Array.isArray(events) && !this.handled.has(events);
+    const useEvents = Array.isArray(events);
+    if (fresh) this.handled.add(events);
 
     entities.forEach((e, i) => {
       const p = this.toScreen(e.x, e.y, arena);
@@ -130,8 +146,10 @@ export class ArenaScene extends Phaser.Scene {
       v.ty = p.y;
       v.sprite.setFlipX(e.facing === 180);
       const max = e.maxHp ?? 100;
-      if (e.hp < v.hp) this.onHit(e, v, v.hp - e.hp, max);
-      else if (e.hp > v.hp) this.revive(v);
+      if (!useEvents && e.hp < v.hp) {
+        this.onHit(v, v.hp - e.hp, max, false);
+        if (e.hp <= 0) this.onKO(v);
+      } else if (e.hp > v.hp) this.revive(v);
       v.hp = e.hp;
       this.updateHud(e.id, e.hero, e.hp, max);
     });
@@ -140,13 +158,13 @@ export class ArenaScene extends Phaser.Scene {
     for (const pr of projectiles) {
       live.add(pr.id);
       const p = this.toScreen(pr.x, pr.y, arena);
-      const tex = this.textures.exists(`fx:${pr.kind}`) ? `fx:${pr.kind}` : "fx:spirit_arrow";
-      let img = this.arrows.get(pr.id);
       const owner = entities.find((e) => e.id === pr.owner);
+      const tex = this.effectTexture(pr.kind, owner?.hero);
+      let img = this.arrows.get(pr.id);
       if (!img) {
         img = this.add.image(p.x, p.y - 40 * this.k, tex).setScale(0.3 * this.k).setDepth(5000);
         this.arrows.set(pr.id, img);
-        this.sfx("shoot");
+        if (!useEvents) this.sfx("shoot");
       }
       img.setPosition(p.x, p.y - 40 * this.k).setFlipX(owner?.facing === 180);
       if (!this.reduce) this.addTrail(img, tex);
@@ -157,6 +175,65 @@ export class ArenaScene extends Phaser.Scene {
         this.arrows.delete(id);
       }
     }
+    if (fresh) this.playEvents(events, entities);
+  }
+
+  /** Effect sprite for a projectile kind; unknown kinds (the generic "projectile") use the owner's signature effect. */
+  private effectTexture(kind: string, hero: string | undefined): string {
+    const own = `fx:${kind}`;
+    if (this.textures.exists(own)) return own;
+    const byKind: Record<string, string> = { crow_swarm: "crow_dive" };
+    const fallback = byKind[kind] ?? (hero ? HERO_FX[hero] : undefined) ?? "spirit_arrow";
+    return `fx:${fallback}`;
+  }
+
+  /** Cosmetic reactions to the step's events; none of this changes what is shown as state. */
+  private playEvents(events: GameEvent[], entities: { id: string; hero: string; maxHp?: number }[]) {
+    const hero = (id: unknown) => entities.find((e) => e.id === id);
+    for (const ev of events) {
+      const p = ev.payload;
+      switch (ev.kind) {
+        case "combat.hit": {
+          const v = this.heroes.get(String(p.target));
+          const max = hero(p.target)?.maxHp ?? 100;
+          if (v) this.onHit(v, Number(p.amount) || 0, max, p.guarded === true);
+          break;
+        }
+        case "combat.guard": {
+          const v = this.heroes.get(String(p.playerId));
+          if (v) this.flashEffect(v, p.phase === "block" ? "hit_spark" : "shield_bubble", 0.4);
+          this.sfx("guard");
+          break;
+        }
+        case "combat.ko": {
+          const v = this.heroes.get(String(p.playerId));
+          if (v) this.onKO(v);
+          break;
+        }
+        case "projectile.spawn":
+          this.sfx("shoot");
+          break;
+        case "action.used":
+          if (p.actionId === "melee") this.meleeSwing(String(p.playerId), hero(p.playerId)?.hero);
+          break;
+        default:
+          break; // projectile.expire: the sprite already disappears with the observation
+      }
+    }
+  }
+
+  private flashEffect(v: HeroView, name: string, scale: number) {
+    const key = `fx:${name}`;
+    if (!this.textures.exists(key)) return;
+    const k = this.k;
+    const img = this.add.image(v.sprite.x, v.sprite.y - 60 * k, key).setScale(scale * k).setDepth(9000).setAlpha(0.9);
+    this.tweens.add({ targets: img, alpha: 0, scale: img.scale * 1.3, duration: 260, onComplete: () => img.destroy() });
+  }
+
+  /** Melee swing: the blade slash, or Nightcrow's crow dive. */
+  private meleeSwing(playerId: string, hero: string | undefined) {
+    const v = this.heroes.get(playerId);
+    if (v && !this.reduce) this.flashEffect(v, hero === "nightcrow" ? "crow_dive" : "blade_slash", 0.45);
   }
 
   private addTrail(src: Phaser.GameObjects.Image, tex: string) {
@@ -171,7 +248,7 @@ export class ArenaScene extends Phaser.Scene {
 
   // ---- feel ----
 
-  private onHit(e: ArenaEntity, v: HeroView, dmg: number, max: number) {
+  private onHit(v: HeroView, dmg: number, max: number, guarded: boolean) {
     const tier = dmg >= 0.25 * max ? 3 : dmg >= 0.14 * max ? 2 : 1; // weight tier from how hard it hit
     const k = this.k;
     v.sprite.setTintFill(0xffffff);
@@ -189,10 +266,10 @@ export class ArenaScene extends Phaser.Scene {
       duration: 220,
       onComplete: () => spark.destroy(),
     });
-    this.floatText(v.sprite.x, v.sprite.y - 120 * k, `-${dmg}`, tier >= 3 ? "#FF6B6B" : "#E6EBF1", 20 + tier * 4);
+    const color = guarded ? "#5AB0FF" : tier >= 3 ? "#FF6B6B" : "#E6EBF1";
+    this.floatText(v.sprite.x, v.sprite.y - 120 * k, `-${dmg}`, color, 20 + tier * 4);
     if (!this.reduce) this.cameras.main.shake(100 + tier * 50, 0.0015 * tier);
     this.sfx("hit");
-    if (e.hp <= 0) this.onKO(v);
   }
 
   private onKO(v: HeroView) {

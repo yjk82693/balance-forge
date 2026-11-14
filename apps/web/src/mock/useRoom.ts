@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import type { MatchConfig, MatchResult, Observation, RoomStatusPayload } from "../lib/contract";
+import type { GameEvent, MatchConfig, MatchResult, Observation, RoomStatusPayload } from "../lib/contract";
 import type { Transport } from "./transport";
 
 export interface RoomView {
   room: RoomStatusPayload | null;
   observation: Observation<unknown> | null;
+  /** events that came with the latest state.view (undefined if the server sent none) */
+  events: GameEvent[] | undefined;
   /** from match.started, if seen */
   config: MatchConfig | null;
   result: MatchResult | null;
@@ -12,11 +14,17 @@ export interface RoomView {
   lastAckSeq: number;
 }
 
+const eventsOf = (payload: unknown): GameEvent[] | undefined => {
+  const events = (payload as { events?: unknown })?.events;
+  return Array.isArray(events) ? (events as GameEvent[]) : undefined;
+};
+
 /** Folds server envelopes into view state; used by display and controller screens alike. */
 export function useRoom(transport: Transport | null): RoomView {
   const [v, setV] = useState<RoomView>({
     room: null,
     observation: null,
+    events: undefined,
     config: null,
     result: null,
     error: null,
@@ -39,6 +47,7 @@ export function useRoom(transport: Transport | null): RoomView {
           return setV((s) => ({
             ...s,
             observation: (env.payload as { observation: Observation<unknown> }).observation,
+            events: eventsOf(env.payload),
           }));
         case "match.started":
           return setV((s) => ({ ...s, config: (env.payload as { config: MatchConfig }).config, result: null }));

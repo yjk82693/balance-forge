@@ -113,6 +113,14 @@ export interface Observation<P = ArenaPayload> {
   payload: P;
 }
 
+/** Transient step event carried by state.view (`events`): combat.hit/guard/ko, projectile.spawn/expire, action.used. */
+export interface GameEvent {
+  eventId: string;
+  audience: string[];
+  kind: string;
+  payload: Record<string, unknown>;
+}
+
 export interface Envelope<P = unknown> {
   protocolVersion: "0.1";
   type: string;
