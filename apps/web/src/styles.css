@@ -2243,3 +2243,16 @@ table.sr-only { display: block; max-width: 1px; }
   pointer-events: none;
 }
 .phone .debug-readout { top: auto; bottom: 90px; right: var(--space-3); }
+
+/* matchup picker */
+.matchup { display: inline-flex; align-items: center; gap: var(--space-2); }
+.matchup-side { display: inline-flex; align-items: center; gap: var(--space-2); }
+.select {
+  background: var(--surface-2);
+  color: var(--text-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+}
+.select:disabled { opacity: 0.5; }

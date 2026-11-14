@@ -50,6 +50,50 @@ function CopyButton({ facts }: { facts: ResultFacts }) {
 }
 
 /** The finished run in one card: outlier, patch, holdout and verdict, then other findings from the recorded roster. */
+function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
+  return (
+    <div>
+      <p className="caption">AI patch</p>
+      {patch.length === 0 && <p className="small text-2">This run has no patch.</p>}
+      {patch.map((p) => (
+        <p key={p.field} className="result-line">
+          {p.field} <span className="old">{p.old ?? "—"}</span> → <span className="new">{p.next}</span>{" "}
+          <span className="badge origin">{p.origin}</span>{" "}
+          {p.valid !== undefined && (
+            <span className={`status ${p.valid ? "ok" : "bad"}`}>
+              <span className="dot" />
+              {p.valid ? "valid" : "failed validation"}
+            </span>
+          )}
+        </p>
+      ))}
+      {patch[0]?.rationale && <p className="caption result-why">{patch[0].rationale}</p>}
+    </div>
+  );
+}
+
+function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verdict">) {
+  return (
+    <div>
+      <p className="caption">Holdout on the patched data</p>
+      {holdout ? (
+        <p className="result-line">{rateLine(holdout)}</p>
+      ) : (
+        <p className="small text-2">No holdout run in this data.</p>
+      )}
+      {verdict && (
+        <p className="result-line">
+          <span className={`status ${VERDICT_COPY[verdict.kind].cls}`}>
+            <span className="dot" />
+            {verdict.label}
+          </span>
+          {verdict.reasons[0] && <span className="caption"> {verdict.reasons[0]}</span>}
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface CardProps {
   facts: ResultFacts;
   title?: string;
@@ -58,7 +102,7 @@ interface CardProps {
 }
 
 export function ResultCard({ facts, title = "Result", children }: CardProps) {
-  const { outlier, evidence, patch, holdout, verdict, others, othersNote } = facts;
+  const { fair, outlier, evidence, patch, holdout, verdict, others, othersNote } = facts;
   return (
     <section className="panel result" aria-labelledby="result-title">
       <div className="panel-head">
@@ -73,9 +117,18 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
         <CopyButton facts={facts} />
       </div>
       {children}
+      {facts.note && <p className="caption">{facts.note}</p>}
       <div className="result-grid">
         <div>
-          <p className="caption">{outlier?.isOutlier ? "Outlier" : "Most lopsided matchup"}</p>
+          {fair && (
+            <p className="result-line">
+              <span className="status ok">
+                <span className="dot" />
+                Fair: no patch needed
+              </span>
+            </p>
+          )}
+          <p className="caption">{fair ? "Matchup" : outlier?.isOutlier ? "Outlier" : "Most lopsided matchup"}</p>
           {outlier ? (
             <p className="result-line">
               {outlier.matchup} · {rateLine(outlier)}
@@ -85,40 +138,8 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
           )}
           {evidence && <p className="caption result-why">{evidence}</p>}
         </div>
-        <div>
-          <p className="caption">AI patch</p>
-          {patch.length === 0 && <p className="small text-2">This run has no patch.</p>}
-          {patch.map((p) => (
-            <p key={p.field} className="result-line">
-              {p.field} <span className="old">{p.old ?? "—"}</span> → <span className="new">{p.next}</span>{" "}
-              <span className="badge origin">{p.origin}</span>{" "}
-              {p.valid !== undefined && (
-                <span className={`status ${p.valid ? "ok" : "bad"}`}>
-                  <span className="dot" />
-                  {p.valid ? "valid" : "failed validation"}
-                </span>
-              )}
-            </p>
-          ))}
-          {patch[0]?.rationale && <p className="caption result-why">{patch[0].rationale}</p>}
-        </div>
-        <div>
-          <p className="caption">Holdout on the patched data</p>
-          {holdout ? (
-            <p className="result-line">{rateLine(holdout)}</p>
-          ) : (
-            <p className="small text-2">No holdout run in this data.</p>
-          )}
-          {verdict && (
-            <p className="result-line">
-              <span className={`status ${VERDICT_COPY[verdict.kind].cls}`}>
-                <span className="dot" />
-                {verdict.label}
-              </span>
-              {verdict.reasons[0] && <span className="caption"> {verdict.reasons[0]}</span>}
-            </p>
-          )}
-        </div>
+        {!fair && <PatchColumn patch={patch} />}
+        {!fair && <HoldoutColumn holdout={holdout} verdict={verdict} />}
         {others && (
           <div>
             <p className="caption">

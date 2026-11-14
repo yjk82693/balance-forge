@@ -73,7 +73,7 @@ export function useRunner() {
     setLive({ done: result.baseline.validMatches, total: result.baseline.validMatches, rows: null });
   };
 
-  const start = async () => {
+  const start = async (heroes?: [string, string]) => {
     if (busy) return;
     setBusy(true);
     setError(null);
@@ -84,7 +84,7 @@ export function useRunner() {
     const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
-      const result = await runPlaytest(MATCHES, controller.signal, onProgress);
+      const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes);
       finish(result);
       if (!mock) saveRun(result);
     } catch (e) {

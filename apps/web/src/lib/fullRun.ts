@@ -172,6 +172,7 @@ export function runFromFull(raw: unknown): PlaytestRun | null {
         ? { verdict: kind, reasons: Array.isArray(verdictRaw?.reasons) ? verdictRaw.reasons.map(String) : [] }
         : undefined,
     runId: top.reportId,
+    fair: raw.fair === true ? true : undefined,
     evidence: evidenceFrom(raw.evidence) ?? undefined,
     replay: replayFrom(raw.replay),
   };

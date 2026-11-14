@@ -5,6 +5,7 @@ import { LivePanel } from "../components/LivePanel";
 import { MatchesTable, type MatchRow } from "../components/MatchesTable";
 import { ReportPanel } from "../components/ReportPanel";
 import { ResultCard } from "../components/ResultCard";
+import { MatchupPicker } from "../components/MatchupPicker";
 import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
 import { VersionToggle } from "../components/VersionToggle";
@@ -22,6 +23,7 @@ import {
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { loadJustPlayed } from "../lib/justPlayed";
+import { currentMatchup, saveChosen, type Matchup } from "../lib/matchup";
 import { loadRecordedRun } from "../lib/recorded";
 import { buildFacts } from "../lib/resultCard";
 import { useReplaySource } from "../lib/replaySource";
@@ -66,6 +68,13 @@ export function Dashboard() {
   useEffect(() => {
     loadRecordedRun().then(setRoster, () => setRoster(null));
   }, []);
+  // The matchup to run: a person's pick, else the match just played, else the recorded roster's largest outlier.
+  const [picked, setPicked] = useState<Matchup | null>(null);
+  const matchup = useMemo(() => picked ?? currentMatchup(played, roster), [picked, played, roster]);
+  const choose = (m: Matchup) => {
+    saveChosen(m);
+    setPicked(m);
+  };
   const facts = useMemo(() => (run ? buildFacts(run, roster) : null), [run, roster]);
 
   const canPatch = !!run?.patched;
@@ -93,7 +102,13 @@ export function Dashboard() {
             Versions
           </a>
           <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
-          <button className="btn primary" onClick={start} aria-busy={busy} aria-disabled={busy}>
+          <MatchupPicker
+            value={matchup}
+            onChange={choose}
+            disabled={busy || mock}
+            title={mock ? "Sample data: the matchup is fixed." : undefined}
+          />
+          <button className="btn primary" onClick={() => start(matchup)} aria-busy={busy} aria-disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
             {busy ? "Bots are playing…" : "Let the bots play"}
           </button>
@@ -163,7 +178,7 @@ export function Dashboard() {
               notice={notice}
               elapsed={elapsed}
               showPatched={showPatched}
-              onRun={start}
+              onRun={() => start(matchup)}
             />
           </div>
         </main>

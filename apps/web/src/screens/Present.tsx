@@ -12,6 +12,8 @@ import { fixtureMatchConfig } from "../lib/fixtures";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
+import { currentMatchup } from "../lib/matchup";
+import { loadRecordedRun } from "../lib/recorded";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
@@ -38,15 +40,21 @@ export function Present({ auto }: { auto: boolean }) {
   const mock = isMockMode();
   const { run, busy, live, error, notice, elapsed, start } = useRunner();
   const started = useRef(false);
+  const roster = useRef<PlaytestRun | null>(null);
+  // Same matchup as the dashboard: a pick made there, else the match just played, else the roster's largest outlier.
+  const matchup = useCallback(() => currentMatchup(loadJustPlayed(), roster.current), []);
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    void start();
-  }, [start]);
+    loadRecordedRun()
+      .then((r) => (roster.current = r))
+      .catch(() => null)
+      .finally(() => void start(matchup()));
+  }, [start, matchup]);
 
   const finished = !!run && !busy;
   const ready = useCallback((id: SceneId) => id !== "bots" || finished || !!error, [finished, error]);
-  const restart = useCallback(() => void start(), [start]);
+  const restart = useCallback(() => void start(matchup()), [start, matchup]);
   const history = useHistory(finished);
   const scenes = useMemo(() => scenesFor(!!history && history.list.versions.length > 1), [history]);
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
@@ -245,8 +253,22 @@ function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, 
   );
 }
 
+/** The server called the matchup fair: there is no patch, holdout or verdict to show. */
+function FairCard() {
+  return (
+    <section className="present-card">
+      <p className="present-verdict status ok" role="status">
+        <span className="dot" />
+        Fair
+      </p>
+      <p className="h3 text-2">No patch needed for this matchup.</p>
+    </section>
+  );
+}
+
 function PatchScene({ run, busy, error }: { run: PlaytestRun | null; busy: boolean; error: string | null }) {
   if (!run) return <Waiting what="the patch" error={busy ? null : error} />;
+  if (run.fair) return <FairCard />;
   if (!run.proposal) {
     return (
       <section className="present-card">
@@ -286,6 +308,7 @@ function ReplayScene({ run, busy }: { run: PlaytestRun | null; busy: boolean }) 
 /** The badge shows what the run's verdict says, never text written in advance. */
 function VerdictScene({ run, busy, error }: { run: PlaytestRun | null; busy: boolean; error: string | null }) {
   if (!run) return <Waiting what="the verdict" error={busy ? null : error} />;
+  if (run.fair) return <FairCard />;
   if (!run.verdict) {
     return (
       <section className="present-card">
