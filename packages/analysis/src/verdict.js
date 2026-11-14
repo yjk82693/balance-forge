@@ -1,8 +1,9 @@
 // Re-verification: compare the Report before and after a patch (matched seeds, same bot policy).
-// Gates: at least one target moves toward 50% beyond noise, no target moves away beyond noise, no NEW extreme matchup
-// above 65% (n >= 200), invalid-match rate does not increase. Human acceptance is still required; this is a demo gate.
+// Gates: at least one target moves toward its target rate beyond noise, no target moves away beyond noise, no NEW
+// extreme matchup (more than 15 points from its own target, n >= 200), invalid-match rate does not increase. A row's
+// target is 50% unless a design intent gave it another one (`row.target`). Human acceptance is still required.
 export const MIN_GAMES = 200;
-export const EXTREME = 0.65;
+export const EXTREME = 0.15; // points from the matchup's own target (65% for an even matchup, as before)
 
 import { HUMAN_PREFIX } from './extras.js';
 import { assertReport } from './input-check.js';
@@ -18,8 +19,10 @@ const pct = (x) => `${(x * 100).toFixed(1)}%`;
 const describe = (row) => `${pct(row.winRate)} [${pct(row.ci95[0])}-${pct(row.ci95[1])}] n=${row.games}`;
 // A target "really moved" when it got 5 points closer to (or further from) 50% at n >= minGames (minus float slack).
 const SHRINK = 0.05 - 1e-9;
-const dist = (row) => Math.abs(row.winRate - 0.5);
-const worstSide = (row) => Math.max(row.winRate, 1 - row.winRate);
+const targetOf = (row) => row.target ?? 0.5;
+const dist = (row) => Math.abs(row.winRate - targetOf(row));
+// How far a row is from its own target, to six decimals (so exactly 15 points is not "more than 15").
+const deviation = (row) => Math.round(dist(row) * 1e6) / 1e6;
 const invalidRate = (r) => {
   const total = r.validMatches + r.invalidMatches;
   return total === 0 ? 0 : r.invalidMatches / total;
@@ -27,15 +30,15 @@ const invalidRate = (r) => {
 
 /**
  * How one target moved. Both sides are measured against noise, never against a point estimate alone:
- * - improved: at least minGames after the patch, closer to 50%, and either the new 95% interval lies wholly on the
- *   50% side of the old one, or the distance to 50% shrank by at least 5 points;
+ * - improved: at least minGames after the patch, closer to the target (50% unless an intent says otherwise), and either
+ *   the new 95% interval lies wholly on the target's side of the old one, or the distance to it shrank by 5 points;
  * - worse: the same test in the other direction;
  * - unchanged: everything else, including too few games to say.
  */
 export function targetOutcome(b, a, minGames = MIN_GAMES) {
   if (a.games < minGames) return 'unchanged';
-  const closer = dist(b) - dist(a); // positive: toward 50%
-  const above = b.winRate > 0.5;
+  const closer = dist(b) - dist(a); // positive: toward the target
+  const above = b.winRate > targetOf(b);
   const ciToward = above ? a.ci95[1] < b.ci95[0] : a.ci95[0] > b.ci95[1];
   const ciAway = above ? a.ci95[0] > b.ci95[1] : a.ci95[1] < b.ci95[0];
   if (closer > 0 && (ciToward || closer >= SHRINK)) return 'improved';
@@ -44,16 +47,16 @@ export function targetOutcome(b, a, minGames = MIN_GAMES) {
 }
 
 /**
- * Bot rows of `after` that are extreme (a side above 65%, n >= minGames) and were not already extreme on the same side
- * in `before`. Flipping sides counts as new. Mirror rows count too.
+ * Bot rows of `after` that are extreme (more than 15 points from their own target, n >= minGames) and were not already
+ * extreme on the same side in `before`. Flipping sides counts as new. Mirror rows count too.
  */
 export function newExtremeRows(before, after, minGames = MIN_GAMES) {
   const beforeBy = new Map(before.rows.filter(isBot).map((r) => [r.dimension, r]));
   return after.rows.filter(isBot).filter((row) => {
-    if (row.games < minGames || worstSide(row) <= EXTREME) return false;
+    if (row.games < minGames || deviation(row) <= EXTREME) return false;
     const prev = beforeBy.get(row.dimension);
-    const sameSide = prev && (prev.winRate > 0.5) === (row.winRate > 0.5);
-    return !(prev && sameSide && prev.games >= minGames && worstSide(prev) > EXTREME);
+    const sameSide = prev && (prev.winRate > targetOf(prev)) === (row.winRate > targetOf(row));
+    return !(prev && sameSide && prev.games >= minGames && deviation(prev) > EXTREME);
   });
 }
 
@@ -116,7 +119,7 @@ export function judgePatch(before, after, options = {}) {
     }
   }
 
-  // Hard failures: more invalid matches, a new extreme matchup, or any target that moved away from 50% beyond noise.
+  // Hard failures: more invalid matches, a new extreme matchup, or a target that moved away from its target.
   let rejected = false;
   if (invalidRate(after) > invalidRate(before)) {
     reasons.push('invalid-match rate increased');
@@ -128,18 +131,18 @@ export function judgePatch(before, after, options = {}) {
   }
   const worse = targets.filter((t) => t.outcome === 'worse');
   if (worse.length) {
-    reasons.push(`${worse.length} target(s) moved away from 50% beyond noise`);
+    reasons.push(`${worse.length} target(s) moved away from their target beyond noise`);
     rejected = true;
   }
   if (rejected) return out('rejected', targets);
 
   const improved = targets.filter((t) => t.outcome === 'improved');
   if (improved.length) {
-    reasons.push(`${improved.length} of ${targets.length} target(s) moved toward 50% beyond noise; none moved away, `
-      + 'no new extreme matchup and no more invalid matches');
+    reasons.push(`${improved.length} of ${targets.length} target(s) moved toward their target beyond noise; none moved `
+      + 'away, no new extreme matchup and no more invalid matches');
     return out('accepted', targets);
   }
   if (thin) return out('inconclusive', targets);
-  reasons.push('no target moved toward 50% beyond noise');
+  reasons.push('no matchup moved toward its target beyond noise');
   return out('rejected', targets);
 }

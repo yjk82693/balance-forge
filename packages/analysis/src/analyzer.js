@@ -2,15 +2,20 @@ import { wilson95, round6 } from './wilson.js';
 import { heroMatchup, isCountable } from './group.js';
 import { fail } from './errors.js';
 import { assertMatchResults } from './input-check.js';
+import { bandOf, normalizeIntent, targetFor } from './intent.js';
 
 export const BAND_LOW = 0.45;
 export const BAND_HIGH = 0.55;
 export const MIN_GAMES_FOR_OUTLIER = 30; // docs/ui-tone.md: n < 30 suppresses the outlier rule
 
-/** Outlier: whole 95% interval outside the 45-55% band AND n >= 30. */
-export function isOutlier(ci95, games) {
+/**
+ * Outlier: the whole 95% interval outside the fair band AND n >= 30. The band is 45-55% around an even target; with a
+ * design intent it is +-5 points around the matchup's intended rate.
+ */
+export function isOutlier(ci95, games, target = 0.5) {
   if (games < MIN_GAMES_FOR_OUTLIER) return false;
-  return ci95[1] < BAND_LOW || ci95[0] > BAND_HIGH;
+  const [low, high] = target === 0.5 ? [BAND_LOW, BAND_HIGH] : bandOf(target);
+  return ci95[1] < low || ci95[0] > high;
 }
 
 /** Zero opportunities -> null (unavailable, not 0%). */
@@ -33,10 +38,13 @@ const defaultFocal = (result) => heroMatchup(result)?.focal ?? result.config.pla
  * Win rate = focal wins / valid games
  * (draws count as games, not wins). Invalid matches are counted apart and excluded from every rate.
  * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string, focalOf(result) -> playerId,
+ * intent (design intent: rows then carry `target` and `deltaToTarget`, the outlier rule uses the target, and the
+ * report records `intentVersion`),
  * allowMixed (skip the single-dataHash check; used for human matches, which may span content versions).
  */
 export function analyze(results, options = {}) {
   assertMatchResults(results);
+  const intent = options.intent === undefined ? null : normalizeIntent(options.intent);
   const dimensionOf = options.dimensionOf ?? defaultDimension;
   const focalOf = options.focalOf ?? defaultFocal;
   const valid = results.filter(isCountable);
@@ -71,15 +79,18 @@ export function analyze(results, options = {}) {
   const rows = [...groups.keys()].sort().map((dimension) => {
     const g = groups.get(dimension);
     const ci95 = wilson95(g.wins, g.games);
+    const winRate = round6(g.wins / g.games);
+    const target = intent ? targetFor(dimension, intent) : 0.5;
     return {
       dimension,
       wins: g.wins,
       games: g.games,
-      winRate: round6(g.wins / g.games),
+      winRate,
       ci95,
       uses: g.uses,
       opportunities: g.opportunities,
-      outlier: isOutlier(ci95, g.games),
+      outlier: isOutlier(ci95, g.games, target),
+      ...(intent ? { target, deltaToTarget: round6(winRate - target) } : {}),
     };
   });
 
@@ -94,5 +105,6 @@ export function analyze(results, options = {}) {
     invalidMatches,
     draws,
     rows,
+    ...(intent ? { intentVersion: intent.version } : {}),
   };
 }

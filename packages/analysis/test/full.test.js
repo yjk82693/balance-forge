@@ -242,3 +242,47 @@ test('change labels and old values for hero stats come from the character, not f
     { path: '/characters/1/speed', label: 'Real Armor · Speed', old: 85, new: 100 },
     { path: '/characters/0/health', label: 'Bari · Health', old: 540, new: 600 }]);
 });
+
+// --- Gemini: the default model, and a fallback that says why ---
+import { createAdapter } from '../src/index.js';
+import { DEFAULT_GEMINI_MODEL } from '../src/llm.js';
+
+const geminiReply = (proposal) => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{
+  text: JSON.stringify(proposal) }] } }] }) });
+
+test('the default Gemini model is the flash-lite alias, and GEMINI_MODEL still overrides it', async () => {
+  assert.equal(DEFAULT_GEMINI_MODEL, 'gemini-flash-lite-latest');
+  const urls = [];
+  const fetch = async (url) => { urls.push(url); return geminiReply({ baseDataHash: BASE_HASH, rationale: 'model',
+    replacements: [{ path: '/moves/1/power', value: 70 }] }); };
+  await createAdapter('gemini', { GEMINI_API_KEY: 'k' }, { fetch }).proposeWithOrigin(
+    (await runFull(input())).value.baseline);
+  await createAdapter('gemini', { GEMINI_API_KEY: 'k', GEMINI_MODEL: 'my-model' }, { fetch })
+    .proposeWithOrigin((await runFull(input())).value.baseline);
+  assert.match(urls[0], /\/models\/gemini-flash-lite-latest:generateContent$/);
+  assert.match(urls[1], /\/models\/my-model:generateContent$/);
+});
+
+test('a failing model shows in the response: origin fallback with the reason, never a key or a body', async () => {
+  const failures = [
+    [async () => ({ ok: false, status: 404, json: async () => ({ error: 'secret body' }) }), /HTTP 404/],
+    [async () => { throw new Error('connect ECONNREFUSED'); }, /ECONNREFUSED/],
+    [async () => ({ ok: true, json: async () => ({}) }), /empty model response/]];
+  for (const [fetch, reason] of failures) {
+    const adapter = createAdapter('gemini', { GEMINI_API_KEY: 'super-secret-key' }, { fetch, retries: 0 });
+    const out = await runFull(input({ adapter }));
+    assert.equal(out.ok, true, JSON.stringify(out));
+    const { proposal } = out.value;
+    assert.equal(proposal.origin, 'fallback');
+    assert.match(proposal.fallbackReason, reason);
+    assert.doesNotMatch(JSON.stringify(out.value), /super-secret-key|secret body/);
+    assert.ok(proposal.replacements.length > 0); // the offline proposal still goes through validation and the holdout
+  }
+  const answer = geminiReply({ baseDataHash: BASE_HASH, rationale: 'model',
+    replacements: [{ path: '/moves/1/power', value: 70 }] });
+  const fine = await runFull(input({ adapter: createAdapter('gemini', { GEMINI_API_KEY: 'k' },
+    { fetch: async () => answer }) }));
+  assert.equal(fine.value.proposal.origin, 'gemini');
+  assert.equal('fallbackReason' in fine.value.proposal, false); // no reason when the model answered
+  assert.equal('fallbackReason' in (await runFull(input())).value.proposal, false); // the offline adapter has none
+});

@@ -3,7 +3,7 @@
 // Returns { ok: true, value: body } or an error result; body has the shared-interface fields except the transport
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
-import { buildDiagnosis, diagnosisMatchups, focusMatchupOf } from '../src/diagnose.js';
+import { buildDiagnosis, diagnosisMatchups, focusMatchupOf, heroOverallRows } from '../src/diagnose.js';
 import { buildEvidence } from '../src/evidence.js';
 import { heroMatchup } from '../src/group.js';
 import { isMirror } from '../src/verdict.js';
@@ -86,8 +86,9 @@ function patchData({ baseData, rootData, hashData, applyPatch }, proposal) {
  * holdout run.
  * `validation`, `patched` and `patchedDataHash` are null because nothing was proposed or applied.
  */
-function fairBody(baseline, evidence, holdoutSeedSetId) {
+function fairBody(baseline, evidence, holdoutSeedSetId, extra = {}) {
   return {
+    ...extra,
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
@@ -134,13 +135,13 @@ async function diagnoseStep(input, baseline) {
     fail('DATA_HASH_MISMATCH', 'diagnosis results are not pinned to the baseline data');
   }
   const own = baselineResults.filter((r) => heroMatchup(r)?.dimension === matchup);
-  const built = buildDiagnosis([...own, ...results], { matchup, data: baseData });
+  const built = buildDiagnosis([...own, ...results], { matchup, data: baseData, intent: input.intent });
   return built.ok ? { value: built.value } : { error: built.error };
 }
 
 async function runFullUnsafe(input) {
   const { baselineResults, humanResults = [], baseData, adapter, runHoldout, holdoutSeeds, hashData,
-    botPolicyVersion, seedSetId, holdoutSeedSetId, elapsedMs, createdAt } = input ?? {};
+    botPolicyVersion, seedSetId, holdoutSeedSetId, elapsedMs, createdAt, intent } = input ?? {};
   if (typeof runHoldout !== 'function') fail('INVALID_INPUT', 'runHoldout must be a function');
   if (typeof hashData !== 'function') fail('INVALID_INPUT', 'hashData must be a function');
   if (baseData === null || typeof baseData !== 'object') fail('INVALID_INPUT', 'baseData must be an object');
@@ -148,17 +149,23 @@ async function runFullUnsafe(input) {
   assertMatchResults(humanResults, 'human results');
   checkSeeds(baselineResults, holdoutSeeds);
 
-  const options = { ...(botPolicyVersion && { botPolicyVersion }), ...(seedSetId && { seedSetId }) };
+  const options = { ...(botPolicyVersion && { botPolicyVersion }), ...(seedSetId && { seedSetId }),
+    ...(intent !== undefined && { intent }) };
   const base = analyzePhase(baselineResults, { reportId: 'r-baseline', ...options });
   const baseline = withExtras(addHumanRows(base.report, humanResults), { createdAt, elapsedMs });
   const evidence = buildEvidence(base.counted, baseline);
   const evidenceBody = evidence.ok ? evidence.value : null; // null only if it could not be built
+  // With a design intent the body says which one it used, and flags a hero far from 50% overall.
+  const intentFields = intent === undefined ? {} : { intentVersion: baseline.intentVersion,
+    heroOverall: heroOverallRows(base.counted) };
   const flagged = baseline.rows.some((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r));
-  if (!flagged) return fairBody(baseline, evidenceBody, holdoutSeedSetId);
+  if (!flagged) return fairBody(baseline, evidenceBody, holdoutSeedSetId, intentFields);
   const diagnosed = await diagnoseStep(input, baseline);
-  const context = { rootData: input.rootData ?? baseData, ...(diagnosed.value ? { diagnosis: diagnosed.value } : {}) };
+  const context = { rootData: input.rootData ?? baseData, ...(intent !== undefined && { intent }),
+    ...(diagnosed.value ? { diagnosis: diagnosed.value } : {}) };
   const step = await proposeStep(baseline, adapter, { context });
   const body = {
+    ...intentFields,
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
@@ -167,7 +174,9 @@ async function runFullUnsafe(input) {
     diagnosis: diagnosed.value ?? null,
     ...(diagnosed.error ? { diagnosisError: diagnosed.error } : {}),
     fair: false,
+    // A fallback says why the model's answer was not used (never a body or a key), so it shows in the response.
     proposal: { ...step.proposal, origin: step.origin,
+      ...(step.fallbackReason ? { fallbackReason: step.fallbackReason } : {}),
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },
     validation: { ok: step.ok, errors: step.errors },
     humanMatches: baseline.humanMatches ?? 0,
@@ -183,7 +192,7 @@ async function runFullUnsafe(input) {
   }
   checkHoldoutResults(holdoutResults, holdoutSeeds, patchedDataHash);
   const out = verifyStep(baseline, holdoutResults, { reportId: 'r-patched', botPolicyVersion: baseline.botPolicyVersion,
-    seedSetId: body.holdoutSeedSetId,
+    seedSetId: body.holdoutSeedSetId, ...(intent !== undefined && { intent }),
     verdict: { holdoutSeeds: true } });
   const { verdict, reasons, targets } = out.verdict;
   return { ...body, patchedDataHash, patched: withExtras(out.report, { createdAt }), verdict: { verdict, reasons,

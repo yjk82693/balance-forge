@@ -127,3 +127,18 @@ test('stand-in applies a hero stat recommendation and stays within 40% of the ro
     [{ path: '/characters/1/health', value: 650 }]);
   assert.equal((await run('/characters/1/health', 'up', 80)).proposal.replacements[0].value, 700);
 });
+
+test('the recorded history file is { summary, versions } with the run facts and the needs_designer list', async () => {
+  const { buildHistoryFile, DEFAULT_FILE } = await import('../pipeline/record-auto-history.js');
+  const file = buildHistoryFile({ result: { stoppedBecause: 'rounds', needs_designer: [{ hero: 'daewi', tried: [],
+    evidence: 'x' }] }, history: [{ origin: 'base' }, { origin: 'fake' }], rounds: 3,
+  botPolicyVersion: 'scripted-0.2.1', simVersion: 'arena-0.1.1', createdAt: '2026-11-14T12:00:00.000Z' });
+  assert.deepEqual(Object.keys(file), ['summary', 'versions']);
+  assert.deepEqual(file.summary, { stoppedBecause: 'rounds', rounds: 3,
+    needs_designer: [{ hero: 'daewi', tried: [], evidence: 'x' }], botPolicyVersion: 'scripted-0.2.1',
+    simVersion: 'arena-0.1.1', createdAt: '2026-11-14T12:00:00.000Z' });
+  assert.equal(file.versions.length, 2);
+  const none = buildHistoryFile({ result: { stoppedBecause: 'fair' }, history: [], rounds: 1 });
+  assert.deepEqual(none.summary.needs_designer, []);
+  assert.equal(DEFAULT_FILE, 'services/runner/recorded-auto-history.json');
+});

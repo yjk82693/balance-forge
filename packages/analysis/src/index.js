@@ -17,3 +17,4 @@ export * as safe from './safe.js';
 export * from './input-check.js';
 export * from './evidence.js';
 export * from './diagnose.js';
+export * from './intent.js';
