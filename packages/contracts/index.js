@@ -30,7 +30,7 @@ export function validateSchema(s,v) {
  if(s.type==='string') { if(typeof v!=='string'||Array.from(v).length<(s.minLength??0)||Array.from(v).length>(s.maxLength??Infinity)||(s.pattern&&!new RegExp(s.pattern).test(v))) fail(); }
  if(typeof v==='number'&&(v<(s.minimum??-Infinity)||v>(s.maximum??Infinity))) fail();
  if(s.type==='array') { if(!Array.isArray(v)||v.length<(s.minItems??0)||v.length>(s.maxItems??Infinity)) fail(); if(s.uniqueItems&&new Set(v.map(x=>JSON.stringify(x))).size!==v.length) fail(); v.forEach(x=>validateSchema(s.items,x)); }
- if(s.type==='object') { if(!v||typeof v!=='object'||Array.isArray(v)) fail(); if(Object.keys(v).length>(s.maxProperties??Infinity)) fail(); for(const k of s.required??[]) if(!Object.hasOwn(v,k)) fail(); for(const k of Object.keys(v)) { if(Object.hasOwn(s.properties??{},k)) validateSchema(s.properties[k],v[k]); else if(s.additionalProperties===false) fail(); } }
+ if(s.type==='object') { if(!v||typeof v!=='object'||Array.isArray(v)) fail(); if(Object.keys(v).length<(s.minProperties??0)||Object.keys(v).length>(s.maxProperties??Infinity)) fail(); for(const k of s.required??[]) if(!Object.hasOwn(v,k)) fail(); for(const k of Object.keys(v)) { if(s.propertyNames) validateSchema(s.propertyNames,k); if(Object.hasOwn(s.properties??{},k)) validateSchema(s.properties[k],v[k]); else if(s.additionalProperties===false) fail(); else if(s.additionalProperties && typeof s.additionalProperties==='object') validateSchema(s.additionalProperties,v[k]); } }
  return v;
 }
 export const validate=(name,value)=>validateSchema(schema.$defs[name]??(()=>{throw Error('INVALID_SCHEMA');})(),value);

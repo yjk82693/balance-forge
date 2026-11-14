@@ -29,16 +29,21 @@ export function validateConfig(config, data, descriptor, simVersion) {
   if (config.gameId !== data.gameId || config.gameId !== descriptor.gameId || config.simVersion !== simVersion || config.mode !== descriptor.mode) fail('VERSION_MISMATCH');
   if (hash(data) !== config.dataHash) fail('HASH_MISMATCH');
   if (config.players.length < descriptor.minPlayers || config.players.length > descriptor.maxPlayers) fail();
+  if (config.options) {
+    const ids=Object.keys(config.options.assignments);
+    if(ids.length!==config.players.length || ids.some(id=>!config.players.includes(id))) fail();
+  }
   return config;
 }
 export function validateOutcome(outcome, players) {
   validate('Outcome', outcome);
   if (outcome.winners.some(id => !players.includes(id)) || (outcome.status === 'win') !== (outcome.winners.length > 0)) fail();
 }
-export function validateFrame(state, frame, players, specs, legal) {
+export function validateFrame(state, frame, players, specs, legal, allowMoveAndAttack = false) {
   validate('InputFrame', frame);
   if (frame.tick !== state.tick + 1) fail('LATE_INPUT');
-  unique(frame.actions.map(x => x.playerId));
+  unique(frame.actions.map(x => allowMoveAndAttack ? JSON.stringify([x.playerId,x.actionId==='move'?'move':'attack']) : x.playerId));
+  unique(frame.actions.map(x=>JSON.stringify([x.playerId,x.seq])));
   const sorted = [...frame.actions].sort((a,b) => compareIds(a.playerId,b.playerId) || a.seq-b.seq);
   if (frame.actions.some((x,i) => x !== sorted[i])) fail();
   for (const action of frame.actions) {

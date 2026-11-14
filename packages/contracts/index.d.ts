@@ -1,7 +1,7 @@
 // Wire types derived from the normative v0.1 schema.
 export type ActionInput = { "playerId": string; "seq": number; "tick": number; "turnId": number; "actionId": string; "params": Record<string, unknown> };
 export type InputFrame = { "tick": number; "actions": Array<ActionInput>; "systemInputs": Array<{ "kind": "system.timeout"; "playerId": string; "turnId": number }> };
-export type MatchConfig = { "contractVersion": "0.1"; "schemaVersion": 1; "gameId": string; "simVersion": string; "dataHash": string; "seed": number; "players": Array<string>; "mode": "realtime" | "turn" | "party"; "maxTicks": number };
+export type MatchConfig = { "contractVersion": "0.1"; "schemaVersion": 1; "gameId": string; "simVersion": string; "dataHash": string; "seed": number; "players": Array<string>; "mode": "realtime" | "turn" | "party"; "maxTicks": number; "options"?: { assignments: Record<string, string> } };
 export type State = { "tick": number; "rng": number; "turnId": number; "payload": Record<string, unknown> };
 export type Observation = { "tick": number; "viewerId": string; "payload": Record<string, unknown> };
 export type Outcome = { "status": "running" | "win" | "draw"; "winners": Array<string>; "reason": string };
@@ -15,7 +15,7 @@ export type Move = { "id": string; "nameKey": string; "archetype": "melee" | "pr
 export type Character = { "id": string; "nameKey": string; "health": number; "speed": number; "moveIds": Array<string>; "authorKey": string; "licenseKey": string };
 export type GameData = { "v": 1; "gameId": string; "characters": Array<Character>; "moves": Array<Move>; "weightTiers": Array<{ "startupTicks": number; "recoveryTicks": number; "cooldownTicks": number; "stunTicks": number; "knockback": number; "hitStopTicks": number }>; "tuning": { "damageScalePermille": number }; "gameRules": Record<string, unknown>; "provenance": Array<{ "authorKey": string; "licenseKey": string; "source": string; "noticeKey": string }> };
 export type MatchResult = { "matchId": string; "config": MatchConfig; "outcome": Outcome; "statistics": Statistics; "finalStateHash": string; "valid": boolean; "errorCode": string };
-export type Report = { "reportId": string; "gameId": string; "simVersion": string; "dataHash": string; "botPolicyVersion": string; "seedSetId": string; "validMatches": number; "invalidMatches": number; "draws": number; "rows": Array<{ "dimension": string; "wins": number; "games": number; "winRate": number; "ci95": Array<number>; "uses": number; "opportunities": number; "outlier": boolean }> };
+export type Report = { elapsedMs?: number; recorded?: boolean; createdAt?: string; humanMatches?: number; "reportId": string; "gameId": string; "simVersion": string; "dataHash": string; "botPolicyVersion": string; "seedSetId": string; "validMatches": number; "invalidMatches": number; "draws": number; "rows": Array<{ "dimension": string; "wins": number; "games": number; "winRate": number; "ci95": Array<number>; "uses": number; "opportunities": number; "outlier": boolean }> };
 export type PatchProposal = { "baseDataHash": string; "replacements": Array<{ "path": string; "value": number }>; "rationale": string };
 export declare const schema: Record<string, unknown>;
 export declare function canonicalJson(value: unknown): string;
@@ -28,7 +28,7 @@ export declare function validateGamePayload(gameId: string, schemaVersion: numbe
 export declare function validateData(data: GameData): GameData;
 export declare function validateConfig(config: MatchConfig, data: GameData, descriptor: GameDescriptor, simVersion: string): MatchConfig;
 export declare function validateOutcome(outcome: Outcome, players: string[]): void;
-export declare function validateFrame(state: State, frame: InputFrame, players: string[], specs: ActionSpec[], legal: (action: ActionInput) => boolean): void;
+export declare function validateFrame(state: State, frame: InputFrame, players: string[], specs: ActionSpec[], legal: (action: ActionInput) => boolean, allowMoveAndAttack?: boolean): void;
 export declare function restoreSnapshot(snapshot: Snapshot, config: MatchConfig): State;
 export declare function applyPatch(data: GameData, proposal: PatchProposal): GameData;
 export declare function compareIds(a: string, b: string): number;

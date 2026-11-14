@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runBatch,pairedJobs,runMatch} from './index.js';
 import {validate} from '../../packages/contracts/index.js';
-test('paired fixed seeds swap heroes in immutable content and retain seat IDs',()=>{
+test('paired fixed seeds swap config hero assignments with one immutable content hash and retain seat IDs',()=>{
  const jobs=pairedJobs({seeds:[7,19]});assert.equal(jobs.length,4);
- for(let i=0;i<4;i+=2){assert.equal(jobs[i].config.seed,jobs[i+1].config.seed);assert.deepEqual(jobs[i].data.gameRules.seats,[...jobs[i+1].data.gameRules.seats].reverse());assert.deepEqual(jobs[i].config.players,jobs[i+1].config.players);}
+ for(let i=0;i<4;i+=2){assert.equal(jobs[i].config.seed,jobs[i+1].config.seed);assert.equal(jobs[i].config.options.assignments.p1,jobs[i+1].config.options.assignments.p2);assert.equal(jobs[i].config.options.assignments.p2,jobs[i+1].config.options.assignments.p1);assert.equal(jobs[i].config.dataHash,jobs[i+1].config.dataHash);assert.equal('seats' in jobs[i].data.gameRules,false);assert.deepEqual(jobs[i].config.players,jobs[i+1].config.players);}
 });
 test('worker counts preserve ordered results and fixture MatchResult shape',async()=>{
  const jobs=pairedJobs({seeds:[11,22]});
