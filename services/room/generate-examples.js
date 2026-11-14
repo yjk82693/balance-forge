@@ -128,6 +128,21 @@ export async function collectExamples() {
       }
     });
     await capture('retainedData', `/v1/data/hero_arena?dataHash=${original.dataHash}`);
+    const patched = examples.http.applyPatch.response.body.dataHash;
+    await capture('versions', '/v1/versions/hero_arena');
+    await capture('version', `/v1/versions/hero_arena/${patched}`);
+    await capture('approve', `/v1/versions/hero_arena/${patched}/approve`, {
+      method: 'POST',
+      body: {}
+    });
+    // A real auto run takes minutes, so only its request validation is captured here (see README, Round 8).
+    await capture('autoInvalid', '/v1/playtest/auto', {
+      method: 'POST',
+      body: {
+        gameId: 'hero_arena',
+        rounds: 9
+      }
+    });
     const run = await capture('playtest', '/v1/playtest/run', {
       method: 'POST',
       body: {
@@ -137,6 +152,12 @@ export async function collectExamples() {
     });
     examples.websocket.server['playtest.progress'] = host.take('playtest.progress');
     await capture('results', run.resultsPath);
+    await capture('select', '/v1/data/hero_arena/select', {
+      method: 'POST',
+      body: {
+        dataHash: original.dataHash
+      }
+    });
     const dist = join(root, 'dist');
     await mkdir(dist);
     await writeFile(join(dist, 'index.html'), '<h1>Protocol example</h1>');

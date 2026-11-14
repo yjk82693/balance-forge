@@ -601,3 +601,24 @@ Current /auto wiring follows Tony's FINAL interface, but the real module is abse
 The README/example-capture updates and real runAuto integration verification are not finished. Detailed file,
 function, interface, route and test handoff is in services/room/HANDOFF.md. No further feature edits started.
 Stopping at Tony's request for an outside commit/merge and continuation by another agent. No commits or network.
+
+### Round 8 continuation (handoff steps 1–8)
+
+- Main (with the real packages/analysis/pipeline/auto.js, per-hero rounds) merged into jokerstar/engine.
+- Bug fixed (versions.js): a repeated record returned the stored one unchanged, so the analysis final roster
+  check's downgrade to rejected was dropped and a regressed version stayed approved. A repeat may now only
+  downgrade to rejected; provenance and approval are never rewritten or upgraded. Test: versions.test.js
+  "a later rejection of a stored version is kept; a repeat can never upgrade it" (failed before the fix).
+- Interface check against the real runAuto: allMatchups as sorted "a vs b" strings incl. mirrors matches; progress
+  is reported before each runBatch; the final check uses round rounds+1 and phase final_check, within the engine's
+  bounds (round ≤ rounds+1, seed slot 6).
+- auto-real.test.js: real runAuto through POST /v1/playtest/auto, fake adapter, real workers, temp storage. It
+  asserts parent chaining, ledger = response, no live-LLM origin, approval-required leaves records unapproved,
+  auto never selects. Opt-in (RUN_REAL_AUTO=1) because it measured 510 s total (rounds:2 ≈ 364 s, rounds:1 ≈ 147 s)
+  on this laptop; it passed 2/2 when run.
+- README "Round 8 versions" documents the five routes; examples.json regenerated with versions, version, approve,
+  select and autoInvalid captures; documentation.test.js asserts them.
+- Verification: node --test → 231 tests, 222 pass, 0 fail, 9 opt-in skips. Socket/E2E (RUN_SOCKET_TESTS=1) could not run here:
+  listen EPERM on 127.0.0.1 in this sandbox. Not verified: the two E2E scenarios and room TCP tests.
+- Limits: a live auto run takes minutes, so the 2-minute demo should use a recorded history. The 400 message for
+  a bad /auto body mentions actions.available, which is misleading for an HTTP route (not changed).

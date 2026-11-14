@@ -642,3 +642,53 @@ The same authority checks hero selection against that roster. Cards retain start
 After one human phone joins, the host can send match.start payload {"bot":true}. The empty seat is filled by the
 standard bot, exposed as bot:true in that seat's status; results/replays mark botSeats:["p2"] (or the actual bot
 seat). Normal two-human/worker results omit botSeats. Reset drops the virtual seat; no human seat is replaced.
+
+## Round 8 versions
+
+Every retained data hash has one version record in data/versions/<gameId>.json under the storage root:
+{dataHash, parentHash|null, gameId, createdAt, origin, changes[{path,label?,old,new}], rationale, target|null,
+verdict|null, approved, note?}. The base data is the approved root. Nothing is deleted; revert = select an older
+hash. A repeated record never rewrites provenance or approval; the only change a repeat can make is a downgrade
+to rejected (the analysis final roster check uses this when a later scan shows a regression).
+
+### GET /v1/versions/:gameId
+
+Example: `curl -sS "$BASE/v1/versions/$GAME"` → 200 array of records, oldest first. Captured: http.versions.
+
+### GET /v1/versions/:gameId/:hash
+
+Example: `curl -sS "$BASE/v1/versions/$GAME/$HASH"` → 200 record plus diff (numeric changes vs parent).
+Unknown hash: 400 HASH_MISMATCH. Captured: http.version.
+
+### POST /v1/versions/:gameId/:hash/approve
+
+```sh
+curl -sS -H 'content-type: application/json' -d '{}' "$BASE/v1/versions/$GAME/$HASH/approve"
+```
+
+Body must be {}. Returns the approved record. Approval never selects data. Captured: http.approve.
+
+### POST /v1/data/:gameId/select
+
+```sh
+curl -sS -H 'content-type: application/json' -d "{\"dataHash\":\"$HASH\"}" "$BASE/v1/data/$GAME/select"
+```
+
+200 {gameId, dataHash}. Changes only the server-wide current version; rooms keep their own game.select pins.
+Captured: http.select.
+
+### POST /v1/playtest/auto
+
+```sh
+curl -sS -H 'content-type: application/json' \
+  -d '{"gameId":"hero_arena","rounds":2,"requireApproval":true}' "$BASE/v1/playtest/auto"
+```
+
+Body: gameId, optional fromHash (a recorded version), rounds 1–5 (default 3), requireApproval (default true).
+Runs the analysis runAuto: scan, one targeted patch per round, fresh holdout seeds, verdict, then one final roster
+check. 200 {records, stoppedBecause, finalCheck, headHash, runId, gameId[, error]}; stoppedBecause is one of
+fair, not_accepted, regression, rounds, awaiting_approval, error. playtest.progress messages carry round and phase
+(scan, holdout, final_check). Shares the run/full lock: a second concurrent run gets RATE_LIMITED. A real run with
+five heroes takes minutes (the opt-in integration test measured about 6 minutes for rounds:2), so examples.json
+captures only request validation (http.autoInvalid, 400 INVALID_SCHEMA for rounds:9). Real-module coverage:
+`RUN_REAL_AUTO=1 node --test services/room/auto-real.test.js`.

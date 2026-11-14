@@ -116,3 +116,25 @@ test('false diff metadata and missing parent hashes are rejected without overwri
   assert.throws(() => server.storage.recordVersion({ ...record, parentHash: 'f'.repeat(64) }), /HASH_MISMATCH/);
   assert.deepEqual(server.storage.versionStore.get('hero_arena', changed.dataHash), record);
 });
+test('a later rejection of a stored version is kept; a repeat can never upgrade it', async t => {
+  const { server } = await localServer(t);
+  const storage = server.storage, base = storage.get('hero_arena');
+  const { dataHash } = storage.patch('hero_arena', patch(base.dataHash, 72));
+  const stored = storage.versionStore.get('hero_arena', dataHash);
+  const accepted = { ...stored, verdict: { verdict: 'accepted', reasons: [] }, approved: true };
+  storage.versionStore.approve('hero_arena', dataHash);
+  const rejected = { ...accepted, verdict: { verdict: 'rejected', reasons: ['new extreme matchup'] },
+    approved: false, note: 'rejected by the final roster check' };
+  const kept = storage.recordVersion(rejected);
+  assert.equal(kept.verdict.verdict, 'rejected');
+  assert.equal(kept.approved, false);
+  assert.equal(storage.versionStore.get('hero_arena', dataHash).verdict.verdict, 'rejected');
+  assert.equal(storage.versionStore.get('hero_arena', dataHash).approved, false);
+  const upgrade = storage.recordVersion({ ...rejected, verdict: { verdict: 'accepted', reasons: [] }, approved: true });
+  assert.equal(upgrade.approved, false);
+  assert.equal(storage.versionStore.get('hero_arena', dataHash).verdict.verdict, 'rejected');
+  const relabel = storage.recordVersion({ ...rejected, rationale: 'rewritten history', origin: 'gemini' });
+  assert.equal(relabel.rationale, stored.rationale);
+  assert.equal(relabel.origin, stored.origin);
+  assert.equal(storage.versionStore.list('hero_arena').length, 2);
+});
