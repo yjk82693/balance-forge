@@ -389,3 +389,18 @@ because the web app is outside ownership.
 Still blocked: analysis pipeline full.js is absent from this worktree; its existing integration remains pending.
 The six live socket tests retain their opt-in gate. No tests were weakened, skipped or deleted this pass.
 No dependencies, networking, commits or pushes; leaving the report and measured metrics for external commits.
+
+## Polish 03:21
+
+Already clean; no additional code changes were needed after reviewing input validation, empty-data errors,
+disconnect handling and persistence. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated skips,
+1 existing pending integration; 47,639.992041 ms. Determinism and all 120-column readability checks pass.
+No dead-code or console-noise changes were needed. No tests were weakened, skipped or deleted this pass.
+
+Fresh runner measurement: 300 valid matches, 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+5,864.320833 ms, 51.156819 matches/s including worker startup, recorded 2026-11-14T08:21:16.585Z.
+Updated recorded runner metrics; deterministic match-result data is unchanged. No web build/FPS measurement
+because the web app is outside ownership.
+
+Existing blockers remain: analysis pipeline full.js is absent here, and live socket tests require their opt-in
+listener gate. No dependencies, network calls, commits or pushes. Stopping with report and metrics only.
