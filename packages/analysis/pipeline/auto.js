@@ -1,5 +1,6 @@
 // Automatic rounds over runFull. Round 1 scans `allMatchups` on `fromHash`; every later round scans only the matchups
-// the previous scan flagged. A round proposes a patch for the flagged matchups (mirror rows are never targets),
+// the previous scan flagged. A round proposes a patch for one hero's flagged matchups (see focusTargets; mirror rows
+// are never targets),
 // applies it, runs the holdout on fresh seeds for those matchups and judges it. One version record per round.
 //
 // input: { gameId, fromHash, data (the data for fromHash), rounds (1..5, default 3), requireApproval (default true),
@@ -24,6 +25,21 @@ const SEATS = 2; // every seed is played with both seat orders
 /** The root record of a version tree (the base data). */
 export const baseVersionRecord = ({ gameId, dataHash, createdAt }) => ({ dataHash, parentHash: null, gameId, createdAt,
   origin: 'base', changes: [], rationale: 'base data', target: null, verdict: null, approved: true });
+
+/**
+ * One round fixes one hero: the hero that appears in the most flagged matchups (ties: alphabetical order), and only the
+ * flagged matchups with that hero are the round's targets. A patch changes a few numbers, so asking it to improve every
+ * flagged matchup of the whole roster at once cannot be accepted. The other flagged matchups are scanned again in the
+ * next round.
+ */
+export function focusTargets(flagged) {
+  const counts = new Map();
+  for (const dimension of flagged) {
+    for (const hero of new Set(dimension.split(' vs '))) counts.set(hero, (counts.get(hero) ?? 0) + 1);
+  }
+  const focus = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || (a < b ? -1 : 1))[0];
+  return focus === undefined ? [] : flagged.filter((d) => d.split(' vs ').includes(focus));
+}
 
 const sideOf = (row) => ({ rate: row.winRate, ci95: row.ci95, games: row.games });
 
@@ -96,7 +112,8 @@ class Run {
     if (round === 1) this.firstScan = scanReport;
     const flagged = scanReport.rows.filter((r) => r.outlier && !isMirror(r)).map((r) => r.dimension);
     if (flagged.length === 0) return { stop: 'fair' };
-    const baselineResults = results.filter((r) => flagged.includes(heroMatchup(r)?.dimension));
+    const targets = focusTargets(flagged);
+    const baselineResults = results.filter((r) => targets.includes(heroMatchup(r)?.dimension));
     let patched = null;
     const full = await runFull({ baselineResults, baseData: head.data, adapter: input.adapter, hashData: input.hashData,
       applyPatch: (data, proposal) => {
@@ -104,7 +121,7 @@ class Run {
         return patched;
       }, holdoutSeeds: input.seedsFor(round, 'holdout'), botPolicyVersion: input.botPolicyVersion,
     seedSetId: input.seedSetId, createdAt: input.now(),
-    runHoldout: (patchedData, seeds) => this.batch(round, 'holdout', patched.dataHash, flagged, seeds) });
+    runHoldout: (patchedData, seeds) => this.batch(round, 'holdout', patched.dataHash, targets, seeds) });
     if (!full.ok) return { stop: 'error', error: full.error };
     const body = full.value;
     if (!body.validation.ok) return { stop: 'not_accepted', invalidPatch: body.validation };
@@ -114,7 +131,7 @@ class Run {
     const approved = accepted && !input.requireApproval;
     this.emit({ dataHash: body.patchedDataHash, parentHash: head.hash, gameId: input.gameId, createdAt: input.now(),
       origin: body.proposal.origin, changes: body.proposal.changes, rationale: body.proposal.rationale,
-      target: targetOf(flagged, this.reportOf(baselineResults, 'r-target'), body.patched), verdict: body.verdict,
+      target: targetOf(targets, this.reportOf(baselineResults, 'r-target'), body.patched), verdict: body.verdict,
       approved, ...(approved ? { note: 'auto-approved' } : {}) });
     if (!accepted) return { stop: 'not_accepted' };
     if (!approved) return { stop: 'awaiting_approval' };
@@ -125,7 +142,8 @@ class Run {
   async finalCheck(head) {
     const { input } = this;
     if (head.hash === input.fromHash && this.firstScan) return { report: this.firstScan, regression: [] };
-    const results = await this.batch(input.rounds + 1, 'final_check', head.hash, input.allMatchups, input.seedsFor(1, 'scan'));
+    const seeds = input.seedsFor(1, 'scan'); // like round 1, so the two scans compare like with like
+    const results = await this.batch(input.rounds + 1, 'final_check', head.hash, input.allMatchups, seeds);
     const report = this.reportOf(results, 'r-final');
     return { report, regression: this.firstScan ? newExtremeRows(this.firstScan, report) : [] };
   }
