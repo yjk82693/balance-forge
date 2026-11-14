@@ -211,3 +211,14 @@ assumptions in the report are resolved here; per-card action statistics remain a
 Added the thin deprecated chooseAction(view, seq, variant) alias, documented as "for old callers": it selects the
 attack from chooseActions without changing its seq, or returns null. chooseActions behavior/policy is unchanged.
 Two export/behavior tests passed, including movement-only and spectator cases.
+
+## Startup and readiness
+
+CLI startup now catches bind/configuration failures, closes partial server resources, writes a readable message
+without a stack trace, and sets exitCode=1. EADDRINUSE explicitly names the busy port and suggests choosing PORT.
+Added tests for that failure using the real RoomServer.listen error path, invalid-port failure through the actual
+CLI subprocess, listener permissions, and failed shutdown. Four startup tests passed without opening sockets.
+GET /v1/games is registered before listen and needed 0.50 ms after an in-memory listening event in this run;
+the test enforces <1 second. Existing opt-in TCP tests now also enforce the one-second readiness check after
+binding. Real OS port contention/TCP timing remains unverified under the no-network sandbox; no tests were skipped
+or weakened to obtain the new results. tools/demo.mjs was read from the integration worktree, not modified.

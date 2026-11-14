@@ -1,0 +1,1493 @@
+{
+  "note": "Protocol examples from a two-tick local handler run; not demo balance results. Tokens are redacted.",
+  "http": {
+    "games": {
+      "method": "GET",
+      "path": "/v1/games",
+      "response": {
+        "status": 200,
+        "body": [
+          {
+            "gameId": "hero_arena",
+            "titleKey": "game.hero_arena",
+            "mode": "realtime",
+            "minPlayers": 2,
+            "maxPlayers": 2,
+            "actions": [
+              {
+                "actionId": "melee",
+                "labelKey": "action.melee",
+                "control": "button",
+                "paramsSchema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "aimX": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "aimY": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "aimX",
+                    "aimY"
+                  ]
+                }
+              },
+              {
+                "actionId": "projectile",
+                "labelKey": "action.projectile",
+                "control": "button",
+                "paramsSchema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "aimX": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "aimY": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "aimX",
+                    "aimY"
+                  ]
+                }
+              },
+              {
+                "actionId": "guard",
+                "labelKey": "action.guard",
+                "control": "button",
+                "paramsSchema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "aimX": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "aimY": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "aimX",
+                    "aimY"
+                  ]
+                }
+              },
+              {
+                "actionId": "move",
+                "labelKey": "action.move",
+                "control": "axes",
+                "paramsSchema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "moveX": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "moveY": {
+                      "type": "integer",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "moveX",
+                    "moveY"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "gameId": "hero_cards",
+            "titleKey": "game.hero_cards",
+            "mode": "turn",
+            "minPlayers": 2,
+            "maxPlayers": 2,
+            "actions": [
+              {
+                "actionId": "play",
+                "labelKey": "cards.play",
+                "control": "choice",
+                "paramsSchema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "handIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 4
+                    },
+                    "slot": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "handIndex"
+                  ]
+                }
+              },
+              {
+                "actionId": "end_turn",
+                "labelKey": "cards.end_turn",
+                "control": "button",
+                "paramsSchema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {},
+                  "required": []
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "createRoom": {
+      "method": "POST",
+      "path": "/v1/rooms",
+      "request": {
+        "gameId": "hero_arena"
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "roomId": "3012328c-8d90-45d4-8562-672eb502a55a",
+          "joinCode": "DMES",
+          "hostToken": "REDACTED_PRIVATE_HOST_TOKEN_00000000",
+          "epoch": 1
+        }
+      }
+    },
+    "data": {
+      "method": "GET",
+      "path": "/v1/data/hero_arena",
+      "response": {
+        "status": 200,
+        "body": {
+          "data": {
+            "v": 1,
+            "gameId": "hero_arena",
+            "characters": [
+              {
+                "id": "bari",
+                "health": 540,
+                "speed": 120,
+                "moveIds": [
+                  "melee",
+                  "spirit_arrow",
+                  "guard"
+                ],
+                "nameKey": "hero.bari",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "real_armor",
+                "health": 700,
+                "speed": 85,
+                "moveIds": [
+                  "melee",
+                  "projectile",
+                  "guard"
+                ],
+                "nameKey": "hero.real_armor",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "daewi",
+                "health": 580,
+                "speed": 110,
+                "moveIds": [
+                  "heavy_melee",
+                  "projectile",
+                  "guard"
+                ],
+                "nameKey": "hero.daewi",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "sepia",
+                "health": 480,
+                "speed": 150,
+                "moveIds": [
+                  "melee",
+                  "projectile",
+                  "guard"
+                ],
+                "nameKey": "hero.sepia",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "nightcrow",
+                "health": 480,
+                "speed": 150,
+                "moveIds": [
+                  "crow_dive",
+                  "crow_swarm",
+                  "wing_shield"
+                ],
+                "nameKey": "hero.nightcrow",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              }
+            ],
+            "moves": [
+              {
+                "id": "melee",
+                "nameKey": "move.melee",
+                "archetype": "melee",
+                "power": 38,
+                "weightTier": 0,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "spirit_arrow",
+                "nameKey": "move.spirit_arrow",
+                "archetype": "projectile",
+                "power": 92,
+                "weightTier": 1,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "guard",
+                "nameKey": "move.guard",
+                "archetype": "guard",
+                "power": 0,
+                "weightTier": 0,
+                "effects": [
+                  {
+                    "operator": "shield",
+                    "amount": 100,
+                    "durationTicks": 20
+                  }
+                ],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "projectile",
+                "nameKey": "move.projectile",
+                "archetype": "projectile",
+                "power": 44,
+                "weightTier": 1,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "heavy_melee",
+                "nameKey": "move.heavy_melee",
+                "archetype": "melee",
+                "power": 62,
+                "weightTier": 2,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "crow_dive",
+                "nameKey": "move.crow_dive",
+                "archetype": "melee",
+                "power": 38,
+                "weightTier": 0,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "crow_swarm",
+                "nameKey": "move.crow_swarm",
+                "archetype": "projectile",
+                "power": 44,
+                "weightTier": 1,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "wing_shield",
+                "nameKey": "move.wing_shield",
+                "archetype": "guard",
+                "power": 0,
+                "weightTier": 0,
+                "effects": [
+                  {
+                    "operator": "shield",
+                    "amount": 100,
+                    "durationTicks": 20
+                  }
+                ],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              }
+            ],
+            "weightTiers": [
+              {
+                "startupTicks": 3,
+                "recoveryTicks": 8,
+                "cooldownTicks": 18,
+                "stunTicks": 3,
+                "knockback": 120,
+                "hitStopTicks": 1
+              },
+              {
+                "startupTicks": 6,
+                "recoveryTicks": 12,
+                "cooldownTicks": 32,
+                "stunTicks": 4,
+                "knockback": 160,
+                "hitStopTicks": 1
+              },
+              {
+                "startupTicks": 10,
+                "recoveryTicks": 18,
+                "cooldownTicks": 40,
+                "stunTicks": 7,
+                "knockback": 260,
+                "hitStopTicks": 2
+              },
+              {
+                "startupTicks": 15,
+                "recoveryTicks": 24,
+                "cooldownTicks": 55,
+                "stunTicks": 10,
+                "knockback": 360,
+                "hitStopTicks": 3
+              }
+            ],
+            "tuning": {
+              "damageScalePermille": 1000
+            },
+            "gameRules": {
+              "arena": {
+                "w": 16000,
+                "h": 9000
+              },
+              "meleeRange": 1900,
+              "projectileSpeed": 460,
+              "projectileRadius": 450,
+              "projectileLife": 45,
+              "guardDuration": 20,
+              "moveTraits": [
+                {
+                  "moveId": "spirit_arrow",
+                  "ignoresGuard": true
+                },
+                {
+                  "moveId": "projectile",
+                  "ignoresGuard": false
+                }
+              ]
+            },
+            "provenance": [
+              {
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event",
+                "source": "original-event-content",
+                "noticeKey": "content.original"
+              }
+            ]
+          },
+          "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd"
+        }
+      }
+    },
+    "replay": {
+      "method": "GET",
+      "path": "/v1/replay/human-16206091-21a5-4765-866a-76ae742ea4d4",
+      "response": {
+        "status": 200,
+        "body": {
+          "matchId": "human-16206091-21a5-4765-866a-76ae742ea4d4",
+          "seed": 1,
+          "config": {
+            "contractVersion": "0.1",
+            "schemaVersion": 1,
+            "gameId": "hero_arena",
+            "simVersion": "arena-0.1.1",
+            "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+            "seed": 1,
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "mode": "realtime",
+            "maxTicks": 2,
+            "options": {
+              "assignments": {
+                "p1": "bari",
+                "p2": "real_armor"
+              }
+            }
+          },
+          "frames": [
+            {
+              "tick": 1,
+              "actions": [
+                {
+                  "playerId": "p1",
+                  "seq": 0,
+                  "tick": 1,
+                  "turnId": 0,
+                  "actionId": "move",
+                  "params": {
+                    "moveX": 1000,
+                    "moveY": 0
+                  }
+                }
+              ],
+              "systemInputs": []
+            },
+            {
+              "tick": 2,
+              "actions": [],
+              "systemInputs": []
+            }
+          ],
+          "finalStateHash": "f58928cf68d234f8554d7eedfee02bc3827b3578067590ac640171632856c200"
+        }
+      }
+    },
+    "applyPatch": {
+      "method": "POST",
+      "path": "/v1/data/hero_arena/apply-patch",
+      "request": {
+        "proposal": {
+          "baseDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+          "replacements": [
+            {
+              "path": "/moves/1/power",
+              "value": 72
+            }
+          ],
+          "rationale": "Protocol example only; not a balance recommendation."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
+          "baseDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd"
+        }
+      }
+    },
+    "retainedData": {
+      "method": "GET",
+      "path": "/v1/data/hero_arena?dataHash=babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "response": {
+        "status": 200,
+        "body": {
+          "data": {
+            "v": 1,
+            "gameId": "hero_arena",
+            "characters": [
+              {
+                "id": "bari",
+                "health": 540,
+                "speed": 120,
+                "moveIds": [
+                  "melee",
+                  "spirit_arrow",
+                  "guard"
+                ],
+                "nameKey": "hero.bari",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "real_armor",
+                "health": 700,
+                "speed": 85,
+                "moveIds": [
+                  "melee",
+                  "projectile",
+                  "guard"
+                ],
+                "nameKey": "hero.real_armor",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "daewi",
+                "health": 580,
+                "speed": 110,
+                "moveIds": [
+                  "heavy_melee",
+                  "projectile",
+                  "guard"
+                ],
+                "nameKey": "hero.daewi",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "sepia",
+                "health": 480,
+                "speed": 150,
+                "moveIds": [
+                  "melee",
+                  "projectile",
+                  "guard"
+                ],
+                "nameKey": "hero.sepia",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "nightcrow",
+                "health": 480,
+                "speed": 150,
+                "moveIds": [
+                  "crow_dive",
+                  "crow_swarm",
+                  "wing_shield"
+                ],
+                "nameKey": "hero.nightcrow",
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              }
+            ],
+            "moves": [
+              {
+                "id": "melee",
+                "nameKey": "move.melee",
+                "archetype": "melee",
+                "power": 38,
+                "weightTier": 0,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "spirit_arrow",
+                "nameKey": "move.spirit_arrow",
+                "archetype": "projectile",
+                "power": 92,
+                "weightTier": 1,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "guard",
+                "nameKey": "move.guard",
+                "archetype": "guard",
+                "power": 0,
+                "weightTier": 0,
+                "effects": [
+                  {
+                    "operator": "shield",
+                    "amount": 100,
+                    "durationTicks": 20
+                  }
+                ],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "projectile",
+                "nameKey": "move.projectile",
+                "archetype": "projectile",
+                "power": 44,
+                "weightTier": 1,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "heavy_melee",
+                "nameKey": "move.heavy_melee",
+                "archetype": "melee",
+                "power": 62,
+                "weightTier": 2,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "crow_dive",
+                "nameKey": "move.crow_dive",
+                "archetype": "melee",
+                "power": 38,
+                "weightTier": 0,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "crow_swarm",
+                "nameKey": "move.crow_swarm",
+                "archetype": "projectile",
+                "power": 44,
+                "weightTier": 1,
+                "effects": [],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              },
+              {
+                "id": "wing_shield",
+                "nameKey": "move.wing_shield",
+                "archetype": "guard",
+                "power": 0,
+                "weightTier": 0,
+                "effects": [
+                  {
+                    "operator": "shield",
+                    "amount": 100,
+                    "durationTicks": 20
+                  }
+                ],
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event"
+              }
+            ],
+            "weightTiers": [
+              {
+                "startupTicks": 3,
+                "recoveryTicks": 8,
+                "cooldownTicks": 18,
+                "stunTicks": 3,
+                "knockback": 120,
+                "hitStopTicks": 1
+              },
+              {
+                "startupTicks": 6,
+                "recoveryTicks": 12,
+                "cooldownTicks": 32,
+                "stunTicks": 4,
+                "knockback": 160,
+                "hitStopTicks": 1
+              },
+              {
+                "startupTicks": 10,
+                "recoveryTicks": 18,
+                "cooldownTicks": 40,
+                "stunTicks": 7,
+                "knockback": 260,
+                "hitStopTicks": 2
+              },
+              {
+                "startupTicks": 15,
+                "recoveryTicks": 24,
+                "cooldownTicks": 55,
+                "stunTicks": 10,
+                "knockback": 360,
+                "hitStopTicks": 3
+              }
+            ],
+            "tuning": {
+              "damageScalePermille": 1000
+            },
+            "gameRules": {
+              "arena": {
+                "w": 16000,
+                "h": 9000
+              },
+              "meleeRange": 1900,
+              "projectileSpeed": 460,
+              "projectileRadius": 450,
+              "projectileLife": 45,
+              "guardDuration": 20,
+              "moveTraits": [
+                {
+                  "moveId": "spirit_arrow",
+                  "ignoresGuard": true
+                },
+                {
+                  "moveId": "projectile",
+                  "ignoresGuard": false
+                }
+              ]
+            },
+            "provenance": [
+              {
+                "authorKey": "balance_forge",
+                "licenseKey": "original_event",
+                "source": "original-event-content",
+                "noticeKey": "content.original"
+              }
+            ]
+          },
+          "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd"
+        }
+      }
+    },
+    "playtest": {
+      "method": "POST",
+      "path": "/v1/playtest/run",
+      "request": {
+        "gameId": "hero_arena",
+        "pairs": 1
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "resultsPath": "/v1/playtest/results/2eda5c48-253b-49ae-9641-0d4ae8b5aa37.json",
+          "elapsedMs": 111.77195800000001,
+          "matchCount": 2,
+          "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
+          "recorded": true
+        }
+      }
+    },
+    "results": {
+      "method": "GET",
+      "path": "/v1/playtest/results/2eda5c48-253b-49ae-9641-0d4ae8b5aa37.json",
+      "response": {
+        "status": 200,
+        "body": [
+          {
+            "matchId": "bot-2eda5c48-253b-49ae-9641-0d4ae8b5aa37-1",
+            "config": {
+              "contractVersion": "0.1",
+              "schemaVersion": 1,
+              "gameId": "hero_arena",
+              "simVersion": "arena-0.1.1",
+              "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
+              "seed": 1,
+              "players": [
+                "p1",
+                "p2"
+              ],
+              "mode": "realtime",
+              "maxTicks": 1800,
+              "options": {
+                "assignments": {
+                  "p1": "bari",
+                  "p2": "real_armor"
+                }
+              }
+            },
+            "outcome": {
+              "status": "win",
+              "winners": [
+                "p2"
+              ],
+              "reason": "hp_zero"
+            },
+            "statistics": {
+              "players": [
+                {
+                  "playerId": "p1",
+                  "wins": 0,
+                  "draws": 0,
+                  "damage": 72,
+                  "actions": [
+                    {
+                      "actionId": "melee",
+                      "opportunities": 16,
+                      "uses": 14
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 14,
+                      "uses": 8
+                    },
+                    {
+                      "actionId": "guard",
+                      "opportunities": 22,
+                      "uses": 7
+                    }
+                  ]
+                },
+                {
+                  "playerId": "p2",
+                  "wins": 1,
+                  "draws": 0,
+                  "damage": 540,
+                  "actions": [
+                    {
+                      "actionId": "melee",
+                      "opportunities": 16,
+                      "uses": 13
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 15,
+                      "uses": 8
+                    },
+                    {
+                      "actionId": "guard",
+                      "opportunities": 21,
+                      "uses": 8
+                    }
+                  ]
+                }
+              ],
+              "durationTicks": 380
+            },
+            "finalStateHash": "5b5caa825db5b0642ed10d017b5fdb1be64a9e67b8149a5d73324068576f76af",
+            "valid": true,
+            "errorCode": ""
+          },
+          {
+            "matchId": "bot-2eda5c48-253b-49ae-9641-0d4ae8b5aa37-2",
+            "config": {
+              "contractVersion": "0.1",
+              "schemaVersion": 1,
+              "gameId": "hero_arena",
+              "simVersion": "arena-0.1.1",
+              "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
+              "seed": 1,
+              "players": [
+                "p1",
+                "p2"
+              ],
+              "mode": "realtime",
+              "maxTicks": 1800,
+              "options": {
+                "assignments": {
+                  "p1": "real_armor",
+                  "p2": "bari"
+                }
+              }
+            },
+            "outcome": {
+              "status": "win",
+              "winners": [
+                "p2"
+              ],
+              "reason": "hp_zero"
+            },
+            "statistics": {
+              "players": [
+                {
+                  "playerId": "p1",
+                  "wins": 0,
+                  "draws": 0,
+                  "damage": 0,
+                  "actions": [
+                    {
+                      "actionId": "melee",
+                      "opportunities": 14,
+                      "uses": 12
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 12,
+                      "uses": 7
+                    },
+                    {
+                      "actionId": "guard",
+                      "opportunities": 19,
+                      "uses": 6
+                    }
+                  ]
+                },
+                {
+                  "playerId": "p2",
+                  "wins": 1,
+                  "draws": 0,
+                  "damage": 700,
+                  "actions": [
+                    {
+                      "actionId": "melee",
+                      "opportunities": 14,
+                      "uses": 11
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 13,
+                      "uses": 7
+                    },
+                    {
+                      "actionId": "guard",
+                      "opportunities": 18,
+                      "uses": 7
+                    }
+                  ]
+                }
+              ],
+              "durationTicks": 327
+            },
+            "finalStateHash": "43392852e797b787cd4ccca7d708fd4a13c3664910bcf309f103b51350eba61f",
+            "valid": true,
+            "errorCode": ""
+          }
+        ]
+      }
+    },
+    "static": {
+      "method": "GET",
+      "path": "/",
+      "response": {
+        "status": 200,
+        "body": "<h1>Protocol example</h1>"
+      }
+    },
+    "staticHead": {
+      "method": "HEAD",
+      "path": "/",
+      "response": {
+        "status": 200,
+        "body": ""
+      }
+    }
+  },
+  "websocket": {
+    "client": {
+      "room.join": {
+        "protocolVersion": "0.1",
+        "type": "room.join",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "0ada4061-0350-4de8-b71e-eb09e756146c",
+        "requestId": "r2",
+        "seq": 2,
+        "epoch": 1,
+        "payload": {
+          "joinCode": "K3NM",
+          "name": "Two",
+          "hero": "real_armor"
+        }
+      },
+      "game.select": {
+        "protocolVersion": "0.1",
+        "type": "game.select",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r4",
+        "seq": 4,
+        "epoch": 1,
+        "payload": {
+          "gameId": "hero_arena",
+          "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd"
+        }
+      },
+      "ping": {
+        "protocolVersion": "0.1",
+        "type": "ping",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r5",
+        "seq": 5,
+        "epoch": 1,
+        "payload": {}
+      },
+      "match.start": {
+        "protocolVersion": "0.1",
+        "type": "match.start",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r6",
+        "seq": 6,
+        "epoch": 1,
+        "payload": {
+          "seed": 1,
+          "maxTicks": 2
+        }
+      },
+      "reconnect": {
+        "protocolVersion": "0.1",
+        "type": "reconnect",
+        "roomId": "",
+        "sessionId": "99747fd3-56c0-4442-9ecf-c117091480b9",
+        "requestId": "r1",
+        "seq": 1,
+        "epoch": 1,
+        "payload": {
+          "joinCode": "K3NM",
+          "seatToken": "REDACTED_PRIVATE_SEAT_TOKEN_00000000"
+        }
+      },
+      "input.submit": {
+        "protocolVersion": "0.1",
+        "type": "input.submit",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r12",
+        "seq": 12,
+        "epoch": 2,
+        "payload": {
+          "playerId": "p1",
+          "seq": 0,
+          "tick": 1,
+          "turnId": 0,
+          "actionId": "move",
+          "params": {
+            "moveX": 1000,
+            "moveY": 0
+          }
+        }
+      },
+      "match.reset": {
+        "protocolVersion": "0.1",
+        "type": "match.reset",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r19",
+        "seq": 19,
+        "epoch": 2,
+        "payload": {}
+      },
+      "room.create": {
+        "protocolVersion": "0.1",
+        "type": "room.create",
+        "roomId": "",
+        "sessionId": "0ed49713-36bc-43f0-adaf-eb11552bc0e8",
+        "requestId": "r1",
+        "seq": 1,
+        "epoch": 1,
+        "payload": {
+          "gameId": "hero_cards"
+        }
+      }
+    },
+    "server": {
+      "room.status": {
+        "protocolVersion": "0.1",
+        "type": "room.status",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "0ada4061-0350-4de8-b71e-eb09e756146c",
+        "requestId": "r2",
+        "seq": 2,
+        "epoch": 1,
+        "payload": {
+          "joinCode": "K3NM",
+          "phase": "lobby",
+          "gameId": "hero_arena",
+          "seats": [
+            {
+              "seat": "p1",
+              "name": "One",
+              "hero": "bari",
+              "connected": true
+            },
+            {
+              "seat": "p2",
+              "name": "Two",
+              "hero": "real_armor",
+              "connected": true
+            }
+          ],
+          "you": "p2",
+          "seatToken": "REDACTED_PRIVATE_SEAT_TOKEN_00000000"
+        }
+      },
+      "pong": {
+        "protocolVersion": "0.1",
+        "type": "pong",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r5",
+        "seq": 5,
+        "epoch": 1,
+        "payload": {}
+      },
+      "match.started": {
+        "protocolVersion": "0.1",
+        "type": "match.started",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r6",
+        "seq": 7,
+        "epoch": 2,
+        "payload": {
+          "config": {
+            "contractVersion": "0.1",
+            "schemaVersion": 1,
+            "gameId": "hero_arena",
+            "simVersion": "arena-0.1.1",
+            "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+            "seed": 1,
+            "players": [
+              "p1",
+              "p2"
+            ],
+            "mode": "realtime",
+            "maxTicks": 2,
+            "options": {
+              "assignments": {
+                "p1": "bari",
+                "p2": "real_armor"
+              }
+            }
+          }
+        }
+      },
+      "input.ack": {
+        "protocolVersion": "0.1",
+        "type": "input.ack",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r12",
+        "seq": 0,
+        "epoch": 2,
+        "payload": {
+          "seq": 0,
+          "status": "accepted",
+          "acceptedTick": 1
+        }
+      },
+      "state.view": {
+        "protocolVersion": "0.1",
+        "type": "state.view",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "",
+        "seq": 12,
+        "epoch": 2,
+        "payload": {
+          "observation": {
+            "tick": 1,
+            "viewerId": "p1",
+            "payload": {
+              "arena": {
+                "w": 16000,
+                "h": 9000
+              },
+              "entities": [
+                {
+                  "id": "p1",
+                  "hero": "bari",
+                  "x": 4320,
+                  "y": 4424,
+                  "hp": 540,
+                  "maxHp": 540,
+                  "facing": 0,
+                  "cooldowns": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "guardUntil": 0,
+                  "shield": 0,
+                  "stunUntil": 0,
+                  "recoveryUntil": 0,
+                  "lastSeq": 0,
+                  "pending": {
+                    "actionId": "",
+                    "due": 0,
+                    "aimX": 0,
+                    "aimY": 0
+                  }
+                },
+                {
+                  "id": "p2",
+                  "hero": "real_armor",
+                  "x": 11800,
+                  "y": 4424,
+                  "hp": 700,
+                  "maxHp": 700,
+                  "facing": 180,
+                  "cooldowns": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "guardUntil": 0,
+                  "shield": 0,
+                  "stunUntil": 0,
+                  "recoveryUntil": 0,
+                  "lastSeq": -1,
+                  "pending": {
+                    "actionId": "",
+                    "due": 0,
+                    "aimX": 0,
+                    "aimY": 0
+                  }
+                }
+              ],
+              "projectiles": [],
+              "outcome": {
+                "status": "running",
+                "winners": [],
+                "reason": "in_progress"
+              },
+              "hitStop": 0
+            }
+          },
+          "tick": 1,
+          "turnId": 0,
+          "epoch": 2,
+          "viewHash": "e60180e7f200522153a4c60fa6c4881172f678ee50f970417ee6ff856d5bf668",
+          "events": []
+        }
+      },
+      "actions.available": {
+        "protocolVersion": "0.1",
+        "type": "actions.available",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "",
+        "seq": 13,
+        "epoch": 2,
+        "payload": {
+          "playerId": "p1",
+          "tick": 1,
+          "turnId": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "labelKey": "action.melee",
+              "control": "button",
+              "paramsSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "aimX": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  },
+                  "aimY": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  }
+                },
+                "required": [
+                  "aimX",
+                  "aimY"
+                ]
+              }
+            },
+            {
+              "actionId": "projectile",
+              "labelKey": "action.projectile",
+              "control": "button",
+              "paramsSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "aimX": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  },
+                  "aimY": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  }
+                },
+                "required": [
+                  "aimX",
+                  "aimY"
+                ]
+              }
+            },
+            {
+              "actionId": "guard",
+              "labelKey": "action.guard",
+              "control": "button",
+              "paramsSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "aimX": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  },
+                  "aimY": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  }
+                },
+                "required": [
+                  "aimX",
+                  "aimY"
+                ]
+              }
+            },
+            {
+              "actionId": "move",
+              "labelKey": "action.move",
+              "control": "axes",
+              "paramsSchema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "moveX": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  },
+                  "moveY": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  }
+                },
+                "required": [
+                  "moveX",
+                  "moveY"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "match.ended": {
+        "protocolVersion": "0.1",
+        "type": "match.ended",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "",
+        "seq": 16,
+        "epoch": 2,
+        "payload": {
+          "result": {
+            "matchId": "human-16206091-21a5-4765-866a-76ae742ea4d4",
+            "config": {
+              "contractVersion": "0.1",
+              "schemaVersion": 1,
+              "gameId": "hero_arena",
+              "simVersion": "arena-0.1.1",
+              "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+              "seed": 1,
+              "players": [
+                "p1",
+                "p2"
+              ],
+              "mode": "realtime",
+              "maxTicks": 2,
+              "options": {
+                "assignments": {
+                  "p1": "bari",
+                  "p2": "real_armor"
+                }
+              }
+            },
+            "outcome": {
+              "status": "draw",
+              "winners": [],
+              "reason": "max_ticks"
+            },
+            "statistics": {
+              "players": [
+                {
+                  "playerId": "p1",
+                  "wins": 0,
+                  "draws": 1,
+                  "damage": 0,
+                  "actions": [
+                    {
+                      "actionId": "melee",
+                      "opportunities": 2,
+                      "uses": 0
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 2,
+                      "uses": 0
+                    },
+                    {
+                      "actionId": "guard",
+                      "opportunities": 2,
+                      "uses": 0
+                    }
+                  ]
+                },
+                {
+                  "playerId": "p2",
+                  "wins": 0,
+                  "draws": 1,
+                  "damage": 0,
+                  "actions": [
+                    {
+                      "actionId": "melee",
+                      "opportunities": 2,
+                      "uses": 0
+                    },
+                    {
+                      "actionId": "projectile",
+                      "opportunities": 2,
+                      "uses": 0
+                    },
+                    {
+                      "actionId": "guard",
+                      "opportunities": 2,
+                      "uses": 0
+                    }
+                  ]
+                }
+              ],
+              "durationTicks": 2
+            },
+            "finalStateHash": "f58928cf68d234f8554d7eedfee02bc3827b3578067590ac640171632856c200",
+            "valid": true,
+            "errorCode": ""
+          }
+        }
+      },
+      "error": {
+        "protocolVersion": "0.1",
+        "type": "error",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "r20",
+        "seq": 19,
+        "epoch": 3,
+        "payload": {
+          "code": "INVALID_SCHEMA",
+          "message": "Invalid message shape or parameter. Check actions.available for the current action domain.",
+          "requestId": "r20",
+          "retryable": false
+        }
+      },
+      "playtest.progress": {
+        "protocolVersion": "0.1",
+        "type": "playtest.progress",
+        "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
+        "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+        "requestId": "",
+        "seq": 22,
+        "epoch": 3,
+        "payload": {
+          "runId": "2eda5c48-253b-49ae-9641-0d4ae8b5aa37",
+          "gameId": "hero_arena",
+          "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
+          "matchesDone": 2,
+          "totalMatches": 2,
+          "elapsedMs": 112,
+          "matchups": [
+            {
+              "matchup": "bari vs real_armor",
+              "heroes": [
+                "bari",
+                "real_armor"
+              ],
+              "wins": {
+                "bari": 1,
+                "real_armor": 1
+              },
+              "games": 2,
+              "draws": 0,
+              "invalidMatches": 0
+            }
+          ]
+        }
+      }
+    }
+  }
+}
