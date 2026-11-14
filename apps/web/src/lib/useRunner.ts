@@ -90,6 +90,7 @@ export function useRunner() {
     } catch (e) {
       if (isAbort(e)) return;
       const why = e instanceof ApiError ? e.message : "Something went wrong.";
+      if (e instanceof ApiError && e.keepMatchup) return setError(why); // keep the picked matchup, no stored run
       try {
         const stored = await loadRecordedRun();
         await playStoredRun(stored, onProgress, controller.signal);
