@@ -9,7 +9,8 @@
 // change one hero's strength.
 import { assertMatchResults } from './input-check.js';
 import { heroMatchup, isCountable } from './group.js';
-import { BAND_HIGH, BAND_LOW, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
+import { isOutlier, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
+import { bandOf, heroTarget, normalizeIntent } from './intent.js';
 import { HUMAN_PREFIX } from './extras.js';
 import { isMirror } from './verdict.js';
 import { fail, safely } from './errors.js';
@@ -30,10 +31,12 @@ const roundTo = (x, step) => Math.round(x / step) * step;
 const clamp = (x, low, high) => Math.min(high, Math.max(low, x));
 const pts = (rate) => Math.round((rate - 0.5) * 1000) / 10; // percentage points above 50%, one decimal
 
-/** The flagged matchup furthest from 50% (non-mirror, non-human rows), ties alphabetical; null if none. */
+const gap = (row) => Math.abs(row.deltaToTarget ?? row.winRate - 0.5);
+
+/** The flagged matchup furthest from its target (50% without an intent), non-mirror non-human, ties alphabetical. */
 export function focusMatchupOf(report) {
   return report.rows.filter((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r))
-    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0]
+    .sort((a, b) => gap(b) - gap(a) || (a.dimension < b.dimension ? -1 : 1))[0]
     ?.dimension ?? null;
 }
 
@@ -70,22 +73,30 @@ function tally(results) {
   return byHero;
 }
 
-const above = (s) => s.games >= MIN_GAMES_FOR_OUTLIER && s.ci95[0] > BAND_HIGH;
-const below = (s) => s.games >= MIN_GAMES_FOR_OUTLIER && s.ci95[1] < BAND_LOW;
+// Outside the fair band around the target the opponent row has (50% without an intent).
+const above = (s) => s.games >= MIN_GAMES_FOR_OUTLIER && s.ci95[0] > bandOf(s.target ?? 0.5)[1];
+const below = (s) => s.games >= MIN_GAMES_FOR_OUTLIER && s.ci95[1] < bandOf(s.target ?? 0.5)[0];
 
-function heroEntry(hero, byOpponent, role) {
+function heroEntry(hero, byOpponent, role, intent) {
   const opponents = [...byOpponent.keys()].sort().map((opponent) => {
     const { wins, games } = byOpponent.get(opponent);
-    return { opponent, ...stat(wins, games) };
+    const row = stat(wins, games);
+    if (!intent) return { opponent, ...row };
+    const target = heroTarget(hero, opponent, intent);
+    return { opponent, ...row, target, deltaToTarget: round6(row.rate - target) };
   });
   const wins = [...byOpponent.values()].reduce((n, c) => n + c.wins, 0);
   const games = [...byOpponent.values()].reduce((n, c) => n + c.games, 0);
   const overall = stat(wins, games);
   const outside = role === 'winner' ? above : below;
-  const worst = [...opponents].sort((p, q) => (role === 'winner' ? q.rate - p.rate : p.rate - q.rate) ||
+  const away = (o) => o.rate - (o.target ?? 0.5); // how far above (or below) its target the hero is
+  const worst = [...opponents].sort((p, q) => (role === 'winner' ? away(q) - away(p) : away(p) - away(q)) ||
     (p.opponent < q.opponent ? -1 : 1))[0];
   return { hero, overall, opponents, strength: { role, overallRate: overall.rate, marginPts: pts(overall.rate),
-    opponentsOutsideBand: opponents.filter(outside).length, worstOpponent: worst?.opponent ?? null } };
+    opponentsOutsideBand: opponents.filter(outside).length, worstOpponent: worst?.opponent ?? null,
+    // A counter system is balanced overall: a hero far from 50% against everyone is flagged even if every single
+    // matchup is intended.
+    ...(intent ? { overallOutsideBand: isOutlier(overall.ci95, overall.games) } : {}) } };
 }
 
 /**
@@ -169,9 +180,22 @@ function leverRecommendations(entry, role, ctx, uses, sizePct, scope, outside, t
  * stats stay within 40% of (default: `data`) }.
  * @returns {{ok: true, value: {focusHero, matchup, heroes, classification, recommendations}} | error result}
  */
+/** Every hero's overall rate against the other heroes (non-mirror), with the 45-55% flag. Input: counted results. */
+export function heroOverallRows(results) {
+  const byHero = tally(results);
+  return [...byHero.keys()].sort().map((hero) => {
+    const cells = [...byHero.get(hero).values()];
+    const wins = cells.reduce((n, c) => n + c.wins, 0);
+    const games = cells.reduce((n, c) => n + c.games, 0);
+    const row = stat(wins, games);
+    return { hero, ...row, outlier: isOutlier(row.ci95, games) };
+  });
+}
+
 export const buildDiagnosis = safely((results, options = {}) => {
   assertMatchResults(results);
   const { matchup, data } = options;
+  const intent = options.intent === undefined ? null : normalizeIntent(options.intent);
   const ctx = { data, rootData: options.rootData ?? data };
   const [a, b, ...rest] = String(matchup ?? '').split(' vs ');
   if (!a || !b || a === b || rest.length) fail('INVALID_INPUT', 'matchup must be "a vs b" with two different heroes');
@@ -181,9 +205,12 @@ export const buildDiagnosis = safely((results, options = {}) => {
   const byHero = tally(results);
   const focus = byHero.get(a)?.get(b);
   if (!focus || focus.games === 0) fail('NO_RESULTS', `no games for ${matchup}`);
-  const winner = focus.wins / focus.games >= 0.5 ? a : b;
+  // The hero ahead of its target in the flagged matchup is the winner (to be nerfed); without an intent: ahead of 50%.
+  const focusTarget = intent ? heroTarget(a, b, intent) : 0.5;
+  const winner = focus.wins / focus.games >= focusTarget ? a : b;
   const loser = winner === a ? b : a;
-  const heroes = [heroEntry(winner, byHero.get(winner), 'winner'), heroEntry(loser, byHero.get(loser), 'loser')];
+  const heroes = [heroEntry(winner, byHero.get(winner), 'winner', intent),
+    heroEntry(loser, byHero.get(loser), 'loser', intent)];
   const [W, L] = heroes;
 
   const others = (entry, other) => entry.opponents.filter((o) => o.opponent !== other);
@@ -215,7 +242,7 @@ export const buildDiagnosis = safely((results, options = {}) => {
     return leverRecommendations(entry, role, ctx, usesOf(entry.hero), size, 'overall', out, total);
   };
   const interaction = (entry, role) => {
-    const size = sizeFor(pts(focus.wins / focus.games), 0.5);
+    const size = sizeFor(pts(focus.wins / focus.games - (focusTarget - 0.5)), 0.5);
     const partner = entry === W ? loser : winner;
     return leverRecommendations(entry, role, ctx, usesOf(entry.hero, partner), size, 'interaction', 1, 1);
   };

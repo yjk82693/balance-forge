@@ -31,7 +31,7 @@ CLI output folder: `report_baseline.json`, `patch.json` (a plain PatchProposal),
 1. **Current runner output cannot go through the pipeline.** `services/runner/recorded-match-results.json` still uses the v0.1 per-seat dataHash variants and has no `options.assignments` (two hashes, no hero names). The pipeline rejects it on purpose. The engine needs to switch to addendum item 1 before the end-to-end path works on real runs. My tests use synthetic paired results shaped like `fixtures/match_results.json`.
 2. **`services/room/human-results.json` does not exist yet.** I assumed it is a `MatchResult[]` (or `{results: [...]}`), the same shape as the `match.ended` payload. If the room service writes something else, only `humanResultsOf` in `src/human.js` needs to change.
 3. **Hero Cards statistics lack per-card ids.** The cards engine emits only `play` and `end_turn` actions. `analyzeCards` expects `play:<cardId>` actions (opportunities = card playable, uses = card played). Until the engine emits those, the analysis returns no cards. This is an engine-side change (the `engine` branch); I did not touch it.
-4. **Gemini and Grok request shapes are untested against the live APIs.** No keys, no network. Endpoints, header names, `responseSchema` / `json_schema` formats and the default model names (`gemini-2.5-flash`, `grok-4`; override with `GEMINI_MODEL` / `XAI_MODEL`) come from my memory of the public docs. Please do one live smoke run with real keys before the demo; a mismatch will show up as `origin: "fallback"` with a reason, not as a crash.
+4. **Gemini and Grok request shapes are untested against the live APIs.** No keys, no network. Endpoints, header names, `responseSchema` / `json_schema` formats and the default model names (`gemini-flash-lite-latest` since Round 9, `grok-4`; override with `GEMINI_MODEL` / `XAI_MODEL`) come from my memory of the public docs. Please do one live smoke run with real keys before the demo; a mismatch will show up as `origin: "fallback"` with a reason, not as a crash.
 5. **Win rate semantics.** Row win rate = focal hero wins / valid paired games, draws count as games. The "recorded" badge needs `--metrics` with `kind: "recorded"`; nothing marks a report as recorded by default.
 6. A fake-adapter proposal is a fixed `/moves/1/power -> 72` regardless of the report. It exists to keep the path working offline, not as analysis.
 
@@ -621,3 +621,40 @@ Sepia under both new policies: once his heavy melee is really in range it lands 
 about 2,600-2,800 times (10-tick startup against 3-tick jabs). A balance verdict is therefore a verdict about a data version
 played by one policy; the platform records `botPolicyVersion` with every report for exactly this reason.
 Tests: `test/bot-compare.test.js`.
+
+## Design intent (counter chart)
+
+Heroes have intended counters (Bari is meant to beat Real Armor), so a matchup's target is the designer's intended rate, not always
+50%. `src/intent.js`: an intent is `{ version, matchups: { "a vs b": { favored, strength } }, notes? }`; `strength` maps to the favored
+side's target 50 / 55 / 60 / 65% (`even`, `slight`, `clear`, `strong`), the fair band is 5 points around it, no entry means even,
+each pair appears once in either order (`normalizeIntent` gives canonical keys), mirrors have no intent.
+- **Report rows** carry `target` and `deltaToTarget` (the first, alphabetical, hero's side), the outlier rule is "the whole 95%
+  interval outside the target band, n >= 30", and the report records `intentVersion`. All of this only when an intent is given; without
+  one nothing changes, and an all-even intent gives today's rows, outliers and verdicts exactly (tests strip the new fields and compare).
+- **Verdict:** a target is judged "toward its target"; a new extreme is more than 15 points from the row's own target (65% for an even
+  matchup, as before; exactly 15 is not more). Reason texts now say "toward/away from their target".
+- **Diagnosis:** the hero ahead of its target in the flagged matchup is the winner to nerf; opponent rows carry the hero's own target
+  and delta; "outside the band" is measured against the target; with an intent each hero also gets `overallOutsideBand` (a counter system
+  is balanced overall, so a hero outside 45-55% overall is flagged even if every matchup is intended). `heroOverallRows` and the
+  `heroOverall` field of the `runFull` body list every hero's overall rate.
+- **Prompt and rounds:** rows carry their targets and the prompt says "toward their own targets, not toward 50%" only when some target
+  is not 50%; `runFull` and `runAuto` take `intent`; the focus matchup is the one furthest from its target. Tests: `test/intent.test.js`.
+
+## Reanalysis without simulation
+
+`pipeline/reanalyze.js` (`reanalyzeRun`) replays the stored baseline, holdout and diagnosis results of a finished full run through the
+same `runFull` code under another intent (the stored proposal and its origin are handed back by a replay adapter, no model call).
+Therefore the answer is identical to a fresh run on those results under that intent (tests compare the whole body), in well under a
+second (tested at under 500 ms). Honest limits flagged in the body: `stale: true` when the run stopped at its baseline (it was fair under
+the old intent) and the new intent flags the matchup (nothing to judge: run it again; verdict inconclusive), and
+`diagnosisIncomplete: true` when the stored diagnosis results do not cover the matchups the new focus needs. Tests:
+`test/reanalyze.test.js`.
+
+## Gemini default model and visible fallbacks
+
+The default Gemini model is `gemini-flash-lite-latest` (`DEFAULT_GEMINI_MODEL`): `gemini-2.5-flash` answers 404 for new keys
+("no longer available to new users"); the flash-lite alias answered in about one second on the live demo, while `gemini-3.8-flash`
+hit the 8 s timeout and `gemini-flash-latest` returned 503. `GEMINI_MODEL` still overrides it. A fallback is now visible:
+`proposal.fallbackReason` in the `runFull` body (for example "LLM request failed after 2 attempts: HTTP 404"; never a response body
+or a key), and `runAuto` returns `candidates: [{ round, candidate, origin, fallbackReason?, outcome, dataHash | reason }]` plus `origin`
+and `fallbackReason` on every `needs_designer` lever. Tests with a stub fetch: `test/full.test.js`, `test/auto.test.js`.

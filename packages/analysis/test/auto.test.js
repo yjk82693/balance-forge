@@ -379,7 +379,7 @@ test('no candidate accepted: records kept, hero to needs_designer, the run ends 
   assert.equal(daewi.hero, 'daewi');
   assert.deepEqual(daewi.tried.map((t) => t.path), out.records.map((r) => r.changes[0].path));
   assert.deepEqual(daewi.tried.map((t) => t.outcome), ['rejected', 'rejected', 'rejected']);
-  assert.deepEqual(Object.keys(daewi.tried[0]).sort(), ['label', 'new', 'old', 'outcome', 'path']);
+  assert.deepEqual(Object.keys(daewi.tried[0]).sort(), ['label', 'new', 'old', 'origin', 'outcome', 'path']);
   assert.equal(daewi.tried[0].label, 'Daewi · Speed');
   assert.equal(daewi.tried[0].old, 85);
   assert.match(daewi.evidence,
@@ -474,4 +474,27 @@ test('explain that fails or returns nothing never stops the run or breaks the ev
     assert.doesNotMatch(out.needs_designer[0].evidence, /Replays of/);
     assert.match(out.needs_designer[0].evidence, /3 lever\(s\) tried/);
   }
+});
+
+test('runAuto reports where every candidate came from, including why a model answer was not used', async () => {
+  const { w, run } = setup(weakDaewi(0.1, 0));
+  const failing = { async proposeWithOrigin(report, context) {
+    const got = await followFirst(w.store).proposeWithOrigin(report, context);
+    return { ...got, origin: 'fallback', fallbackReason: 'HTTP 404' };
+  } };
+  const out = await run({ rounds: 1, adapter: failing });
+  assert.equal(out.candidates.length, 3);
+  assert.ok(out.candidates.every((c) => c.origin === 'fallback' && c.fallbackReason === 'HTTP 404'));
+  assert.deepEqual(out.candidates.map((c) => c.candidate), [1, 2, 3]);
+  assert.ok(out.candidates.every((c) => c.round === 1 && typeof c.dataHash === 'string'));
+  assert.deepEqual(out.candidates.map((c) => c.outcome), ['accepted', 'rejected', 'rejected']);
+  const hidden = setup(weakDaewi(0, 0)); // nothing helps: the hero is escalated and the tried levers carry the reason
+  const bad = { async proposeWithOrigin(report, context) {
+    const got = await followFirst(hidden.w.store).proposeWithOrigin(report, context);
+    return { ...got, origin: 'fallback', fallbackReason: 'timeout' };
+  } };
+  const escalated = await hidden.run({ rounds: 1, adapter: bad });
+  assert.ok(escalated.needs_designer[0].tried.every((t) => t.origin === 'fallback' && t.fallbackReason === 'timeout'));
+  const plain = await setup(weakDaewi(0.1, 0)).run({ rounds: 1 });
+  assert.ok(plain.candidates.every((c) => c.origin === 'fake' && !('fallbackReason' in c)));
 });

@@ -8,6 +8,7 @@
 //
 // input: { gameId, fromHash, data (the data for fromHash), rounds (1..5, default 3), requireApproval (default true),
 //   rootData (the original game data that hero-stat bounds are measured against; default: `data`),
+//   intent (optional design intent: rows are judged against their intended rates, see src/intent.js),
 //   adapter, hashData, applyPatch(data, proposal) -> { data, dataHash }, runBatch(dataHash, matchups, seeds) ->
 //   MatchResult[], seedsFor(round, 'scan' | 'holdout') -> seeds (never overlapping), allMatchups (dimension strings,
 //   e.g. "bari vs daewi"), botPolicyVersion, seedSetId, onProgress({ round, phase, matchesDone, totalMatches }),
@@ -86,7 +87,8 @@ function evidenceText(hero, entry, tried, rows) {
 function leverOutcome(variant, outcome) {
   const rec = variant?.recommendations?.[0] ?? null;
   const base = { path: rec?.path ?? null, label: rec?.path ?? null, old: null, new: null, direction: rec?.direction,
-    sizePct: rec?.sizePct };
+    sizePct: rec?.sizePct, ...(outcome.origin ? { origin: outcome.origin } : {}),
+    ...(outcome.fallbackReason ? { fallbackReason: outcome.fallbackReason } : {}) };
   if (outcome.skipped) return { ...base, outcome: 'skipped', reason: outcome.reason };
   const { verdict, reasons, targets } = outcome.record.verdict;
   const change = outcome.record.changes[0];
@@ -102,11 +104,14 @@ export function improvement(targets = []) {
 const sideOf = (row) => ({ rate: row.winRate, ci95: row.ci95, games: row.games });
 
 /** The flagged matchup furthest from 50% is the record's target. */
+// How far a row is from its target (50% without a design intent).
+const gapOf = (row) => Math.abs(row.deltaToTarget ?? row.winRate - 0.5);
+
 function targetOf(flagged, baselineReport, patchedReport) {
   const before = new Map(baselineReport.rows.map((r) => [r.dimension, r]));
   const after = new Map((patchedReport?.rows ?? []).map((r) => [r.dimension, r]));
   const worst = flagged.map((d) => before.get(d)).filter(Boolean)
-    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0];
+    .sort((a, b) => gapOf(b) - gapOf(a) || (a.dimension < b.dimension ? -1 : 1))[0];
   if (!worst) return null;
   const now = after.get(worst.dimension);
   if (!now) return null; // the version record shape needs both sides; no holdout rows for it means no target
@@ -134,6 +139,7 @@ class Run {
     this.input = input;
     this.records = [];
     this.diagnoses = [];
+    this.candidates = []; // per candidate: where its patch came from (and why a model answer was not used)
     this.needsDesigner = []; // heroes the numbers could not fix: { hero, round, matchups, levers, evidence, ... }
     this.escalated = new Set();
     this.diagnosisCache = new Map();
@@ -154,7 +160,8 @@ class Run {
     const extra = missing.length ? await this.batch(round, 'diagnose', head.hash, missing,
       this.input.seedsFor(round, 'scan')) : [];
     const built = buildDiagnosis([...scanResults, ...extra], { matchup, data: head.data,
-      rootData: this.input.rootData ?? this.input.data });
+      rootData: this.input.rootData ?? this.input.data,
+      ...(this.input.intent !== undefined && { intent: this.input.intent }) });
     this.diagnosisCache.set(key, built.ok ? built.value : null);
     return built.ok ? built.value : null;
   }
@@ -165,7 +172,7 @@ class Run {
    * open. Null when every flagged hero has been escalated.
    */
   async pickFocus(round, head, scanReport, results, flagged) {
-    const distance = (d) => Math.abs((scanReport.rows.find((r) => r.dimension === d)?.winRate ?? 0.5) - 0.5);
+    const distance = (d) => gapOf(scanReport.rows.find((r) => r.dimension === d) ?? { winRate: 0.5 });
     const ranked = [...flagged].sort((a, b) => distance(b) - distance(a) || (a < b ? -1 : 1));
     let anyDiagnosis = false;
     for (const matchup of ranked) {
@@ -205,7 +212,7 @@ class Run {
   reportOf(results, name) {
     const { botPolicyVersion, seedSetId } = this.input;
     return analyzePhase(results, { reportId: name, ...(botPolicyVersion && { botPolicyVersion }),
-      ...(seedSetId && { seedSetId }) }).report;
+      ...(seedSetId && { seedSetId }), ...(this.input.intent !== undefined && { intent: this.input.intent }) }).report;
   }
 
   emit(record) {
@@ -237,6 +244,10 @@ class Run {
       const outcome = await this.candidate(round_, variant, index, variants.length);
       if (outcome.failed) return outcome.stop; // an error of the run itself
       tried.push(leverOutcome(variant, outcome));
+      this.candidates.push({ round, candidate: index + 1, origin: outcome.origin ?? null,
+        ...(outcome.fallbackReason ? { fallbackReason: outcome.fallbackReason } : {}),
+        outcome: outcome.skipped ? 'skipped' : outcome.record.verdict.verdict,
+        ...(outcome.skipped ? { reason: outcome.reason } : { dataHash: outcome.record.dataHash }) });
       if (outcome.skipped) continue;
       if (outcomes.some((o) => o.record?.dataHash === outcome.record.dataHash)) {
         tried[tried.length - 1] = { ...tried[tried.length - 1], outcome: 'skipped', reason: 'the same version again' };
@@ -272,8 +283,9 @@ class Run {
     const rows = tried.find((t) => t.targets)?.targets ?? [];
     const replay = await this.explain(hero, rows.length ? worstOf(rows) : targets[0]);
     this.needsDesigner.push({ hero, round, matchups: targets,
-      tried: tried.map(({ label, path, old, new: value, outcome, reason }) => ({ label, path, old, new: value,
-        outcome, ...(reason ? { reason } : {}) })),
+      tried: tried.map(({ label, path, old, new: value, outcome, reason, origin, fallbackReason }) => ({ label, path,
+        old, new: value, outcome, ...(reason ? { reason } : {}), ...(origin ? { origin } : {}),
+        ...(fallbackReason ? { fallbackReason } : {}) })),
       evidence: [evidenceText(hero, entry, tried, rows), replay].filter(Boolean).join(' '),
       rawEvidence: outcomes.find((o) => o.evidence)?.evidence ?? null });
   }
@@ -288,6 +300,7 @@ class Run {
     let patched = null;
     const rootData = input.rootData ?? input.data;
     const full = await runFull({ baselineResults, baseData: head.data, rootData, diagnosis, adapter: input.adapter,
+      ...(input.intent !== undefined && { intent: input.intent }),
       hashData: input.hashData,
       applyPatch: (data, proposal) => {
         patched = input.applyPatch(data, proposal);
@@ -297,10 +310,15 @@ class Run {
     runHoldout: (patchedData, seeds) => this.batch(round, 'holdout', patched.dataHash, targets, seeds) });
     if (!full.ok) return { failed: true, stop: { stop: 'error', error: full.error } };
     const body = full.value;
-    if (!body.validation.ok) return { skipped: true, reason: `invalid patch: ${body.validation.errors[0] ?? ''}` };
+    const from = { origin: body.proposal.origin, fallbackReason: body.proposal.fallbackReason };
+    if (!body.validation.ok) {
+      return { skipped: true, ...from, reason: `invalid patch: ${body.validation.errors[0] ?? ''}` };
+    }
     // A patch that changes nothing would make a record that is its own parent; it is simply not accepted.
-    if (body.patchedDataHash === head.hash) return { skipped: true, reason: 'the patch changes nothing' };
-    if (this.seen.has(body.patchedDataHash)) return { skipped: true, reason: 'this version was already tried' };
+    if (body.patchedDataHash === head.hash) return { skipped: true, ...from, reason: 'the patch changes nothing' };
+    if (this.seen.has(body.patchedDataHash)) {
+      return { skipped: true, ...from, reason: 'this version was already tried' };
+    }
     const accepted = body.verdict.verdict === 'accepted';
     const record = { dataHash: body.patchedDataHash, parentHash: head.hash, gameId: input.gameId,
       createdAt: input.now(), origin: body.proposal.origin, changes: body.proposal.changes,
@@ -308,7 +326,7 @@ class Run {
         body.patched), verdict: body.verdict, approved: false,
       ...(count > 1 ? { note: `candidate ${index + 1} of ${count}` } : {}) };
     return { record, accepted, gain: improvement(body.verdict.targets), data: patched.data, flagged,
-      evidence: body.evidence };
+      evidence: body.evidence, ...from };
   }
 
   /** Emits every candidate as a sibling record and continues from the accepted one that improved most. */
@@ -367,16 +385,16 @@ async function execute(input, run) {
   }
   if (reason === 'awaiting_approval' || reason === 'error') {
     return { records: run.records, stoppedBecause: reason, finalCheck: null, headHash: head.hash,
-      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
   }
   const check = await run.finalCheck(head);
   if (check.regression.length) {
     const headHash = run.rejectAccepted(head.hash, check.regression);
     return { records: run.records, stoppedBecause: 'regression', finalCheck: check.report, headHash,
-      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
   }
   return { records: run.records, stoppedBecause: reason, finalCheck: check.report, headHash: head.hash,
-    diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
+    diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
 }
 
 export async function runAuto(input = {}) {
@@ -393,6 +411,6 @@ export async function runAuto(input = {}) {
   } catch (e) {
     const error = e instanceof AnalysisError ? { code: e.code, message: e.message } : toErrorResult(e).error;
     return { records: run.records, stoppedBecause: 'error', finalCheck: null, headHash: settings.fromHash,
-      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, error };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, error };
   }
 }

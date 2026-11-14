@@ -5,6 +5,9 @@ import { HUMAN_PREFIX } from './extras.js';
 import { assertReport } from './input-check.js';
 
 export const TIMEOUT_MS = 8000;
+// gemini-2.5-flash is no longer available to new keys; the flash-lite alias answered in about a second. Override with
+// the GEMINI_MODEL environment variable.
+export const DEFAULT_GEMINI_MODEL = 'gemini-flash-lite-latest';
 export const RETRIES = 1;
 
 export const PATH_PATTERN = '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|'
@@ -82,8 +85,9 @@ export function buildPrompt(report, context = {}) {
   assertReport(report);
   const rows = report.rows
     .filter((r) => !r.dimension.startsWith(HUMAN_PREFIX))
-    .map(({ dimension, wins, games, winRate, ci95, uses, opportunities, outlier }) => ({ dimension, wins, games,
-      winRate, ci95, uses, opportunities, outlier }));
+    .map(({ dimension, wins, games, winRate, ci95, uses, opportunities, outlier, target, deltaToTarget }) => ({
+      dimension, wins, games, winRate, ci95, uses, opportunities, outlier, target, deltaToTarget }));
+  const hasTargets = rows.some((r) => r.target !== undefined && r.target !== 0.5);
   const allowed = [
     { path: '/tuning/damageScalePermille', min: boundsFor('/tuning/damageScalePermille')[0],
       max: boundsFor('/tuning/damageScalePermille')[1] },
@@ -95,7 +99,9 @@ export function buildPrompt(report, context = {}) {
   ];
   return [
     'You tune a multiplayer game. Below are aggregate bot-playtest results (win rate of the first-named side).',
-    'Propose a small numeric patch that moves one-sided matchups toward 50%.',
+    hasTargets ? 'Each row has a target (the designer\'s intended win rate of the first-named side) and deltaToTarget. '
+      + 'Propose a small numeric patch that moves matchups toward their own targets, not toward 50%.'
+      : 'Propose a small numeric patch that moves one-sided matchups toward 50%.',
     'Reply with JSON only: {"baseDataHash", "replacements": [{"path","value"}], "rationale"}.',
     `At most ${MAX_REPLACEMENTS} replacements, integer values only.`,
     'Use only these paths: ' + JSON.stringify(allowed),
@@ -181,7 +187,7 @@ export class GeminiPatchAdapter extends LlmAdapter {
   origin = 'gemini';
   keyName = 'GEMINI_API_KEY';
   url() {
-    const model = this.model ?? this.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
+    const model = this.model ?? this.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
     return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   }
   init(key, prompt) {
