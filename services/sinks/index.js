@@ -76,7 +76,8 @@ function tigerSink(url, load, ca) {
       const { default: pg } = await load('pg');
       // With the provider's CA certificate (TIGER_CA_CERT, PEM text) the server is fully verified;
       // TLS verification is never switched off here.
-      pool = new pg.Pool({ connectionString: ca ? withoutSslParams(url) : url, max: 2, connectionTimeoutMillis: LIMIT_MS,
+      pool = new pg.Pool({ connectionString: ca ? withoutSslParams(url) : url, max: 2,
+        connectionTimeoutMillis: LIMIT_MS,
         ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}) });
       await pool.query(`CREATE TABLE IF NOT EXISTS match_results (
         at timestamptz NOT NULL, run_id text, phase text, data_hash text, bot_policy text,
