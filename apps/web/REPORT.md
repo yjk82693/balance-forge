@@ -197,3 +197,19 @@ of the response mapping.
 - Found while checking: with 20 games per matchup every row is "too few games", and the headline used to show a 100%
   rate for the first row. A row with fewer than 30 games can no longer be the target; the headline then reads "Too few
   games per matchup yet" and the big number is just the game count.
+
+## Step 5: side-by-side replay sources
+Order, best first (`lib/replaySource.ts`):
+1. **Real views:** `GET /v1/replay/:matchId/views?dataHash=<hash>` for the baseline hash and the patched hash. Accepted shape
+   (an assumption, the endpoint does not exist yet): an array of Observations, or `{views: [...]}`, where an item is an
+   Observation or `{observation, events?}`. Anything else counts as "not there". Both sides must load.
+2. **Analysis HP timeline:** an optional `replay: {matchId, heroes, maxHp, timeline: {broken, patched}}` in the `/full`
+   response (samples `{tick, hp: {p1, p2}}` on change, as `packages/analysis/src/replay.js` produces). HP follows the
+   samples; positions were not recorded, so heroes stand still and the footnote says so.
+3. **Illustrative replay**, the generated frames, labelled "Illustrative replay, not a recorded match". Invented frames never
+   appear without that label. The old stored-seed note stays when only a stored replay's seed is known.
+- Checked: parser and frame builder with a script (arrays, wrapped views, bad input, timeline lookup by tick); the timeline
+  path in the browser with `?mock=1&replay=timeline` (a new mock-only switch); the illustrative path as before. The views
+  path was **not** run against a real endpoint.
+- The `/full` response in the task has no `replay` field; if the analysis puts the timeline somewhere else, only
+  `replayFrom` in `lib/fullRun.ts` needs to change.

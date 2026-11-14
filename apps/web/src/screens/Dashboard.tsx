@@ -22,6 +22,7 @@ import {
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { loadJustPlayed } from "../lib/justPlayed";
+import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
 import { isMockMode } from "../mock/types";
 
@@ -59,6 +60,7 @@ export function Dashboard() {
 
   const canPatch = !!run?.patched;
   const showPatched = canPatch && version === "patched";
+  const replaySource = useReplaySource(run);
   const baseStats = run ? botRows(run.baseline.rows).map(rowStats) : [];
   const target = baseStats.find((s) => s.row.dimension === pickTargetDimension(baseStats));
   // Replay heroes follow the baseline's target matchup, so they stay put when the toggle flips.
@@ -113,7 +115,7 @@ export function Dashboard() {
               storedMatchId={run?.replay?.matchId}
               heroes={replayHeroes}
               active={showPatched ? "patched" : "broken"}
-              sample
+              source={replaySource}
             />
             <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} />
             <section className="panel matches-panel" aria-labelledby="matches-title">

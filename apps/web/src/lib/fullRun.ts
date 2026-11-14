@@ -1,5 +1,6 @@
 import type { PatchProposal, Report, ReportRow } from "./contract";
-import type { Change, PatchOrigin, PlaytestRun, Proposal, VerdictKind } from "./api";
+import type { Change, PatchOrigin, PlaytestRun, Proposal, ReplayInfo, VerdictKind } from "./api";
+import { parseTimeline } from "./replaySource";
 
 const ORIGINS: PatchOrigin[] = ["gemini", "grok", "fallback", "fake", "manual"];
 const VERDICTS: VerdictKind[] = ["accepted", "rejected", "inconclusive"];
@@ -83,6 +84,13 @@ function proposalFrom(raw: unknown, validation: unknown): Proposal | undefined {
   };
 }
 
+/** Optional `replay` in the response: the match to replay and, if the analysis gave one, its HP timeline. */
+function replayFrom(raw: unknown): ReplayInfo | undefined {
+  if (!isObject(raw) || typeof raw.matchId !== "string") return undefined;
+  const timeline = parseTimeline(raw) ?? undefined;
+  return { matchId: raw.matchId, seed: Number.isInteger(raw.seed) ? (raw.seed as number) : undefined, timeline };
+}
+
 /**
  * The response of POST /v1/playtest/full (and the recorded roster file, if it has the same shape) as a PlaytestRun.
  * Only `baseline` is required; proposal, patched report and verdict show when they are there.
@@ -117,5 +125,6 @@ export function runFromFull(raw: unknown): PlaytestRun | null {
         ? { verdict: kind, reasons: Array.isArray(verdictRaw?.reasons) ? verdictRaw.reasons.map(String) : [] }
         : undefined,
     runId: top.reportId,
+    replay: replayFrom(raw.replay),
   };
 }

@@ -1,8 +1,10 @@
 import type { MatchResult, PatchProposal, Report, ReportRow } from "./contract";
-import { fixturePatch } from "./fixtures";
+import { fixtureMatchConfig, fixturePatch } from "./fixtures";
+import { mockTimeline } from "./replayGen";
 import { mockReport } from "./mockReport";
 import { isProgressMsg, mockProgress, type ProgressMsg } from "./progress";
 import { runFromFull } from "./fullRun";
+import type { HpTimeline } from "./replaySource";
 import { reportFromResults, type RunInfo } from "./reportFromResults";
 import { createTransport } from "../mock/transport";
 import { isMockMode } from "../mock/types";
@@ -47,9 +49,11 @@ export interface PlaytestRun {
 /** Summary of GET /v1/replay/:matchId ({matchId, seed, config, frames, finalStateHash}). */
 export interface ReplayInfo {
   matchId: string;
-  seed: number;
-  frames: number;
-  finalStateHash: string;
+  seed?: number;
+  frames?: number;
+  finalStateHash?: string;
+  /** from the analysis: HP over time for the baseline data and the patched data (see lib/replaySource.ts) */
+  timeline?: HpTimeline;
 }
 
 export class ApiError extends Error {
@@ -114,6 +118,10 @@ export async function runPlaytest(
         validation: { ok: true, errors: [] },
       },
       verdict: { verdict: "accepted", reasons: ["sample verdict for the fixtures; not computed"] },
+      // ?replay=timeline shows the HP-timeline replay path without a server
+      replay: new URLSearchParams(location.search).get("replay") === "timeline"
+        ? { matchId: "mock-match", timeline: mockTimeline(fixtureMatchConfig.seed, ["bari", "real_armor"]) }
+        : undefined,
     };
   }
   return (await runFullPlaytest(signal)) ?? runRealPlaytest(matches, signal);
