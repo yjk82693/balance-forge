@@ -197,3 +197,17 @@ owner's responsibility; this task did not change apps/web.
 - Still unverified: real TCP/WebSocket transport under the no-network rule. Existing socket-free production-handler
   tests cover disconnect/reconnect and persistence. No web build/render FPS: the web app is outside ownership.
 - No dependencies, network, push or commits; files are left for the external commit process.
+
+## Round 4
+
+Scope: stable bot compatibility, graceful startup/readiness, and complete protocol examples. No commits;
+progress is committed externally. No network or dependencies added; only owned engine/service files changed.
+
+## Stable bot exports
+
+Read Ultron's worktree report and replay adapter. No separate engine CHANGE_REQUEST file was present there;
+its replay adapter already prefers chooseActions with an optional single-input fallback. Assignment/human-result
+assumptions in the report are resolved here; per-card action statistics remain a separate integration request.
+Added the thin deprecated chooseAction(view, seq, variant) alias, documented as "for old callers": it selects the
+attack from chooseActions without changing its seq, or returns null. chooseActions behavior/policy is unchanged.
+Two export/behavior tests passed, including movement-only and spectator cases.

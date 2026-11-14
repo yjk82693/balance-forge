@@ -39,3 +39,8 @@ export function chooseActions(view, seq, variant = 0) {
     params
   }];
 }
+
+/** @deprecated for old callers. Use chooseActions to include movement alongside a legal attack. */
+export function chooseAction(view, seq, variant = 0) {
+  return chooseActions(view, seq, variant).find(input => input.actionId !== 'move') ?? null;
+}

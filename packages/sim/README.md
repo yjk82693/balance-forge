@@ -30,3 +30,8 @@ No input is silently replaced. Replays must retain both base and candidate data 
 Run `node --test`. The 100-seed test independently generates input streams and compares 1000 tick hashes twice,
 using legal high health values to keep combat active throughout. Readability tests enforce 120 columns here and
 in packages/games. Room and worker usage is documented under services/room and services/runner.
+
+The arena bot exports stable `chooseActions(view, seq, variant)` for movement plus a legal attack.
+The deprecated `chooseAction(view, seq, variant)` alias is for old callers: it returns only the attack from that
+same array, or null when none is legal. It preserves the attack's sequence (normally seq + 1); it never returns
+movement. New callers should use chooseActions with distinct increasing sequences as in services/runner/match.js.
