@@ -1,14 +1,17 @@
 // Real-module integration: /v1/playtest/auto with the actual packages/analysis runAuto (no injection), the fake
 // adapter (analysisEnv is {}), real workers and temp storage. These assertions hold for any honest stop reason;
 // they never force acceptance. Boundary/transport behaviour stays covered by the injected tests in auto.test.js.
+// Opt-in: RUN_REAL_AUTO=1 node --test services/room/auto-real.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { localServer, http } from './test-helpers.js';
 import { validate } from '../../packages/contracts/index.js';
 
+const gate = { skip: process.env.RUN_REAL_AUTO === '1' ? false
+  : 'Requires RUN_REAL_AUTO=1 (real workers, about 8 minutes on the event laptop).' };
 const stops = ['fair', 'not_accepted', 'regression', 'rounds', 'awaiting_approval'];
 
-test('real runAuto: records chain from base, match the ledger and never claim a live LLM', async t => {
+test('real runAuto: records chain from base, match the ledger and never claim a live LLM', gate, async t => {
   const { server, host } = await localServer(t);
   const base = server.storage.get('hero_arena');
   const response = await http(server, '/v1/playtest/auto', {
@@ -17,6 +20,7 @@ test('real runAuto: records chain from base, match the ledger and never claim a 
   assert.equal(response.status, 200);
   const body = response.json();
   assert.ok(stops.includes(body.stoppedBecause), `unexpected stop ${body.stoppedBecause} ${body.error?.code ?? ''}`);
+  t.diagnostic(`stopped: ${body.stoppedBecause}, records: ${body.records.length}`);
   assert.ok(body.records.length <= 2);
 
   let parent = base.dataHash;
@@ -39,9 +43,11 @@ test('real runAuto: records chain from base, match the ledger and never claim a 
   assert.equal(server.storage.get('hero_arena').dataHash, base.dataHash); // auto never selects a version
 });
 
-test('real runAuto with approval required leaves every new version unapproved', async t => {
+test('real runAuto with approval required leaves every new version unapproved', gate, async t => {
   const { server } = await localServer(t);
-  const response = await http(server, '/v1/playtest/auto', { method: 'POST', body: { gameId: 'hero_arena', rounds: 1 } });
+  const response = await http(server, '/v1/playtest/auto', {
+    method: 'POST', body: { gameId: 'hero_arena', rounds: 1 }
+  });
   assert.equal(response.status, 200);
   const body = response.json();
   assert.ok(stops.includes(body.stoppedBecause), `unexpected stop ${body.stoppedBecause}`);
