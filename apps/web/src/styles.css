@@ -2498,3 +2498,6 @@ button.intent-btn { cursor: pointer; }
   .d2-cols { grid-template-columns: minmax(0, 1fr); }
   .intent-chip { min-height: 44px; }
 }
+.viz-action { grid-column: 1 / -1; padding: 0 0 8px; }
+.viz-action .intent-chips { margin-top: 0; }
+.viz-action .intent-chip { min-height: 40px; padding: 0 12px; }

@@ -478,3 +478,9 @@ A report row that carries `target`, `deltaToTarget` and `outlier` is shown exact
 - The new dashboard stacks on phones: strip, accordions, then the roster; no sideways scroll (`dashboard-phone-after.png`).
 - Lobby, arena, controller, cards, versions and launcher already use the shared tokens and showed no overflow in the
   audit; they were left as they are.
+
+## Round 10 small items
+- "Intended?" chips now sit under every other flagged row of the roster (the headline's own are in the strip); shown only
+  for rows of the current run, not for the recorded roster.
+- `fallbackReason` is read from version records too (optional field) and shows as the same "Gemini unavailable: …" line in
+  the Versions detail.

@@ -169,14 +169,34 @@ function sectionsFor(ctx: DashCtx, report: Report | null): Section[] {
 }
 
 /** The roster on the right, always visible: the outlier on top, every row against its own intended band. */
-function Roster({ ctx, bots, humans }: { ctx: DashCtx; bots: ReportRow[]; humans: ReportRow[] }) {
+interface RosterProps {
+  ctx: DashCtx;
+  bots: ReportRow[];
+  humans: ReportRow[];
+  /** the dimension the strip already asks "Intended?" about */
+  shown?: string;
+}
+
+function Roster({ ctx, bots, humans, shown }: RosterProps) {
   const recorded = ctx.roster && bots.length < 5 ? botRows(ctx.roster.baseline.rows) : null;
   const rows = recorded ?? bots;
   return (
     <aside className="d2-right panel" aria-label="All matchups">
       <p className="eyebrow">All matchups</p>
       {rows.length > 0 ? (
-        <WinRateChart rows={outliersFirst(rows.map(rowStats)).map((s) => s.row)} dense foot={false} />
+        <WinRateChart
+          rows={outliersFirst(rows.map(rowStats)).map((s) => s.row)}
+          dense
+          foot={false}
+          rowAction={
+            recorded
+              ? undefined // the headline's own chips are in the strip, not repeated here
+              : (s) =>
+                  s.matchup.b && s.row.dimension !== shown ? (
+                    <IntendedChips a={s.matchup.a} b={s.matchup.b} run={ctx.run} onRun={ctx.onReplace} />
+                  ) : null
+          }
+        />
       ) : (
         none("The matchups appear here once the bots have played.")
       )}
@@ -316,7 +336,12 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
               ))
             )}
           </div>
-          <Roster ctx={ctx} bots={ctx.busy ? botRows(ctx.live.rows ?? []) : bots} humans={humans} />
+          <Roster
+            shown={shown?.row.dimension}
+            ctx={ctx}
+            bots={ctx.busy ? botRows(ctx.live.rows ?? []) : bots}
+            humans={humans}
+          />
         </main>
         {intentOpen && <IntentModal onClose={() => setIntentOpen(false)} />}
       </div>

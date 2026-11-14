@@ -111,11 +111,12 @@ function sourceOf(run: PlaytestRun): Pick<ResultFacts, "source" | "sourceDetail"
 }
 
 /** "Gemini unavailable: timeout, offline sample used" when the proposal is the fallback rule's; else null. */
-export function fallbackNote(run: PlaytestRun): string | null {
-  const p = run.proposal;
-  if (!p || p.origin !== "fallback") return null;
-  return `Gemini unavailable: ${p.fallbackReason || "no reason given"}, offline sample used`;
+export function fallbackLine(origin: string | undefined, reason: string | undefined): string | null {
+  return origin === "fallback" ? `Gemini unavailable: ${reason || "no reason given"}, offline sample used` : null;
 }
+
+export const fallbackNote = (run: PlaytestRun): string | null =>
+  fallbackLine(run.proposal?.origin, run.proposal?.fallbackReason);
 
 export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): ResultFacts {
   const stats = botRows(run.baseline.rows).map(rowStats);
