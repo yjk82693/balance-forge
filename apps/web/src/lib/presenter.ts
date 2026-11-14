@@ -32,13 +32,21 @@ const MIDDLE_SCENES: Scene[] = [
  * comes between the result and the patch when the run has a diagnosis; the version history comes last when there is
  * one to show, otherwise the verdict is the end. A Hero Cards result adds one scene after the verdict.
  */
-export function scenesFor(opts: { intent: boolean; profile: boolean; history: boolean; cards?: boolean }): Scene[] {
+export function scenesFor(opts: {
+  intent: boolean;
+  profile: boolean;
+  history: boolean;
+  cards?: boolean;
+  /** false in the static build: a replay needs the server */
+  replay?: boolean;
+}): Scene[] {
   const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history || opts.cards ? 8 : 0 };
   // Optional: only when a Hero Cards result exists (the same platform, a second genre).
   const cards: Scene[] = opts.cards ? [{ id: "cards", title: "Same platform, a card game", min: opts.history ? 10 : 0 }] : [];
   const history: Scene[] = opts.history ? [{ id: "history", title: "Version history", min: 0 }] : [];
   const first = [MATCH_SCENE, ...(opts.intent ? [INTENT_SCENE] : []), BOTS_SCENE];
-  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...MIDDLE_SCENES, verdict, ...cards, ...history];
+  const middle = opts.replay === false ? MIDDLE_SCENES.filter((s) => s.id !== "replay") : MIDDLE_SCENES;
+  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...middle, verdict, ...cards, ...history];
 }
 
 const TICK_MS = 250;

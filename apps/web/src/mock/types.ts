@@ -1,5 +1,7 @@
 import type { Envelope } from "../lib/contract";
 
+import { IS_STATIC } from "../lib/staticMode";
+
 export type Role = "display" | "controller" | "observer";
 export type ConnStatus = "connecting" | "online" | "lost";
 
@@ -15,4 +17,5 @@ export interface Transport {
 }
 
 /** `?mock=1` in the page URL keeps the in-browser mock server; otherwise the real /ws is used. */
-export const isMockMode = (): boolean => new URLSearchParams(location.search).get("mock") === "1";
+export const isMockMode = (): boolean =>
+  !IS_STATIC && new URLSearchParams(location.search).get("mock") === "1"; // the static build has no sample mode

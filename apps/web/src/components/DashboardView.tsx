@@ -6,6 +6,7 @@ import type { BotSkill } from "../lib/botPolicy";
 import { botRows, humanRows } from "../lib/groups";
 import { headlineFor, outliersFirst, pickTargetDimension } from "../lib/dashboardData";
 import { loadDesigner } from "../lib/designer";
+import { IS_STATIC } from "../lib/staticMode";
 import type { Matchup } from "../lib/matchup";
 import type { ResultFacts } from "../lib/resultCard";
 import type { ReplaySource } from "../lib/replaySource";
@@ -64,6 +65,12 @@ export interface DashCtx {
     onSelect: (id: string) => void;
     played: Parameters<typeof RunTable>[0]["played"];
   };
+}
+
+/** The Run button's words; the static build has no bots to run, only the recorded result to play back. */
+function runLabel(busy: boolean): string {
+  if (IS_STATIC) return busy ? "Replaying…" : "Replay recorded run";
+  return busy ? "Bots are playing…" : "Let the bots play";
 }
 
 function Notices({ ctx }: { ctx: DashCtx }) {
@@ -227,13 +234,17 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
   const stats = bots.map(rowStats);
   const shown = stats.find((s) => s.row.dimension === pickTargetDimension(stats));
   const trend = shown && shown.matchup.b ? <TrendSection a={shown.matchup.a} b={shown.matchup.b} /> : null;
-  const sections = useMemo(() => sectionsFor(ctx, report, trend), [ctx, report, trend]);
+  // The static build shows what the recorded data has: no diagnosis, evidence, replay or match list (need a server).
+  const sections = useMemo(
+    () => sectionsFor(ctx, report, trend).filter((s) => !IS_STATIC || ["patch", "targets"].includes(s.id)),
+    [ctx, report, trend],
+  );
   // The pickers and the headline name the same pair. In sample mode the picker is locked to the sample's pair; with a
   // live run, a different pick is said out loud instead of silently showing the old result.
   const measured: Matchup | null = shown && shown.matchup.b ? [shown.matchup.a, shown.matchup.b] : null;
-  const pickerValue: Matchup = ctx.mock && measured ? measured : ctx.matchup;
+  const pickerValue: Matchup = (ctx.mock || IS_STATIC) && measured ? measured : ctx.matchup;
   const stale =
-    !ctx.mock && measured && [...measured].sort().join() !== [...ctx.matchup].sort().join()
+    !ctx.mock && !IS_STATIC && measured && [...measured].sort().join() !== [...ctx.matchup].sort().join()
       ? `Showing the last run (${heroName(measured[0])} vs ${heroName(measured[1])}). Run again for the new pick.`
       : null;
   const detail = facts?.sourceDetail ? ` · ${facts.sourceDetail}` : "";
@@ -269,11 +280,18 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
           <MatchupPicker
             value={pickerValue}
             onChange={ctx.onMatchup}
-            disabled={ctx.busy || ctx.mock}
-            title={ctx.mock ? "Sample data: the matchup is fixed." : undefined}
+            disabled={ctx.busy || ctx.mock || IS_STATIC}
+            title={
+              IS_STATIC
+                ? "Recorded demo: the matchup is fixed."
+                : ctx.mock
+                  ? "Sample data: the matchup is fixed."
+                  : undefined
+            }
           />
           <SinkChip />
           <RunMenu>
+            {!IS_STATIC && (
             <label className="toggle">
               <input
                 type="checkbox"
@@ -283,7 +301,10 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
               />{" "}
               Diagnose heroes
             </label>
-            <BotSkillPicker value={ctx.skill} disabled={ctx.busy || ctx.mock} onChange={ctx.onSkill} />
+            )}
+            {!IS_STATIC && (
+              <BotSkillPicker value={ctx.skill} disabled={ctx.busy || ctx.mock} onChange={ctx.onSkill} />
+            )}
             <button className="btn secondary" onClick={ctx.onTheme}>
               {ctx.theme === "dark" ? "Light theme" : "Dark theme"}
             </button>
@@ -302,7 +323,7 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
           </RunMenu>
           <button className="btn primary" onClick={ctx.onRun} aria-busy={ctx.busy} aria-disabled={ctx.busy}>
             {ctx.busy && <span className="spinner" aria-hidden="true" />}
-            {ctx.busy ? "Bots are playing…" : "Let the bots play"}
+            {runLabel(ctx.busy)}
           </button>
         </TopBar>
         <HeadlineStrip

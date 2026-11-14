@@ -5,6 +5,8 @@ import { MATCHES, loadRun, saveRun } from "./dashboardData";
 import { isMockMode } from "../mock/types";
 import { mockProgress, toRows, type ProgressMsg, type RunPhase } from "./progress";
 import { loadRecordedRun } from "./recorded";
+import { IS_STATIC } from "./staticMode";
+import { loadStaticRun } from "./staticRun";
 
 export interface LiveState {
   done: number;
@@ -63,6 +65,16 @@ export function useRunner(game: "hero_arena" | "hero_cards" = "hero_arena") {
 
   useEffect(() => () => abort.current?.abort(), []);
 
+  // The static demo opens on its recorded result (the recorded roster with the recorded Bari vs Real Armor patch).
+  useEffect(() => {
+    if (!IS_STATIC) return;
+    let alive = true;
+    loadStaticRun().then((r) => alive && r && setRun((prev) => prev ?? r), () => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // A full roster run takes about a minute. Count seconds so the panel keeps moving between progress messages.
   useEffect(() => {
     if (!busy) return;
@@ -89,6 +101,13 @@ export function useRunner(game: "hero_arena" | "hero_cards" = "hero_arena") {
     const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
+      if (IS_STATIC) {
+        // No server: "run" plays the recorded result back through the same live view, and says nothing else.
+        const recorded = (await loadStaticRun()) ?? (await loadRecordedRun());
+        await playStoredRun(recorded, onProgress, controller.signal);
+        finish(recorded);
+        return;
+      }
       const result = await runPlaytest(MATCHES, controller.signal, onProgress, heroes, diagnose, botPolicy, game);
       finish(result);
       if (!mock) saveRun(result);

@@ -570,3 +570,23 @@ A seated phone in the lobby can change its hero ("Change hero" row); the change,
 differs from the room's record, send `room.hero { hero }` (`src/lib/heroSync.ts`, lobby only, once per hero so a refusal
 is not retried). The phone always shows the hero from room.status (`me.hero`), the stored one only before the first
 status. Test: `apps/web/test/hero-sync.test.mjs`. Not exercised against the live room.
+
+## Static build for a public "Try it" link
+
+`npm run build:static -w apps/web` (VITE_STATIC=1) writes `apps/web/dist-static` (about 12 MB, git-ignored), a relative
+base that works from any static host. In it:
+
+- `window.fetch` answers every `/v1/...` request with 404 and no WebSocket can be opened (`lib/staticMode.ts`), so the
+  page never calls the server; `?mock=1` is ignored and no sample data is shown.
+- The front page is the dashboard, with the recorded roster on the right and one recorded result: the newest accepted,
+  approved patch of the committed auto-balance history on top of the recorded roster report (`lib/staticRaw.ts`).
+  Today that is **Bari vs Daewi** (99% to 93%, gemini, accepted): the committed history has no Bari vs Real Armor patch.
+  A whole `/full` response committed as `services/runner/recorded-full-run.json` is used as it is when it exists.
+- The Run button reads "Replay recorded run" and plays the recorded result back; no bots, no diagnosis, replay or match
+  list. Intent shows the committed approved chart; the Intended? chips are disabled with a note (re-judging needs the
+  server); versions show the recorded history and the designer hand-off cards; present runs on the recorded data
+  (no replay scene); skill shows the learned results and not the live comparison.
+- A thin banner on every screen, with the repository link; lobby, arena and phone screens show "This part needs the
+  live server" instead of connecting. Hero Cards is not offered (no recorded cards run).
+- The 5 MB per-match file of the recorded roster (only a fallback for a missing report) and the art of the cards and
+  tentacle-run games are left out of the folder. Tests: `apps/web/test/static-demo.test.mjs`.

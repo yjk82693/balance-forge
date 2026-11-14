@@ -3,6 +3,7 @@ import type { Envelope } from "../lib/contract";
 import { makeEnvelope } from "./envelope";
 import { MockServer } from "./mockServer";
 import { createWsTransport } from "./ws";
+import { IS_STATIC } from "../lib/staticMode";
 import { isMockMode, type ConnStatus, type Role, type Transport } from "./types";
 
 export type { ConnStatus, Role, Transport };
@@ -137,7 +138,22 @@ function createMockTransport(role: MockRole): Transport {
   };
 }
 
+/** The static build has no server: a transport that never connects and does nothing. */
+const inertTransport = (): Transport => ({
+  sessionId: "static",
+  send() {},
+  subscribe: () => () => {},
+  onStatus(fn) {
+    fn("lost");
+    return () => {};
+  },
+  drop() {},
+  reconnect() {},
+  close() {},
+});
+
 export function createTransport(role: Role, opts: { gameId?: string } = {}): Transport {
+  if (IS_STATIC) return inertTransport();
   return isMockMode() ? createMockTransport(role === "observer" ? "controller" : role) : createWsTransport(role, opts);
 }
 
