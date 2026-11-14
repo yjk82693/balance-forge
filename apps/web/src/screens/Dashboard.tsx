@@ -13,6 +13,7 @@ import { VersionToggle } from "../components/VersionToggle";
 import { rowStats } from "../components/WinRateChart";
 import { botRows } from "../lib/groups";
 import { useManifest } from "../lib/assets";
+import { useIntent } from "../lib/intent";
 import { useHeroStats } from "../lib/heroStats";
 import {
   SAMPLE_HUMAN_ID,
@@ -48,6 +49,7 @@ function rowsWithJustPlayed(played: ReturnType<typeof loadJustPlayed>): MatchRow
 
 export function Dashboard() {
   useManifest();
+  useIntent();
   useHeroStats();
   const mock = isMockMode();
   const version = useDemoVersion();
@@ -121,6 +123,9 @@ export function Dashboard() {
           <span className="spacer" />
           <a className="btn secondary" href="#/versions">
             Versions
+          </a>
+          <a className="btn secondary" href="#/intent">
+            Design intent
           </a>
           <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
           <MatchupPicker

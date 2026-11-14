@@ -1635,8 +1635,12 @@ p {
   min-height: 20px;
 }
 .viz.dense .viz-label {
-  flex-wrap: nowrap;
-  gap: var(--space-2);
+  flex-wrap: wrap; /* a row with a design intent gets a second line saying what is intended */
+  gap: 0 var(--space-2);
+}
+.viz.dense .caption.intended {
+  font-size: 11px;
+  line-height: 14px;
 }
 .viz.dense .viz-name {
   font-size: 13px;
@@ -2352,3 +2356,22 @@ table.sr-only { display: block; max-width: 1px; }
 .sk-line.short { width: 45%; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .sk-line { animation: none; } }
+
+/* design intent chart */
+.intent-main { padding: var(--space-5) var(--space-6); }
+.intent-grid { border-collapse: separate; border-spacing: var(--space-2); }
+.intent-head { font-weight: 500; text-align: center; vertical-align: middle; }
+.intent-head.side { text-align: left; }
+.intent-head > * { display: block; margin: 0 auto; }
+.intent-head.side > * { display: inline-block; margin: 0 var(--space-2) 0 0; vertical-align: middle; }
+.intent-cell { padding: 0; }
+.intent-cell.diag { background: repeating-linear-gradient(45deg, var(--surface-2) 0 6px, transparent 6px 12px); border-radius: var(--radius-md); }
+.intent-btn {
+  width: 120px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-2); color: inherit; font: inherit;
+}
+button.intent-btn { cursor: pointer; }
+.intent-btn.set { border-color: var(--hero, var(--accent)); box-shadow: inset 0 0 0 1px var(--hero, var(--accent)); }
+.intent-btn strong { font-size: var(--fs-h3); }
+.caption.intended { flex-basis: 100%; }
+.present-intent { zoom: 1.3; }

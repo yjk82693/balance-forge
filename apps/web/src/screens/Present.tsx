@@ -24,6 +24,8 @@ import { useManifest } from "../lib/assets";
 import { loadDesigner } from "../lib/designer";
 import { useHeroStats } from "../lib/heroStats";
 import { DesignerSection } from "../components/DesignerCard";
+import { IntentGrid } from "../components/IntentGrid";
+import { getIntent, hasIntent, useIntent } from "../lib/intent";
 import { fetchVersions, loadHistory, summaryLine, type HistorySource, type VersionList } from "../lib/versions";
 import { isMockMode } from "../mock/types";
 import type { PlaytestRun } from "../lib/api";
@@ -67,7 +69,12 @@ export function Present({ auto }: { auto: boolean }) {
   const history = useHistory(finished);
   const hasProfile = !!run?.diagnosis;
   const hasHistory = !!history && (history.list.versions.length > 1 || designerCases(history).length > 0);
-  const scenes = useMemo(() => scenesFor({ profile: hasProfile, history: hasHistory }), [hasProfile, hasHistory]);
+  const intent = useIntent();
+  const wantsIntent = hasIntent(intent);
+  const scenes = useMemo(
+    () => scenesFor({ intent: wantsIntent, profile: hasProfile, history: hasHistory }),
+    [wantsIntent, hasProfile, hasHistory],
+  );
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
   const source = sourceLabel(run, !!notice, mock);
 
@@ -128,6 +135,8 @@ interface BodyProps {
 
 function SceneBody({ id, run, busy, live, elapsed, error, notice, history }: BodyProps) {
   switch (id) {
+    case "intent":
+      return <IntentScene />;
     case "history":
       return <HistoryScene history={history} />;
     case "profile":
@@ -187,6 +196,18 @@ function HistoryScene({ history }: { history: HistoryState | null }) {
       </div>
       <DesignerSection cases={designerCases(history)} />
       <VersionHistory versions={history.list.versions} currentHash={history.list.currentHash} />
+    </section>
+  );
+}
+
+/** The designer's chart, read only, shown before the bots run: what each matchup is supposed to come to. */
+function IntentScene() {
+  return (
+    <section className="present-wide panel present-intent">
+      <div className="panel-head">
+        <span className="eyebrow">What the designer wants</span>
+      </div>
+      <IntentGrid intent={getIntent()} />
     </section>
   );
 }

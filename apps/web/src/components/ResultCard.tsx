@@ -3,6 +3,7 @@ import { pct } from "../lib/stats";
 import { VERDICT_COPY, n } from "../lib/dashboardData";
 import type { VerdictTarget } from "../lib/api";
 import { matchupName as matchupLabel } from "../lib/versions";
+import { targetFor } from "../lib/intent";
 import { rangeNote } from "../lib/statPaths";
 import { HeroProfile } from "./HeroProfile";
 import { summaryText, type Rate, type ResultFacts } from "../lib/resultCard";
@@ -95,6 +96,8 @@ const place = (rate: number) => `${Math.max(0, Math.min(100, rate * 100))}%`;
 
 /** A small bar from 0 to 100%: the 45-55% band, the rate before (hollow) and after (filled) joined by a line. */
 function BeforeAfterBar({ target }: { target: VerdictTarget }) {
+  const [a, b] = target.matchup.split(" vs ");
+  const band = targetFor(a, b).band;
   const lo = Math.min(target.before.rate, target.after.rate);
   const hi = Math.max(target.before.rate, target.after.rate);
   return (
@@ -103,7 +106,7 @@ function BeforeAfterBar({ target }: { target: VerdictTarget }) {
       role="img"
       aria-label={`${pct(target.before.rate)}% before, ${pct(target.after.rate)}% after`}
     >
-      <span className="ba-band" />
+      <span className="ba-band" style={{ left: place(band[0]), width: `${(band[1] - band[0]) * 100}%` }} />
       <span className="ba-line" style={{ left: place(lo), width: `${(hi - lo) * 100}%` }} />
       <span className="ba-dot before" style={{ left: place(target.before.rate) }} />
       <span className="ba-dot after" style={{ left: place(target.after.rate) }} />
@@ -193,6 +196,7 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
           ) : (
             <p className="small text-2">Too few games per matchup to name one.</p>
           )}
+          {outlier?.intended && <p className="caption">{outlier.intended}</p>}
           {evidence && <p className="caption result-why">{evidence}</p>}
         </div>
         {!fair && <PatchColumn patch={patch} />}

@@ -17,6 +17,8 @@ export interface Rate {
   lo: number;
   hi: number;
   games: number;
+  /** "intended: Bari favored (60%)" when the designer wants something other than even */
+  intended?: string;
 }
 
 export interface Finding extends Rate {
@@ -73,7 +75,8 @@ function rateOf(dimension: string, rows: Parameters<typeof botRows>[0]): Rate | 
   const row = botRows(rows).find((r) => r.dimension === dimension);
   if (!row) return null;
   const s = rowStats(row);
-  return { matchup: name(dimension), rate: s.rate, lo: s.lo, hi: s.hi, games: row.games };
+  const intended = s.target.favored ? s.target.label : undefined;
+  return { matchup: name(dimension), rate: s.rate, lo: s.lo, hi: s.hi, games: row.games, intended };
 }
 
 /** The matchups of the recorded roster report that are clearly unbalanced, most lopsided first. */
@@ -202,6 +205,7 @@ export function summaryText(f: ResultFacts): string {
   } else if (f.outlier) {
     const verb = f.outlier.isOutlier ? "Outlier" : "Most lopsided matchup (within the normal range)";
     lines.push(`${verb}: ${f.outlier.matchup}, first hero wins ${rateText(f.outlier)}`);
+    if (f.outlier.intended) lines.push(`Design intent: ${f.outlier.intended.replace("intended: ", "")}`);
     if (f.evidence) lines.push(`Evidence: ${f.evidence}`);
   } else lines.push("Outlier: none, too few games per matchup.");
   for (const p of f.patch) {

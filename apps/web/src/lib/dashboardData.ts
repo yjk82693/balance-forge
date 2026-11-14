@@ -69,11 +69,12 @@ export const sampleRows: MatchRow[] = fixtureMatchResults.map((result) => {
 
 // ---- report reading ----
 
-const distanceFromHalf = (s: RowStats) => Math.abs(s.rate - 0.5);
+const distanceFromTarget = (s: RowStats) => Math.abs(s.rate - s.target.rate);
 
-/** Outliers first, then the most lopsided matchups. */
+/** Outliers first, then the matchups furthest from what the designer intends. */
 export function outliersFirst(stats: RowStats[]): RowStats[] {
-  return [...stats].sort((a, b) => Number(b.outlier) - Number(a.outlier) || distanceFromHalf(b) - distanceFromHalf(a));
+  const away = distanceFromTarget;
+  return [...stats].sort((a, b) => Number(b.outlier) - Number(a.outlier) || away(b) - away(a));
 }
 
 /**
@@ -87,6 +88,10 @@ export function pickTargetDimension(baseline: RowStats[]): string | undefined {
 
 export function headlineFor(shown: RowStats | undefined): string {
   if (!shown) return "Too few games per matchup yet";
-  if (!shown.outlier) return "Within normal range";
-  return `${heroName(shown.matchup.a)} wins too often against ${heroName(shown.matchup.b)}`;
+  const { a, b } = shown.matchup;
+  if (!shown.outlier) return shown.target.favored ? "As intended" : "Within normal range";
+  // above the band the hero named first wins too often; below it, the other one does
+  return shown.rate > shown.target.rate
+    ? `${heroName(a)} wins too often against ${heroName(b)}`
+    : `${heroName(b)} wins too often against ${heroName(a)}`;
 }
