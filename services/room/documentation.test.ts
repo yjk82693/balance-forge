@@ -4,7 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { payloadSchemas, parseEnvelope, validatePayload } from './protocol.ts';
 import { validate, validateGamePayload, hash } from '../../packages/contracts/index.ts';
 import { collectExamples } from './generate-examples.ts';
-const examples = JSON.parse(readFileSync(new URL('./examples.json', import.meta.url)));
+const examples = JSON.parse(readFileSync(new URL('./examples.json', import.meta.url), 'utf8'));
 const readme = readFileSync(new URL('./README.md', import.meta.url), 'utf8');
 test('reference lists every implemented client and server message with schema-valid captured examples', () => {
   const incoming = [...Object.keys(payloadSchemas), 'input.submit'].sort();

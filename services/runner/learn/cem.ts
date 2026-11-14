@@ -32,7 +32,7 @@ export function cemProposer({ seed, start, spread = 0.25, eliteShare = 0.25, smo
       }
       return out;
     },
-    update({ scored }) {
+    update({ scored }: { generation?: number; scored: any[] }) {
       const keep = Math.max(2, Math.ceil(scored.length * eliteShare));
       const elite = [...scored].sort((a, b) => b.fitness - a.fitness).slice(0, keep);
       for (const name of PARAM_NAMES) {

@@ -24,7 +24,7 @@ export function mutationProposer({ seed, start, sigma = 0.12 }) {
         Object.fromEntries(PARAM_NAMES.map(name => [name, fromUnit(name,
           toUnit(name, best.params[name]) + sigma * rng.normal())]))));
     },
-    update({ scored }) {
+    update({ scored }: { generation?: number; scored: any[] }) {
       for (const entry of scored) if (entry.fitness > best.fitness) best = entry;
     }
   };

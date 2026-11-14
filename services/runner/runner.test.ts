@@ -30,7 +30,7 @@ test('worker counts preserve ordered results and fixture MatchResult shape', asy
   assert.deepEqual(a.results, b.results);
   assert.ok(a.metrics.matchesPerSecond > 0);
   assert.equal(a.metrics.invalidMatches, 0);
-  const fixture = JSON.parse(readFileSync(new URL('../../fixtures/match_results.json', import.meta.url)))[0];
+  const fixture = JSON.parse(readFileSync(new URL('../../fixtures/match_results.json', import.meta.url), 'utf8'))[0];
   for (const result of a.results) {
     validate('MatchResult', result);
     assert.deepEqual(Object.keys(result).sort(), Object.keys(fixture).sort());

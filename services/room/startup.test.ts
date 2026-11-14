@@ -7,7 +7,7 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { runCli } from './startup.ts';
 import { localServer, http } from './test-helpers.ts';
-function runtime(env = {}) {
+function runtime(env = {}): any {
   const signals = new EventEmitter(),
     output = {
       stdout: '',
@@ -96,7 +96,7 @@ test('actual CLI entry exits nonzero for an invalid port without creating server
       PORT: 'invalid'
     },
     timeout: 3000
-  }), error => error.code === 1 && /Invalid PORT/.test(error.stderr) && !/\n\s+at /.test(error.stderr));
+  }), (error: any) => error.code === 1 && /Invalid PORT/.test(error.stderr) && !/\n\s+at /.test(error.stderr));
 });
 test('listener-permission failures have readable messages and shutdown errors keep a failure exit code', async () => {
   const denied = runtime();
@@ -184,7 +184,7 @@ test('server closes active HTTP connections before closing its listener', async 
   const calls = [];
   Object.defineProperty(server.http, 'listening', { configurable: true, get: () => true });
   server.http.closeAllConnections = () => calls.push('connections');
-  server.http.close = callback => { calls.push('listener'); callback(); };
+  server.http.close = ((callback: () => void) => { calls.push('listener'); callback(); }) as any;
   await server.close();
   assert.deepEqual(calls, ['connections', 'listener']);
 });
@@ -193,10 +193,10 @@ test('close() drops open HTTP connections before it waits for http.close()', asy
   const order = [];
   server.http.closeAllConnections = () => order.push('closeAllConnections');
   Object.defineProperty(server.http, 'listening', { value: true, configurable: true });
-  server.http.close = callback => {
+  server.http.close = ((callback: () => void) => {
     order.push('close');
     callback();
-  };
+  }) as any;
   await server.close();
   assert.deepEqual(order, ['closeAllConnections', 'close']);
   Object.defineProperty(server.http, 'listening', { value: false, configurable: true });

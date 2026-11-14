@@ -10,7 +10,7 @@ import { pairedJobs, rosterJobs, runMatch } from '../match.ts';
 
 const file = (hero, over = {}) => JSON.stringify({ policy: 'learned-cem-1', hero,
   params: { ...DEFAULT_PARAMS, ...over } });
-const withDir = (files, fn) => {
+const withDir = (files: Record<string, string>, fn: (dir: string) => any) => {
   const dir = mkdtempSync(join(tmpdir(), 'learned-load-'));
   try {
     for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text);
@@ -28,7 +28,7 @@ test('readLearned loads valid files, and reports (never half-trusts) the others'
     'broken.json': '{not json', 'notes.txt': 'ignored' }, dir => {
     const { paramsByHero, skipped } = readLearned(dir);
     assert.deepEqual(Object.keys(paramsByHero).sort(), ['bari', 'daewi']);
-    assert.equal(paramsByHero.bari.aggression, 50);
+    assert.equal((paramsByHero as any).bari.aggression, 50);
     assert.deepEqual(skipped.map(s => s.file).sort(),
       ['broken.json', 'nightcrow.json', 'real_armor.json', 'sepia.json']);
     const bot = learnedBot(dir);
@@ -43,7 +43,7 @@ test('jobs with botPolicy: scripted is the default, learned needs trained files,
   assert.ok(plain.every(job => !('botPolicy' in job))); // unchanged jobs for the default policy
   assert.ok(pairedJobs({ seeds: [1], botPolicy: 'scripted' }).every(job => job.botPolicy === 'scripted'));
   for (const bad of ['trained', '', 7, null]) {
-    assert.throws(() => pairedJobs({ seeds: [1], botPolicy: bad }), /INVALID_SCHEMA/);
+    assert.throws(() => pairedJobs({ seeds: [1], botPolicy: bad as any }), /INVALID_SCHEMA/);
   }
   assert.throws(() => pairedJobs({ seeds: [1], gameId: 'hero_cards', botPolicy: 'learned' }), /INVALID_SCHEMA/);
   assert.throws(() => rosterJobs({ seeds: [1], botPolicy: 'x' }), /INVALID_SCHEMA/);

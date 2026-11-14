@@ -34,7 +34,7 @@ class Client {
     this.ws = new WebSocket(url);
     this.ws.on('error', () => {});
     this.ws.on('message', raw => {
-      const env = JSON.parse(raw);
+      const env = JSON.parse(raw.toString());
       this.meta = env;
       this.queue.push(env);
       for (const observer of this.observers) observer(env);
@@ -55,7 +55,7 @@ class Client {
     }));
     return requestId;
   }
-  take(type, check = () => true, timeoutMs = 10000) {
+  take(type: string, check: (envelope: any) => boolean = () => true, timeoutMs = 10000): Promise<any> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.waiters = this.waiters.filter(w => w !== tryTake);
@@ -97,7 +97,7 @@ async function setup(t, options = {}) {
     });
   });
   const address = await server.listen(0, '127.0.0.1'),
-    base = `http://127.0.0.1:${address.port}`;
+    base = `http://127.0.0.1:${(address as { port: number }).port}`;
   const listeningAt = performance.now();
   const catalog = await fetch(base + '/v1/games', {
     signal: AbortSignal.timeout(1000)

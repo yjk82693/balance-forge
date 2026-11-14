@@ -89,7 +89,7 @@ test('trainHero on a tiny budget: seeded, deterministic, valid parameters and a 
 test('trainRoster: Nightcrow is held out, files carry the honesty fields and a held-out evaluation', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'learned-'));
   try {
-    const run = await trainRoster({ heroes: ['bari', 'daewi'], heldOut: ['nightcrow'], generations: 1,
+    const run: any = await trainRoster({ heroes: ['bari', 'daewi'], heldOut: ['nightcrow'], generations: 1,
       populationSize: 3, seedsPerOpponent: 1, heldOutPairs: 2, seed: 9, workers: 1, maxTicks: TICKS, outDir: dir,
       now: () => '2026-11-14T12:00:00.000Z' });
     assert.deepEqual(Object.keys(run.files), ['bari', 'daewi']);

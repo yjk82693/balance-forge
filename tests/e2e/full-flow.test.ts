@@ -222,7 +222,7 @@ async function setup(t: any, { runAuto }: { runAuto?: (...args: any[]) => any } 
   });
   const address = await server.listen(0, '127.0.0.1');
   const origin = `http://127.0.0.1:${address.port}`;
-  const request = async (path, body) => {
+  const request = async (path: string, body?: unknown) => {
     const url = new URL(path, origin);
     assert.equal(url.origin, origin, 'Every HTTP request must stay on this loopback server.');
     const response = await fetch(url, {
@@ -402,7 +402,7 @@ async function fullDashboard(context, display, dataHash) {
   assert.ok(body.proposal.changes.length > 0);
   assert.ok(body.proposal.changes.every(change => typeof change.old === 'number' && typeof change.new === 'number'));
   assert.ok(['accepted', 'rejected', 'inconclusive'].includes(body.verdict.verdict));
-  const phaseResults = {};
+  const phaseResults: Record<string, any[]> = {};
   for (const phase of ['baseline', 'holdout']) {
     const results = await context.request(`/v1/playtest/results/${body.runId}-${phase}.json`);
     phaseResults[phase] = results;

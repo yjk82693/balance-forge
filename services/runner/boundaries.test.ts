@@ -45,7 +45,7 @@ test('malformed job boundaries reject without spawning workers or returning fabr
   await assert.rejects(runBatch(pairedJobs({
     seeds: [1]
   }), {
-    onProgress: 'invalid'
+    onProgress: 'invalid' as any
   }), /INVALID_SCHEMA/);
   const [job] = pairedJobs({
     seeds: [1]

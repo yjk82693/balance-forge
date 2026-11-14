@@ -33,7 +33,7 @@ test('progress is monotonic, periodically streamed, and agrees with unchanged or
   assert.equal(final.matchups.reduce((n, r) => n + r.games, 0), 30);
   for (const row of final.matchups) {
     assert.equal(row.games, 2);
-    assert.equal(Object.values(row.wins).reduce((a, b) => a + b, 0) + row.draws, 2);
+    assert.equal(Object.values(row.wins).reduce((a: number, b: number) => a + b, 0) + row.draws, 2);
   }
 });
 test('first-seat wins reconcile between each matchup row, progress totals and final run summary', async () => {
