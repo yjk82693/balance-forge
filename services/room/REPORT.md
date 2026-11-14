@@ -711,3 +711,8 @@ rounds,
 and the full route does the same. A round stores up to two sibling version records (same parent); the analysis
 module picks
 the accepted one that improved most. See the analysis report for the rules.
+
+Auto runs: the result has `needs_designer` (heroes the numbers could not fix, with what was tried and the evidence;
+validated, never a version record) and the stop reason `needs_designer`. The run output is stored as
+playtests/<runId>-auto.json and served by GET /v1/playtest/results/<runId>-auto.json (the -diagnose files too). Up
+to three candidates per round.

@@ -765,7 +765,8 @@ export class RoomServer {
       }
       return;
     }
-    const resultRoute = path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36}(?:-(?:baseline|holdout))?)\.json$/);
+    const resultRoute = path.match(
+      /^\/v1\/playtest\/results\/([0-9a-f-]{36}(?:-(?:baseline|holdout|diagnose|auto))?)\.json$/);
     if (request.method === 'GET' && resultRoute) {
       try {
         const data = await readFile(join(this.storage.directory, 'playtests', `${resultRoute[1]}.json`));
