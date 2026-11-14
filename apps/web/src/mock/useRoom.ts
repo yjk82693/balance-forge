@@ -10,7 +10,7 @@ export interface RoomView {
   /** from match.started, if seen */
   config: MatchConfig | null;
   result: MatchResult | null;
-  error: { code: string; retryable: boolean } | null;
+  error: { code: string; retryable: boolean; message?: string } | null;
   lastAckSeq: number;
 }
 

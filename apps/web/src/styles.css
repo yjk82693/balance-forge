@@ -1606,7 +1606,7 @@ p {
 /* Dense 15-row chart */
 .viz.dense .viz-row {
   min-height: 28px;
-  grid-template-columns: 250px minmax(0, 1fr) 52px;
+  grid-template-columns: 250px minmax(0, 1fr) 100px;
   gap: var(--space-2);
 }
 .viz.dense .viz-row.head {
@@ -1944,4 +1944,125 @@ p {
   .badge.live .dot {
     animation: none;
   }
+}
+
+.human-group {
+  margin-top: var(--space-3);
+}
+
+.viz.dense .viz-value {
+  white-space: nowrap;
+}
+
+/* Phones (<= 600px): the lobby and dashboard are laptop screens, but they must still be usable at 390px. */
+@media (max-width: 600px) {
+  .topbar {
+    height: auto;
+    min-height: var(--topbar-h);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-2) var(--space-3);
+  }
+  .topbar .small.text-2 {
+    display: none;
+  }
+  .topbar .spacer {
+    flex-basis: 100%;
+    height: 0;
+  }
+  .topbar .btn {
+    height: var(--touch-min);
+    padding: 0 var(--space-4);
+  }
+  .seg-btn {
+    height: 36px;
+    padding: 0 var(--space-3);
+  }
+
+  /* Lobby */
+  .lobby {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  .display {
+    font-size: 40px;
+    line-height: 48px;
+  }
+  .qr-card {
+    width: min(100%, 320px);
+    padding: var(--space-4);
+  }
+  .room-code {
+    font-size: 64px;
+    line-height: 72px;
+  }
+  .join-row {
+    gap: var(--space-4);
+  }
+  .lobby-players {
+    padding: var(--space-4);
+  }
+  .chip {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  /* Dashboard */
+  .dash-grid {
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  .diff-body {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  .replays {
+    grid-template-columns: 1fr;
+  }
+  .live {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .minis {
+    width: 100% !important;
+    height: auto !important;
+  }
+  .panel {
+    padding: var(--space-4);
+  }
+  .matches-panel {
+    overflow-x: auto;
+  }
+  .matches {
+    min-width: 520px;
+  }
+  .kpi {
+    font-size: 32px;
+    line-height: 36px;
+  }
+  .viz.dense .viz-row,
+  .viz-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 2px;
+    padding: var(--space-1) 0;
+  }
+  .viz-label {
+    grid-column: 1 / -1;
+  }
+  .viz-row.head .viz-label,
+  .viz-row.head > span {
+    display: none;
+  }
+  .viz.dense .viz-name {
+    white-space: normal;
+  }
+  .viz-axis {
+    display: none;
+  }
+  .viz-row.head {
+    display: none;
+  }
+}
+
+.lobby-players .btn + .btn {
+  margin-top: var(--space-2);
 }

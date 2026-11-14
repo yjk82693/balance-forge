@@ -1,4 +1,5 @@
 import type { ReportRow } from "../lib/contract";
+import { humanLabel, isHumanDimension } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { pct, wilson } from "../lib/stats";
 import { HeroPortrait } from "./HeroPortrait";
@@ -9,10 +10,13 @@ export const BAND: [number, number] = [0.45, 0.55];
 export interface Matchup {
   a: string;
   b: string;
+  /** a human match: a and b are not heroes, only the label is meaningful */
+  human: boolean;
 }
 export function parseMatchup(dimension: string): Matchup {
+  if (isHumanDimension(dimension)) return { a: humanLabel(dimension), b: "", human: true };
   const [a, b] = dimension.split(" vs ");
-  return { a: a ?? dimension, b: b ?? "" };
+  return { a: a ?? dimension, b: b ?? "", human: false };
 }
 
 export interface RowStats {
@@ -29,7 +33,9 @@ export interface RowStats {
 export function rowStats(row: ReportRow): RowStats {
   const [lo, hi] = wilson(row.wins, row.games);
   const small = row.games < MIN_GAMES;
-  const outlier = !small && (lo > BAND[1] || hi < BAND[0]);
+  const human = isHumanDimension(row.dimension);
+  // Human rows are descriptive: a handful of games never raises an outlier alarm.
+  const outlier = !human && !small && (lo > BAND[1] || hi < BAND[0]);
   return {
     row,
     rate: row.games ? row.wins / row.games : 0,
@@ -80,6 +86,25 @@ export function Interval({ s }: { s: RowStats }) {
   );
 }
 
+function RowLabel({ s, dense }: { s: RowStats; dense: boolean }) {
+  if (s.matchup.human) {
+    return (
+      <>
+        <span className="badge human">human</span>
+        <span className="small viz-name">{s.matchup.a}</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <HeroPortrait hero={s.matchup.a} size={dense ? 20 : 32} />
+      <span className="small viz-name">
+        {heroName(s.matchup.a)} <span className="text-2">vs</span> {heroName(s.matchup.b)}
+      </span>
+    </>
+  );
+}
+
 export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense?: boolean }) {
   const stats = rows.map(rowStats);
   return (
@@ -92,10 +117,7 @@ export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense
       {stats.map((s) => (
         <div key={s.row.dimension} className={`viz-row${s.outlier ? " outlier" : ""}`}>
           <div className="viz-label">
-            <HeroPortrait hero={s.matchup.a} size={dense ? 20 : 32} />
-            <span className="small viz-name">
-              {heroName(s.matchup.a)} <span className="text-2">vs</span> {heroName(s.matchup.b)}
-            </span>
+            <RowLabel s={s} dense={dense} />
             {s.outlier && <span className="badge outlier">▲ Outlier</span>}
           </div>
           <Plot>

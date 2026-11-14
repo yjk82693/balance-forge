@@ -1,9 +1,11 @@
 import type { PlaytestRun } from "../lib/api";
-import type { Report } from "../lib/contract";
+import type { Report, ReportRow } from "../lib/contract";
+import { botRows, humanRows } from "../lib/groups";
 import { VERDICT_COPY, fmtSeconds, headlineFor, n, outliersFirst, pickTargetDimension } from "../lib/dashboardData";
 import type { LiveState } from "../lib/useRunner";
 import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
+import { phaseName } from "./LivePanel";
 import { PatchCompare } from "./PatchCompare";
 import { WinRateChart, rowStats } from "./WinRateChart";
 
@@ -76,12 +78,25 @@ export function ReportPanel({ run, busy, live, error, notice, showPatched, onRun
   );
 }
 
+/** Human matches are their own group under the bot chart; their names are labels, not heroes. */
+function HumanGroup({ rows }: { rows: ReportRow[] }) {
+  return (
+    <div className="human-group">
+      <p className="eyebrow" style={{ color: "var(--text-2)" }}>
+        Human matches
+      </p>
+      <WinRateChart rows={rows} dense />
+    </div>
+  );
+}
+
 function LiveReport({ live }: { live: LiveState }) {
   return (
     <>
       <h1 className="h2">Bots are playing…</h1>
+      {live.phase && <p className="eyebrow">{phaseName(live.phase)}</p>}
       <p className="kpi">
-        {n(live.done)} / {n(live.total)} matches
+        {n(live.done)} / {live.total ? n(live.total) : "…"} matches
       </p>
       <hr className="divider" />
       {live.rows ? <WinRateChart rows={live.rows} dense /> : <div className="skeleton" aria-hidden="true" />}
@@ -90,36 +105,41 @@ function LiveReport({ live }: { live: LiveState }) {
 }
 
 function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report: Report; showPatched: boolean }) {
-  if (report.rows.length === 0) {
+  const bots = botRows(report.rows);
+  const humans = humanRows(report.rows);
+  if (bots.length === 0) {
     return (
       <div className="empty">
         <p className="h3">The report has no matchups.</p>
         <p className="text-2">Run the bots again; a report needs at least one finished match.</p>
+        {humans.length > 0 && <HumanGroup rows={humans} />}
       </div>
     );
   }
-  const stats = report.rows.map(rowStats);
-  const baseStats = run.baseline.rows.map(rowStats);
+  const stats = bots.map(rowStats);
+  const baseStats = botRows(run.baseline.rows).map(rowStats);
   const targetDim = pickTargetDimension(baseStats);
   const sorted = outliersFirst(stats);
-  const shown = stats.find((s) => s.row.dimension === targetDim) ?? sorted[0];
-  const base = baseStats.find((s) => s.row.dimension === targetDim) ?? baseStats[0];
+  const shown = stats.find((s) => s.row.dimension === targetDim);
+  const base = baseStats.find((s) => s.row.dimension === targetDim);
   const elapsed = report.elapsedMs != null ? ` · ${fmtSeconds(report.elapsedMs)}` : "";
   const verdict = run.verdict ? VERDICT_COPY[run.verdict.verdict] : null;
   return (
     <>
       <h1 className="h2">{headlineFor(shown)}</h1>
       <p className="kpi">
-        {pct(shown.rate)}% · {n(report.validMatches)} games{elapsed}
+        {shown ? `${pct(shown.rate)}% · ` : ""}
+        {n(report.validMatches)} games{elapsed}
       </p>
       <p className="report-meta">
         <RecordedBadges report={report} sample={run.sample} />
         <span className="caption">
-          {report.seedSetId} · {report.draws} draws · {report.rows.length} matchups
+          {report.seedSetId} · {report.draws} draws · {bots.length} matchups
         </span>
       </p>
       <hr className="divider" />
       <WinRateChart rows={sorted.map((s) => s.row)} dense />
+      {humans.length > 0 && <HumanGroup rows={humans} />}
 
       {run.patched && (
         <>
@@ -137,7 +157,7 @@ function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report
           {run.verdict.reasons[0] && <span className="caption">{run.verdict.reasons[0]}</span>}
         </p>
       )}
-      {showPatched && (
+      {showPatched && shown && base && (
         <p className="caption">
           {heroName(shown.matchup.a)} {pct(base.rate)}% → {pct(shown.rate)}% · 95% CI {pct(shown.lo)}–
           {pct(shown.hi)}%

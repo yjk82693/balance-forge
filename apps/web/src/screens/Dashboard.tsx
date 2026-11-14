@@ -9,11 +9,10 @@ import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
 import { VersionToggle } from "../components/VersionToggle";
 import { rowStats } from "../components/WinRateChart";
+import { botRows } from "../lib/groups";
 import { useManifest } from "../lib/assets";
 import {
-  MATCHES,
   SAMPLE_HUMAN_ID,
-  n,
   pickTargetDimension,
   readTheme,
   sampleRows,
@@ -23,6 +22,7 @@ import {
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { loadJustPlayed } from "../lib/justPlayed";
+import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
 import { isMockMode } from "../mock/types";
 
@@ -60,7 +60,8 @@ export function Dashboard() {
 
   const canPatch = !!run?.patched;
   const showPatched = canPatch && version === "patched";
-  const baseStats = run ? run.baseline.rows.map(rowStats) : [];
+  const replaySource = useReplaySource(run);
+  const baseStats = run ? botRows(run.baseline.rows).map(rowStats) : [];
   const target = baseStats.find((s) => s.row.dimension === pickTargetDimension(baseStats));
   // Replay heroes follow the baseline's target matchup, so they stay put when the toggle flips.
   const replayHeroes: [string, string] = target
@@ -81,7 +82,7 @@ export function Dashboard() {
           <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
           <button className="btn primary" onClick={start} aria-busy={busy} aria-disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            {busy ? "Bots are playing…" : `Run ${n(MATCHES)} bot matches`}
+            {busy ? "Bots are playing…" : "Let the bots play"}
           </button>
           <button
             className="btn secondary icon-btn"
@@ -114,9 +115,9 @@ export function Dashboard() {
               storedMatchId={run?.replay?.matchId}
               heroes={replayHeroes}
               active={showPatched ? "patched" : "broken"}
-              sample
+              source={replaySource}
             />
-            <LivePanel busy={busy} done={live.done} total={live.total} />
+            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
                 <span id="matches-title" className="eyebrow">

@@ -33,7 +33,31 @@ export function mockReport(version: Version): Report {
   const rows: ReportRow[] = dims.map((dimension, i) => {
     const games = i < 10 ? 67 : 66;
     const wins = (version === "patched" ? PATCHED_WINS[dimension] : undefined) ?? WINS[dimension];
-    return { dimension, wins, games, winRate: wins / games, ci95: [0, 1], uses: 0, opportunities: 0, outlier: false };
+    const [a, b] = dimension.split(" vs ");
+    // Mirror matchups carry seat-based wins, as the shared interface asks (otherwise they are hidden).
+    const seat = a === b ? { seatWins: wins } : {};
+    return {
+      dimension,
+      wins,
+      games,
+      winRate: wins / games,
+      ci95: [0, 1],
+      uses: 0,
+      opportunities: 0,
+      outlier: false,
+      ...seat,
+    };
+  });
+  // One human match, as the server names them: "human: <name> vs <name>" (names, not heroes).
+  rows.push({
+    dimension: "human: Judge A vs Judge B",
+    wins: 1,
+    games: 2,
+    winRate: 0.5,
+    ci95: [0, 1],
+    uses: 0,
+    opportunities: 0,
+    outlier: false,
   });
   return {
     ...fixtureReportBaseline,

@@ -145,3 +145,111 @@ Checked again after the live-server pass: `npm test` 46 of 46 pass (43 s), `npm 
 **Changed:** removed one unused export (`getDemoVersion`, left over when the lobby stopped sending the data version).
 
 **Still blocked / open** (unchanged, see "Live server check" and `CHANGE_REQUEST.md`): replay views and a patch proposal/verdict API need the engine; the Hero Cards screens and floating damage numbers were not watched against the live server; no physical phone or LAN test.
+
+---
+
+# Round 6: the live dashboard
+
+Built against the shared interface in the task (`POST /v1/playtest/full`). Neither that endpoint nor `/v1/replay/:id/views`
+nor bot start exists in the repo yet (checked `main` and the engine and analysis branches at 6745e53), so none of this was
+run against a real server; it was checked with `?mock=1` (which now follows the same shapes) and with a pure-function test
+of the response mapping.
+
+## Step 1: Run calls /v1/playtest/full
+- The button (now "Let the bots play", since the run size is the server's choice) calls `POST /v1/playtest/full
+  {gameId: "hero_arena", roster: true}`. A 404/405 falls back to the older pairs run, so a server without the endpoint
+  still works.
+- `lib/fullRun.ts` maps the response to the page: `baseline`, `proposal` (+ `changes`), the top-level `validation`,
+  `patched` (with `patchedDataHash` and `holdoutSeedSetId`), `verdict`, `humanMatches`, `elapsedMs`, `runId`. Bad rows
+  (wins above games, NaN) are dropped; missing counters get neutral defaults; a bare Report is accepted as a
+  baseline-only run. A script checked this on a response built from the interface text.
+- Origin badges: `gemini`, `grok`, `fallback`, `manual` as is; `fake` is shown as "offline sample" with a tooltip saying
+  no model was called.
+
+## Step 2: live progress and phases
+- `playtest.progress` is read as the room server sends it (`matchesDone`, `totalMatches`, `matchups[].wins/games`) plus the
+  new `phase` (`baseline` | `holdout`). The report panel and the live panel name the running phase ("Baseline",
+  "Holdout on the patched data"); the counter shows "…" until the first message gives a total.
+- Win rate is the first-named hero's. Mirror rows (`bari vs bari`) are hidden unless the row carries `seatWins`, in which
+  case `seatWins` is the win count. The same rule applies to the final report (`lib/groups.ts: botRows`) and to the
+  before/after comparison. `?mock=1` now plays a baseline phase and then a holdout phase, with `seatWins` on mirror rows.
+- Checked with a script: a progress message with a normal row, a mirror row without `seatWins`, a mirror row with it and a
+  human row gives exactly the normal row and the seat-based mirror row.
+
+## Step 3: human rows
+- Rows named `human: a vs b` are a separate group ("Human matches") under the bot chart. They are never parsed as heroes
+  (no portraits, `a` and `b` shown as text, so a player's name can never become a hero id or markup), never count for the
+  headline, the target matchup or the replay heroes, and never raise an outlier alarm. Small samples show "Too few games
+  yet". They are left out of the live bars.
+- `?mock=1` includes one such row so the group can be seen.
+
+## Step 4: recorded mode reads the stored roster run
+- `lib/recorded.ts` looks for stored runs with a glob over `services/runner/recorded-*.json` (read-only; a file that is not
+  there yet is simply absent, the build does not break). Order: 1) `recorded-roster-report.json`, read as a finished
+  report or a whole `/full` response (real intervals come from its own counts, the chart recomputes Wilson from
+  wins/games); 2) `recorded-roster-match-results.json` + `recorded-roster-metrics.json`, which exist today: the 15-matchup
+  roster run (300 matches, 4 s) is turned into a report in the browser; 3) the older Bari vs Real Armor run.
+- `recorded-roster-report.json` does **not** exist yet, so source 1 was only exercised through the mapping test, not from
+  the file. Source 2 was run in the browser (live run failed with the dev server's 404, the stored run played through the
+  live view and the page said so).
+- Mirror matchups from match results now carry `seatWins` (games won by the first seat), so they show instead of being
+  dropped.
+- Found while checking: with 20 games per matchup every row is "too few games", and the headline used to show a 100%
+  rate for the first row. A row with fewer than 30 games can no longer be the target; the headline then reads "Too few
+  games per matchup yet" and the big number is just the game count.
+
+## Step 5: side-by-side replay sources
+Order, best first (`lib/replaySource.ts`):
+1. **Real views:** `GET /v1/replay/:matchId/views?dataHash=<hash>` for the baseline hash and the patched hash. Accepted shape
+   (an assumption, the endpoint does not exist yet): an array of Observations, or `{views: [...]}`, where an item is an
+   Observation or `{observation, events?}`. Anything else counts as "not there". Both sides must load.
+2. **Analysis HP timeline:** an optional `replay: {matchId, heroes, maxHp, timeline: {broken, patched}}` in the `/full`
+   response (samples `{tick, hp: {p1, p2}}` on change, as `packages/analysis/src/replay.js` produces). HP follows the
+   samples; positions were not recorded, so heroes stand still and the footnote says so.
+3. **Illustrative replay**, the generated frames, labelled "Illustrative replay, not a recorded match". Invented frames never
+   appear without that label. The old stored-seed note stays when only a stored replay's seed is known.
+- Checked: parser and frame builder with a script (arrays, wrapped views, bad input, timeline lookup by tick); the timeline
+  path in the browser with `?mock=1&replay=timeline` (a new mock-only switch); the illustrative path as before. The views
+  path was **not** run against a real endpoint.
+- The `/full` response in the task has no `replay` field; if the analysis puts the timeline somewhere else, only
+  `replayFrom` in `lib/fullRun.ts` needs to change.
+
+## Step 6: "Play vs bot" in the lobby
+- A secondary button next to "Start match" sends `match.start {gameId, bot: true}`; it is enabled with at least one player
+  connected, "Start match" still needs two. The lobby now waits for the server's `playing` status before going to the big
+  screen, and if the server answers with an error it stays on the lobby and says why ("The server can't start yet..." /
+  "This server can't start a match against a bot yet.").
+- Checked in the mock (starts with one player) and against the real room server on `main` (6745e53), which does not know
+  `bot` yet: the button was refused and the lobby showed the message. Bot start itself was **not** run against a real
+  server because none supports it yet.
+- Bug found and fixed while doing this: the lobby's "start from a clean lobby" reset ran on every phase change, so a match
+  started from the lobby would have been reset by its own status message. It now runs once per visit.
+
+## Checks for round 6
+- `npm run build -w apps/web` passes; no line over 120 characters; `tsc` clean.
+- Real server (`main` at 6745e53, run locally): the dashboard falls back from the missing `/v1/playtest/full` to the pairs
+  run and showed `recorded · 1,000 matches · 28 s` with live progress; the lobby, join and refusal path worked.
+  Not exercised against a real `/full`, `/views` or bot start (they do not exist in the repo yet).
+- 1920x1080: the dashboard stage and lobby were looked at with the 15-matchup live run, the human group and the
+  side-by-side replay. 390x844 (iframe): the lobby and dashboard looked broken (top bar overflow, cut-off QR, squeezed diff
+  card and replays); fixed with a phone layout (stacked cards, wrapped top bar, one-column chart rows, scrollable
+  matches table) and re-checked. The phone controller was not changed this round.
+- Mock-only switches: `?mock=1&replay=timeline` shows the HP-timeline replay path.
+
+## Polish 01:10
+
+Checked: `npm test` 159 tests, 153 pass, 6 skipped, 0 fail (48 s; the skips are other folders' opt-in socket and end-to-end tests, none are web tests and none were changed). `npm run build -w apps/web` passes, `tsc` is clean, no line over 120 characters in `apps/web/src`, no unused exports, and the only `console` call is the error boundary's warning.
+
+**Changed:** the lobby could leave "Start match" and "Play vs bot" disabled forever if the server never answered a start request; it now gives up after 6 s and says "The server didn't answer. Try again."
+
+**Performance** (production build, `?mock=1`, display about 120 Hz, devicePixelRatio 2, viewport 1512x857, frames counted with `requestAnimationFrame`): dashboard idle with two Phaser canvases 102 fps (worst frame 74 ms); dashboard during the two-phase live batch with 15 matchup bars, human group and mini-arenas 88 fps (worst frame 74 ms). Earlier numbers were 111 and 99 fps with a worst frame of 34-42 ms; the dashboard now draws more rows and a second phase, and one worst-frame spike is higher, but it stays smooth. Not re-measured: arena (118 fps earlier), phones, long sessions. The matches/s figure belongs to the runner (roster sample: 300 matches in 4.3 s, about 69 matches/s), not to the web app.
+
+**Still blocked / open:** `/v1/playtest/full`, `/v1/replay/:id/views`, `recorded-roster-report.json` and bot start do not exist in the repo yet, so those paths were only checked with the mock and with pure-function tests; no physical phone test.
+
+## Polish 03:14
+
+Nothing to change. `npm test` 153 pass, 6 skipped (other folders' opt-in tests), 0 fail; `npm run build -w apps/web` passes; no line over 120 characters. Performance numbers and blocked items are unchanged from Polish 01:10.
+
+## Polish 04:14
+
+Nothing to change since Polish 03:14. Tests 153 pass, 6 skipped, 0 fail; build passes; no line over 120 characters. Blocked items unchanged.

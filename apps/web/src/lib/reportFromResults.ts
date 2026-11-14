@@ -13,12 +13,15 @@ interface Tally {
   heroes: [string, string];
   wins: number;
   games: number;
+  /** mirror matchups: games won by the first seat (the hero's own win count cannot tell the seats apart) */
+  seatWins: number;
 }
 
 /**
  * Builds a Report from the run's MatchResult[]: one row per hero pair, win rate of the alphabetically first hero
- * (the server's naming). Seat assignments come from `config.options.assignments`. Mirror matchups are left out:
- * the hero's win count cannot be split by seat. Invalid matches are counted apart, never as draws.
+ * (the server's naming). Seat assignments come from `config.options.assignments`. A mirror matchup (hero against
+ * itself) reports the first seat's wins as `seatWins`; the hero's own win count cannot be split by seat.
+ * Invalid matches are counted apart, never as draws.
  */
 export function reportFromResults(results: MatchResult[], info: RunInfo): Report {
   const tallies = new Map<string, Tally>();
@@ -33,20 +36,22 @@ export function reportFromResults(results: MatchResult[], info: RunInfo): Report
     const names = r.config.players.map((id) => assign?.[id] ?? id).sort();
     if (names.length !== 2) continue;
     if (r.outcome.status === "draw") draws += 1;
-    if (names[0] === names[1]) continue;
     const key = names.join(" vs ");
-    const t = tallies.get(key) ?? { heroes: [names[0], names[1]] as [string, string], wins: 0, games: 0 };
+    const t = tallies.get(key) ?? { heroes: [names[0], names[1]] as [string, string], wins: 0, games: 0, seatWins: 0 };
     t.games += 1;
-    if (r.outcome.winners.some((w) => (assign?.[w] ?? w) === t.heroes[0])) t.wins += 1;
+    if (names[0] === names[1]) {
+      if (r.outcome.winners[0] === r.config.players[0]) t.seatWins += 1;
+    } else if (r.outcome.winners.some((w) => (assign?.[w] ?? w) === t.heroes[0])) t.wins += 1;
     tallies.set(key, t);
   }
   const rows: ReportRow[] = [...tallies.entries()]
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([dimension, t]) => ({
       dimension,
-      wins: t.wins,
+      wins: t.heroes[0] === t.heroes[1] ? t.seatWins : t.wins,
+      ...(t.heroes[0] === t.heroes[1] ? { seatWins: t.seatWins } : {}),
       games: t.games,
-      winRate: t.games ? t.wins / t.games : 0,
+      winRate: t.games ? (t.heroes[0] === t.heroes[1] ? t.seatWins : t.wins) / t.games : 0,
       ci95: [0, 1],
       uses: 0,
       opportunities: 0,

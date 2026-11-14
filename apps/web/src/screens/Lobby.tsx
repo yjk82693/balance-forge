@@ -12,8 +12,16 @@ import { VersionToggle } from "../components/VersionToggle";
 import { ServerDown, useServerState } from "../components/ServerDown";
 
 const SLOTS = 2;
+const START_WAIT_MS = 6000;
 /** The room server starts a match with exactly two connected players. */
 const PLAYERS_TO_START = 2;
+
+/** What to tell the host when the server refused to start a match. */
+function startError(code: string, message?: string): string {
+  if (code === "ILLEGAL_ACTION") return "The server can't start yet. It needs two players, or one player and a bot.";
+  if (code === "INVALID_SCHEMA") return "This server can't start a match against a bot yet.";
+  return message ? `Couldn't start: ${message}` : "Couldn't start the match. Try again.";
+}
 
 function joinUrl(code: string) {
   return `${location.origin}${location.pathname}#/play?code=${code}`;
@@ -46,7 +54,9 @@ export function Lobby({ gameId }: { gameId: string }) {
   useManifest();
   const game = gameById(gameId);
   const { transport, status } = useTransport("display", gameId);
-  const { room } = useRoom(transport);
+  const { room, error } = useRoom(transport);
+  const [starting, setStarting] = useState<null | "match" | "bot">(null);
+  const [refusal, setRefusal] = useState("");
   const srv = useServerState(status);
   const [left, setLeft] = useState<string | null>(null);
   const prev = useRef(new Map<string, { name: string; connected: boolean }>());
@@ -55,11 +65,31 @@ export function Lobby({ gameId }: { gameId: string }) {
   // id and epoch on every host message, so wait for the first room.status.
   const phase = room?.phase;
   const roomGame = room?.gameId;
+  const cleaned = useRef(false);
   useEffect(() => {
-    if (status !== "online" || !phase) return;
+    // Once per visit: a match that starts from this lobby must not be reset by its own status change.
+    if (status !== "online" || !phase || cleaned.current) return;
+    cleaned.current = true;
     if (roomGame && roomGame !== gameId) transport?.send("game.select", { gameId });
     if (phase !== "lobby") transport?.send("match.reset", {});
   }, [transport, status, phase, roomGame, gameId]);
+
+  // Go to the big screen once the server says the match is on; if it refuses, stay here and say why.
+  useEffect(() => {
+    if (!starting) return;
+    if (phase === "playing") go(`/arena/${gameId}`);
+    else if (error) {
+      setStarting(null);
+      setRefusal(startError(error.code, error.message));
+      return;
+    }
+    // No answer at all (dropped connection, silent server): do not leave the buttons disabled forever.
+    const t = setTimeout(() => {
+      setStarting(null);
+      setRefusal("The server didn't answer. Try again.");
+    }, START_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [starting, phase, error, gameId]);
 
   useEffect(() => {
     if (!room) return;
@@ -104,10 +134,12 @@ export function Lobby({ gameId }: { gameId: string }) {
     : here < PLAYERS_TO_START
       ? `Waiting for ${PLAYERS_TO_START - here} more ${PLAYERS_TO_START - here === 1 ? "player" : "players"}`
       : "";
-  const start = () => {
-    if (!canStart) return;
-    transport?.send("match.start", { gameId: game.id });
-    go(`/arena/${game.id}`);
+  const canBot = here >= 1 && arena && status === "online";
+  const begin = (bot: boolean) => {
+    if (bot ? !canBot : !canStart) return;
+    setRefusal("");
+    setStarting(bot ? "bot" : "match");
+    transport?.send("match.start", bot ? { gameId: game.id, bot: true } : { gameId: game.id });
   };
 
   return (
@@ -197,10 +229,27 @@ export function Lobby({ gameId }: { gameId: string }) {
           <p className="caption lobby-note" aria-live="polite">
             {connecting ? "Getting the room ready…" : (left ?? "Two players start a match.")}
           </p>
-          <button className="btn primary touch" aria-disabled={!canStart} onClick={start}>
+          <button
+            className="btn primary touch"
+            aria-disabled={!canStart || !!starting}
+            aria-busy={starting === "match"}
+            onClick={() => begin(false)}
+          >
             Start match
           </button>
-          {reason && <p className="caption lobby-note">{reason}</p>}
+          <button
+            className="btn secondary touch"
+            aria-disabled={!canBot || !!starting}
+            aria-busy={starting === "bot"}
+            onClick={() => begin(true)}
+          >
+            Play vs bot
+          </button>
+          {(refusal || reason) && (
+            <p className="caption lobby-note" role={refusal ? "alert" : undefined}>
+              {refusal || reason}
+            </p>
+          )}
         </section>
       </main>
     </div>

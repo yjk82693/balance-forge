@@ -76,12 +76,17 @@ export function outliersFirst(stats: RowStats[]): RowStats[] {
   return [...stats].sort((a, b) => Number(b.outlier) - Number(a.outlier) || distanceFromHalf(b) - distanceFromHalf(a));
 }
 
-/** The matchup the story is about: the baseline's worst outlier, else its most lopsided row. */
+/**
+ * The matchup the story is about: the baseline's worst outlier, else its most lopsided row. Rows with too few games
+ * are never picked (their rate says nothing yet); if every row is that small there is no target.
+ */
 export function pickTargetDimension(baseline: RowStats[]): string | undefined {
-  return (baseline.find((s) => s.outlier) ?? outliersFirst(baseline)[0])?.row.dimension;
+  const enough = baseline.filter((s) => !s.small);
+  return (enough.find((s) => s.outlier) ?? outliersFirst(enough)[0])?.row.dimension;
 }
 
 export function headlineFor(shown: RowStats | undefined): string {
-  if (!shown?.outlier) return "Within normal range";
+  if (!shown) return "Too few games per matchup yet";
+  if (!shown.outlier) return "Within normal range";
   return `${heroName(shown.matchup.a)} wins too often against ${heroName(shown.matchup.b)}`;
 }

@@ -1,6 +1,7 @@
 import { MiniArenas } from "./MiniArenas";
 
 interface Props {
+  phase?: "baseline" | "holdout";
   busy: boolean;
   done: number;
   total: number;
@@ -8,13 +9,17 @@ interface Props {
 
 const n = (x: number) => x.toLocaleString("en-US");
 
+/** Name of the running phase, for the live counter. */
+export const phaseName = (phase?: "baseline" | "holdout") =>
+  phase === "holdout" ? "Holdout on the patched data" : phase === "baseline" ? "Baseline" : "";
+
 function statusLine(busy: boolean, done: number, total: number): string {
-  if (busy) return `${n(done)} of ${n(total)} matches`;
+  if (busy) return total ? `${n(done)} of ${n(total)} matches` : "Getting the bots ready…";
   return done ? `${n(done)} matches played` : "Press Run to watch the bots play.";
 }
 
 /** Progress bar plus the mini-arena texture grid. The big counter lives in the report panel. */
-export function LivePanel({ busy, done, total }: Props) {
+export function LivePanel({ busy, done, total, phase }: Props) {
   const pctDone = total ? Math.round((done / total) * 100) : 0;
   return (
     <section className="panel live" aria-labelledby="live-title">
@@ -34,7 +39,8 @@ export function LivePanel({ busy, done, total }: Props) {
         >
           <span style={{ width: `${pctDone}%` }} />
         </div>
-        <p className="small live-line">{statusLine(busy, done, total)}</p>
+        <p className="small live-line">{phaseName(phase) && busy ? `${phaseName(phase)} · ` : ""}
+          {statusLine(busy, done, total)}</p>
         <p className="caption">Each bar settles as its games pile up.</p>
       </div>
       <MiniArenas active={busy} />

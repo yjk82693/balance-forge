@@ -148,3 +148,22 @@ export function eventsAt(frame: number, v: Version, seed: number, heroes: [strin
   }
   return events;
 }
+
+/** HP-over-time samples (on change) of the illustrative match, shaped like the analysis timeline. For ?mock=1 only. */
+export function mockTimeline(seed: number, heroes: [string, string]) {
+  const sample = (v: Version) => {
+    const points: { tick: number; hp: Record<string, number> }[] = [];
+    for (let f = 0; f < loopLength(v) - HOLD; f++) {
+      const [a, b] = frameAt(f, v, seed, heroes).payload.entities;
+      const last = points[points.length - 1];
+      if (!last || last.hp.p1 !== a.hp || last.hp.p2 !== b.hp) points.push({ tick: f * 6, hp: { p1: a.hp, p2: b.hp } });
+    }
+    return points;
+  };
+  return {
+    heroes: { p1: heroes[0], p2: heroes[1] },
+    maxHp: { p1: MAX_HP, p2: MAX_HP },
+    broken: sample("broken"),
+    patched: sample("patched"),
+  };
+}

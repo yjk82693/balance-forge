@@ -11,6 +11,8 @@ export interface LiveState {
   total: number;
   /** cumulative rows while bots play; null once the stored report takes over */
   rows: ReportRow[] | null;
+  /** which run is going: the baseline, then the holdout on the patched data */
+  phase?: "baseline" | "holdout";
 }
 
 const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
@@ -38,7 +40,7 @@ export function useRunner() {
   const mock = isMockMode();
   const [run, setRun] = useState<PlaytestRun | null>(() => (mock ? null : loadRun()));
   const [busy, setBusy] = useState(false);
-  const [live, setLive] = useState<LiveState>({ done: 0, total: MATCHES, rows: null });
+  const [live, setLive] = useState<LiveState>({ done: 0, total: 0, rows: null });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
@@ -56,10 +58,11 @@ export function useRunner() {
     setBusy(true);
     setError(null);
     setNotice(null);
-    setLive({ done: 0, total: MATCHES, rows: null });
+    setLive({ done: 0, total: 0, rows: null });
     const controller = new AbortController();
     abort.current = controller;
-    const onProgress = (p: ProgressMsg) => setLive({ done: p.matchesDone, total: p.totalMatches, rows: toRows(p) });
+    const onProgress = (p: ProgressMsg) =>
+      setLive({ done: p.matchesDone, total: p.totalMatches, rows: toRows(p), phase: p.phase });
     const stopListening = subscribeProgress(onProgress);
     try {
       const result = await runPlaytest(MATCHES, controller.signal, onProgress);
