@@ -2,10 +2,11 @@ import { data, legalActions } from './index.ts';
 import { xorshift32 } from '../../sim/index.ts';
 export const botPolicyVersion = 'scripted-0.2.1';
 // The bot that plays against a human in the room (match.start { bot: true }). Same code path as scripted-0.2.1 with
-// gentler draws: guard chance 20-40%, a larger aim error, a later reaction (see below) and a short hold after each
-// attack. Balance measurements never use it; a result that carries this version is not a bot-vs-bot sample.
+// gentler draws: guard chance 10-25%, a large aim error, a later reaction (see below), a 40 tick hold after each
+// attack and no strafing (it stands still between attacks). Balance measurements never use it; a result that carries
+// this version is not a bot-vs-bot sample.
 export const gentleBotPolicyVersion = 'scripted-0.2.1-gentle';
-const GENTLE_HOLD_TICKS = 8;
+const GENTLE_HOLD_TICKS = 40;
 
 // Stable public boundary: callers derive once per match and pass the result as variant on every tick.
 export function deriveBotSeed(matchSeed, seatIndex) {
@@ -19,12 +20,13 @@ function profile(seed, gentle = false) {
     rng = xorshift32(rng);
     return rng % maximum;
   };
-  // Same draws in the same order, different ranges: reaction 18-30 ticks of delay, guard chance 20-40%, aim error
-  // +-320 (twice the scripted one).
+  // Same draws in the same order, different ranges: reaction 18-30 ticks of delay, guard chance 10-25%, aim error
+  // +-560 (3.5 times the scripted one). The stand-off distance stays inside melee range (1200-1800): a gentle bot
+  // that never closes in would never hurt anyone, and the match would only end on the clock.
   if (gentle) {
     return {
-      reaction: 18 + draw(13), guardChance: 20 + draw(21), distance: 1200 + draw(2401),
-      strafe: draw(2) ? 1 : -1, aimX: draw(641) - 320, aimY: draw(641) - 320, rng
+      reaction: 18 + draw(13), guardChance: 10 + draw(16), distance: 1200 + draw(601),
+      strafe: draw(2) ? 1 : -1, aimX: draw(1121) - 560, aimY: draw(1121) - 560, rng
     };
   }
   return {
@@ -98,12 +100,12 @@ function decide(view, seq, variant, gentle) {
     actionId: 'move',
     params: {
       moveX: close ? 0 : Math.sign(dx) * 1000,
-      moveY: close ? (me.y < 1000 ? 1 : me.y > 8000 ? -1 : policy.strafe) * 1000 :
+      moveY: close ? (gentle ? 0 : (me.y < 1000 ? 1 : me.y > 8000 ? -1 : policy.strafe) * 1000) :
         Math.sign(dy) * 1000
     }
   }] : [];
   if (actionId === 'move') return movement;
-  if (gentle && actionId !== 'guard' && holdingBack(view, me)) return movement;
+  if (gentle && actionId !== 'guard' && holdingBack(view, me)) return close ? [] : movement; // stand still
   const params = {
     aimX: Math.trunc(dx * 1000 / norm) || 0,
     aimY: Math.trunc(dy * 1000 / norm) || 0
