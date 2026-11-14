@@ -1,0 +1,1006 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:balance-forge:game-contract:0.1",
+  "title": "Shared Game Contract v0.1",
+  "$defs": {
+    "ActionInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "playerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "turnId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "actionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "params": {
+          "type": "object",
+          "maxProperties": 16
+        }
+      },
+      "required": [
+        "playerId",
+        "seq",
+        "tick",
+        "turnId",
+        "actionId",
+        "params"
+      ]
+    },
+    "InputFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionInput"
+          }
+        },
+        "systemInputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "system.timeout"
+                ]
+              },
+              "playerId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "turnId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "kind",
+              "playerId",
+              "turnId"
+            ]
+          }
+        }
+      },
+      "required": [
+        "tick",
+        "actions",
+        "systemInputs"
+      ]
+    },
+    "MatchConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "const": "0.1"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "gameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "simVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "dataHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "players": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "mode": {
+          "enum": [
+            "realtime",
+            "turn",
+            "party"
+          ]
+        },
+        "maxTicks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "contractVersion",
+        "schemaVersion",
+        "gameId",
+        "simVersion",
+        "dataHash",
+        "seed",
+        "players",
+        "mode",
+        "maxTicks"
+      ]
+    },
+    "State": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "rng": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295
+        },
+        "turnId": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "tick",
+        "rng",
+        "turnId",
+        "payload"
+      ]
+    },
+    "Observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "viewerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "tick",
+        "viewerId",
+        "payload"
+      ]
+    },
+    "Outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "running",
+            "win",
+            "draw"
+          ]
+        },
+        "winners": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "uniqueItems": true
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "status",
+        "winners",
+        "reason"
+      ]
+    },
+    "ActionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "actionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "labelKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "control": {
+          "enum": [
+            "button",
+            "axes",
+            "choice"
+          ]
+        },
+        "paramsSchema": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "actionId",
+        "labelKey",
+        "control",
+        "paramsSchema"
+      ]
+    },
+    "GameDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "titleKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "mode": {
+          "enum": [
+            "realtime",
+            "turn",
+            "party"
+          ]
+        },
+        "minPlayers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "maxPlayers": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionSpec"
+          }
+        }
+      },
+      "required": [
+        "gameId",
+        "titleKey",
+        "mode",
+        "minPlayers",
+        "maxPlayers",
+        "actions"
+      ]
+    },
+    "Statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "players": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "playerId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "wins": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "draws": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "damage": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actionId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "opportunities": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 2147483647
+                    },
+                    "uses": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 2147483647
+                    }
+                  },
+                  "required": [
+                    "actionId",
+                    "opportunities",
+                    "uses"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "playerId",
+              "wins",
+              "draws",
+              "damage",
+              "actions"
+            ]
+          }
+        },
+        "durationTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "players",
+        "durationTicks"
+      ]
+    },
+    "StepResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/State"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "eventId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "audience": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "payload": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "eventId",
+              "audience",
+              "kind",
+              "payload"
+            ]
+          }
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "statisticsDelta": {
+          "$ref": "#/$defs/Statistics"
+        }
+      },
+      "required": [
+        "state",
+        "events",
+        "outcome",
+        "statisticsDelta"
+      ]
+    },
+    "Snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/MatchConfig"
+        },
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        },
+        "stateHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "config",
+        "tick",
+        "state",
+        "stateHash"
+      ]
+    },
+    "Effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operator": {
+          "enum": [
+            "damage",
+            "shield",
+            "knockback",
+            "cooldown"
+          ]
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": -1000000,
+          "maximum": 1000000
+        },
+        "durationTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "operator",
+        "amount",
+        "durationTicks"
+      ]
+    },
+    "Move": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "nameKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "archetype": {
+          "enum": [
+            "melee",
+            "projectile",
+            "guard"
+          ]
+        },
+        "weightTier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "power": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "effects": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Effect"
+          }
+        },
+        "authorKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "licenseKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "id",
+        "nameKey",
+        "archetype",
+        "weightTier",
+        "power",
+        "effects",
+        "authorKey",
+        "licenseKey"
+      ]
+    },
+    "Character": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "nameKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "health": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "speed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "moveIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "authorKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "licenseKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "id",
+        "nameKey",
+        "health",
+        "speed",
+        "moveIds",
+        "authorKey",
+        "licenseKey"
+      ]
+    },
+    "GameData": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "v": {
+          "const": 1
+        },
+        "gameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Character"
+          }
+        },
+        "moves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Move"
+          }
+        },
+        "weightTiers": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "startupTicks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "recoveryTicks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "cooldownTicks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "stunTicks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "knockback": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "hitStopTicks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "startupTicks",
+              "recoveryTicks",
+              "cooldownTicks",
+              "stunTicks",
+              "knockback",
+              "hitStopTicks"
+            ]
+          }
+        },
+        "tuning": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "damageScalePermille": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 3000
+            }
+          },
+          "required": [
+            "damageScalePermille"
+          ]
+        },
+        "gameRules": {
+          "type": "object"
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "authorKey": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "licenseKey": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "noticeKey": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": [
+              "authorKey",
+              "licenseKey",
+              "source",
+              "noticeKey"
+            ]
+          }
+        }
+      },
+      "required": [
+        "v",
+        "gameId",
+        "characters",
+        "moves",
+        "weightTiers",
+        "tuning",
+        "gameRules",
+        "provenance"
+      ]
+    },
+    "MatchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "matchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "config": {
+          "$ref": "#/$defs/MatchConfig"
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "statistics": {
+          "$ref": "#/$defs/Statistics"
+        },
+        "finalStateHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "valid": {
+          "type": "boolean"
+        },
+        "errorCode": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "matchId",
+        "config",
+        "outcome",
+        "statistics",
+        "finalStateHash",
+        "valid",
+        "errorCode"
+      ]
+    },
+    "Report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "gameId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "simVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "dataHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "botPolicyVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "seedSetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "validMatches": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "invalidMatches": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "draws": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "dimension": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "wins": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "games": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "winRate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "ci95": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "uses": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "opportunities": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "outlier": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "dimension",
+              "wins",
+              "games",
+              "winRate",
+              "ci95",
+              "uses",
+              "opportunities",
+              "outlier"
+            ]
+          }
+        }
+      },
+      "required": [
+        "reportId",
+        "gameId",
+        "simVersion",
+        "dataHash",
+        "botPolicyVersion",
+        "seedSetId",
+        "validMatches",
+        "invalidMatches",
+        "draws",
+        "rows"
+      ]
+    },
+    "PatchProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseDataHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "replacements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^/(tuning/damageScalePermille|moves/[0-9]+/power)$"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "path",
+              "value"
+            ]
+          }
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "baseDataHash",
+        "replacements",
+        "rationale"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/MatchConfig"
+    },
+    {
+      "$ref": "#/$defs/InputFrame"
+    },
+    {
+      "$ref": "#/$defs/Snapshot"
+    },
+    {
+      "$ref": "#/$defs/GameData"
+    },
+    {
+      "$ref": "#/$defs/MatchResult"
+    },
+    {
+      "$ref": "#/$defs/Report"
+    },
+    {
+      "$ref": "#/$defs/PatchProposal"
+    }
+  ]
+}
