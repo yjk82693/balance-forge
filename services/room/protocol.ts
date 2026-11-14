@@ -50,6 +50,10 @@ export const payloadSchemas = {
     },
     lastAck: integer()
   }, ['joinCode', 'seatToken']),
+  // A seated phone changes its hero while the room is still in the lobby.
+  'room.hero': object({
+    hero: text()
+  }, ['hero']),
   'game.select': object({
     gameId: id,
     dataHash: {

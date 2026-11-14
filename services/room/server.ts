@@ -6,7 +6,7 @@ import { resolve, relative, extname, sep } from 'node:path';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
-import { Authority } from '../../packages/sim/index.ts';
+import { Authority, xorshift32 } from '../../packages/sim/index.ts';
 import { hash, validate, validateSchema } from '../../packages/contracts/index.ts';
 import { object } from '../../packages/contracts/shapes.ts';
 import { runPlaytest, fullPlaytest, reanalyzePlaytest, PipelineError } from './playtests.ts';
@@ -344,6 +344,16 @@ export class RoomServer {
       this.status(room, env);
       return;
     }
+    if (env.type === 'room.hero') {
+      const room = session.room,
+        seat = room?.seats.find(s => s.seat === session.seat);
+      if (!room || !seat) throw Error('AUTH_EXPIRED');
+      if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
+      if (!this.playableHeroes(room).includes(env.payload.hero)) throw Error('INVALID_SCHEMA');
+      seat.hero = env.payload.hero;
+      this.status(room, env);
+      return;
+    }
     if (env.type === 'reconnect') return this.resume(session, env);
     if (env.type === 'room.join') {
       if (env.payload.seatToken) return this.resume(session, env);
@@ -398,6 +408,15 @@ export class RoomServer {
       this.status(room, env);
     }
   }
+  /**
+   * A new seed for every match that does not name one: a counter mixed with the clock, so two matches never start the
+   * same way (the bot's draws follow the seed). The seed is recorded in the config, so replays stay exact.
+   */
+  freshSeed() {
+    this.seedCounter = (this.seedCounter ?? 0) + 1;
+    const clock = xorshift32(Date.now() % 4294967291 + 1);
+    return xorshift32(((clock ^ Math.imul(this.seedCounter, 0x9e3779b1)) >>> 0) || 1);
+  }
   start(room, options, request) {
     if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
     const gameId = options.gameId ?? room.gameId,
@@ -423,7 +442,7 @@ export class RoomServer {
     }
     if (seats.length !== 2) throw Error('ILLEGAL_ACTION');
     const players = seats.map(s => s.seat).sort();
-    const config = game.makeConfig(data, options.seed ?? 1, players);
+    const config = game.makeConfig(data, options.seed ?? this.freshSeed(), players);
     config.options = {
       assignments: Object.fromEntries(seats.map(s => [s.seat, gameId === 'hero_arena' ?
         s.hero : data.gameRules.decks.some(d => d.id === s.hero) ? s.hero : 'standard']))

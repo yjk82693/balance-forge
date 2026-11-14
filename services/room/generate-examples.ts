@@ -63,6 +63,9 @@ export async function collectExamples() {
       hero: 'real_armor'
     });
     examples.websocket.server['room.status'] = phone.take('room.status');
+    request(phone, 'room.hero', {
+      hero: 'real_armor'
+    });
     request(host, 'game.select', {
       gameId: 'hero_arena',
       dataHash: original.dataHash

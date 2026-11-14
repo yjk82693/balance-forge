@@ -290,6 +290,19 @@ Joins in the lobby; replies with room.status, your seat and a private token. Pla
 }
 ```
 
+### room.hero — client to server
+
+A seated phone changes its hero while the room is still in the lobby (a seat keeps the hero it joined with until this
+message or a repeated room.join replaces it, and the match plays and records the seat's current hero). Unknown hero:
+INVALID_SCHEMA; a session without a seat: AUTH_EXPIRED; match already running: ILLEGAL_ACTION. Replies with
+room.status to everyone in the room.
+
+```json
+{
+  "hero": "real_armor"
+}
+```
+
 ### game.select — client to server
 
 Host-only lobby game/content selection; dataHash is optional. Replies with room.status.
@@ -303,7 +316,9 @@ Host-only lobby game/content selection; dataHash is optional. Replies with room.
 
 ### match.start — client to server
 
-Host-only, requires two connected seats. Replies with room.status, match.started and initial views.
+Host-only, requires two connected seats. Replies with room.status, match.started and initial views. A match without
+`seed` gets a fresh one from the server (a counter mixed with the clock), recorded in the config, so replays stay
+exact.
 
 ```json
 {
