@@ -135,9 +135,11 @@ interface ChartProps {
   dense?: boolean;
   /** the legend line; false when the screen shows it once itself */
   foot?: boolean;
+  /** extra content under a flagged row (the "Intended?" question) */
+  rowAction?: (s: RowStats) => React.ReactNode;
 }
 
-export function WinRateChart({ rows, dense = false, foot = true }: ChartProps) {
+export function WinRateChart({ rows, dense = false, foot = true, rowAction }: ChartProps) {
   const stats = rows.map(rowStats);
   return (
     <div className={`viz${dense ? " dense" : ""}`}>
@@ -168,6 +170,7 @@ export function WinRateChart({ rows, dense = false, foot = true }: ChartProps) {
           <span className="viz-value small" title={ciText(s)}>
             {s.small ? "Too few games yet" : `${pct(s.rate)}%`}
           </span>
+          {s.outlier && rowAction && <div className="viz-action">{rowAction(s)}</div>}
         </div>
       ))}
       {foot && <p className="caption viz-foot">{CHART_FOOT}</p>}

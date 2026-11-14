@@ -9,7 +9,7 @@ import {
 } from "./api";
 import { describePath } from "../components/PatchCompare";
 import { heroName } from "./heroes";
-import { needsMoreGames, type Rate, type ResultFacts } from "./resultCard";
+import { fallbackLine, needsMoreGames, type Rate, type ResultFacts } from "./resultCard";
 import { VERDICT_COPY } from "./dashboardData";
 import { originLabel, targetsFrom } from "./fullRun";
 import { fixturePatch } from "./fixtures";
@@ -31,6 +31,8 @@ export interface VersionRecord {
   verdict: { verdict: VerdictKind; reasons: string[]; targets?: VerdictTarget[] } | null;
   approved: boolean;
   note?: string;
+  /** why the model was not used, when origin is "fallback" */
+  fallbackReason?: string;
 }
 export type VersionRate = VerdictRate;
 /** The history plus which version rooms and runs use by default (`currentHash`, when the server says). */
@@ -86,6 +88,7 @@ export function parseVersion(raw: unknown): VersionRecord | null {
     verdict,
     approved: raw.approved !== false,
     note: typeof raw.note === "string" ? raw.note : undefined,
+    ...(typeof raw.fallbackReason === "string" && raw.fallbackReason ? { fallbackReason: raw.fallbackReason } : {}),
   };
 }
 
@@ -213,7 +216,7 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     patchPaths: v.changes.map((c) => c.path),
     outlier: t ? { ...asRate(t.matchup, t.before), isOutlier: true } : null,
     evidence: null,
-    fallbackNote: null,
+    fallbackNote: fallbackLine(v.origin, v.fallbackReason),
     patch: v.changes.map((c) => ({
       field: c.label ?? describePath(c.path),
       path: c.path,

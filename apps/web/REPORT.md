@@ -478,3 +478,17 @@ A report row that carries `target`, `deltaToTarget` and `outlier` is shown exact
 - The new dashboard stacks on phones: strip, accordions, then the roster; no sideways scroll (`dashboard-phone-after.png`).
 - Lobby, arena, controller, cards, versions and launcher already use the shared tokens and showed no overflow in the
   audit; they were left as they are.
+
+## Round 10 small items
+- "Intended?" chips now sit under every other flagged row of the roster (the headline's own are in the strip); shown only
+  for rows of the current run, not for the recorded roster.
+- `fallbackReason` is read from version records too (optional field) and shows as the same "Gemini unavailable: …" line in
+  the Versions detail.
+
+## Round 10 sponsor surfaces
+- Top-bar chip from `GET /v1/sinks` ({enabled, status:{name:{written, failed}}}): "Stored in MongoDB Atlas · Tiger Data";
+  hidden when none are enabled or the call fails; a failed-writes count turns it amber and says so. Never in `?mock=1`.
+- "Win rate across versions" in the open Patch section from `GET /v1/trend/hero_arena?matchup=a vs b`
+  ({points:[{data_hash, first_seen, games, rate}]}): up to the last 8 versions, the first hero of the sorted pair's rate
+  against the intended band. Hidden on 404/400/any failure or an empty series.
+- Checked against a local stub of both endpoints (`screenshots/sinks-trend-stub.png`), not the real engine.
