@@ -51,6 +51,24 @@ function checkHoldoutResults(holdoutResults, holdoutSeeds, patchedDataHash) {
 const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive',
   reasons: ['the patch did not pass validation, so no holdout run was made', ...errors.slice(0, 3)] });
 
+/** Patched data and its hash: from the injected `applyPatch` (the engine's own) or from our pure copy. */
+function patchData({ baseData, hashData, applyPatch }, proposal) {
+  if (typeof applyPatch !== 'function') {
+    const data = applyPatchToData(baseData, proposal, { hashData });
+    return { data, dataHash: hashData(data) };
+  }
+  let patched;
+  try {
+    patched = applyPatch(baseData, proposal);
+  } catch (e) {
+    return fail('INVALID_PATCH', `the engine rejected the patch: ${String(e?.message ?? e).slice(0, 120)}`);
+  }
+  if (!patched || typeof patched.dataHash !== 'string' || patched.data === null || typeof patched.data !== 'object') {
+    fail('INVALID_INPUT', 'applyPatch must return { data, dataHash }');
+  }
+  return patched;
+}
+
 async function runFullUnsafe(input) {
   const { baselineResults, humanResults = [], baseData, adapter, runHoldout, holdoutSeeds, hashData,
     botPolicyVersion, seedSetId, holdoutSeedSetId, elapsedMs, createdAt } = input ?? {};
@@ -79,8 +97,7 @@ async function runFullUnsafe(input) {
   };
   if (!step.ok) return { ...body, patchedDataHash: null, patched: null, verdict: rejectedPatchVerdict(step.errors) };
 
-  const patchedData = applyPatchToData(baseData, step.proposal, { hashData });
-  const patchedDataHash = hashData(patchedData);
+  const { data: patchedData, dataHash: patchedDataHash } = patchData(input, step.proposal);
   let holdoutResults;
   try {
     holdoutResults = await runHoldout(patchedData, [...holdoutSeeds]);

@@ -358,3 +358,47 @@ outliers only; `null` if it could not be built). It is additive; the web can ign
 `bari vs real_armor`, 200 games): Bari deals 69.9% of the damage; guard use rates are 35.2% (Bari) and 35.9% (Real Armor),
 so guard use does not separate the sides in this data, and projectile use is 56.1% against 55.9%. These are use rates, not
 proof of a cause. Tests: `test/evidence.test.js` (6 tests, hand-computed numbers).
+
+## Round 8 versions
+
+`pipeline/auto.js` exports `runAuto(input)` (final interface from Tony) and `baseVersionRecord(...)` (the root record,
+`origin: "base"`). It never throws; failures come back as `stoppedBecause: "error"` with `error: { code, message }` and the
+records made so far.
+
+**Input:** `{ gameId, fromHash, data, rounds (1..5, default 3), requireApproval (default true), adapter, hashData,
+applyPatch(data, proposal) -> { data, dataHash }, runBatch(dataHash, matchups, seeds) -> MatchResult[],
+seedsFor(round, 'scan' | 'holdout'), allMatchups, botPolicyVersion, seedSetId, onProgress, onRecord, now }`.
+`allMatchups` is a list of dimension strings such as `"bari vs daewi"` (the same strings as report rows).
+**Output:** `{ records, stoppedBecause: 'fair'|'not_accepted'|'regression'|'rounds'|'awaiting_approval'|'error', error?,
+finalCheck: Report | null, headHash }`.
+
+**A round:** scan (round 1: `allMatchups`; later rounds: only the matchups the previous scan flagged) on the head version;
+flagged = non-mirror outlier rows; `runFull` proposes, validates, applies the patch with the injected `applyPatch`, runs the
+holdout on `seedsFor(round, 'holdout')` for the flagged matchups only (`runBatch(patchedHash, flagged, seeds)`), and judges it.
+One version record per round: `{ dataHash, parentHash, gameId, createdAt, origin, changes[{path, label, old, new}], rationale,
+target{matchup, before{rate, ci95, games}, after{...}} | null, verdict, approved, note? }`. `target` is the flagged matchup
+furthest from 50%. When accepted and approved, the new hash is the next round's parent. `requireApproval` stops after the first
+accepted record (`awaiting_approval`, `approved: false`, no final check); resuming is a new call with `fromHash`.
+
+**Stops:**
+- `fair`: the latest scan flags nothing.
+- `not_accepted`: verdict is inconclusive or rejected (that record is kept, `approved: false`, the head does not move); an invalid
+  patch (`invalidPatch`) or a patch that changes nothing (`noChange`, no record because it would be its own parent).
+- `rounds`: the limit was reached while matchups were still flagged.
+- `regression`: the final all-matchups check (same scan seeds as round 1, on the last accepted hash) shows a new extreme matchup
+  (> 65%, n >= 200, not extreme on the same side in the first scan). The record of the last accepted version is then marked
+  `rejected` (an extra `onRecord` call) and `headHash` goes back to its parent.
+- `error`: any thrown or invalid thing; coded (`INVALID_INPUT`, `DATA_HASH_MISMATCH`, `SIMULATION_FAILED`, `INVALID_PATCH`).
+
+**Limits worth knowing:**
+- Regression is only seen at the end: rounds scan and hold out the flagged matchups, so a patch that wrecks an unflagged matchup
+  is found by the final check, not in the round that caused it. With 2+ accepted rounds the check cannot say which round caused
+  it, so the newest accepted record is marked, which can be unfair to it.
+- `onProgress` totals are estimates (matchups x seeds x 2 seat orders), because `runBatch` has no progress callback.
+- A round whose scan is already fair makes no holdout run; the final check is skipped only for `awaiting_approval` and `error`.
+
+**Other changes:** `runFull` accepts an optional `applyPatch` (the engine's own) and then uses its `{ data, dataHash }`;
+`newExtremeRows(before, after)` is now exported from `src/verdict.js` and used by both `judgePatch` and `runAuto`.
+**Tests:** `test/auto.test.js` (10 tests, fake adapter and a stub runner with a win-rate model): clean run and parent chain,
+scan scope and fresh seeds, approval, not accepted, no-change patch, regression, round limit, branching from a non-head
+version, progress/record callbacks, bad input and failures.

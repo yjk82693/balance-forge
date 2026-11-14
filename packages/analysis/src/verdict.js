@@ -21,6 +21,20 @@ const invalidRate = (r) => {
 };
 
 /**
+ * Bot rows of `after` that are extreme (a side above 65%, n >= minGames) and were not already extreme on the same side
+ * in `before`. Flipping sides counts as new. Mirror rows count too.
+ */
+export function newExtremeRows(before, after, minGames = MIN_GAMES) {
+  const beforeBy = new Map(before.rows.filter(isBot).map((r) => [r.dimension, r]));
+  return after.rows.filter(isBot).filter((row) => {
+    if (row.games < minGames || worstSide(row) <= EXTREME) return false;
+    const prev = beforeBy.get(row.dimension);
+    const sameSide = prev && (prev.winRate > 0.5) === (row.winRate > 0.5);
+    return !(prev && sameSide && prev.games >= minGames && worstSide(prev) > EXTREME);
+  });
+}
+
+/**
  * @returns {{verdict: 'accepted'|'rejected'|'inconclusive', reasons: string[], targets: object[]}}
  * options.targets: dimensions to judge; default = non-mirror rows flagged outlier in `before`. Mirror rows are
  * not default targets, but they still count in the "new extreme matchup" check below.
@@ -64,16 +78,9 @@ export function judgePatch(before, after, options = {}) {
     reasons.push('invalid-match rate increased');
     rejected = true;
   }
-  for (const row of after.rows.filter(isBot)) {
-    if (row.games < minGames || worstSide(row) <= EXTREME) continue;
-    const prev = beforeBy.get(row.dimension);
-    // Already extreme only if it was extreme on the same side; flipping sides is a new extreme.
-    const sameSide = prev && (prev.winRate > 0.5) === (row.winRate > 0.5);
-    const wasExtreme = prev && sameSide && prev.games >= minGames && worstSide(prev) > EXTREME;
-    if (!wasExtreme) {
-      reasons.push(`new extreme matchup: ${row.dimension} at ${Math.round(row.winRate * 100)}%`);
-      rejected = true;
-    }
+  for (const row of newExtremeRows(before, after, minGames)) {
+    reasons.push(`new extreme matchup: ${row.dimension} at ${Math.round(row.winRate * 100)}%`);
+    rejected = true;
   }
   if (rejected) return out('rejected');
 
