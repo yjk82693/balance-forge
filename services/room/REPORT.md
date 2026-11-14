@@ -730,3 +730,14 @@ Bot candidate scripted-0.2.2 (packages/games/action/bot-0.2.2.js, not adopted): 
 hero's own reach and no melee swing out of reach, no hero branches, same seeding. Unit tests only so far; the side-
 by-side measurement of the roster (win rates and intervals, whiff rate per hero) waits for the power to be on. See
 BOT.md.
+
+## Learned bots (round 9, part A)
+Per-hero parameters trained by self-play with the cross-entropy method live in `services/runner/learned/`. Each file
+records its seeds, generations, data hash and parameter hash. Nightcrow was held out of training.
+- Held-out win rate against Nightcrow (200 games, learned / untrained defaults / scripted 0.2.1): Bari 100 / 100 / 88,
+  Daewi 79.5 / 11 / 17, Real Armor 94 / 90 / 48.5, Sepia 71.5 / 85.5 / 28.5.
+- Sepia overfits: its learned parameters do worse against the held-out hero than its own start vector.
+- Learned play makes the balance picture more extreme (Bari against Real Armor 79.5% scripted, 97% learned).
+- Proposer ablation (indicative: one seed, one hero, Daewi, 2,880 matches each): CEM rises faster per generation, but
+  both CEM (78%) and blind mutation (82%) end at the same held-out level. The LLM coach row is not run: it needs the
+  Gemini key, which stays on the demo server, and there is no route that drives it.
