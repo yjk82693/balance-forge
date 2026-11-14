@@ -192,7 +192,8 @@ export function summaryText(f: ResultFacts): string {
       const verb = r.direction === "down" ? "lower" : "raise";
       const used = f.patchPaths.includes(r.path) ? " (used by the AI patch)" : "";
       const change = `${verb} ${describePath(r.path)} by ${Math.round(r.sizePct)}%`;
-      lines.push(`Suggested: ${heroName(r.hero)}, ${change}. ${r.why}${used}`);
+      const also = r.alsoAffects ? ` Also changes ${r.alsoAffects.map(heroName).join(", ")}.` : "";
+      lines.push(`Suggested: ${heroName(r.hero)}, ${change}. ${r.why}${used}${also}`);
     }
   }
   if (f.holdout) {

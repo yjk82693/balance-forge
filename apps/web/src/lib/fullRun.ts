@@ -128,7 +128,10 @@ function recommendationFrom(raw: unknown): Recommendation | null {
   const given = raw.expected;
   const expected = typeof given === "string" || typeof given === "number" ? String(given) : undefined;
   const role = raw.role === "winner" || raw.role === "loser" ? raw.role : undefined;
-  return { hero: raw.hero, role, path: raw.path, direction, sizePct, why: String(raw.why ?? ""), expected };
+  const listed = Array.isArray(raw.alsoAffects) ? raw.alsoAffects : [];
+  const also = listed.filter((h): h is string => typeof h === "string");
+  const alsoAffects = also.length ? also : undefined;
+  return { hero: raw.hero, role, path: raw.path, direction, sizePct, why: String(raw.why ?? ""), expected, alsoAffects };
 }
 
 /**

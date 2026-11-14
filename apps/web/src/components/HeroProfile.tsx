@@ -81,6 +81,7 @@ function RecommendationItem({ r, first, used }: { r: Recommendation; first: bool
       </p>
       {r.why && <p className="caption">{r.why}</p>}
       {r.expected && <p className="caption">Expected: {r.expected}</p>}
+      {r.alsoAffects && <p className="caption">also changes {nameList(r.alsoAffects)}</p>}
     </li>
   );
 }

@@ -73,6 +73,8 @@ export interface Recommendation {
   sizePct: number;
   why: string;
   expected?: string;
+  /** other heroes that share this move and change with it (melee, projectile and guard are shared) */
+  alsoAffects?: string[];
 }
 /** The `diagnosis` of a /full body (request flag `diagnose: true`): a profile of each hero and what to change. */
 export interface Diagnosis {
