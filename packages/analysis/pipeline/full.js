@@ -18,7 +18,9 @@ function describeChange(baseData, { path, value }) {
   if (!move) return { path, label: 'Damage scale (permille)', old: baseData.tuning?.damageScalePermille, new: value };
   const index = Number(move[1]);
   const moveId = baseData.moves?.[index]?.id;
-  const hero = baseData.characters?.find((c) => Array.isArray(c.moves) && c.moves.includes(moveId))?.id;
+  // The engine lists a hero's moves in `moveIds`; `moves` is accepted too.
+  const ownsMove = (c) => [c.moveIds, c.moves].some((ids) => Array.isArray(ids) && ids.includes(moveId));
+  const hero = baseData.characters?.find(ownsMove)?.id;
   const name = moveId ? `${titleCase(moveId)} power` : `Move ${index} power`;
   return { path, label: hero ? `${titleCase(hero)} · ${name}` : name, old: baseData.moves?.[index]?.power,
     new: value };

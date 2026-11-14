@@ -8,15 +8,16 @@ import { errorResult } from '../src/errors.js';
 // ======================================================================================================
 // PLUG-IN POINT (the only place to edit for a new bot policy): bot seed derivation per policy version.
 // The runner calls `chooseActions(view, seq, variant)`; `seq` and `variant` come from here. Each entry gets
-// { tick, seat, config } (tick = state.tick before the step, seat = index in config.players).
-// scripted-0.1.1 (recorded runs so far): seq = tick * 2, variant = seat.
-// NEXT, scripted-0.2.1: add the entry once the engine exports its derivation function (not merged yet), e.g.
-//   'scripted-0.2.1': ({ tick, seat, config }) => ({ seq: <engine function>(...), variant: seat }).
-// Until then loadArenaSimulator refuses a bot whose policy version has no entry, instead of replaying with a wrong
+// ({ tick, seat, config }, bot): tick = state.tick before the step, seat = index in config.players, bot = the
+// engine's bot module (so the engine's own exported functions are used, never a copy).
+// scripted-0.1.1: seq = tick * 2, variant = seat.
+// scripted-0.2.1: seq = tick * 2, variant = deriveBotSeed(config.seed, seat), as services/runner/match.js does.
+// loadArenaSimulator refuses a bot whose policy version has no entry, instead of replaying with a wrong
 // derivation and failing the hash check later.
 // ======================================================================================================
 export const BOT_SEED_DERIVATIONS = {
   'scripted-0.1.1': ({ tick, seat }) => ({ seq: tick * 2, variant: seat }),
+  'scripted-0.2.1': ({ tick, seat, config }, bot) => ({ seq: tick * 2, variant: bot.deriveBotSeed(config.seed, seat) }),
 };
 
 // The engine's bot is `chooseActions(view, seq, variant)` returning an array (arena-0.1.1 and later).
@@ -68,13 +69,14 @@ export async function loadArenaSimulator(engineRoot) {
     const arena = await load('packages/games/action/index.js');
     const bot = await load('packages/games/action/bot.js');
     const contracts = await load('packages/contracts/index.js');
-    const botSeed = BOT_SEED_DERIVATIONS[bot.botPolicyVersion];
-    if (!botSeed) {
+    const derive = BOT_SEED_DERIVATIONS[bot.botPolicyVersion];
+    if (!derive || (bot.botPolicyVersion !== 'scripted-0.1.1' && typeof bot.deriveBotSeed !== 'function')) {
       return errorResult('ENGINE_UNAVAILABLE', `bot policy ${bot.botPolicyVersion} has no seed derivation; `
         + 'add it to BOT_SEED_DERIVATIONS in pipeline/arena-simulator.js');
     }
     return { ok: true, value: { ...createArenaSimulator({ arena, chooseActions: bot.chooseActions,
-      chooseAction: bot.chooseAction, hash: contracts.hash, compareIds: contracts.compareIds, botSeed }),
+      chooseAction: bot.chooseAction, hash: contracts.hash, compareIds: contracts.compareIds,
+      botSeed: (args) => derive(args, bot) }),
     baseData: arena.data, botPolicyVersion: bot.botPolicyVersion } };
   } catch (error) {
     // Say exactly what failed (a missing file or export), never a bare "unavailable".

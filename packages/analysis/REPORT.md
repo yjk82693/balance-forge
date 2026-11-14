@@ -299,3 +299,45 @@ The derivation is also injectable (`createArenaSimulator({ botSeed })`), which a
 
 Not done on purpose: regenerating the recorded report and the real `runFull` measurement (steps 2-3 of Round 7) wait for the
 engine's 0.2.1 recordings.
+
+## Round 7 (steps 2 and 3, after the 0.2.1 recordings)
+
+Failing tests: 7 after the merge (stale replay seed derivation, stale recorded report, hard-coded counts), now **0 of 101**.
+
+**Replay uses the engine's `deriveBotSeed`.** `BOT_SEED_DERIVATIONS['scripted-0.2.1']` in `pipeline/arena-simulator.js` is
+`seq = tick * 2`, `variant = bot.deriveBotSeed(config.seed, seat)`, exactly as `services/runner/match.js` calls it. The entry
+receives the engine's bot module, so the engine function is used, not a copy. Re-simulating every 67th of the 3,000 recorded
+roster matches (45 matches, all matchups) reproduces the runner `finalStateHash`. Test changes (none weakened): the replay and
+plug-in tests build the simulator with the engine policy's derivation; the roster hash test compares against the recorded
+metrics `matchCount` (3,000, was a hard-coded 300) and samples about 45 matches; `recorded.test.js` reads the bot policy and
+seed set from the recorded metrics instead of hard-coding 0.1.1.
+
+**Recorded report.** Regenerated from the new recorded files with the CLI (`scripted-0.2.1`, 3,000 matches, 15 matchups, 200
+games each). It is byte-identical to the copy the engine already put in `services/runner/recorded-roster-report.json`, so that
+file is unchanged; `packages/analysis/recorded/recorded-roster-report.json` is now the same file (it was the stale 300-match
+one). 14 of 15 rows are outliers (n=200 each); `bari vs real_armor` is 79.5%.
+
+**Label fix found on the way.** `runFull` change labels looked up a hero through `characters[].moves`; the engine uses
+`moveIds`, so the label was "Spirit Arrow power". Now "Bari · Spirit Arrow power" (test added).
+
+### runFull against the real engine, fake adapter (`measure-full.js`, 2 workers, this laptop)
+Proposal in both runs (origin `fake`): `/moves/1/power` 92 -> 72, "Spirit Arrow power", valid. Baseline seeds 1..100, holdout
+seeds 1000001..1000100.
+
+| Mode | Baseline Bari vs Real Armor | Holdout Bari vs Real Armor | Verdict | Time |
+|---|---|---|---|---|
+| non-roster, pairs 100 (200 + 200 matches) | 79.5% (n=200, CI 73.4-84.5%, outlier) | 76.0% (n=200, CI 69.6-81.4%, outlier) | **accepted** | 13.6 s (6.0 s + 7.5 s) |
+| roster, pairs 100 (3,000 + 3,000 matches) | 79.5% (same row) | 76.0% | **rejected** | 243 s (118 s + 126 s) |
+
+- **Non-roster accepted, but weakly.** The only gate that decides is "distance to 50% improves": 29.5 points to 26.0. The two
+  confidence intervals overlap, so this is not evidence that the patch works; it is what the demo gate allows. Do not present
+  it as a fix.
+- **Roster is rejected by the "every target must improve" gate.** Default targets are all non-mirror outlier rows (13 of
+  them). The patch changes one Bari move, so rows without Bari (`daewi vs nightcrow`, `daewi vs sepia`) move only by seed
+  noise on the fresh holdout seeds, and any one of them not moving toward 50% rejects the patch: "daewi vs nightcrow:
+  distance to 50% did not improve", "daewi vs sepia: ...". `accepted` is reachable in roster mode only if the patch (or a
+  proposal tied to one hero) is judged on the rows it can affect. Options for you: judge only the rows that involve a hero
+  whose move changed, or a pooled measure; I did not change the gate tonight.
+- Mirror rows are no longer targets (step 1); they are not what blocks it.
+- Engine speed with the 0.2.1 recording: 25 matches/s (3,000 matches in 119 s); earlier 0.1.1 runs reached 58 matches/s with
+  fewer ticks per match.

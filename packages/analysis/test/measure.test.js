@@ -35,7 +35,7 @@ test('the bot seed derivation is injectable, and the engine policy has an entry 
   assert.equal(loaded.value.botPolicyVersion, bot.botPolicyVersion);
   const [recorded] = recordedRosterResults();
   const calls = [];
-  const spy = (args) => { calls.push(args); return BOT_SEED_DERIVATIONS['scripted-0.1.1'](args); };
+  const spy = (args) => { calls.push(args); return BOT_SEED_DERIVATIONS[bot.botPolicyVersion](args, bot); };
   const sim = createArenaSimulator({ arena, chooseActions: bot.chooseActions, hash, compareIds, botSeed: spy });
   const out = sim.simulate({ config: recorded.config, data: arena.data });
   assert.equal(out.finalStateHash, recorded.finalStateHash);

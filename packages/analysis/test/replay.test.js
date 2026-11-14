@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyPatchToData, buildBeforeAfter, pickLopsidedMatch, matchupResolver, resolveDataVariants,
   isError } from '../src/index.js';
-import { createArenaSimulator } from '../pipeline/arena-simulator.js';
+import { BOT_SEED_DERIVATIONS, createArenaSimulator } from '../pipeline/arena-simulator.js';
 import { main } from '../pipeline/cli.js';
 import { fixture, pairedResults } from './helpers.js';
 import { loadArenaSimulator } from '../pipeline/arena-simulator.js';
@@ -111,7 +111,8 @@ test('buildBeforeAfter with a fake simulator: pair JSON, determinism check, erro
 // --- Real engine integration: same seed + bot policy, original vs patched data ---
 const jobs = pairedJobs({ seeds: Array.from({ length: 12 }, (_, i) => i + 1) });
 const results = jobs.map(runMatch);
-const sim = createArenaSimulator({ arena, chooseActions: bot.chooseActions, hash, compareIds });
+const botSeed = (args) => BOT_SEED_DERIVATIONS[bot.botPolicyVersion](args, bot);
+const sim = createArenaSimulator({ arena, chooseActions: bot.chooseActions, hash, compareIds, botSeed });
 const patchFor = (hashValue) => ({ baseDataHash: hashValue, replacements: [{ path: '/moves/1/power', value: 72 }],
   rationale: 'lower spirit arrow' });
 
@@ -161,8 +162,9 @@ test('resolveDataVariants: seat-swapped pairs share one dataHash (addendum item 
 
 test('re-simulating recorded roster matches reproduces the runner finalStateHash (all 15 matchups)', () => {
   const recorded = recordedRosterResults();
-  assert.equal(recorded.length, 300);
-  const sampled = recorded.filter((_, i) => i % 7 === 0);
+  const metrics = JSON.parse(readFileSync(join(engineRoot, 'services/runner/recorded-roster-metrics.json'), 'utf8'));
+  assert.equal(recorded.length, metrics.matchCount);
+  const sampled = recorded.filter((_, i) => i % Math.ceil(recorded.length / 45) === 0);
   const matchups = new Set(sampled.map((r) => [...Object.values(r.config.options.assignments)].sort().join()));
   assert.ok(matchups.size >= 10, `sample covers ${matchups.size} matchups`);
   for (const r of sampled) {

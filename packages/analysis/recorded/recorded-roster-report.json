@@ -3,209 +3,209 @@
   "gameId": "hero_arena",
   "simVersion": "arena-0.1.1",
   "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
-  "botPolicyVersion": "scripted-0.1.1",
+  "botPolicyVersion": "scripted-0.2.1",
   "seedSetId": "explicit-paired-seeds",
-  "validMatches": 300,
+  "validMatches": 3000,
   "invalidMatches": 0,
-  "draws": 0,
+  "draws": 424,
   "rows": [
     {
       "dimension": "bari vs bari",
-      "wins": 20,
-      "games": 20,
-      "winRate": 1,
+      "wins": 72,
+      "games": 200,
+      "winRate": 0.36,
       "ci95": [
-        0.83887,
-        1
+        0.296691,
+        0.428586
       ],
-      "uses": 320,
-      "opportunities": 580,
-      "outlier": false
+      "uses": 3892,
+      "opportunities": 7024,
+      "outlier": true
     },
     {
       "dimension": "bari vs daewi",
-      "wins": 20,
-      "games": 20,
-      "winRate": 1,
+      "wins": 198,
+      "games": 200,
+      "winRate": 0.99,
       "ci95": [
-        0.83887,
-        1
+        0.964278,
+        0.997253
       ],
-      "uses": 320,
-      "opportunities": 590,
-      "outlier": false
+      "uses": 4614,
+      "opportunities": 8335,
+      "outlier": true
     },
     {
       "dimension": "bari vs nightcrow",
-      "wins": 20,
-      "games": 20,
-      "winRate": 1,
+      "wins": 176,
+      "games": 200,
+      "winRate": 0.88,
       "ci95": [
-        0.83887,
-        1
+        0.827656,
+        0.918021
       ],
-      "uses": 250,
-      "opportunities": 460,
-      "outlier": false
+      "uses": 4593,
+      "opportunities": 8274,
+      "outlier": true
     },
     {
       "dimension": "bari vs real_armor",
-      "wins": 10,
-      "games": 20,
-      "winRate": 0.5,
+      "wins": 159,
+      "games": 200,
+      "winRate": 0.795,
       "ci95": [
-        0.299295,
-        0.700705
+        0.733742,
+        0.845139
       ],
-      "uses": 500,
-      "opportunities": 900,
-      "outlier": false
+      "uses": 5614,
+      "opportunities": 10042,
+      "outlier": true
     },
     {
       "dimension": "bari vs sepia",
-      "wins": 20,
-      "games": 20,
-      "winRate": 1,
+      "wins": 176,
+      "games": 200,
+      "winRate": 0.88,
       "ci95": [
-        0.83887,
-        1
+        0.827656,
+        0.918021
       ],
-      "uses": 250,
-      "opportunities": 460,
-      "outlier": false
+      "uses": 4593,
+      "opportunities": 8274,
+      "outlier": true
     },
     {
       "dimension": "daewi vs daewi",
-      "wins": 20,
-      "games": 20,
-      "winRate": 1,
+      "wins": 64,
+      "games": 200,
+      "winRate": 0.32,
       "ci95": [
-        0.83887,
-        1
+        0.259264,
+        0.38752
       ],
-      "uses": 260,
-      "opportunities": 520,
-      "outlier": false
+      "uses": 4512,
+      "opportunities": 9066,
+      "outlier": true
     },
     {
       "dimension": "daewi vs nightcrow",
-      "wins": 0,
-      "games": 20,
-      "winRate": 0,
+      "wins": 33,
+      "games": 200,
+      "winRate": 0.165,
       "ci95": [
-        0,
-        0.16113
+        0.119968,
+        0.222659
       ],
-      "uses": 290,
-      "opportunities": 590,
-      "outlier": false
+      "uses": 4727,
+      "opportunities": 9237,
+      "outlier": true
     },
     {
       "dimension": "daewi vs real_armor",
-      "wins": 0,
-      "games": 20,
-      "winRate": 0,
+      "wins": 5,
+      "games": 200,
+      "winRate": 0.025,
       "ci95": [
-        0,
-        0.16113
+        0.010725,
+        0.057179
       ],
-      "uses": 300,
-      "opportunities": 600,
-      "outlier": false
+      "uses": 5069,
+      "opportunities": 9822,
+      "outlier": true
     },
     {
       "dimension": "daewi vs sepia",
-      "wins": 0,
-      "games": 20,
-      "winRate": 0,
+      "wins": 33,
+      "games": 200,
+      "winRate": 0.165,
       "ci95": [
-        0,
-        0.16113
+        0.119968,
+        0.222659
       ],
-      "uses": 290,
-      "opportunities": 590,
-      "outlier": false
+      "uses": 4727,
+      "opportunities": 9237,
+      "outlier": true
     },
     {
       "dimension": "nightcrow vs nightcrow",
-      "wins": 0,
-      "games": 20,
-      "winRate": 0,
+      "wins": 64,
+      "games": 200,
+      "winRate": 0.32,
       "ci95": [
-        0,
-        0.16113
+        0.259264,
+        0.38752
       ],
-      "uses": 320,
-      "opportunities": 580,
-      "outlier": false
+      "uses": 9304,
+      "opportunities": 16512,
+      "outlier": true
     },
     {
       "dimension": "nightcrow vs real_armor",
-      "wins": 10,
-      "games": 20,
-      "winRate": 0.5,
+      "wins": 61,
+      "games": 200,
+      "winRate": 0.305,
       "ci95": [
-        0.299295,
-        0.700705
+        0.245363,
+        0.371987
       ],
-      "uses": 460,
-      "opportunities": 830,
-      "outlier": false
+      "uses": 10045,
+      "opportunities": 17816,
+      "outlier": true
     },
     {
       "dimension": "nightcrow vs sepia",
-      "wins": 10,
-      "games": 20,
-      "winRate": 0.5,
+      "wins": 63,
+      "games": 200,
+      "winRate": 0.315,
       "ci95": [
-        0.299295,
-        0.700705
+        0.254622,
+        0.382351
       ],
-      "uses": 330,
-      "opportunities": 600,
-      "outlier": false
+      "uses": 9299,
+      "opportunities": 16503,
+      "outlier": true
     },
     {
       "dimension": "real_armor vs real_armor",
-      "wins": 0,
-      "games": 20,
-      "winRate": 0,
+      "wins": 58,
+      "games": 200,
+      "winRate": 0.29,
       "ci95": [
-        0,
-        0.16113
+        0.231539,
+        0.356376
       ],
-      "uses": 740,
-      "opportunities": 1320,
-      "outlier": false
+      "uses": 12180,
+      "opportunities": 21576,
+      "outlier": true
     },
     {
       "dimension": "real_armor vs sepia",
-      "wins": 10,
-      "games": 20,
-      "winRate": 0.5,
+      "wins": 110,
+      "games": 200,
+      "winRate": 0.55,
       "ci95": [
-        0.299295,
-        0.700705
+        0.480755,
+        0.617361
       ],
-      "uses": 460,
-      "opportunities": 830,
+      "uses": 10037,
+      "opportunities": 17803,
       "outlier": false
     },
     {
       "dimension": "sepia vs sepia",
-      "wins": 0,
-      "games": 20,
-      "winRate": 0,
+      "wins": 64,
+      "games": 200,
+      "winRate": 0.32,
       "ci95": [
-        0,
-        0.16113
+        0.259264,
+        0.38752
       ],
-      "uses": 320,
-      "opportunities": 580,
-      "outlier": false
+      "uses": 9304,
+      "opportunities": 16512,
+      "outlier": true
     }
   ],
-  "elapsedMs": 6385,
+  "elapsedMs": 119027,
   "recorded": true,
-  "createdAt": "2026-11-14T11:21:44.455Z"
+  "createdAt": "2026-11-14T13:56:30.766Z"
 }
