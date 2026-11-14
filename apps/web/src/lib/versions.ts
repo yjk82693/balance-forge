@@ -130,6 +130,8 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     source,
     sourceDetail: `${shortHash(v.dataHash)}${v.approved ? "" : " · candidate, not shipped"}`,
     fair: false,
+    diagnosis: null,
+    patchPaths: v.changes.map((c) => c.path),
     outlier: t ? { ...asRate(t.matchup, t.before), isOutlier: true } : null,
     evidence: null,
     patch: v.changes.map((c) => ({

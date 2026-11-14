@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type SceneId = "match" | "bots" | "patch" | "replay" | "verdict" | "history";
+export type SceneId = "match" | "bots" | "profile" | "patch" | "replay" | "verdict" | "history";
 
 export interface Scene {
   id: SceneId;
@@ -9,18 +9,24 @@ export interface Scene {
   min: number;
 }
 
-const BASE_SCENES: Scene[] = [
+const FIRST_SCENES: Scene[] = [
   { id: "match", title: "The match", min: 5 },
   { id: "bots", title: "Bots play", min: 8 },
+];
+const PROFILE_SCENE: Scene = { id: "profile", title: "Hero profile", min: 12 };
+const MIDDLE_SCENES: Scene[] = [
   { id: "patch", title: "The patch", min: 8 },
   { id: "replay", title: "Same seed, both versions", min: 12 },
 ];
 
-/** The flow: the version history comes last when there is one to show, otherwise the verdict is the end. */
-export function scenesFor(withHistory: boolean): Scene[] {
-  return withHistory
-    ? [...BASE_SCENES, { id: "verdict", title: "Verdict", min: 8 }, { id: "history", title: "Version history", min: 0 }]
-    : [...BASE_SCENES, { id: "verdict", title: "Verdict", min: 0 }];
+/**
+ * The flow. The hero profile comes between the result and the patch when the run has a diagnosis; the version history
+ * comes last when there is one to show, otherwise the verdict is the end.
+ */
+export function scenesFor(opts: { profile: boolean; history: boolean }): Scene[] {
+  const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history ? 8 : 0 };
+  const history: Scene[] = opts.history ? [{ id: "history", title: "Version history", min: 0 }] : [];
+  return [...FIRST_SCENES, ...(opts.profile ? [PROFILE_SCENE] : []), ...MIDDLE_SCENES, verdict, ...history];
 }
 
 const TICK_MS = 250;

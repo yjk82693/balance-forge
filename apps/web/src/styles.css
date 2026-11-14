@@ -2181,6 +2181,7 @@ p {
 @media (min-width: 1100px) {
   /* the result card is taller than the old patch card, so the replays give up some height to keep one screen */
   .dash-compact .replays { width: 58%; }
+  .dash-compact.has-profile .replays { width: 44%; }
 }
 @media (min-width: 1100px) {
   .result-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
@@ -2267,3 +2268,25 @@ table.sr-only { display: block; max-width: 1px; }
 .ba-dot { position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; box-sizing: border-box; }
 .ba-dot.before { border: 2px solid var(--text-2); background: var(--surface-1); }
 .ba-dot.after { background: var(--accent); }
+
+/* hero profile */
+.hero-profile { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.profile-line { margin: var(--space-1) 0 var(--space-2); font-weight: 700; }
+.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.profile-card { background: var(--surface-2); border-radius: var(--radius-md); padding: var(--space-3); min-width: 0; }
+.profile-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-1); }
+.profile-name { font-weight: 700; }
+.rate-rows, .reco-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: 1px; }
+.rate-row { display: grid; grid-template-columns: 108px 1fr 36px; align-items: center; gap: var(--space-2); }
+.rate-row.strong .rate-label { font-weight: 700; }
+.rate-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rate-track { position: relative; height: 10px; border-radius: var(--radius-pill); background: var(--surface-1); }
+.rate-band { position: absolute; left: 45%; width: 10%; top: 0; bottom: 0; background: var(--surface-3); }
+.rate-ci { position: absolute; top: 4px; height: 2px; background: var(--text-2); }
+.rate-dot { position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--accent); }
+.rate-pct { text-align: right; }
+.reco-list { margin-top: var(--space-2); gap: var(--space-1); }
+.reco p { margin: 0; }
+@media (max-width: 600px) { .profile-grid { grid-template-columns: 1fr; } }
+.present-profile .hero-profile { border-top: 0; margin-top: 0; }
+@media (min-width: 1100px) { .present-profile { zoom: 1.35; } }

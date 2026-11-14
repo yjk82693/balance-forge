@@ -1,6 +1,12 @@
 import type { PatchProposal, Report, ReportRow } from "./contract";
 import type {
   Change,
+  Classification,
+  Diagnosis,
+  HeroProfileData,
+  HeroStrength,
+  OpponentRate,
+  Recommendation,
   EvidenceRow,
   EvidenceSide,
   PatchOrigin,
@@ -93,6 +99,67 @@ function proposalFrom(raw: unknown, validation: unknown): Proposal | undefined {
     changes,
     origin: ORIGINS.includes(raw.origin as PatchOrigin) ? (raw.origin as PatchOrigin) : "manual",
     validation: { ok: v.ok !== false && errors.length === 0, errors },
+  };
+}
+
+const CLASSIFICATIONS = ["overall_strong", "overall_weak", "counter_specific"];
+
+function opponentRate(raw: unknown): OpponentRate | null {
+  const rate = verdictRate(raw);
+  return rate && isObject(raw) && typeof raw.opponent === "string" ? { ...rate, opponent: raw.opponent } : null;
+}
+
+function strengthFrom(raw: unknown): HeroStrength | undefined {
+  if (!isObject(raw) || (raw.role !== "winner" && raw.role !== "loser")) return undefined;
+  return {
+    role: raw.role,
+    overallRate: num(raw.overallRate),
+    marginPts: num(raw.marginPts),
+    opponentsOutsideBand: num(raw.opponentsOutsideBand),
+    worstOpponent: typeof raw.worstOpponent === "string" ? raw.worstOpponent : undefined,
+  };
+}
+
+function recommendationFrom(raw: unknown): Recommendation | null {
+  if (!isObject(raw) || typeof raw.hero !== "string" || typeof raw.path !== "string") return null;
+  const sizePct = num(raw.sizePct);
+  if (sizePct === undefined) return null;
+  const direction = /up|increase|buff|raise/i.test(String(raw.direction)) ? "up" : "down";
+  const given = raw.expected;
+  const expected = typeof given === "string" || typeof given === "number" ? String(given) : undefined;
+  const role = raw.role === "winner" || raw.role === "loser" ? raw.role : undefined;
+  const listed = Array.isArray(raw.alsoAffects) ? raw.alsoAffects : [];
+  const also = listed.filter((h): h is string => typeof h === "string");
+  const alsoAffects = also.length ? also : undefined;
+  return { hero: raw.hero, role, path: raw.path, direction, sizePct, why: String(raw.why ?? ""), expected, alsoAffects };
+}
+
+/**
+ * `diagnosis` of the run body. Heroes without a name are dropped; a missing `overall`, `strength` or recommendation
+ * is fine. A single `recommendation` is read as a list of one. Null when no hero profile is usable.
+ */
+export function diagnosisFrom(raw: unknown): Diagnosis | null {
+  if (!isObject(raw) || !Array.isArray(raw.heroes)) return null;
+  const heroes: HeroProfileData[] = raw.heroes.flatMap((h) =>
+    isObject(h) && typeof h.hero === "string"
+      ? [{
+          hero: h.hero,
+          overall: verdictRate(h.overall),
+          opponents: (Array.isArray(h.opponents) ? h.opponents : []).flatMap((o) => opponentRate(o) ?? []),
+          strength: strengthFrom(h.strength),
+        }]
+      : [],
+  );
+  if (!heroes.length) return null;
+  const single = raw.recommendation ? [raw.recommendation] : [];
+  const listed = Array.isArray(raw.recommendations) ? raw.recommendations : single;
+  return {
+    focusHero: typeof raw.focusHero === "string" ? raw.focusHero : undefined,
+    heroes,
+    classification: CLASSIFICATIONS.includes(String(raw.classification))
+      ? (raw.classification as Classification)
+      : undefined,
+    recommendations: listed.flatMap((r) => recommendationFrom(r) ?? []),
   };
 }
 
@@ -201,6 +268,7 @@ export function runFromFull(raw: unknown): PlaytestRun | null {
         : undefined,
     runId: top.reportId,
     fair: raw.fair === true ? true : undefined,
+    diagnosis: diagnosisFrom(raw.diagnosis) ?? undefined,
     evidence: evidenceFrom(raw.evidence) ?? undefined,
     replay: replayFrom(raw.replay),
   };
