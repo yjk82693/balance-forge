@@ -540,3 +540,6 @@ elapsed time, until the holdout phase or the result arrives. If the engine later
 The live server rejected saving an intent ("INVALID_SCHEMA: intent.version must be a short string") because the web
 sent a number. `Intent.version` is now a string, read from the server as given, and every save sends a fresh short
 string (`ui-<base36 time>`). This is what the "Intended?" chips and the intent page use.
+
+The PUT body is built in `src/lib/intentBody.ts` and `apps/web/test/intent-body.test.mjs` runs it through the engine's own
+`normalizeIntent`, so a number version (or any other shape the engine refuses) fails the test.
