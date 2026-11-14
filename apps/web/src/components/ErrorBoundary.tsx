@@ -6,14 +6,14 @@ interface State {
 
 /** Last line of defence: a screen that throws shows a plain panel instead of a blank page. */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { failed: false };
+  override state: State = { failed: false };
   static getDerivedStateFromError(): State {
     return { failed: true };
   }
-  componentDidCatch(error: unknown) {
+  override componentDidCatch(error: unknown) {
     console.warn("screen crashed", error);
   }
-  render() {
+  override render() {
     if (!this.state.failed) return this.props.children;
     return (
       <main className="boundary">
