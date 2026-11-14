@@ -188,3 +188,12 @@ validation, patchedDataHash, patched, verdict, humanMatches`.
   `cp packages/analysis/recorded/recorded-roster-report.json services/runner/recorded-roster-report.json`.
 - CLI change: `--metrics` now also reads `createdAt` (when the run was measured) instead of using the current time.
 - At 20 games per matchup every row is below the n>=30 rule, so no row is an outlier; that is true for this sample, not a bug.
+
+## Round 6 review
+
+Not done yet: `POST /v1/playtest/full` has not landed. I searched `../balance-forge-engine` (6745e53, `services/` and `packages/`)
+and found no route; only the web side (`apps/web/src/lib/api.ts`, `fullRun.ts`) already calls it. I will review the engine
+code read-only once it exists. Checked so far on the web side against my `runFull` body:
+- `runFromFull` reads every field I produce and tolerates `patched: null` (invalid patch), so that case does not crash it.
+- `ORIGINS` still lacks `fake`/`grok` and maps them to `manual` (already in `CHANGE_REQUEST.md`, web item 3).
+- The recorded file is a bare Report, which `runFromFull` accepts as a baseline-only run.
