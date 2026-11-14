@@ -241,3 +241,39 @@ failure, readiness, shutdown, complete protocol examples and fresh-handler agree
 readiness: 0.54 ms after listening; real OS port contention and TCP latency are not claimed as verified.
 No new skips or weakened assertions. Every owned file remains within 120 columns. No commits, dependencies,
 network calls, pushes, web/spec/fixture/root changes. Files remain available for the external commit process.
+
+## Round 5
+
+Added the explicitly requested tests/e2e files; no root package.json, analysis, spec, fixture or web files changed.
+No dependencies, push or commits. The scenario is opt-in under RUN_SOCKET_TESTS=1 and restricts every HTTP/WS
+connection to the server's 127.0.0.1 origin, with redirects rejected.
+
+## Full flow scenario
+
+Added node:test coverage for a real display and two real ws phones, chooseActions-driven human play, exactly one
+new valid recorded human result with both assignments, a 20-pair worker run and monotonic/reconciled progress.
+It invokes the real analysis pipeline/fake adapter, applies the proposal through HTTP, selects disjoint holdout
+seeds 21..40 from the patched prefix run, checks the verdict and human-inclusive report, fetches baseline replay
+frames, and replays them on both pins through the analysis replay helper. A second match drops and resumes Bari
+with its private token inside ten seconds, checking the same config/seat/hero and newer accepted receipts.
+All runtime data, static fixtures and analysis artifacts use mkdtemp; cleanup closes sockets/server/workers and
+removes temporary files on success or failure. No lower verdict thresholds or synthetic analysis are substituted.
+
+## E2E instructions
+
+Added tests/e2e/README.md with the direct test:e2e command, default gate, dependencies, isolation, cleanup, timeouts
+and honest holdout semantics. It explains npm-script wiring for the integrator without editing root files.
+The test fails clearly if the required merged packages/analysis modules are unavailable; it never imports another
+worktree as a hidden fallback. All new test/documentation lines are within 120 columns.
+
+## Round 5 verification
+
+`node --check tests/e2e/full-flow.test.js`: passed.
+`node --test tests/e2e/full-flow.test.js`: one explicitly skipped scenario, as requested when the flag is absent.
+`RUN_SOCKET_TESTS=1 node --test tests/e2e/full-flow.test.js`: one failure, left explicit and not weakened:
+packages/analysis/pipeline/pipeline.js is missing in this engine worktree. The pipeline/replay/human APIs were read
+from the analysis worktree to implement the integration correctly, but were not copied or modified.
+This dependency blocks live execution before server setup or any TCP bind. The full flow is NOT claimed as run
+or passing. After analysis is merged, it also requires an environment permitting loopback listeners (the earlier
+sandbox rejected them). Temporary data was not created by the preflight failure; no repository runtime output
+was changed. No commits were attempted under the sandbox rule.
