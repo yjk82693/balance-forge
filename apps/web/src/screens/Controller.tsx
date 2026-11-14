@@ -83,7 +83,9 @@ export function Controller({ initialCode }: { initialCode: string }) {
     const saved = loadSeat();
     if (!saved) return false;
     setJoined({ code: saved.joinCode, name: saved.name, hero: saved.hero });
-    transport?.send("reconnect", { joinCode: saved.joinCode, seatToken: saved.seatToken, lastAck: saved.lastAck });
+    // lastAck must be a non-negative integer; before any input was acknowledged it is left out.
+    const lastAck = saved.lastAck >= 0 ? { lastAck: saved.lastAck } : {};
+    transport?.send("reconnect", { joinCode: saved.joinCode, seatToken: saved.seatToken, ...lastAck });
     return true;
   };
   const resumed = useRef(false);
@@ -280,7 +282,7 @@ function JoinForm(props: {
       </div>
     );
   }
-  const ok = profile.code.length >= 4;
+  const ok = profile.code.length === 4; // the server issues 4-character codes
   return (
     <form
       className="phone join"
@@ -295,7 +297,7 @@ function JoinForm(props: {
         <input
           className="input code-input"
           value={profile.code}
-          maxLength={6}
+          maxLength={4}
           autoCapitalize="characters"
           autoComplete="off"
           spellCheck={false}
