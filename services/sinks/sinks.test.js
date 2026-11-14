@@ -4,7 +4,7 @@ import { createSinks, matchRows } from './index.js';
 
 const result = (winner, seed) => ({
   config: { seed, dataHash: 'h1', options: { assignments: { p1: 'real_armor', p2: 'bari' } } },
-  outcome: { winner }, durationTicks: 900, valid: true,
+  outcome: { status: 'win', winners: [winner], reason: 'hp_zero' }, durationTicks: 900, valid: true,
 });
 
 function fakeDrivers({ failMongo = false } = {}) {
