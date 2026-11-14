@@ -143,3 +143,15 @@ This section supersedes the older "blocked" lines above about assignments, `huma
 | 15 | Web `MatchConfig` type | Lacks optional `options.assignments` | CHANGE_REQUEST-web (type only) |
 
 Open: Gemini/Grok request shapes are still unverified against live APIs; Node >=24 in root `package.json` vs 22.22.3 here.
+
+## Polish 23:54
+
+Second polish pass after the pre-merge check. Everything was already clean, so no code changed:
+- 87 of 87 tests pass, none skipped; no test was weakened or removed.
+- No line over 120 characters in `src/`, `pipeline/` or `test/`; no TODO, FIXME or debugger; the only console output is the
+  CLI's one JSON result or error line.
+- `check:secrets` passes; the working tree was clean before this note.
+- Performance numbers above are unchanged (analysis code was not touched since they were measured).
+
+Still blocked (needs others): see "Pre-merge check" and `CHANGE_REQUEST.md` (engine run endpoint glue, web progress and
+origin mapping, per-card statistics); Gemini and Grok are unverified against live APIs.
