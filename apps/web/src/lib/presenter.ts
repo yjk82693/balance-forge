@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type SceneId = "match" | "bots" | "patch" | "replay" | "verdict";
+export type SceneId = "match" | "bots" | "patch" | "replay" | "verdict" | "history";
 
 export interface Scene {
   id: SceneId;
@@ -9,13 +9,19 @@ export interface Scene {
   min: number;
 }
 
-export const SCENES: Scene[] = [
+const BASE_SCENES: Scene[] = [
   { id: "match", title: "The match", min: 5 },
   { id: "bots", title: "Bots play", min: 8 },
   { id: "patch", title: "The patch", min: 8 },
   { id: "replay", title: "Same seed, both versions", min: 12 },
-  { id: "verdict", title: "Verdict", min: 0 },
 ];
+
+/** The flow: the version history comes last when there is one to show, otherwise the verdict is the end. */
+export function scenesFor(withHistory: boolean): Scene[] {
+  return withHistory
+    ? [...BASE_SCENES, { id: "verdict", title: "Verdict", min: 8 }, { id: "history", title: "Version history", min: 0 }]
+    : [...BASE_SCENES, { id: "verdict", title: "Verdict", min: 0 }];
+}
 
 const TICK_MS = 250;
 
@@ -28,11 +34,11 @@ export function isAutoMode(hashQuery: URLSearchParams): boolean {
  * Scene clock for the presenter. A scene advances by itself once its minimum time has passed and `ready` says its data
  * is in; the last scene stays. Keys: Space/Right next, Left previous, P pause, R restart.
  */
-export function usePresenter(ready: (id: SceneId) => boolean, onRestart: () => void) {
+export function usePresenter(scenes: Scene[], ready: (id: SceneId) => boolean, onRestart: () => void) {
   const [index, setIndex] = useState(0);
   const [held, setHeld] = useState(0); // seconds in the current scene
   const [paused, setPaused] = useState(false);
-  const last = SCENES.length - 1;
+  const last = scenes.length - 1;
 
   const goTo = useCallback(
     (i: number) => {
@@ -48,7 +54,7 @@ export function usePresenter(ready: (id: SceneId) => boolean, onRestart: () => v
     return () => clearInterval(t);
   }, [paused]);
 
-  const scene = SCENES[index];
+  const scene = scenes[Math.min(index, last)];
   useEffect(() => {
     if (!paused && index < last && held >= scene.min && ready(scene.id)) goTo(index + 1);
   }, [held, paused, index, last, scene, ready, goTo]);

@@ -5,6 +5,9 @@ import type { Rate, ResultFacts } from "./resultCard";
 import { VERDICT_COPY } from "./dashboardData";
 import { originLabel } from "./fullRun";
 import { fixturePatch } from "./fixtures";
+import { isMockMode } from "../mock/types";
+
+export type HistorySource = "live run" | "recorded" | "sample data";
 
 /** One data version, as stored in services/room/data/versions/<gameId>.json (round 8 shared interface). */
 export interface VersionRecord {
@@ -247,3 +250,16 @@ export async function runAutoBalance(
   const done = await call<unknown>("/v1/playtest/auto", JSON_POST(body), signal);
   return done === null ? null : fetchVersions(signal);
 }
+
+/** Where the history comes from: the server, else the stored file, else (?mock=1) the sample. */
+export async function loadHistory(): Promise<{ list: VersionList | null; source: HistorySource }> {
+  if (isMockMode()) return { list: sampleVersions(), source: "sample data" };
+  try {
+    const live = await fetchVersions();
+    if (live) return { list: live, source: "live run" };
+  } catch {
+    /* no server: fall through to the stored history */
+  }
+  return { list: await loadRecordedVersions().catch(() => null), source: "recorded" };
+}
+
