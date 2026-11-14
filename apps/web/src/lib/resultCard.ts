@@ -3,6 +3,7 @@ import { rowStats } from "../components/WinRateChart";
 import { describePath } from "../components/PatchCompare";
 import { VERDICT_COPY, fmtSeconds, n, outliersFirst, pickTargetDimension } from "./dashboardData";
 import { originLabel } from "./fullRun";
+import type { EvidenceAction, EvidenceSide, RunEvidence } from "./api";
 import { botRows } from "./groups";
 import { heroName } from "./heroes";
 import { pct } from "./stats";
@@ -39,6 +40,8 @@ export interface ResultFacts {
   source: "live run" | "recorded" | "sample data";
   sourceDetail: string;
   outlier: (Rate & { isOutlier: boolean }) | null;
+  /** one line of evidence for the outlier, from the run's `evidence`; null when the run has none */
+  evidence: string | null;
   patch: PatchFact[];
   holdout: Rate | null;
   verdict: { kind: VerdictKind; label: string; reasons: string[] } | null;
@@ -97,6 +100,7 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
   return {
     ...sourceOf(run),
     outlier: lead ? { ...lead, isOutlier: !!target?.outlier } : null,
+    evidence: evidenceLine(run.evidence, target?.row.dimension),
     patch: run.proposal
       ? changes.slice(0, 3).map((c) => ({
           field: c.label ?? describePath(c.path),
@@ -116,6 +120,36 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
   };
 }
 
+const percent = (x: number) => `${Math.round(x * 100)}%`;
+const isGuard = (a: EvidenceAction) => /guard/i.test(a.actionId);
+
+/** The side's most used attack (highest use rate, guard excluded), if any action has a rate. */
+function topAttack(side: EvidenceSide): EvidenceAction | undefined {
+  return side.actions
+    .filter((a) => !isGuard(a) && a.useRate !== undefined)
+    .sort((x, y) => (y.useRate ?? 0) - (x.useRate ?? 0))[0];
+}
+
+/**
+ * "Bari dealt 71% of the damage; spirit_arrow used on 64% of chances (Real Armor guard used on 40%)". Each part is left
+ * out when its number is null or its field is listed under `missing`; nothing is estimated. Null if no part is left.
+ */
+export function evidenceLine(evidence: RunEvidence | undefined, dimension: string | undefined): string | null {
+  const row = evidence?.rows.find((r) => r.dimension === dimension);
+  if (!evidence || !row) return null;
+  const has = (field: string) => !evidence.missing.includes(field);
+  const share = has("damageShare") && row.focal.damageShare !== undefined
+    ? `${heroName(row.focal.hero)} dealt ${percent(row.focal.damageShare)} of the damage`
+    : "";
+  const attack = topAttack(row.focal);
+  const guard = row.other.actions.find((a) => isGuard(a) && a.useRate !== undefined);
+  const use = has("useRate") && attack ? `${attack.actionId} used on ${percent(attack.useRate ?? 0)} of chances` : "";
+  const guardText = guard ? ` (${heroName(row.other.hero)} guard used on ${percent(guard.useRate ?? 0)})` : "";
+  const theirs = has("useRate") ? guardText : "";
+  const parts = [share, use ? `${use}${theirs}` : ""].filter(Boolean);
+  return parts.length ? parts.join("; ") : null;
+}
+
 const rateText = (r: Rate) => `${pct(r.rate)}% (95% CI ${pct(r.lo)}–${pct(r.hi)}%), ${n(r.games)} games`;
 
 /** The card as plain text, for pasting into a chat or a slide. Same facts, nothing added. */
@@ -125,6 +159,7 @@ export function summaryText(f: ResultFacts): string {
   if (f.outlier) {
     const verb = f.outlier.isOutlier ? "Outlier" : "Most lopsided matchup (within the normal range)";
     lines.push(`${verb}: ${f.outlier.matchup}, first hero wins ${rateText(f.outlier)}`);
+    if (f.evidence) lines.push(`Evidence: ${f.evidence}`);
   } else lines.push("Outlier: none, too few games per matchup.");
   for (const p of f.patch) {
     const change = `${p.field} ${p.old ?? "?"} -> ${p.next}`;

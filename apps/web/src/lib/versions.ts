@@ -122,6 +122,7 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     source,
     sourceDetail: `${shortHash(v.dataHash)}${v.approved ? "" : " · candidate, not shipped"}`,
     outlier: t ? { ...asRate(t.matchup, t.before), isOutlier: true } : null,
+    evidence: null,
     patch: v.changes.map((c) => ({
       field: c.label ?? describePath(c.path),
       old: c.old,
@@ -234,7 +235,7 @@ export async function makeCurrent(dataHash: string, signal?: AbortSignal): Promi
 
 /**
  * POST /v1/playtest/auto { gameId, fromHash?, rounds, requireApproval }: rounds of measure, propose, validate, holdout.
- * `approval` is the screen's toggle (on: an accepted version ships by itself); the server's flag is its opposite.
+ * `approval` is the screen's "Ask me before each version" toggle and goes out as `requireApproval`.
  * Progress (round and phase) streams over /ws; when it ends the list is read again.
  */
 export async function runAutoBalance(
@@ -242,7 +243,7 @@ export async function runAutoBalance(
   signal?: AbortSignal,
 ): Promise<VersionList | null> {
   const { rounds, approval, fromHash } = opts;
-  const body = { gameId: "hero_arena", rounds, requireApproval: !approval, ...(fromHash ? { fromHash } : {}) };
+  const body = { gameId: "hero_arena", rounds, requireApproval: approval, ...(fromHash ? { fromHash } : {}) };
   const done = await call<unknown>("/v1/playtest/auto", JSON_POST(body), signal);
   return done === null ? null : fetchVersions(signal);
 }

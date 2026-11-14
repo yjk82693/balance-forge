@@ -213,9 +213,10 @@ export function Versions() {
               </div>
               <label
                 className="small toggle"
-                title="On: an accepted version ships by itself. Off: new versions stay candidates until approved."
+                title="Ask before each version is kept as current. Turn it off to run without asking."
               >
-                <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} /> Approval
+                <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} />{" "}
+                Ask me before each version
               </label>
               <button
                 className="btn primary"

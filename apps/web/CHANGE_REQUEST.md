@@ -43,7 +43,7 @@ The Versions screen (`#/versions`) uses these; a 404/405 on the list makes it fa
   record at the top level), `diff` being `[{ path, label?, old, new }]` or `{ changes: [...] }`. The card shows this diff.
 - `POST /v1/versions/hero_arena/:hash/approve` ships a candidate (`approved: true`). The web reads the list again after.
 - `POST /v1/data/hero_arena/select { dataHash }` makes a kept version current (the revert); the list is read again after.
-- `POST /v1/playtest/auto { gameId, fromHash?, rounds: 1-3, requireApproval }` runs the rounds; `playtest.progress`
+- `POST /v1/playtest/auto { gameId, fromHash?, rounds: 1-3, requireApproval }` runs the rounds (`requireApproval` is the screen's "Ask me before each version" toggle, on by default); `playtest.progress`
   carries `round` (and optionally `rounds`) next to `phase`, which the button shows. The list is read again after. With
   `requireApproval: false` new records carry `approved: false`, shown as "candidate versions — not shipped".
 Already working: `game.select { gameId, dataHash }` ("Play this version" opens `#/lobby/hero_arena?hash=<dataHash>`) and
