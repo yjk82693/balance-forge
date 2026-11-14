@@ -452,3 +452,32 @@ behavior. No hero branches, balance data changes or bypass-trait checks. Stable 
 All three bot tests pass, including every hero, unchanged observations and unavailable guards.
 Follow-up: regenerate roster recordings and every derived artifact with this policy in steps 2–3 below.
 No commits attempted; external committer owns git writes.
+
+Step 2: completed 100 fixed seeds × two seats × 15 matchups (3,000 valid, 0 invalid games).
+Policy scripted-0.2.0; 62,157.726875 ms, 48.264313 matches/s including two-worker startup.
+Win rate is for the first named hero; draws count as games. Flag = whole Wilson 95% CI outside 45–55%.
+
+| Matchup | Wins / games | Win rate | Wilson 95% CI | Flag |
+| --- | --- | --- | --- | --- |
+| bari vs daewi | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| bari vs nightcrow | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| bari vs real_armor | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| bari vs sepia | 200 / 200 | 100.00% | 98.12–100.00% | yes |
+| daewi vs nightcrow | 0 / 200 | 0.00% | 0.00–1.88% | yes |
+| daewi vs real_armor | 0 / 200 | 0.00% | 0.00–1.88% | yes |
+| daewi vs sepia | 0 / 200 | 0.00% | 0.00–1.88% | yes |
+| nightcrow vs real_armor | 100 / 200 | 50.00% | 43.14–56.86% | no |
+| nightcrow vs sepia | 100 / 200 | 50.00% | 43.14–56.86% | no |
+| real_armor vs sepia | 100 / 200 | 50.00% | 43.14–56.86% | no |
+
+Bari vs Real Armor is clearly outside the band, but seven non-mirror matchups are flagged in total.
+The requested no-other-flags target is not met. No hero numbers or intended asymmetries were changed.
+Follow-up for recording consistency: regenerate the runner report and room examples in step 3; the analysis
+owner must regenerate packages/analysis/recorded/recorded-roster-report.json and update its policy-pinned test.
+
+Step 3: regenerated all three services/runner/recorded-roster-* files from the same 3,000-game run, including
+scripted-0.2.0 metadata and the derived analysis Report. The benchmark now regenerates its Report alongside
+results and metrics. Regenerated services/room/examples.json with production handlers and the offline adapter.
+The analysis-owned recorded copy and its hard-coded scripted-0.1.1 test still require the owner follow-up noted
+above; no files outside ownership were changed. Older non-roster recordings remain historical, not derivatives
+of this roster run. No outside network or commits.

@@ -1,5 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { rosterJobs, runBatch } from './index.js';
+import { analyzePhase } from '../../packages/analysis/pipeline/pipeline.js';
+import { withExtras } from '../../packages/analysis/src/extras.js';
 const seedsPerMatchup = 100;
 const jobs = rosterJobs({ seeds: Array.from({ length: seedsPerMatchup }, (_, index) => index + 1) }),
   {
@@ -21,5 +23,13 @@ const details = {
 writeFileSync(new URL('./recorded-roster-match-results.json', import.meta.url), JSON.stringify(results, null,
   2) + '\n');
 writeFileSync(new URL('./recorded-roster-metrics.json', import.meta.url), JSON.stringify(details, null, 2) + '\n');
+const { report } = analyzePhase(results, {
+  reportId: 'r-baseline', botPolicyVersion: details.botPolicyVersion, seedSetId: details.seedSetId
+});
+const recordedReport = withExtras(report, {
+  elapsedMs: Math.round(details.elapsedMs), recorded: true, createdAt: details.createdAt
+});
+writeFileSync(new URL('./recorded-roster-report.json', import.meta.url), JSON.stringify(recordedReport,
+  null, 2) + '\n');
 console.log(JSON.stringify(details));
 if (metrics.invalidMatches) process.exitCode = 1;

@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Authority } from '../../packages/sim/index.js';
 import { hash, validate, validateSchema } from '../../packages/contracts/index.js';
 import { object } from '../../packages/contracts/shapes.js';
-import { runPlaytest, fullPlaytest } from './playtests.js';
+import { runPlaytest, fullPlaytest, PipelineError } from './playtests.js';
 import { replayViews } from './replay-views.js';
 import { games, cardAction } from '../runner/match.js';
 import { chooseActions } from '../../packages/games/action/bot.js';
@@ -84,11 +84,11 @@ export class RoomServer {
     this.runningBatch = false;
     this.closed = false;
     this.http = createServer((req, res) => this.handleHttp(req, res).catch(error => {
-      const code = errorCode(error);
+      const code = error instanceof PipelineError ? error.code : errorCode(error);
       try {
         if (!res.headersSent) json(res, httpStatus(code), {
           code,
-          message: messages[code]
+          message: error instanceof PipelineError ? error.message : messages[code]
         });else res.destroy();
       } catch {
         try {

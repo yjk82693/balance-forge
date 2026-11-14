@@ -600,14 +600,15 @@ curl -sS -H 'content-type: application/json' \
 
 pairs and holdoutPairs default to 50; roster defaults to false. The response contains runId, gameId, elapsedMs,
 botPolicyVersion, seedSetId, holdoutSeedSetId, baseline Report, proposal with origin/changes, validation, patched
-Report/dataHash, verdict and humanMatches. The additional seatWins summary has baseline/holdout first-seat counts.
+Report/dataHash, verdict and humanMatches. The seatWins summary contains numeric baseline/holdout first-seat
+counts; holdout is null when no holdout ran. Optional dataHash selects a retained baseline data version.
 Baseline seeds 1..pairs never overlap holdout 1000001..1000000+holdoutPairs. Both streams include phase equal to
 baseline or holdout. Candidates are retained by hash without automatically replacing the current baseline.
 Production selects Gemini when GEMINI_API_KEY is set, otherwise fake; tests explicitly pass an empty adapter env.
 
-The analysis full.js module is required. Until it is integrated, this endpoint returns HTTP 503 with
-{"code":"TRANSPORT_UNAVAILABLE","message":"The service could not complete the request. Retry after reconnecting."}.
-The full captured response is in examples.json → http.full; a pending integration test is never a fabricated pass.
+The analysis full.js module is integrated. Pipeline failures retain their public code and readable message,
+for example HTTP 400 {"code":"SIMULATION_FAILED","message":"The holdout run could not complete."}.
+The full captured success response is in examples.json → http.full.
 
 /v1/playtest/run additionally accepts roster:true and dataHash to scan all roster matchups or a retained version:
 

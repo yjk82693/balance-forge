@@ -137,3 +137,36 @@ test('playtest boundaries reject unknown fields, invalid pins and unsupported fu
   })).status, 400);
   assert.equal(server.runningBatch, false);
 });
+test('full playtest accepts a retained data pin and preserves numeric seat-win summaries', async t => {
+  const { server } = await localServer(t);
+  const original = server.storage.get('hero_arena');
+  const changed = server.storage.patch('hero_arena', {
+    baseDataHash: original.dataHash,
+    replacements: [{ path: '/moves/1/power', value: 72 }],
+    rationale: 'Retained-version test'
+  });
+  assert.notEqual(changed.dataHash, original.dataHash);
+  const response = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena', dataHash: original.dataHash, pairs: 2, holdoutPairs: 2 }
+  });
+  assert.equal(response.status, 200);
+  const body = response.json();
+  assert.equal(body.baseline.dataHash, original.dataHash);
+  assert.equal(typeof body.seatWins.baseline, 'number');
+  assert.ok(body.seatWins.holdout === null || typeof body.seatWins.holdout === 'number');
+  assert.equal(server.storage.get('hero_arena').dataHash, changed.dataHash);
+});
+test('pipeline failures retain their public code and readable message in HTTP responses', async t => {
+  const { PipelineError } = await import('./playtests.js');
+  const { server } = await localServer(t);
+  server.handleHttp = async () => {
+    throw new PipelineError({ code: 'SIMULATION_FAILED', message: 'The holdout run could not complete.' });
+  };
+  const response = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena' }
+  });
+  assert.equal(response.status, 400);
+  assert.deepEqual(response.json(), {
+    code: 'SIMULATION_FAILED', message: 'The holdout run could not complete.'
+  });
+});
