@@ -1,15 +1,36 @@
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 import { hash, applyPatch, validateSchema, validate } from '../../packages/contracts/index.js';
 import { object, integer } from '../../packages/contracts/shapes.js';
 import { games, botPolicyVersion } from '../runner/match.js';
 import { matchBatch, PipelineError } from './playtests.js';
+import { writeJson } from './storage.js';
 const digest = { type: 'string', pattern: '^[0-9a-f]{64}$' };
 const requestSchema = object({
   gameId: { enum: ['hero_arena', 'hero_cards'] }, fromHash: digest, rounds: integer(1, 5),
   requireApproval: { type: 'boolean' }
 }, ['gameId']);
-const stops = new Set(['fair', 'not_accepted', 'regression', 'rounds', 'awaiting_approval', 'error']);
-
+const stops = new Set(['fair', 'not_accepted', 'needs_designer', 'regression', 'rounds', 'awaiting_approval', 'error']);
+// A hero the numbers could not fix: what was tried and the evidence (not a version record). Open objects: the analysis
+// module may add detail (round, matchups, a reason for a skipped lever) that is passed through.
+const nullableNumber = { oneOf: [{ type: 'number' }, { type: 'null' }] };
+const designerNote = {
+  type: 'object',
+  required: ['hero', 'tried', 'evidence'],
+  properties: {
+    hero: { type: 'string', minLength: 1, maxLength: 128 },
+    tried: { type: 'array', maxItems: 16, items: {
+      type: 'object',
+      required: ['path', 'outcome'],
+      properties: {
+        label: { type: 'string', maxLength: 256 }, path: { type: 'string', maxLength: 256 },
+        old: nullableNumber, new: nullableNumber,
+        outcome: { enum: ['accepted', 'rejected', 'inconclusive', 'skipped'] }
+      }
+    } },
+    evidence: { type: 'string', maxLength: 4096 }
+  }
+};
 export function autoSeeds(round, phase) {
   if (!Number.isInteger(round) || round < 1 || round > 6 || !['scan', 'holdout'].includes(phase)) {
     throw Error('INVALID_SCHEMA');
@@ -77,5 +98,11 @@ export async function autoPlaytest(server, body) {
   if (!result || !Array.isArray(result.records) || !stops.has(result.stoppedBecause)) throw Error('INVALID_SCHEMA');
   const records = result.records.map(record => onRecord(record));
   if (result.finalCheck !== null) validate('Report', result.finalCheck);
-  return { ...result, records, runId, gameId: body.gameId };
+  const needs_designer = result.needs_designer ?? [];
+  if (!Array.isArray(needs_designer)) throw Error('INVALID_SCHEMA');
+  for (const note of needs_designer) validateSchema(designerNote, note);
+  const output = { ...result, records, needs_designer, runId, gameId: body.gameId };
+  // The run output is kept, so a later GET of /v1/playtest/results/<runId>-auto.json shows the same body.
+  writeJson(join(server.storage.directory, 'playtests', `${runId}-auto.json`), output);
+  return output;
 }

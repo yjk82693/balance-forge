@@ -599,7 +599,8 @@ curl -sS -H 'content-type: application/json' \
   -d '{"gameId":"hero_arena","roster":true,"pairs":50,"holdoutPairs":50}' "$BASE/v1/playtest/full"
 ```
 
-pairs and holdoutPairs default to 50; roster defaults to false. The response contains runId, gameId, elapsedMs,
+pairs defaults to 50 and holdoutPairs defaults to pairs (a 100-pair request gets 200 holdout games, which the verdict
+needs per target); roster defaults to false. The response contains runId, gameId, elapsedMs,
 botPolicyVersion, seedSetId, holdoutSeedSetId, baseline Report, proposal with origin/changes, validation, patched
 Report/dataHash, verdict and humanMatches. The verdict is `{verdict, reasons, targets}`: `targets` is
 `[{matchup, before:{rate,ci95,games}, after:{rate,ci95,games}, outcome:'improved'|'unchanged'|'worse'}]`, one entry
@@ -718,14 +719,20 @@ curl -sS -H 'content-type: application/json' \
   -d '{"gameId":"hero_arena","rounds":2,"requireApproval":true}' "$BASE/v1/playtest/auto"
 ```
 
-Body: gameId, optional fromHash (a recorded version), rounds 1–5 (default 3), requireApproval (default true).
-Runs the analysis runAuto: scan, a diagnosis, up to two candidate patches per round (the first two recommendations
-of the focus hero), fresh holdout seeds, verdict, then one final roster check. Both candidates are stored as sibling
+Body: gameId, optional fromHash (a recorded version), rounds 1–5 (default 3), requireApproval (default true). Runs
+the analysis runAuto: scan, a diagnosis, up to three candidate patches per round (the first three recommendations of
+the focus hero), fresh holdout seeds, verdict, then one final roster check. Both candidates are stored as sibling
 version records (same parentHash, note "candidate 1 of 2"); the run continues from the accepted one that improved
-most. Hero health and speed are allowed levers (within 40% of the original data). The 200 response is {records,
-stoppedBecause, finalCheck, headHash, diagnoses, runId, gameId[, error]}; stoppedBecause is one of fair,
-not_accepted, regression, rounds, awaiting_approval, error. playtest.progress messages carry round and phase (scan,
-diagnose, holdout, final_check). Shares the run/full lock: a second concurrent run gets RATE_LIMITED. A real run
-with five heroes takes minutes (the opt-in integration test measured about 6 minutes for rounds:2), so examples.json
-captures only request validation (http.autoInvalid, 400 INVALID_SCHEMA for rounds:9). Real-module coverage:
+most. If no candidate is accepted the hero is not dropped silently: it goes to `needs_designer` and the next hero is
+worked on in the next round; the run ends when nothing is flagged, the rounds are used up, or every flagged hero is
+escalated (`stoppedBecause` is `needs_designer`). Hero health and speed are allowed levers (within 40% of the
+original data). The 200 response is {records, stoppedBecause, finalCheck, headHash, diagnoses, needs_designer,
+runId, gameId[, error]}; stoppedBecause is one of fair, needs_designer, not_accepted (kept for older callers),
+regression, rounds, awaiting_approval, error. playtest.progress messages carry round and phase (scan, diagnose,
+holdout, final_check). Shares the run/full lock: a second concurrent run gets RATE_LIMITED. A real run with five
+heroes takes minutes (the opt-in integration test measured about 6 minutes for rounds:2), so examples.json captures
+only request validation (http.autoInvalid, 400 INVALID_SCHEMA for rounds:9). Real-module coverage: `needs_designer`
+is `[{hero, tried: [{label, path, old, new, outcome}], evidence}]` (never a version record; `outcome` is the
+candidate's verdict or `skipped`, `evidence` is a sentence with the numbers). The whole run output is kept as
+`/v1/playtest/results/<runId>-auto.json`, so a later GET shows it.
 `RUN_REAL_AUTO=1 node --test services/room/auto-real.test.js`.

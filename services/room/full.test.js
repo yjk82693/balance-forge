@@ -294,3 +294,25 @@ test('without diagnose the body has no diagnosis, and a fair matchup never runs 
   assert.equal((await http(server, '/v1/playtest/full', { method: 'POST',
     body: { gameId: 'hero_arena', diagnose: 'yes' } })).status, 400);
 });
+test('holdoutPairs defaults to pairs, and a thin holdout says so in the verdict reasons', {
+  todo: fullAvailable ? false : 'Waiting for packages/analysis/pipeline/full.js as explicitly requested.'
+}, async t => {
+  if (!fullAvailable) return;
+  const { server } = await localServer(t);
+  const lines = async runId => JSON.parse(await readFile(join(server.storage.directory, 'playtests',
+    `${runId}-holdout.json`), 'utf8')).length;
+  const same = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15 }
+  });
+  assert.equal(same.status, 200);
+  const body = same.json();
+  assert.equal(await lines(body.runId), 30); // no holdoutPairs: 15 pairs, 30 games, the same size as the baseline
+  assert.equal(body.patched.validMatches, body.baseline.validMatches);
+  assert.match(body.holdoutSeedSetId, /^holdout-1000001-1000015$/);
+  const thin = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena', heroes: ['bari', 'daewi'], pairs: 15, holdoutPairs: 5 }
+  });
+  assert.equal(await lines(thin.json().runId), 10); // an explicit holdoutPairs is still honoured
+  assert.equal(thin.json().verdict.verdict, 'inconclusive');
+  assert.match(thin.json().verdict.reasons.join('; '), /bari vs daewi: holdout has 10 games; 200 needed/);
+});

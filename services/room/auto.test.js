@@ -94,3 +94,37 @@ test('an auto pipeline rejection releases the concurrency lock', async t => {
   assert.equal(response.status, 400);
   assert.equal(server.runningBatch, false);
 });
+test('needs_designer notes are validated, returned and stored with the run so a later GET shows them', async t => {
+  const note = { hero: 'daewi', round: 1, matchups: ['bari vs daewi'],
+    evidence: 'daewi wins 10.0% overall. 3 levers tried.',
+    tried: [{ label: 'Daewi · Speed', path: '/characters/1/speed', old: 85, new: 110, outcome: 'rejected' },
+      { label: 'Daewi · Health', path: '/characters/1/health', old: 580, new: 754, outcome: 'skipped',
+        reason: 'this version was already tried' }, { label: '/moves/1/power', path: '/moves/1/power', old: null,
+        new: null, outcome: 'skipped' }] };
+  const { server } = await localServer(t, { runAuto: async () => ({ records: [], stoppedBecause: 'needs_designer',
+    finalCheck: null, needs_designer: [note] }) });
+  const response = await http(server, '/v1/playtest/auto', { method: 'POST', body: { gameId: 'hero_arena' } });
+  assert.equal(response.status, 200);
+  const body = response.json();
+  assert.equal(body.stoppedBecause, 'needs_designer');
+  assert.deepEqual(body.needs_designer, [note]);
+  assert.equal(server.storage.versionStore.list('hero_arena').length, 1); // a note is not a version record
+  const stored = await http(server, `/v1/playtest/results/${body.runId}-auto.json`);
+  assert.equal(stored.status, 200);
+  assert.deepEqual(stored.json().needs_designer, [note]);
+  assert.equal(stored.json().runId, body.runId);
+});
+test('a run without needs_designer gets an empty list, and a malformed note is refused', async t => {
+  const plain = await localServer(t, { runAuto: async () => ({ records: [], stoppedBecause: 'fair',
+    finalCheck: null }) });
+  const ok = await http(plain.server, '/v1/playtest/auto', { method: 'POST', body: { gameId: 'hero_arena' } });
+  assert.deepEqual(ok.json().needs_designer, []);
+  for (const bad of [[{ hero: 'daewi' }], [{ hero: 'daewi', tried: [{ path: '/x', outcome: 'maybe' }], evidence: 'x' }],
+    'nope']) {
+    const broken = await localServer(t, { runAuto: async () => ({ records: [], stoppedBecause: 'needs_designer',
+      finalCheck: null, needs_designer: bad }) });
+    const response = await http(broken.server, '/v1/playtest/auto', { method: 'POST',
+      body: { gameId: 'hero_arena' } });
+    assert.equal(response.status, 400);
+  }
+});
