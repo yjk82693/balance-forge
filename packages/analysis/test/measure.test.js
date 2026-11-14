@@ -108,3 +108,22 @@ test('stand-in follows the first recommendation of the diagnosis: path, directio
     rec({ path: '/moves/99/power' }));
   assert.match(bad.proposal.rationale, /^Offline stand-in: (lower|raise) /);
 });
+
+test('stand-in applies a hero stat recommendation and stays within 40% of the root value', async () => {
+  const data = { ...standInData(), characters: standInData().characters.map((c, i) => ({ ...c, health: 500,
+    speed: 100 + i })) };
+  const adapter = steppingAdapter(() => data);
+  const rec = (path, direction, sizePct) => ({ diagnosis: { recommendations: [{ hero: 'daewi', role: 'loser', path,
+    direction, sizePct, why: 'daewi is too weak', expected: 'x', alsoAffects: [] }] }, rootData: data });
+  const row = [standInRow('bari vs daewi', 0.9)];
+  const run = (path, direction, sizePct) => adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
+    rec(path, direction, sizePct));
+  assert.deepEqual((await run('/characters/1/health', 'up', 20)).proposal.replacements,
+    [{ path: '/characters/1/health', value: 600 }]);
+  assert.deepEqual((await run('/characters/1/speed', 'down', 10)).proposal.replacements,
+    [{ path: '/characters/1/speed', value: Math.round(101 * 0.9) }]);
+  // a size that would pass 40% of the root is clamped to the limit (700), never beyond
+  assert.deepEqual((await run('/characters/1/health', 'up', 30)).proposal.replacements,
+    [{ path: '/characters/1/health', value: 650 }]);
+  assert.equal((await run('/characters/1/health', 'up', 80)).proposal.replacements[0].value, 700);
+});

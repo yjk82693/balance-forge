@@ -519,3 +519,13 @@ and `runAuto` (`rootData`, default `data`; the engine passes the game's original
 path/value combinations (bounds, leading zeros, bad indexes, relative bounds on the root and on a grown version, duplicates,
 the 8-change limit): 0 differences. The engine copy of the path schema now refuses leading zeros too (`/moves/01/power`),
 which the analysis validator always did; the normative spec pattern `[0-9]+` is looser, so this is a note for the spec.
+
+## Hero stats as diagnosis levers
+
+Step 2: health and speed are hero-only levers (`alsoAffects: []`). Lever order per hero, at most three: the hero's unique
+attacks (most used first), then its stats (a weak hero: speed, then health; a strong hero: health, then speed), then other unique
+moves, then shared attacks (marked `alsoAffects`). A stat is offered only if it can still move in the wanted direction: the
+room is the nearer of the absolute bound and the 40% band around the root value (`rootData`, default `data`), under 5% of room
+means not offered, and `sizePct` is capped by the room that is left (rounded down to 5). Data without `health` and `speed`
+keeps the old behaviour. The offline stand-in applies a stat recommendation to the current value and clamps it to the 40%
+band. 4 new diagnose tests and 1 stand-in test.
