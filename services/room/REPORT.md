@@ -688,3 +688,8 @@ analysis, seeds 2000001..2000000+pairs, never overlapping baseline or holdout) a
 Result files: playtests/<runId>-diagnose.json. The auto route needs no flag: `runAuto` diagnoses each round through its
 injected runBatch (phase `diagnose`, the round's scan seeds). New tests in full.test.js; README and examples.json
 updated.
+
+Levers in the diagnosis: moves are shared between heroes, so a hero's own moves are recommended first; a shared move
+carries `alsoAffects` and ranks lower, and the global damage scale is no longer recommended for a single hero.
+Change labels come from the analysis module: "Projectile power (shared: Daewi, Real Armor, Sepia)" for a shared
+move.
