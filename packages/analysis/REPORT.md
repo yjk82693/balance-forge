@@ -639,3 +639,13 @@ each pair appears once in either order (`normalizeIntent` gives canonical keys),
   `heroOverall` field of the `runFull` body list every hero's overall rate.
 - **Prompt and rounds:** rows carry their targets and the prompt says "toward their own targets, not toward 50%" only when some target
   is not 50%; `runFull` and `runAuto` take `intent`; the focus matchup is the one furthest from its target. Tests: `test/intent.test.js`.
+
+## Reanalysis without simulation
+
+`pipeline/reanalyze.js` (`reanalyzeRun`) replays the stored baseline, holdout and diagnosis results of a finished full run through the
+same `runFull` code under another intent (the stored proposal and its origin are handed back by a replay adapter, no model call).
+Therefore the answer is identical to a fresh run on those results under that intent (tests compare the whole body), in well under a
+second (tested at under 500 ms). Honest limits flagged in the body: `stale: true` when the run stopped at its baseline (it was fair under
+the old intent) and the new intent flags the matchup (nothing to judge: run it again; verdict inconclusive), and
+`diagnosisIncomplete: true` when the stored diagnosis results do not cover the matchups the new focus needs. Tests:
+`test/reanalyze.test.js`.
