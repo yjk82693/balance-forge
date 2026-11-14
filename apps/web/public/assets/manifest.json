@@ -1210,6 +1210,84 @@
         "top": 40,
         "bottom": 24
       }
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/forethought.png",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/forethought.webp",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules",
+      "fallback": "assets/hero_cards/cards/rules/forethought.png"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/hypnosis.png",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/hypnosis.webp",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules",
+      "fallback": "assets/hero_cards/cards/rules/hypnosis.png"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/mechanical_crows.png",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/mechanical_crows.webp",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules",
+      "fallback": "assets/hero_cards/cards/rules/mechanical_crows.png"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/pulse.png",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/pulse.webp",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules",
+      "fallback": "assets/hero_cards/cards/rules/pulse.png"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/sentinel.png",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/sentinel.webp",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules",
+      "fallback": "assets/hero_cards/cards/rules/sentinel.png"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/spark.png",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules"
+    },
+    {
+      "path": "assets/hero_cards/cards/rules/spark.webp",
+      "width": 512,
+      "height": 384,
+      "role": "card_rules",
+      "fallback": "assets/hero_cards/cards/rules/spark.png"
     }
   ]
 }

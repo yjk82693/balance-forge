@@ -46,8 +46,15 @@ export function cardEffect(c: CardDef): string {
   }
 }
 
-/** Card art in assets/hero_cards/cards: {hero}_{attack|guard|signature}.png */
+/** Cards with their own illustration, made for the card whoever plays it: cards/rules/<id>.png */
+const RULES_ART = ["spark", "pulse", "sentinel", "hypnosis", "mechanical_crows", "forethought"];
+
+/**
+ * Card art: the card's own illustration (cards/rules/<id>) when it has one; ward keeps the hero's guard picture
+ * (cards/<hero>_guard); anything else falls back to the hero's picture for its kind (attack, guard or signature).
+ */
 export function cardArtPath(hero: string, c: CardDef): string {
+  if (RULES_ART.includes(c.id)) return `assets/hero_cards/cards/rules/${c.id}.png`;
   const variant = c.kind === "damage" ? "attack" : c.kind === "ward" ? "guard" : "signature";
   return `assets/hero_cards/cards/${hero}_${variant}.png`;
 }
