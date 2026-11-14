@@ -1,7 +1,10 @@
-// Produces a recorded auto-balance history in the shape of services/room/data/versions/<gameId>.json (an array of
-// version records, base first) from the real engine runner with an offline adapter. In-process: no server, no network.
-//   node packages/analysis/pipeline/record-auto-history.js --out history.json [--rounds 3] [--engine-root dir]
-// It writes only the file named by --out and prints one JSON summary line. Run it once the room routes exist, then
+// Produces a recorded auto-balance history from the real engine runner with an offline adapter. In-process: no
+// server, no network. The file is { summary: { stoppedBecause, rounds, needs_designer, botPolicyVersion, simVersion,
+// createdAt }, versions: [base record, ...version records] } (services/room/data is runtime output and git-ignored,
+// so the recorded history lives next to the other recorded runs).
+//   node packages/analysis/pipeline/record-auto-history.js [--out file.json] [--rounds 3] [--engine-root dir]
+// --out defaults to services/runner/recorded-auto-history.json under the engine root. It writes only that file and
+// prints one JSON summary line. Run it once the room routes exist, then
 // compare with what POST /v1/playtest/auto stores. Generated data is not committed by this script.
 //
 // Offline adapter (origin "fake"): the plain fake adapter proposes one fixed patch, so a second round would be a no-op.
@@ -13,6 +16,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { baseVersionRecord, focusTargets, runAuto, MAX_ROUNDS } from './auto.js';
 import { errorResult, toErrorResult } from '../src/errors.js';
 
+export const DEFAULT_FILE = 'services/runner/recorded-auto-history.json';
 const SEEDS_PER_PHASE = 100;
 const LOWER_PERMILLE = 800;
 const RAISE_PERMILLE = 1200;
@@ -89,6 +93,12 @@ function focusHeroOf(dimensions) {
   return [...counts.keys()].sort((x, y) => counts.get(y) - counts.get(x) || (x < y ? -1 : 1))[0];
 }
 
+/** The recorded file: a summary of the run and the version records (base first). */
+export function buildHistoryFile({ result, history, rounds, botPolicyVersion, simVersion, createdAt }) {
+  return { summary: { stoppedBecause: result.stoppedBecause, rounds, needs_designer: result.needs_designer ?? [],
+    botPolicyVersion, simVersion, createdAt }, versions: history };
+}
+
 function parse(argv) {
   const flags = { rounds: '3' };
   for (let i = 0; i < argv.length; i += 2) {
@@ -96,10 +106,13 @@ function parse(argv) {
     flags[argv[i].slice(2)] = argv[i + 1];
   }
   const rounds = Number(flags.rounds);
-  if (!flags.out || !Number.isInteger(rounds) || rounds < 1 || rounds > MAX_ROUNDS) {
-    throw new Error(`usage: --out file.json [--rounds 1..${MAX_ROUNDS}] [--engine-root dir]`);
+  if (!Number.isInteger(rounds) || rounds < 1 || rounds > MAX_ROUNDS) {
+    throw new Error(`usage: [--out file.json] [--rounds 1..${MAX_ROUNDS}] [--engine-root dir]`);
   }
-  return { out: flags.out, rounds, engineRoot: flags['engine-root'] };
+  const engineRoot = flags['engine-root'];
+  const out = flags.out ?? join(engineRoot ? resolve(engineRoot) : fileURLToPath(new URL('../../../', import.meta.url)),
+    DEFAULT_FILE);
+  return { out, rounds, engineRoot };
 }
 
 /** Runs the history; resolves { ok: true, value: { records, stoppedBecause, ... } } or an error result. */
@@ -144,7 +157,9 @@ export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => ne
       result.error?.message ?? 'the run failed');
     const base = baseVersionRecord({ gameId: arena.data.gameId, dataHash: fromHash, createdAt: now() });
     const history = [{ ...base, rationale: 'Original game data.' }, ...result.records];
-    return { ok: true, value: { ...result, history } };
+    const file = buildHistoryFile({ result, history, rounds, botPolicyVersion: match.botPolicyVersion,
+      simVersion: arena.simVersion, createdAt: now() });
+    return { ok: true, value: { ...result, history, file } };
   } catch (e) {
     return e?.code === 'ERR_MODULE_NOT_FOUND' ? errorResult('ENGINE_UNAVAILABLE', 'engine modules not found; '
       + 'pass --engine-root') : toErrorResult(e);
@@ -156,7 +171,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const args = parse(process.argv.slice(2));
     result = await recordAutoHistory({ rounds: args.rounds, engineRoot: args.engineRoot });
-    if (result.ok) writeFileSync(args.out, `${JSON.stringify(result.value.history, null, 2)}\n`);
+    if (result.ok) writeFileSync(args.out, `${JSON.stringify(result.value.file, null, 2)}\n`);
   } catch (e) {
     result = errorResult('USAGE', String(e.message));
   }
