@@ -35,12 +35,17 @@ server's behaviour is clear; the items below need an engine decision. The first 
 - The server serves `apps/web/dist`; build with `npm run build -w apps/web` first. Same origin means `/ws` and
   `/v1/*` need no proxy.
 
-## Round 8: version history endpoints (web assumes these; tell us the real ones)
-The Versions screen (`#/versions`) reads and acts through three endpoints that are not in `services/room` yet. All answer
-the list shape `{ versions: VersionRecord[], currentHash?: string }` (a bare array is accepted too). A 404/405 makes the
-screen fall back to the stored file or, with `?mock=1`, to a labelled sample.
-- `GET /v1/versions/hero_arena` the history (records as in the round 8 interface); `currentHash` is the version rooms and runs use by default.
-- `POST /v1/auto-balance { gameId, rounds: 1-3, approval: boolean, fromHash? }` runs the rounds and answers with the new list. With `approval: false` the new records carry `approved: false` (the screen labels them "candidate versions — not shipped"). The request can take a minute; the web sets no timeout.
-- `POST /v1/versions/hero_arena/current { dataHash }` makes a kept version the current one (revert); answers with the list. Nothing is deleted.
-Already used and working: `game.select { gameId, dataHash }` ("Play this version" opens `#/lobby/hero_arena?hash=<dataHash>`) and `POST /v1/playtest/run { gameId, pairs, dataHash }` ("Run bots on this version").
-Recorded mode reads `services/room/data/versions/hero_arena.json` (an array of records) if that file exists; it does not today, so there is no stored 3-round history to show yet.
+## Round 8: version history endpoints (names agreed with the integrator)
+The Versions screen (`#/versions`) uses these; a 404/405 on the list makes it fall back to the stored file or, with
+`?mock=1`, to a labelled sample.
+- `GET /v1/versions/hero_arena` returns `{ versions: VersionRecord[], currentHash }` (records as in the round 8 interface).
+- `GET /v1/versions/hero_arena/:hash` returns the record plus its diff against the parent: `{ record, diff }` (or the
+  record at the top level), `diff` being `[{ path, label?, old, new }]` or `{ changes: [...] }`. The card shows this diff.
+- `POST /v1/versions/hero_arena/:hash/approve` ships a candidate (`approved: true`). The web reads the list again after.
+- `POST /v1/data/hero_arena/select { dataHash }` makes a kept version current (the revert); the list is read again after.
+- `POST /v1/playtest/auto { gameId, fromHash?, rounds: 1-3, requireApproval }` runs the rounds; `playtest.progress`
+  carries `round` (and optionally `rounds`) next to `phase`, which the button shows. The list is read again after. With
+  `requireApproval: false` new records carry `approved: false`, shown as "candidate versions — not shipped".
+Already working: `game.select { gameId, dataHash }` ("Play this version" opens `#/lobby/hero_arena?hash=<dataHash>`) and
+`POST /v1/playtest/run { gameId, pairs, dataHash }` ("Run bots on this version").
+Recorded mode reads `services/room/data/versions/hero_arena.json` (an array of records) if it exists; it does not today.

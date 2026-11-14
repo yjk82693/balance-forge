@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, runBotsOnVersion, type PlaytestRun } from "../lib/api";
+import { ApiError, runBotsOnVersion, subscribeProgress, type PlaytestRun } from "../lib/api";
 import { ResultCard } from "../components/ResultCard";
 import { FitStage } from "../components/FitStage";
 import { TopBar } from "../components/TopBar";
@@ -12,7 +12,9 @@ import { pct } from "../lib/stats";
 import { useManifest } from "../lib/assets";
 import { isMockMode } from "../mock/types";
 import {
+  approveVersion,
   factsFromVersion,
+  fetchVersion,
   fetchVersions,
   fieldText,
   layoutRows,
@@ -23,13 +25,16 @@ import {
   sampleVersions,
   shortHash,
   type Row,
+  type VersionDetail,
   type VersionList,
   type VersionRecord,
 } from "../lib/versions";
 
 type Source = "live run" | "recorded" | "sample data";
-type Busy = null | "balance" | "bots" | "current";
+type Busy = null | "balance" | "bots" | "current" | "approve";
 
+/** The record with the server's diff against its parent in place of its own change list, when there is one. */
+const withDiff = (v: VersionRecord, d?: VersionDetail): VersionRecord => (d ? { ...v, changes: d.diff } : v);
 const originName = (v: VersionRecord) => (v.origin === "base" ? "base" : originLabel(v.origin));
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong.");
 
@@ -106,6 +111,8 @@ export function Versions() {
   const [rounds, setRounds] = useState(1);
   const [approval, setApproval] = useState(true);
   const [botRuns, setBotRuns] = useState<Record<string, PlaytestRun>>({});
+  const [details, setDetails] = useState<Record<string, VersionDetail>>({});
+  const [roundText, setRoundText] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -120,6 +127,23 @@ export function Versions() {
       alive = false;
     };
   }, []);
+
+  // The server's own diff against the parent, when it has one for the selected version.
+  useEffect(() => {
+    if (!selected || source !== "live run" || details[selected]) return;
+    fetchVersion(selected)
+      .then((d) => d && setDetails((all) => ({ ...all, [selected]: d })))
+      .catch(() => undefined);
+  }, [selected, source, details]);
+
+  // While auto-balance runs, the server's progress says which round and phase it is in.
+  useEffect(() => {
+    if (busy !== "balance") return setRoundText("");
+    return subscribeProgress((p) => {
+      const round = p.round ? `Round ${p.round}${p.rounds ? ` of ${p.rounds}` : ""}` : "";
+      setRoundText([round, p.phase].filter(Boolean).join(" · "));
+    });
+  }, [busy]);
 
   const rows = useMemo(() => layoutRows(list?.versions ?? []), [list]);
   const record = list?.versions.find((v) => v.dataHash === selected);
@@ -187,7 +211,10 @@ export function Versions() {
                   </button>
                 ))}
               </div>
-              <label className="small toggle">
+              <label
+                className="small toggle"
+                title="On: an accepted version ships by itself. Off: new versions stay candidates until approved."
+              >
                 <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} /> Approval
               </label>
               <button
@@ -197,7 +224,7 @@ export function Versions() {
                 aria-busy={busy === "balance"}
                 onClick={() => live && !busy && balance(list?.currentHash)}
               >
-                {busy === "balance" ? "Balancing…" : "Auto-balance"}
+                {busy === "balance" ? `Balancing…${roundText ? ` ${roundText}` : ""}` : "Auto-balance"}
               </button>
             </div>
             {!approval && (
@@ -231,7 +258,10 @@ export function Versions() {
           <section aria-label="Selected version">
             {record ? (
               <>
-                <ResultCard facts={factsFromVersion(record, source)} title="Version">
+                <ResultCard
+                  facts={factsFromVersion(withDiff(record, details[record.dataHash]), source)}
+                  title="Version"
+                >
                   <p className="caption">
                     {parent
                       ? `Changes compared with ${shortHash(parent.dataHash)} (${originName(parent)})`
@@ -262,6 +292,16 @@ export function Versions() {
                   >
                     Continue auto-balance from here
                   </button>
+                  {!record.approved && (
+                    <button
+                      className="btn secondary"
+                      aria-disabled={!live || busy !== null}
+                      title={needsServer || "Ship this candidate version."}
+                      onClick={() => live && !busy && act("approve", () => approveVersion(record.dataHash))}
+                    >
+                      Approve
+                    </button>
+                  )}
                   <button
                     className="btn secondary"
                     aria-disabled={!live || busy !== null || record.dataHash === list?.currentHash}
