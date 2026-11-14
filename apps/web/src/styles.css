@@ -2228,3 +2228,18 @@ table.sr-only { display: block; max-width: 1px; }
 .phone-head, .phone-foot, .lost-bar, .btn-cluster { position: relative; z-index: 2; }
 .phone { touch-action: manipulation; overscroll-behavior: none; }
 .pad-btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+/* ?debug=1 readout */
+.debug-readout {
+  position: absolute;
+  right: var(--space-3);
+  top: var(--space-3);
+  z-index: 20;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 6px);
+  background: rgba(13, 18, 25, 0.8);
+  color: #9cf;
+  font: 12px/1.5 ui-monospace, monospace;
+  pointer-events: none;
+}
+.phone .debug-readout { top: auto; bottom: 90px; right: var(--space-3); }

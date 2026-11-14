@@ -8,6 +8,9 @@ import { useManifest } from "../lib/assets";
 import { go } from "../lib/router";
 import { InputPipeline } from "../lib/input";
 import { useGamepad } from "../lib/gamepad";
+import { DebugReadout } from "../components/DebugReadout";
+import { useNetStats } from "../lib/netStats";
+import type { BufferStats } from "../lib/snapshotBuffer";
 import { usePreventPageGestures } from "../lib/touchGuard";
 import { clearSeat, loadSeat, saveSeat } from "../lib/seat";
 import { ServerDown, useServerState } from "../components/ServerDown";
@@ -47,6 +50,8 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const [joined, setJoined] = useState<Profile | null>(null);
   const seat = room?.you;
   const tick = useRef(0);
+  const net = useNetStats(transport);
+  const bufferStats = useRef<BufferStats | null>(null);
   tick.current = observation?.tick ?? tick.current;
 
   const pipeline = useMemo(
@@ -55,10 +60,13 @@ export function Controller({ initialCode }: { initialCode: string }) {
         ? new InputPipeline(
             seat,
             () => tick.current + 1,
-            (input) => transport.send("input.submit", input),
+            (input) => {
+              net?.inputSent(input.seq, performance.now());
+              transport.send("input.submit", input);
+            },
           )
         : null,
-    [transport, seat],
+    [transport, seat, net],
   );
   useEffect(() => () => pipeline?.dispose(), [pipeline]);
 
@@ -210,6 +218,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
               views={views}
               compact
               smooth
+              bufferStats={bufferStats}
             />
           </Suspense>
         </div>
@@ -270,6 +279,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
       </div>
       </>
       )}
+      <DebugReadout stats={net} buffer={bufferStats} />
       <footer className="phone-foot">
         {gameId !== "hero_cards" && (
           <button className="btn secondary touch" aria-pressed={arenaOn} onClick={() => setArenaOn(!arenaOn)}>

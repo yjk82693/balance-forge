@@ -2,8 +2,16 @@ import type { ArenaPayload, GameEvent, Observation } from "./contract";
 
 /** The room server steps at 60 Hz; the mock sends 6 ticks per 100 ms, which is the same rate. */
 export const TICK_MS = 1000 / 60;
-/** Draw this many ticks behind the newest snapshot (about 67 ms), so there is almost always one on each side. */
+/**
+ * Draw this many ticks behind the newest snapshot (4 is about 67 ms) when the link is unknown; the delay then adapts
+ * between MIN_DELAY_TICKS (a steady LAN) and MAX_DELAY_TICKS (bunched Wi-Fi packets), from the spread of arrival times.
+ */
 export const RENDER_DELAY_TICKS = 4;
+export const MIN_DELAY_TICKS = 3;
+export const MAX_DELAY_TICKS = 8;
+/** How fast the delay may change, in ticks per second: up faster than down, so a bad patch is absorbed quickly. */
+const DELAY_UP_PER_S = 2;
+const DELAY_DOWN_PER_S = 0.4;
 /** When the buffer runs dry, guess at most this many ticks past the newest snapshot, then hold still. */
 export const MAX_EXTRAPOLATE_TICKS = 2;
 /** A tick that jumps back by more than this is a new match: start the buffer over. */
@@ -53,6 +61,11 @@ export class SnapshotBuffer {
   private offset: number | null = null; // server tick = nowMs / TICK_MS + offset
   private lastRender = -Infinity;
   private spacing = 1; // smoothed ticks between snapshots
+  private jitterMs = 0; // smoothed gap between when a snapshot should have arrived and when it did
+  private lastArrive = 0;
+  private delayTicks = RENDER_DELAY_TICKS; // the delay in use, eased toward the target
+  private delayTarget = RENDER_DELAY_TICKS;
+  private delayAt = 0;
   readonly stats: BufferStats = { depth: 0, late: 0, extrapolated: 0, renderDelayTicks: RENDER_DELAY_TICKS };
 
   private get newest(): Snapshot | undefined {
@@ -64,6 +77,8 @@ export class SnapshotBuffer {
     this.delivered = -Infinity;
     this.offset = null;
     this.lastRender = -Infinity;
+    this.lastArrive = 0;
+    this.delayAt = 0;
   }
 
   push(snap: Snapshot, nowMs: number) {
@@ -74,13 +89,34 @@ export class SnapshotBuffer {
     const before = this.newest;
     this.snaps.push(snap);
     this.snaps.sort((a, b) => a.tick - b.tick);
-    if (before && snap.tick > before.tick) this.spacing += (snap.tick - before.tick - this.spacing) * 0.1;
-    this.stats.renderDelayTicks = Math.max(RENDER_DELAY_TICKS, Math.ceil(this.spacing) + 1);
+    if (before && snap.tick > before.tick) this.learnLink(snap.tick - before.tick, nowMs - this.lastArrive);
+    this.lastArrive = nowMs;
     this.syncClock(snap.tick, nowMs);
     const cut = (this.newest?.tick ?? 0) - KEEP_TICKS;
     while (this.snaps.length > 2 && this.snaps[1].tick < cut && this.snaps[0].tick <= this.delivered) {
       this.snaps.shift(); // keep a little history, not the whole match
     }
+  }
+
+  /**
+   * Learn how steady the link is: `ticks` between two snapshots against the time between their arrivals. The delay
+   * target covers the spacing, one tick of margin and twice the jitter, within MIN and MAX.
+   */
+  private learnLink(ticks: number, gapMs: number) {
+    this.spacing += (ticks - this.spacing) * 0.1;
+    this.jitterMs += (Math.abs(gapMs - ticks * TICK_MS) - this.jitterMs) * 0.1;
+    const wanted = Math.round(this.spacing + 1 + (2 * this.jitterMs) / TICK_MS);
+    this.delayTarget = Math.min(MAX_DELAY_TICKS, Math.max(MIN_DELAY_TICKS, wanted));
+  }
+
+  /** Move the delay toward its target at a limited speed, so the picture never lurches when it changes. */
+  private slewDelay(nowMs: number) {
+    const dt = this.delayAt ? Math.min(0.1, (nowMs - this.delayAt) / 1000) : 0;
+    this.delayAt = nowMs;
+    const diff = this.delayTarget - this.delayTicks;
+    const step = (diff > 0 ? DELAY_UP_PER_S : DELAY_DOWN_PER_S) * dt;
+    this.delayTicks += Math.abs(diff) <= step ? diff : Math.sign(diff) * step;
+    this.stats.renderDelayTicks = Math.round(this.delayTicks);
   }
 
   /** The least-delayed packet shows the true clock: follow it quickly, drift back slowly if packets run late. */
@@ -94,10 +130,11 @@ export class SnapshotBuffer {
   renderTick(nowMs: number): number {
     const newest = this.newest;
     if (!newest || this.offset === null) return -Infinity;
-    if (newest.tick - (nowMs / TICK_MS + this.offset - this.stats.renderDelayTicks) > MAX_LAG_TICKS) {
+    this.slewDelay(nowMs);
+    if (newest.tick - (nowMs / TICK_MS + this.offset - this.delayTicks) > MAX_LAG_TICKS) {
       this.offset = newest.tick - nowMs / TICK_MS; // the clock fell behind (tab was hidden): catch up
     }
-    const wanted = nowMs / TICK_MS + this.offset - this.stats.renderDelayTicks;
+    const wanted = nowMs / TICK_MS + this.offset - this.delayTicks;
     const rt = Math.min(Math.max(this.lastRender, wanted), newest.tick + MAX_EXTRAPOLATE_TICKS);
     this.lastRender = rt;
     this.stats.depth = this.snaps.filter((s) => s.tick > rt).length;

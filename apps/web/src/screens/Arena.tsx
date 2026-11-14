@@ -1,5 +1,5 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { saveJustPlayed } from "../lib/justPlayed";
 import { go } from "../lib/router";
 import { gameById } from "../lib/games";
@@ -12,6 +12,9 @@ import { isMockMode } from "../mock/types";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
+import { DebugReadout } from "../components/DebugReadout";
+import { useNetStats } from "../lib/netStats";
+import type { BufferStats } from "../lib/snapshotBuffer";
 
 const fmtTime = (ticks: number) => {
   if (!Number.isFinite(ticks)) return "—";
@@ -31,6 +34,8 @@ export function Arena({ gameId }: { gameId: string }) {
   const { transport, status } = useTransport("display");
   const { room, observation, events, result, views } = useRoom(transport);
   const srv = useServerState(status);
+  const net = useNetStats(transport);
+  const bufferStats = useRef<BufferStats | null>(null);
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const cardsObs =
     observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
@@ -70,8 +75,9 @@ export function Arena({ gameId }: { gameId: string }) {
           {gameId === "hero_cards" ? (
             <CardsCanvas observation={cardsObs} names={names} />
           ) : (
-            <ArenaCanvas observation={arenaObs} events={events} views={views} />
+            <ArenaCanvas observation={arenaObs} events={events} views={views} bufferStats={bufferStats} />
           )}
+          <DebugReadout stats={net} buffer={bufferStats} />
           <div className="arena-overlay">
             {gameId !== "hero_cards" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
