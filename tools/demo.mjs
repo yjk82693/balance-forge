@@ -63,6 +63,14 @@ async function waitForHealth(url, ms) {
 // They go to the server process only and are never printed; only the names are listed.
 const SECRETS = ['GEMINI_API_KEY', 'XAI_API_KEY', 'MONGODB_URI', 'TIGER_DATABASE_URL', 'TIGER_CA_CERT'];
 
+// `security -w` prints a value that contains newlines (a PEM certificate) as hex.
+// Decode it only when the hex turns out to be printable text, so ordinary keys stay as they are.
+export function fromKeychain(value) {
+  if (!/^[0-9a-f]+$/i.test(value) || value.length % 2) return value;
+  const text = Buffer.from(value, 'hex').toString('utf8');
+  return /^[\x09\x0a\x0d\x20-\x7e]+$/.test(text) && text.includes('-----BEGIN') ? text : value;
+}
+
 function secretEnv() {
   const env = {};
   for (const name of SECRETS) {
@@ -72,7 +80,7 @@ function secretEnv() {
     }
     if (process.platform !== 'darwin') continue;
     const found = spawnSync('security', ['find-generic-password', '-s', name, '-w'], { encoding: 'utf8' });
-    if (found.status === 0 && found.stdout.trim()) env[name] = found.stdout.trim();
+    if (found.status === 0 && found.stdout.trim()) env[name] = fromKeychain(found.stdout.trim());
   }
   const names = Object.keys(env);
   console.log(`secrets: ${names.length ? names.join(', ') : 'none'} (values never printed)`);
