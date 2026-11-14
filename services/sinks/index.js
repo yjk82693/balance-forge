@@ -24,7 +24,9 @@ export function matchRows(kind, payload) {
   return (results ?? []).map(r => {
     const a = r.config?.options?.assignments ?? {};
     const heroes = Object.values(a).sort();
-    const winnerHero = r.outcome?.winner ? a[r.outcome.winner] ?? null : null;
+    // MatchResult.outcome is { status: 'win' | 'draw', winners: [playerId] }.
+    const winners = r.outcome?.winners ?? (r.outcome?.winner ? [r.outcome.winner] : []);
+    const winnerHero = r.outcome?.status === 'win' && winners.length === 1 ? a[winners[0]] ?? null : null;
     return {
       at: new Date(payload.at ?? Date.now()),
       run_id: runId ?? null,
@@ -33,7 +35,7 @@ export function matchRows(kind, payload) {
       bot_policy: botPolicyVersion ?? null,
       matchup: heroes.join(' vs '),
       winner_hero: winnerHero,
-      ticks: r.durationTicks ?? null,
+      ticks: r.durationTicks ?? r.statistics?.durationTicks ?? null,
       valid: r.valid !== false,
       seed: r.config?.seed ?? null,
     };
@@ -76,7 +78,8 @@ function tigerSink(url, load, ca) {
       const { default: pg } = await load('pg');
       // With the provider's CA certificate (TIGER_CA_CERT, PEM text) the server is fully verified;
       // TLS verification is never switched off here.
-      pool = new pg.Pool({ connectionString: ca ? withoutSslParams(url) : url, max: 2, connectionTimeoutMillis: LIMIT_MS,
+      pool = new pg.Pool({ connectionString: ca ? withoutSslParams(url) : url, max: 2,
+        connectionTimeoutMillis: LIMIT_MS,
         ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}) });
       await pool.query(`CREATE TABLE IF NOT EXISTS match_results (
         at timestamptz NOT NULL, run_id text, phase text, data_hash text, bot_policy text,
@@ -101,9 +104,10 @@ function tigerSink(url, load, ca) {
       // Win share of the alphabetically first hero per data version, oldest first.
       const db = await ready();
       const first = matchup.split(' vs ')[0];
-      const { rows } = await db.query(`SELECT data_hash, min(at) AS first_seen, count(*)::int AS games,
+      const { rows } = await db.query(`SELECT data_hash, min(at) AS first_seen, count(winner_hero)::int AS games,
         avg((winner_hero = $2)::int)::float AS rate FROM match_results
-        WHERE matchup = $1 AND valid GROUP BY data_hash ORDER BY first_seen`, [matchup, first]);
+        WHERE matchup = $1 AND valid AND winner_hero IS NOT NULL
+        GROUP BY data_hash ORDER BY first_seen`, [matchup, first]);
       return rows;
     },
     async close() {
