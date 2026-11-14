@@ -110,7 +110,8 @@ export function Dashboard() {
               </section>
             )}
             <CompareReplay
-              seed={fixtureMatchConfig.seed}
+              seed={run?.replay?.seed ?? fixtureMatchConfig.seed}
+              storedMatchId={run?.replay?.matchId}
               heroes={replayHeroes}
               active={showPatched ? "patched" : "broken"}
               sample

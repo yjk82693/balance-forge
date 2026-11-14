@@ -1,5 +1,5 @@
 import type { CardDef, CardsPayload, Outcome } from "../lib/contract";
-import { CARDS, CARDS_RULES } from "../lib/cards";
+import { CARDS_RULES, STANDARD_CARDS } from "../lib/cards";
 
 interface Unit {
   id: string;
@@ -31,7 +31,7 @@ export class CardsMock {
 
   constructor(ids: [string, string]) {
     this.sides = ids.map((id, i) => {
-      const deck = Array.from({ length: 3 }, () => CARDS).flat();
+      const deck = Array.from({ length: 3 }, () => STANDARD_CARDS).flat();
       const rotated = [...deck.slice(i * 2), ...deck.slice(0, i * 2)];
       const s: Side = {
         id,

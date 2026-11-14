@@ -157,7 +157,7 @@ export interface RoomStatusPayload {
 export interface CardDef {
   id: string;
   cost: number;
-  kind: "damage" | "ward" | "summon" | "hypnosis";
+  kind: "damage" | "ward" | "summon" | "hypnosis" | "peek";
   power: number;
   ignoresWard: boolean;
 }
@@ -181,6 +181,8 @@ export interface CardsPayload {
   entities: CardsEntity[];
   hand: CardDef[];
   outcome: Outcome;
+  /** private: the viewer's own peek result, when the server includes one */
+  peek?: unknown;
 }
 
 const isObject = (p: unknown): p is Record<string, unknown> => !!p && typeof p === "object";

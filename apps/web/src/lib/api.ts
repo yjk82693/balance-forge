@@ -35,10 +35,18 @@ export interface PlaytestRun {
   proposal?: Proposal;
   patched?: Report;
   verdict?: Verdict;
-  /** matchId of one finished bot match, for GET /v1/replay/:matchId */
-  replayMatchId?: string;
+  /** GET /v1/replay/:matchId for one finished bot match: the stored seed and accepted inputs, not views */
+  replay?: ReplayInfo;
   /** client-side flag: data came from fixtures (?mock=1), not from a run */
   sample?: boolean;
+}
+
+/** Summary of GET /v1/replay/:matchId ({matchId, seed, config, frames, finalStateHash}). */
+export interface ReplayInfo {
+  matchId: string;
+  seed: number;
+  frames: number;
+  finalStateHash: string;
 }
 
 export class ApiError extends Error {
@@ -156,5 +164,25 @@ async function runRealPlaytest(matches: number, signal?: AbortSignal): Promise<P
   if (!resultsRes.ok) return failFrom(resultsRes);
   const results = await readJson<MatchResult[]>(resultsRes, "results");
   if (!Array.isArray(results) || results.length === 0) throw new ApiError("The run returned no matches.", "shape");
-  return { baseline: cleanReport(reportFromResults(results, info)), replayMatchId: results[0].matchId };
+  const replay = await fetchReplayInfo(results[0].matchId, signal);
+  return { baseline: cleanReport(reportFromResults(results, info)), replay };
+}
+
+/** The stored replay of one match; absent (not an error) if the server has none or answers oddly. */
+async function fetchReplayInfo(matchId: string, signal?: AbortSignal): Promise<ReplayInfo | undefined> {
+  try {
+    const res = await fetch(`/v1/replay/${encodeURIComponent(matchId)}`, { signal });
+    if (!res.ok) return undefined;
+    const body = (await res.json()) as { seed?: unknown; frames?: unknown; finalStateHash?: unknown };
+    if (!Number.isInteger(body.seed) || !Array.isArray(body.frames)) return undefined;
+    return {
+      matchId,
+      seed: body.seed as number,
+      frames: body.frames.length,
+      finalStateHash: String(body.finalStateHash ?? ""),
+    };
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    return undefined;
+  }
 }
