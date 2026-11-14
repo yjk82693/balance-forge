@@ -220,3 +220,51 @@ test('a round targets one hero; the other flagged matchups are scanned again in 
   assert.equal(out.records.length, 2);
   assert.deepEqual(scans[2].matchups, ['bari vs daewi', 'bari vs real_armor', 'daewi vs real_armor']);
 });
+
+// --- the diagnosis chooses the hero of a round ---
+const heroData = (base) => ({ ...base,
+  characters: ['bari', 'daewi', 'sepia'].map((id) => ({ id, moveIds: ['a', 'b'] })),
+  moves: [{ id: 'a', archetype: 'melee', power: 50 }, { id: 'b', archetype: 'projectile', power: 92 }] });
+
+test('Bari beats Daewi, but Daewi loses to everyone: the round targets Daewi (a buff), not Bari', async () => {
+  const w = world((dim) => ({ 'bari vs daewi': 0.9, 'daewi vs sepia': 0.1, 'bari vs sepia': 0.5 })[dim] ?? 0.5);
+  const data = heroData(w.base.data);
+  const store = w.keep(data);
+  const roster = ['bari vs bari', 'bari vs daewi', 'bari vs sepia', 'daewi vs daewi', 'daewi vs sepia',
+    'sepia vs sepia'];
+  let context;
+  const adapter = { async proposeWithOrigin(report, ctx) {
+    context = ctx;
+    return w.input().adapter.proposeWithOrigin(report);
+  } };
+  const out = await runAuto(w.input({ fromHash: store.dataHash, data, allMatchups: roster, rounds: 1, adapter }));
+  assert.ok(out.records.length > 0, JSON.stringify([out.stoppedBecause, out.error]));
+  const holdouts = w.calls.filter((c) => c.seeds[0] > 1000000);
+  assert.deepEqual(holdouts[0].matchups, ['bari vs daewi', 'daewi vs sepia']); // Daewi's matchups, not Bari's
+  assert.equal(out.diagnoses.length, 1);
+  assert.equal(out.diagnoses[0].round, 1);
+  assert.equal(out.diagnoses[0].diagnosis.classification, 'overall_weak');
+  assert.equal(out.diagnoses[0].diagnosis.focusHero, 'daewi');
+  assert.equal(context.diagnosis, out.diagnoses[0].diagnosis); // the adapter got it as context
+});
+
+test('later rounds run only the matchups the diagnosis still needs, on the scan seeds, as phase diagnose', async () => {
+  // Round 1 scans everything. After an accepted round, round 2 scans only the flagged matchup, so the diagnosis has to
+  // run the focus heroes' other matchups itself.
+  const w = world((dim, p) => (dim === 'bari vs daewi' ? 0.5 + ((p - 52) / 40) * 0.3 : 0.5));
+  const data = heroData(w.base.data);
+  const store = w.keep(data);
+  const roster = ['bari vs bari', 'bari vs daewi', 'bari vs sepia', 'daewi vs daewi', 'daewi vs sepia',
+    'sepia vs sepia'];
+  const events = [];
+  const out = await runAuto(w.input({ fromHash: store.dataHash, data, allMatchups: roster, rounds: 2,
+    onProgress: (e) => events.push(e) }));
+  assert.equal(out.records.length >= 1, true, JSON.stringify(out.error));
+  const round2 = w.calls.filter((c) => c.seeds[0] === 1 && c.matchups.length < roster.length);
+  assert.deepEqual(round2[0].matchups, ['bari vs daewi']); // the narrowed scan
+  const diagnose = w.calls.find((c) => c.matchups.includes('bari vs sepia') && c.matchups.length === 2);
+  assert.deepEqual(diagnose.matchups, ['bari vs sepia', 'daewi vs sepia']);
+  assert.deepEqual(diagnose.seeds, round2[0].seeds);
+  assert.ok(events.some((e) => e.phase === 'diagnose' && e.round === 2));
+  assert.equal(out.diagnoses.length, 2);
+});

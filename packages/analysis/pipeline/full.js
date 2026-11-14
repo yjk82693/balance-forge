@@ -3,7 +3,7 @@
 // Returns { ok: true, value: body } or an error result; body has the shared-interface fields except the transport
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
-import { buildDiagnosis, diagnosisMatchups } from '../src/diagnose.js';
+import { buildDiagnosis, diagnosisMatchups, focusMatchupOf } from '../src/diagnose.js';
 import { buildEvidence } from '../src/evidence.js';
 import { heroMatchup } from '../src/group.js';
 import { isMirror } from '../src/verdict.js';
@@ -95,13 +95,6 @@ function fairBody(baseline, evidence, holdoutSeedSetId) {
   };
 }
 
-/** The flagged matchup furthest from 50% (non-mirror, non-human); ties alphabetical. */
-function focusMatchup(baseline) {
-  return baseline.rows.filter((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r))
-    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0]
-    ?.dimension;
-}
-
 /**
  * Diagnosis for the focus matchup: the focus heroes against every other hero, run by the injected `runDiagnose`
  * (matchups, seeds) on fresh seeds. Returns { value } or { error }; a failed diagnosis never stops the run.
@@ -110,7 +103,7 @@ async function diagnoseStep(input, baseline) {
   const { baselineResults, baseData, holdoutSeeds, diagnoseSeeds, runDiagnose } = input;
   if (input.diagnosis) return { value: input.diagnosis };
   if (typeof runDiagnose !== 'function') return { value: null };
-  const matchup = focusMatchup(baseline);
+  const matchup = focusMatchupOf(baseline);
   const heroIds = (baseData.characters ?? []).map((c) => c.id);
   const matchups = matchup ? diagnosisMatchups(matchup, heroIds) : [];
   if (matchups.length === 0) return { value: null };

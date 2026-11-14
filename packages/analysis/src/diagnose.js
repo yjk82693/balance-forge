@@ -8,6 +8,8 @@
 import { assertMatchResults } from './input-check.js';
 import { heroMatchup, isCountable } from './group.js';
 import { BAND_HIGH, BAND_LOW, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
+import { HUMAN_PREFIX } from './extras.js';
+import { isMirror } from './verdict.js';
 import { fail, safely } from './errors.js';
 import { round6, wilson95 } from './wilson.js';
 
@@ -23,6 +25,13 @@ const stat = (wins, games) => ({ rate: games ? round6(wins / games) : 0, ci95: w
 const roundTo = (x, step) => Math.round(x / step) * step;
 const clamp = (x, low, high) => Math.min(high, Math.max(low, x));
 const pts = (rate) => Math.round((rate - 0.5) * 1000) / 10; // percentage points above 50%, one decimal
+
+/** The flagged matchup furthest from 50% (non-mirror, non-human rows), ties alphabetical; null if none. */
+export function focusMatchupOf(report) {
+  return report.rows.filter((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r))
+    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0]
+    ?.dimension ?? null;
+}
 
 /** Canonical matchup strings (heroes sorted, as in report rows) a diagnosis of `matchup` has to run. */
 export function diagnosisMatchups(matchup, heroIds) {
