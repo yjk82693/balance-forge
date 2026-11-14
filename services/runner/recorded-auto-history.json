@@ -1,0 +1,1624 @@
+{
+  "summary": {
+    "stoppedBecause": "rounds",
+    "rounds": 3,
+    "needs_designer": [
+      {
+        "hero": "daewi",
+        "round": 2,
+        "matchups": [
+          "bari vs daewi",
+          "daewi vs nightcrow",
+          "daewi vs real_armor",
+          "daewi vs sepia"
+        ],
+        "tried": [
+          {
+            "label": "Daewi · Health",
+            "path": "/characters/2/health",
+            "old": 754,
+            "new": 609,
+            "outcome": "rejected",
+            "origin": "gemini"
+          },
+          {
+            "label": "Daewi · Speed",
+            "path": "/characters/2/speed",
+            "old": 110,
+            "new": 138,
+            "outcome": "rejected",
+            "origin": "gemini"
+          },
+          {
+            "label": "Daewi · Health",
+            "path": "/characters/2/health",
+            "old": 754,
+            "new": 609,
+            "outcome": "rejected",
+            "origin": "gemini"
+          }
+        ],
+        "evidence": "daewi wins 19.8% overall (800 games, -30.2 points from 50%). 3 lever(s) tried (Daewi · Health rejected, Daewi · Speed rejected, Daewi · Health rejected), none moved a flagged matchup beyond noise. Worst matchup: bari vs daewi at 93.0% (200 games), 96.5% after the last lever tried. Replays of bari vs daewi: In range, bari's swings landed 84% (interrupted 7%, blocked 10%; 2.95 ticks from start to hit) against 7% for daewi (8.69 ticks). 10 of 40 replays never came within melee range (1900); bari started 43% of its swings out of range.",
+        "rawEvidence": {
+          "missing": [
+            "damageByAction",
+            "hitsThroughGuard"
+          ],
+          "rows": [
+            {
+              "dimension": "bari vs daewi",
+              "games": 200,
+              "winRate": 0.93,
+              "ci95": [
+                0.885944,
+                0.957848
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "bari",
+                "damage": 148882,
+                "damageShare": 0.801622,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 4435,
+                    "uses": 1532,
+                    "useRate": 0.345434,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 3232,
+                    "uses": 2783,
+                    "useRate": 0.861077,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 3050,
+                    "uses": 1647,
+                    "useRate": 0.54,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "daewi",
+                "damage": 36844,
+                "damageShare": 0.198378,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 3202,
+                    "uses": 491,
+                    "useRate": 0.153342,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 2031,
+                    "uses": 1550,
+                    "useRate": 0.763171,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 1906,
+                    "uses": 1617,
+                    "useRate": 0.848374,
+                    "damage": null
+                  }
+                ]
+              }
+            },
+            {
+              "dimension": "daewi vs nightcrow",
+              "games": 200,
+              "winRate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "daewi",
+                "damage": 63172,
+                "damageShare": 0.315756,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 5197,
+                    "uses": 647,
+                    "useRate": 0.124495,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 3069,
+                    "uses": 2551,
+                    "useRate": 0.831215,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 3055,
+                    "uses": 2628,
+                    "useRate": 0.860229,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "nightcrow",
+                "damage": 136894,
+                "damageShare": 0.684244,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 7284,
+                    "uses": 2472,
+                    "useRate": 0.339374,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 5146,
+                    "uses": 4689,
+                    "useRate": 0.911193,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 4939,
+                    "uses": 2580,
+                    "useRate": 0.522373,
+                    "damage": null
+                  }
+                ]
+              }
+            },
+            {
+              "dimension": "daewi vs real_armor",
+              "games": 200,
+              "winRate": 0.1,
+              "ci95": [
+                0.06567,
+                0.149407
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "daewi",
+                "damage": 73524,
+                "damageShare": 0.331127,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 5806,
+                    "uses": 789,
+                    "useRate": 0.135894,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 3413,
+                    "uses": 2880,
+                    "useRate": 0.843832,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 3472,
+                    "uses": 2908,
+                    "useRate": 0.837558,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "real_armor",
+                "damage": 148518,
+                "damageShare": 0.668873,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 8174,
+                    "uses": 2798,
+                    "useRate": 0.342305,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 5775,
+                    "uses": 5268,
+                    "useRate": 0.912208,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 5564,
+                    "uses": 2899,
+                    "useRate": 0.521028,
+                    "damage": null
+                  }
+                ]
+              }
+            },
+            {
+              "dimension": "daewi vs sepia",
+              "games": 200,
+              "winRate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "daewi",
+                "damage": 63172,
+                "damageShare": 0.315756,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 5197,
+                    "uses": 647,
+                    "useRate": 0.124495,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 3069,
+                    "uses": 2551,
+                    "useRate": 0.831215,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 3055,
+                    "uses": 2628,
+                    "useRate": 0.860229,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "sepia",
+                "damage": 136894,
+                "damageShare": 0.684244,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 7284,
+                    "uses": 2472,
+                    "useRate": 0.339374,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 5146,
+                    "uses": 4689,
+                    "useRate": 0.911193,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 4939,
+                    "uses": 2580,
+                    "useRate": 0.522373,
+                    "damage": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "hero": "bari",
+        "round": 3,
+        "matchups": [
+          "bari vs daewi",
+          "bari vs nightcrow",
+          "bari vs sepia"
+        ],
+        "tried": [
+          {
+            "label": "Bari · Spirit Arrow power",
+            "path": "/moves/1/power",
+            "old": 92,
+            "new": 400,
+            "outcome": "rejected",
+            "origin": "gemini"
+          },
+          {
+            "label": "Bari · Health",
+            "path": "/characters/0/health",
+            "old": 378,
+            "new": 486,
+            "outcome": "rejected",
+            "origin": "gemini"
+          },
+          {
+            "label": "Bari · Speed",
+            "path": "/characters/0/speed",
+            "old": 120,
+            "new": 96,
+            "outcome": "rejected",
+            "origin": "gemini"
+          }
+        ],
+        "evidence": "bari wins 77.3% overall (800 games, +27.2 points from 50%). 3 lever(s) tried (Bari · Spirit Arrow power rejected, Bari · Health rejected, Bari · Speed rejected), none moved a flagged matchup beyond noise. Worst matchup: bari vs daewi at 91.5% (200 games), 100.0% after the last lever tried. Replays of bari vs daewi: In range, bari's swings landed 84% (interrupted 7%, blocked 10%; 2.95 ticks from start to hit) against 7% for daewi (8.69 ticks). 10 of 40 replays never came within melee range (1900); bari started 43% of its swings out of range.",
+        "rawEvidence": {
+          "missing": [
+            "damageByAction",
+            "hitsThroughGuard"
+          ],
+          "rows": [
+            {
+              "dimension": "bari vs daewi",
+              "games": 200,
+              "winRate": 0.915,
+              "ci95": [
+                0.868103,
+                0.946255
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "bari",
+                "damage": 147680,
+                "damageShare": 0.799567,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 4437,
+                    "uses": 1532,
+                    "useRate": 0.345278,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 3237,
+                    "uses": 2780,
+                    "useRate": 0.85882,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 3034,
+                    "uses": 1652,
+                    "useRate": 0.544496,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "daewi",
+                "damage": 37020,
+                "damageShare": 0.200433,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 3193,
+                    "uses": 503,
+                    "useRate": 0.157532,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 2015,
+                    "uses": 1546,
+                    "useRate": 0.767246,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 1914,
+                    "uses": 1613,
+                    "useRate": 0.842738,
+                    "damage": null
+                  }
+                ]
+              }
+            },
+            {
+              "dimension": "bari vs nightcrow",
+              "games": 200,
+              "winRate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "bari",
+                "damage": 89134,
+                "damageShare": 0.693402,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 3173,
+                    "uses": 1095,
+                    "useRate": 0.345099,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 2355,
+                    "uses": 1940,
+                    "useRate": 0.823779,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 2174,
+                    "uses": 1232,
+                    "useRate": 0.566697,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "nightcrow",
+                "damage": 39412,
+                "damageShare": 0.306598,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 3201,
+                    "uses": 1139,
+                    "useRate": 0.355826,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 2375,
+                    "uses": 1956,
+                    "useRate": 0.823579,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 2114,
+                    "uses": 1183,
+                    "useRate": 0.559603,
+                    "damage": null
+                  }
+                ]
+              }
+            },
+            {
+              "dimension": "bari vs sepia",
+              "games": 200,
+              "winRate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "mirror": false,
+              "focal": {
+                "hero": "bari",
+                "damage": 89134,
+                "damageShare": 0.693402,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 3173,
+                    "uses": 1095,
+                    "useRate": 0.345099,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 2355,
+                    "uses": 1940,
+                    "useRate": 0.823779,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 2174,
+                    "uses": 1232,
+                    "useRate": 0.566697,
+                    "damage": null
+                  }
+                ]
+              },
+              "other": {
+                "hero": "sepia",
+                "damage": 39412,
+                "damageShare": 0.306598,
+                "actions": [
+                  {
+                    "actionId": "guard",
+                    "opportunities": 3201,
+                    "uses": 1139,
+                    "useRate": 0.355826,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "melee",
+                    "opportunities": 2375,
+                    "uses": 1956,
+                    "useRate": 0.823579,
+                    "damage": null
+                  },
+                  {
+                    "actionId": "projectile",
+                    "opportunities": 2114,
+                    "uses": 1183,
+                    "useRate": 0.559603,
+                    "damage": null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "botPolicyVersion": "scripted-0.2.1",
+    "simVersion": "arena-0.1.2",
+    "createdAt": "2026-11-14T18:10:47.223Z"
+  },
+  "versions": [
+    {
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "parentHash": null,
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T14:47:36.863Z",
+      "origin": "base",
+      "changes": [],
+      "rationale": "Original game data.",
+      "target": null,
+      "verdict": null,
+      "approved": true
+    },
+    {
+      "dataHash": "6857caa996e7b6ed8b5715c44783e6ce7767469a619f6230e2916f6be1ea785b",
+      "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:04:09.889Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/2/health",
+          "label": "Daewi · Health",
+          "old": 580,
+          "new": 754
+        },
+        {
+          "path": "/characters/2/speed",
+          "label": "Daewi · Speed",
+          "old": 110,
+          "new": 143
+        },
+        {
+          "path": "/characters/0/health",
+          "label": "Bari · Health",
+          "old": 540,
+          "new": 378
+        },
+        {
+          "path": "/characters/0/speed",
+          "label": "Bari · Speed",
+          "old": 120,
+          "new": 84
+        }
+      ],
+      "rationale": "Buff daewi health and speed while nerfing bari health and speed to balance their overwhelming win rates toward the 50 percent band.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.99,
+          "ci95": [
+            0.964278,
+            0.997253
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.93,
+          "ci95": [
+            0.885944,
+            0.957848
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "accepted",
+        "reasons": [
+          "bari vs daewi: improved (99.0% [96.4%-99.7%] n=200 -> 93.0% [88.6%-95.8%] n=200)",
+          "daewi vs nightcrow: improved (16.5% [12.0%-22.3%] n=200 -> 31.0% [25.0%-37.7%] n=200)",
+          "daewi vs real_armor: improved (2.5% [1.1%-5.7%] n=200 -> 12.0% [8.2%-17.2%] n=200)",
+          "daewi vs sepia: improved (16.5% [12.0%-22.3%] n=200 -> 31.0% [25.0%-37.7%] n=200)",
+          "4 of 4 target(s) moved toward their target beyond noise; none moved away, no new extreme matchup and no more invalid matches"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.99,
+              "ci95": [
+                0.964278,
+                0.997253
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.93,
+              "ci95": [
+                0.885944,
+                0.957848
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "daewi vs nightcrow",
+            "before": {
+              "rate": 0.165,
+              "ci95": [
+                0.119968,
+                0.222659
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "daewi vs real_armor",
+            "before": {
+              "rate": 0.025,
+              "ci95": [
+                0.010725,
+                0.057179
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.12,
+              "ci95": [
+                0.081979,
+                0.172344
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "daewi vs sepia",
+            "before": {
+              "rate": 0.165,
+              "ci95": [
+                0.119968,
+                0.222659
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 1 of 3; accepted, not chosen: the other candidate improved more"
+    },
+    {
+      "dataHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:05:30.004Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/2/health",
+          "label": "Daewi · Health",
+          "old": 580,
+          "new": 754
+        },
+        {
+          "path": "/characters/0/health",
+          "label": "Bari · Health",
+          "old": 540,
+          "new": 378
+        }
+      ],
+      "rationale": "Increase daewi health and decrease bari health to move win rates closer to 50%.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.99,
+          "ci95": [
+            0.964278,
+            0.997253
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.93,
+          "ci95": [
+            0.885944,
+            0.957848
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "accepted",
+        "reasons": [
+          "bari vs daewi: improved (99.0% [96.4%-99.7%] n=200 -> 93.0% [88.6%-95.8%] n=200)",
+          "daewi vs nightcrow: improved (16.5% [12.0%-22.3%] n=200 -> 34.0% [27.8%-40.8%] n=200)",
+          "daewi vs real_armor: improved (2.5% [1.1%-5.7%] n=200 -> 12.5% [8.6%-17.8%] n=200)",
+          "daewi vs sepia: improved (16.5% [12.0%-22.3%] n=200 -> 34.0% [27.8%-40.8%] n=200)",
+          "4 of 4 target(s) moved toward their target beyond noise; none moved away, no new extreme matchup and no more invalid matches"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.99,
+              "ci95": [
+                0.964278,
+                0.997253
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.93,
+              "ci95": [
+                0.885944,
+                0.957848
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "daewi vs nightcrow",
+            "before": {
+              "rate": 0.165,
+              "ci95": [
+                0.119968,
+                0.222659
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.34,
+              "ci95": [
+                0.277914,
+                0.408116
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "daewi vs real_armor",
+            "before": {
+              "rate": 0.025,
+              "ci95": [
+                0.010725,
+                0.057179
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.125,
+              "ci95": [
+                0.086119,
+                0.178015
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "daewi vs sepia",
+            "before": {
+              "rate": 0.165,
+              "ci95": [
+                0.119968,
+                0.222659
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.34,
+              "ci95": [
+                0.277914,
+                0.408116
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          }
+        ]
+      },
+      "approved": true,
+      "note": "candidate 3 of 3; auto-approved"
+    },
+    {
+      "dataHash": "3c6347d0b22d60548ea55368f713e2e110cd2beb34cfda1698bd92b350b0ca26",
+      "parentHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:07:18.451Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/2/health",
+          "label": "Daewi · Health",
+          "old": 754,
+          "new": 609
+        },
+        {
+          "path": "/characters/2/speed",
+          "label": "Daewi · Speed",
+          "old": 110,
+          "new": 137
+        }
+      ],
+      "rationale": "Buffing daewi's health and speed to counteract very low overall win rates against bari, real_armor, and others.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.93,
+          "ci95": [
+            0.885944,
+            0.957848
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.965,
+          "ci95": [
+            0.929529,
+            0.982945
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "rejected",
+        "reasons": [
+          "bari vs daewi: unchanged (93.0% [88.6%-95.8%] n=200 -> 96.5% [93.0%-98.3%] n=200)",
+          "daewi vs nightcrow: worse (31.0% [25.0%-37.7%] n=200 -> 11.5% [7.8%-16.7%] n=200)",
+          "daewi vs real_armor: worse (10.0% [6.6%-14.9%] n=200 -> 2.0% [0.8%-5.0%] n=200)",
+          "daewi vs sepia: worse (31.0% [25.0%-37.7%] n=200 -> 11.5% [7.8%-16.7%] n=200)",
+          "3 target(s) moved away from their target beyond noise"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.93,
+              "ci95": [
+                0.885944,
+                0.957848
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.965,
+              "ci95": [
+                0.929529,
+                0.982945
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          },
+          {
+            "matchup": "daewi vs nightcrow",
+            "before": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.115,
+              "ci95": [
+                0.077863,
+                0.166648
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "daewi vs real_armor",
+            "before": {
+              "rate": 0.1,
+              "ci95": [
+                0.06567,
+                0.149407
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.02,
+              "ci95": [
+                0.007804,
+                0.050288
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "daewi vs sepia",
+            "before": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.115,
+              "ci95": [
+                0.077863,
+                0.166648
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 1 of 3"
+    },
+    {
+      "dataHash": "119f8589f1db501dc5926a8b5306aab8140f03668a629419c18d2be05cba95df",
+      "parentHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:07:56.897Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/2/speed",
+          "label": "Daewi · Speed",
+          "old": 110,
+          "new": 138
+        }
+      ],
+      "rationale": "Raising daewi speed by 25% from 110 to 138 to improve its overall win rate toward 50%.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.93,
+          "ci95": [
+            0.885944,
+            0.957848
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.955,
+          "ci95": [
+            0.916702,
+            0.976148
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "rejected",
+        "reasons": [
+          "bari vs daewi: unchanged (93.0% [88.6%-95.8%] n=200 -> 95.5% [91.7%-97.6%] n=200)",
+          "daewi vs nightcrow: worse (31.0% [25.0%-37.7%] n=200 -> 18.5% [13.7%-24.5%] n=200)",
+          "daewi vs real_armor: unchanged (10.0% [6.6%-14.9%] n=200 -> 6.5% [3.8%-10.8%] n=200)",
+          "daewi vs sepia: worse (31.0% [25.0%-37.7%] n=200 -> 18.5% [13.7%-24.5%] n=200)",
+          "2 target(s) moved away from their target beyond noise"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.93,
+              "ci95": [
+                0.885944,
+                0.957848
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.955,
+              "ci95": [
+                0.916702,
+                0.976148
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          },
+          {
+            "matchup": "daewi vs nightcrow",
+            "before": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.185,
+              "ci95": [
+                0.137301,
+                0.244572
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "daewi vs real_armor",
+            "before": {
+              "rate": 0.1,
+              "ci95": [
+                0.06567,
+                0.149407
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.065,
+              "ci95": [
+                0.038376,
+                0.10802
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          },
+          {
+            "matchup": "daewi vs sepia",
+            "before": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.185,
+              "ci95": [
+                0.137301,
+                0.244572
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 2 of 3"
+    },
+    {
+      "dataHash": "f568e061e866f2e2fec3a0bdfab1ff34de178e9a06d37fbf762d898202408bde",
+      "parentHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:08:31.290Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/2/health",
+          "label": "Daewi · Health",
+          "old": 754,
+          "new": 609
+        },
+        {
+          "path": "/characters/0/health",
+          "label": "Bari · Health",
+          "old": 378,
+          "new": 486
+        }
+      ],
+      "rationale": "Buff daewi health and nerf bari health to balance their win rates toward 50%.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.93,
+          "ci95": [
+            0.885944,
+            0.957848
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.98,
+          "ci95": [
+            0.949712,
+            0.992196
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "rejected",
+        "reasons": [
+          "bari vs daewi: worse (93.0% [88.6%-95.8%] n=200 -> 98.0% [95.0%-99.2%] n=200)",
+          "daewi vs nightcrow: worse (31.0% [25.0%-37.7%] n=200 -> 16.5% [12.0%-22.3%] n=200)",
+          "daewi vs real_armor: worse (10.0% [6.6%-14.9%] n=200 -> 1.5% [0.5%-4.3%] n=200)",
+          "daewi vs sepia: worse (31.0% [25.0%-37.7%] n=200 -> 16.5% [12.0%-22.3%] n=200)",
+          "4 target(s) moved away from their target beyond noise"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.93,
+              "ci95": [
+                0.885944,
+                0.957848
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.98,
+              "ci95": [
+                0.949712,
+                0.992196
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "daewi vs nightcrow",
+            "before": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.165,
+              "ci95": [
+                0.119968,
+                0.222659
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "daewi vs real_armor",
+            "before": {
+              "rate": 0.1,
+              "ci95": [
+                0.06567,
+                0.149407
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.015,
+              "ci95": [
+                0.005114,
+                0.043166
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "daewi vs sepia",
+            "before": {
+              "rate": 0.31,
+              "ci95": [
+                0.249988,
+                0.377173
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.165,
+              "ci95": [
+                0.119968,
+                0.222659
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 3 of 3"
+    },
+    {
+      "dataHash": "96d27df86d82754f0c1a382e5a3520fab90cb80ce9fac8d63c31b0381c837f4a",
+      "parentHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:10:14.086Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/moves/1/power",
+          "label": "Bari · Spirit Arrow power",
+          "old": 92,
+          "new": 400
+        },
+        {
+          "path": "/characters/0/health",
+          "label": "Bari · Health",
+          "old": 378,
+          "new": 486
+        },
+        {
+          "path": "/characters/0/speed",
+          "label": "Bari · Speed",
+          "old": 120,
+          "new": 96
+        },
+        {
+          "path": "/moves/5/power",
+          "label": "Nightcrow · Crow Dive power",
+          "old": 38,
+          "new": 550
+        },
+        {
+          "path": "/moves/6/power",
+          "label": "Nightcrow · Crow Swarm power",
+          "old": 44,
+          "new": 550
+        },
+        {
+          "path": "/characters/4/speed",
+          "label": "Nightcrow · Speed",
+          "old": 150,
+          "new": 165
+        }
+      ],
+      "rationale": "Nerf overperforming hero bari by reducing move 1 power, health, and speed, while buffing underperforming hero nightcrow by increasing move 5 and 6 power and speed to balance overall win rates toward 50%.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.915,
+          "ci95": [
+            0.868103,
+            0.946255
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 1,
+          "ci95": [
+            0.981154,
+            1
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "rejected",
+        "reasons": [
+          "bari vs daewi: worse (91.5% [86.8%-94.6%] n=200 -> 100.0% [98.1%-100.0%] n=200)",
+          "bari vs nightcrow: improved (78.0% [71.8%-83.2%] n=200 -> 27.0% [21.3%-33.5%] n=200)",
+          "bari vs sepia: worse (78.0% [71.8%-83.2%] n=200 -> 96.5% [93.0%-98.3%] n=200)",
+          "new extreme matchup: bari vs nightcrow at 27%",
+          "2 target(s) moved away from their target beyond noise"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.915,
+              "ci95": [
+                0.868103,
+                0.946255
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 1,
+              "ci95": [
+                0.981154,
+                1
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "bari vs nightcrow",
+            "before": {
+              "rate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.27,
+              "ci95": [
+                0.213234,
+                0.335436
+              ],
+              "games": 200
+            },
+            "outcome": "improved"
+          },
+          {
+            "matchup": "bari vs sepia",
+            "before": {
+              "rate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.965,
+              "ci95": [
+                0.929529,
+                0.982945
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 1 of 3"
+    },
+    {
+      "dataHash": "057a196d68bc253ffd0569847b4469c1d886e87058753e47cea91b2e4a643f0d",
+      "parentHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:10:30.952Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/0/health",
+          "label": "Bari · Health",
+          "old": 378,
+          "new": 486
+        },
+        {
+          "path": "/characters/0/speed",
+          "label": "Bari · Speed",
+          "old": 120,
+          "new": 96
+        },
+        {
+          "path": "/characters/4/speed",
+          "label": "Nightcrow · Speed",
+          "old": 150,
+          "new": 165
+        }
+      ],
+      "rationale": "Nerfed the overpowered hero bari by reducing health and speed, and buffed the underpowered hero nightcrow by increasing speed to balance win rates toward 50%.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.915,
+          "ci95": [
+            0.868103,
+            0.946255
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.98,
+          "ci95": [
+            0.949712,
+            0.992196
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "rejected",
+        "reasons": [
+          "bari vs daewi: worse (91.5% [86.8%-94.6%] n=200 -> 98.0% [95.0%-99.2%] n=200)",
+          "bari vs nightcrow: unchanged (78.0% [71.8%-83.2%] n=200 -> 79.5% [73.4%-84.5%] n=200)",
+          "bari vs sepia: worse (78.0% [71.8%-83.2%] n=200 -> 85.0% [79.4%-89.3%] n=200)",
+          "2 target(s) moved away from their target beyond noise"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.915,
+              "ci95": [
+                0.868103,
+                0.946255
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.98,
+              "ci95": [
+                0.949712,
+                0.992196
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          },
+          {
+            "matchup": "bari vs nightcrow",
+            "before": {
+              "rate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.795,
+              "ci95": [
+                0.733742,
+                0.845139
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          },
+          {
+            "matchup": "bari vs sepia",
+            "before": {
+              "rate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.85,
+              "ci95": [
+                0.793943,
+                0.892865
+              ],
+              "games": 200
+            },
+            "outcome": "worse"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 2 of 3"
+    },
+    {
+      "dataHash": "afcc4c758b6228a9ed7aa5b3241dbc3f4c22089460bf1972a6e65d22860f7478",
+      "parentHash": "cb67812c2152474de6d68e6d7cbbca948ad43ae20d796269364a9dcf2c14b570",
+      "gameId": "hero_arena",
+      "createdAt": "2026-11-14T18:10:47.223Z",
+      "origin": "gemini",
+      "changes": [
+        {
+          "path": "/characters/0/speed",
+          "label": "Bari · Speed",
+          "old": 120,
+          "new": 96
+        }
+      ],
+      "rationale": "Lowering bari speed by 20% from 120 to 96 to reduce its dominant win rates.",
+      "target": {
+        "matchup": "bari vs daewi",
+        "before": {
+          "rate": 0.915,
+          "ci95": [
+            0.868103,
+            0.946255
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.95,
+          "ci95": [
+            0.910421,
+            0.972618
+          ],
+          "games": 200
+        }
+      },
+      "verdict": {
+        "verdict": "rejected",
+        "reasons": [
+          "bari vs daewi: unchanged (91.5% [86.8%-94.6%] n=200 -> 95.0% [91.0%-97.3%] n=200)",
+          "bari vs nightcrow: unchanged (78.0% [71.8%-83.2%] n=200 -> 81.0% [75.0%-85.8%] n=200)",
+          "bari vs sepia: unchanged (78.0% [71.8%-83.2%] n=200 -> 81.0% [75.0%-85.8%] n=200)",
+          "no matchup moved toward its target beyond noise"
+        ],
+        "targets": [
+          {
+            "matchup": "bari vs daewi",
+            "before": {
+              "rate": 0.915,
+              "ci95": [
+                0.868103,
+                0.946255
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.95,
+              "ci95": [
+                0.910421,
+                0.972618
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          },
+          {
+            "matchup": "bari vs nightcrow",
+            "before": {
+              "rate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.81,
+              "ci95": [
+                0.749986,
+                0.858329
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          },
+          {
+            "matchup": "bari vs sepia",
+            "before": {
+              "rate": 0.78,
+              "ci95": [
+                0.717611,
+                0.831835
+              ],
+              "games": 200
+            },
+            "after": {
+              "rate": 0.81,
+              "ci95": [
+                0.749986,
+                0.858329
+              ],
+              "games": 200
+            },
+            "outcome": "unchanged"
+          }
+        ]
+      },
+      "approved": false,
+      "note": "candidate 3 of 3"
+    }
+  ]
+}
