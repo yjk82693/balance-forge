@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IntendedChips } from "../components/IntendedChips";
+import { phaseWords } from "../components/ResultSkeleton";
 import { CompareReplay } from "../components/CompareReplay";
 import { FitStage } from "../components/FitStage";
 import { HeroPortrait } from "../components/HeroPortrait";
-import { LivePanel } from "../components/LivePanel";
-import { PatchCompare } from "../components/PatchCompare";
 import { TopBar } from "../components/TopBar";
 import { WinRateChart, rowStats } from "../components/WinRateChart";
-import { VERDICT_COPY, fmtSeconds, n, pickTargetDimension } from "../lib/dashboardData";
+import { VERDICT_COPY, fmtSeconds, headlineFor, n, pickTargetDimension } from "../lib/dashboardData";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
 import { loadSkill, policyFor } from "../lib/botPolicy";
 import { currentDiagnose, currentMatchup } from "../lib/matchup";
-import { needsMoreGames } from "../lib/resultCard";
+import { buildFacts, needsMoreGames } from "../lib/resultCard";
+import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
-import { DiffCard } from "../components/DiffCard";
 import { HeroProfile } from "../components/HeroProfile";
 import { VersionHistory } from "../components/VersionHistory";
 import { useManifest } from "../lib/assets";
@@ -47,7 +47,7 @@ export function Present({ auto }: { auto: boolean }) {
   useManifest();
   useHeroStats();
   const mock = isMockMode();
-  const { run, busy, live, error, notice, elapsed, start } = useRunner();
+  const { run, busy, live, error, notice, elapsed, start, replace } = useRunner();
   const started = useRef(false);
   const roster = useRef<PlaytestRun | null>(null);
   // Same matchup as the dashboard: a pick made there, else the match just played, else the roster's largest outlier.
@@ -111,6 +111,7 @@ export function Present({ auto }: { auto: boolean }) {
             error={error}
             notice={notice}
             history={history}
+            onRun={replace}
           />
         </main>
         {!auto && (
@@ -132,9 +133,10 @@ interface BodyProps {
   error: string | null;
   notice: string | null;
   history: HistoryState | null;
+  onRun: (next: PlaytestRun) => void;
 }
 
-function SceneBody({ id, run, busy, live, elapsed, error, notice, history }: BodyProps) {
+function SceneBody({ id, run, busy, live, elapsed, error, notice, history, onRun }: BodyProps) {
   switch (id) {
     case "intent":
       return <IntentScene />;
@@ -151,7 +153,7 @@ function SceneBody({ id, run, busy, live, elapsed, error, notice, history }: Bod
     case "replay":
       return <ReplayScene run={run} busy={busy} />;
     default:
-      return <VerdictScene run={run} busy={busy} error={error} />;
+      return <VerdictScene run={run} busy={busy} error={error} onRun={onRun} />;
   }
 }
 
@@ -277,25 +279,49 @@ function Waiting({ what, error }: { what: string; error?: string | null }) {
   );
 }
 
-function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, "id" | "history">) {
-  const rows = live.rows ?? run?.baseline.rows ?? null;
+/** The one number of this scene: the flagged matchup's win rate, big, against what was intended. */
+function BigRate({ run }: { run: PlaytestRun }) {
+  const stats = botRows(run.baseline.rows).map(rowStats);
+  const s = stats.find((x) => x.row.dimension === pickTargetDimension(stats));
+  if (!s) return null;
+  return (
+    <div className="present-big-block">
+      <p className="present-names">
+        <HeroPortrait hero={s.matchup.a} size={72} />
+        {heroName(s.matchup.a)} <span className="text-2">vs</span> {heroName(s.matchup.b)}
+        <HeroPortrait hero={s.matchup.b} size={72} />
+      </p>
+      <p className="present-big">{pct(s.rate)}%</p>
+      <p className="present-mid">
+        {s.target.favored ? s.target.label : "intended: even (50%)"} · {n(s.row.games)} games
+      </p>
+      <p className="present-sub">{headlineFor(s)}</p>
+    </div>
+  );
+}
+
+function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, "id" | "history" | "onRun">) {
+  if (busy || !run) {
+    const rows = live.rows;
+    return (
+      <section className="present-card">
+        <p className="present-sub">{phaseWords(live.phase)}…</p>
+        <p className="present-big">{live.total ? `${n(live.done)}` : "…"}</p>
+        <p className="present-mid">
+          {live.total ? `of ${n(live.total)} matches · ` : ""}
+          {elapsed} s
+        </p>
+        {!rows && error && <Waiting what="the first results" error={error} />}
+      </section>
+    );
+  }
   return (
     <div className="present-bots">
-      <LivePanel
-        busy={busy}
-        done={live.done}
-        total={live.total}
-        phase={live.phase}
-        elapsed={elapsed}
-        holdout={live.holdout}
-        diagnose={live.diagnose}
-      />
-      <section className="panel">
-        <div className="panel-head">
-          <span className="eyebrow">Win rate per matchup</span>
-        </div>
-        {rows ? <WinRateChart rows={rows} dense /> : <Waiting what="the first results" error={error} />}
-        {notice && <p className="caption">{notice}</p>}
+      <BigRate run={run} />
+      <section className="panel present-roster">
+        <p className="eyebrow">All matchups</p>
+        <WinRateChart rows={run.baseline.rows} dense foot={false} />
+        {notice && <p className="present-sub">{notice}</p>}
       </section>
     </div>
   );
@@ -320,15 +346,26 @@ function PatchScene({ run, busy, error }: { run: PlaytestRun | null; busy: boole
   if (!run.proposal) {
     return (
       <section className="present-card">
-        <p className="h2">This data has no patch proposal.</p>
-        <p className="text-2">The stored run holds the bot results only.</p>
+        <p className="present-mid">This data has no patch proposal.</p>
+        <p className="present-sub">The stored run holds the bot results only.</p>
       </section>
     );
   }
+  const facts = buildFacts(run, null);
+  const first = facts.patch[0];
   return (
-    <div className="present-wide">
-      <DiffCard proposal={run.proposal} sample={run.sample} />
-    </div>
+    <section className="present-card">
+      <p className="present-sub">
+        The AI proposes <span className="badge origin">{first?.origin ?? run.proposal.origin}</span>
+      </p>
+      {facts.patch.map((c) => (
+        <p key={c.path} className="present-change">
+          {c.field} <span className="old">{c.old ?? "—"}</span> → <span className="new">{c.next}</span>
+        </p>
+      ))}
+      {facts.fallbackNote && <p className="present-sub present-fallback">{facts.fallbackNote}</p>}
+      {first?.rationale && <p className="present-sub">{first.rationale}</p>}
+    </section>
   );
 }
 
@@ -353,19 +390,34 @@ function ReplayScene({ run, busy }: { run: PlaytestRun | null; busy: boolean }) 
   );
 }
 
-/** The badge shows what the run's verdict says, never text written in advance. */
-function VerdictScene({ run, busy, error }: { run: PlaytestRun | null; busy: boolean; error: string | null }) {
+/** The badge shows what the run's verdict says, never text written in advance. Before → after is the one number. */
+function VerdictScene({
+  run,
+  busy,
+  error,
+  onRun,
+}: {
+  run: PlaytestRun | null;
+  busy: boolean;
+  error: string | null;
+  onRun: (next: PlaytestRun) => void;
+}) {
   if (!run) return <Waiting what="the verdict" error={busy ? null : error} />;
   if (run.fair) return <FairCard />;
   if (!run.verdict) {
     return (
       <section className="present-card">
-        <p className="h2">This run has no verdict.</p>
-        <p className="text-2">The data has no patched run to judge.</p>
+        <p className="present-mid">This run has no verdict.</p>
+        <p className="present-sub">The data has no patched run to judge.</p>
       </section>
     );
   }
   const v = VERDICT_COPY[run.verdict.verdict];
+  const stats = botRows(run.baseline.rows).map(rowStats);
+  const before = stats.find((x) => x.row.dimension === pickTargetDimension(stats));
+  const after = run.patched?.rows.find((r) => r.dimension === before?.row.dimension);
+  const more = needsMoreGames(run.verdict.reasons);
+  const note = buildFacts(run, null).fallbackNote;
   return (
     <section className="present-card">
       <p className={`present-verdict status ${v.cls}`} role="status">
@@ -373,16 +425,15 @@ function VerdictScene({ run, busy, error }: { run: PlaytestRun | null; busy: boo
         {v.glyph}
         {v.label}
       </p>
-      {needsMoreGames(run.verdict.reasons) && <p className="h3">{needsMoreGames(run.verdict.reasons)}</p>}
-      {run.verdict.reasons.slice(0, 2).map((r) => (
-        <p key={r} className="h3 text-2">
-          {r}
+      {before && after && (
+        <p className="present-big">
+          {pct(before.rate)}% <span className="text-2">→</span> {pct(after.winRate)}%
         </p>
-      ))}
-      {run.patched && (
-        <div className="present-compare panel">
-          <PatchCompare before={run.baseline} after={run.patched} showAfter />
-        </div>
+      )}
+      <p className="present-mid">{more ?? run.verdict.reasons[0] ?? ""}</p>
+      {note && <p className="present-sub present-fallback">{note}</p>}
+      {before?.outlier && before.matchup.b && (
+        <IntendedChips a={before.matchup.a} b={before.matchup.b} run={run} onRun={onRun} big />
       )}
     </section>
   );

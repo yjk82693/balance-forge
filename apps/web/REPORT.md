@@ -460,3 +460,15 @@ A report row that carries `target`, `deltaToTarget` and `outlier` is shown exact
 - Rare controls moved into an Options menu; Design intent opens as a modal from the strip.
 - Principles used (from the company references, ideas only): one primary action per screen, status never by colour
   alone, honest data scope, at most three text levels, 8-pt grid.
+
+## UI re-establishment: present mode and the "Intended?" chips
+- Present scenes now have one idea each and three text sizes: the number at 144 px (96 px verdict badge), one line at
+  40 px, one line at 28 px. Bots: the flagged matchup's win rate big against its intended band, the whole roster beside
+  it. Patch: the change as one 72 px line, origin badge, fallback line when the model was not used. Verdict: badge,
+  before → after, the real reason, then the chips. On phones the sizes step down (72 / 28 / 20 px).
+- "Intended?" chips (Even, A/B slight, clear, strong) sit under the headline bar of the dashboard (flagged matchup only)
+  and in the Present verdict scene (large, with the hero names). A tap PUTs the intent, then
+  `POST /v1/playtest/reanalyze {runId}`; the run is replaced in place with a short highlight and no new bot run. If
+  reanalyze is absent (404/405/501) the chips say "Intent saved. Re-run to apply."; in sample mode nothing is sent.
+- Before/after screenshots: `screenshots/dashboard-before.png`, `dashboard-after.png`, `present-before-verdict.png`,
+  `present-after-*.png`.

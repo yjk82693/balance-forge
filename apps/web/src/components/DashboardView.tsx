@@ -17,6 +17,7 @@ import { DesignerSection } from "./DesignerCard";
 import { FitStage } from "./FitStage";
 import { HeadlineStrip } from "./HeadlineStrip";
 import { HeroProfile } from "./HeroProfile";
+import { IntendedChips } from "./IntendedChips";
 import { IntentModal } from "./IntentModal";
 import { MatchesTable, type MatchRow } from "./MatchesTable";
 import { MatchupPicker } from "./MatchupPicker";
@@ -46,6 +47,8 @@ export interface DashCtx {
   skill: BotSkill;
   onSkill: (s: BotSkill) => void;
   onRun: () => void;
+  /** the same run judged again against a new intent */
+  onReplace: (run: PlaytestRun) => void;
   theme: "dark" | "light";
   onTheme: () => void;
   showPatched: boolean;
@@ -191,6 +194,7 @@ function Roster({ ctx, bots, humans }: { ctx: DashCtx; bots: ReportRow[]; humans
 /** The dashboard: topbar, headline strip (always above the fold), accordions on the left, the roster on the right. */
 export function DashboardView({ ctx }: { ctx: DashCtx }) {
   const [intentOpen, setIntentOpen] = useState(false);
+  const [flash, setFlash] = useState(0);
   const { run, facts } = ctx;
   const report = run ? (ctx.showPatched && run.patched ? run.patched : run.baseline) : null;
   const bots = report ? botRows(report.rows) : [];
@@ -275,6 +279,7 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
           </button>
         </TopBar>
         <HeadlineStrip
+          key={`strip-${flash}`}
           shown={shown}
           headline={shown ? headlineFor(shown) : ""}
           facts={facts}
@@ -283,6 +288,19 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
           elapsed={ctx.elapsed}
           status={status}
           actions={actions}
+          chips={
+            shown && shown.matchup.b ? (
+              <IntendedChips
+                a={shown.matchup.a}
+                b={shown.matchup.b}
+                run={run}
+                onRun={(next) => {
+                  ctx.onReplace(next);
+                  setFlash((k) => k + 1);
+                }}
+              />
+            ) : null
+          }
           empty={empty}
         />
         <Notices ctx={ctx} />

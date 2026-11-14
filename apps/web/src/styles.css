@@ -2437,3 +2437,39 @@ button.intent-btn { cursor: pointer; }
 .status-chip.stale { background: var(--warning-tint); color: var(--warning); white-space: normal; }
 .d2-group { margin-top: 24px !important; }
 .d2-right .viz-row.outlier { background: var(--warning-tint); border-radius: 8px; }
+.intent-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.intent-chips-q { font-weight: 700; margin-right: 8px; }
+.intent-chip {
+  min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--line-strong);
+  background: var(--surface-2); color: var(--text-1); font: inherit; font-size: 18px; cursor: pointer;
+}
+.intent-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-grad); font-weight: 700; }
+.intent-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.intent-chips.big .intent-chip { min-height: 56px; padding: 0 24px; font-size: 24px; border-radius: 28px; }
+.intent-chips-note { flex-basis: 100%; color: var(--text-2); }
+.strip { animation: strip-flash 1.2s ease-out; }
+@keyframes strip-flash { from { box-shadow: 0 0 0 4px var(--accent-tint); } to { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .strip { animation: none; } }
+
+/* Present: three sizes per scene (the number at 96+, one line at 40, one line at 28), readable from 3 m. */
+.present-big { font-size: 144px; font-weight: 800; line-height: 1; margin: 0; font-variant-numeric: tabular-nums; }
+.present-mid { font-size: 40px; font-weight: 600; margin: 0; }
+.present-sub { font-size: 28px; margin: 0; color: var(--text-2); }
+.present-names { display: flex; align-items: center; justify-content: center; gap: 24px; font-size: 40px; margin: 0; }
+.present-big-block { display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; }
+.present-bots { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; max-width: 1760px; }
+.present-roster .viz { font-size: 18px; }
+.present-change { font-size: 72px; font-weight: 700; line-height: 1.2; margin: 0; }
+.present-fallback { color: var(--warning); }
+.present-card .intent-chips { justify-content: center; }
+.present-card .intent-chips { width: 100%; max-width: 1500px; }
+.present-mid, .present-sub { line-height: 1.3; }
+@media (max-width: 1099px) {
+  .present-big { font-size: 72px; }
+  .present-mid { font-size: 28px; }
+  .present-sub { font-size: 20px; }
+  .present-change { font-size: 32px; }
+  .present-names { font-size: 28px; flex-wrap: wrap; }
+  .present-bots { grid-template-columns: minmax(0, 1fr); }
+  .present-card .intent-chips.big .intent-chip { font-size: 18px; min-height: 48px; padding: 0 16px; }
+}
