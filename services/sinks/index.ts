@@ -47,7 +47,8 @@ function mongoSink(uri, load) {
   const db = async () => {
     if (!client) {
       const { MongoClient } = await load('mongodb');
-      client = new MongoClient(uri, { serverSelectionTimeoutMS: LIMIT_MS });
+      // Shorter than LIMIT_MS so the driver's own reason (e.g. server selection) reaches the log.
+      client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000 });
       await client.connect();
     }
     return client.db('balance_forge');
@@ -56,7 +57,15 @@ function mongoSink(uri, load) {
     name: 'mongodb',
     async write(kind, payload) {
       if (kind === 'matches') return 'skipped'; // match rows go to the time-series store
-      await (await db()).collection(kind).insertOne({ ...payload, storedAt: new Date() });
+      try {
+        await (await db()).collection(kind).insertOne({ ...payload, storedAt: new Date() });
+      } catch (error) {
+        // Drop a broken client so the next write reconnects instead of waiting on it.
+        const old = client;
+        client = null;
+        old?.close().catch(() => {});
+        throw error;
+      }
     },
     async close() {
       await client?.close();
