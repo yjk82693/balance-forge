@@ -155,3 +155,24 @@ Second polish pass after the pre-merge check. Everything was already clean, so n
 
 Still blocked (needs others): see "Pre-merge check" and `CHANGE_REQUEST.md` (engine run endpoint glue, web progress and
 origin mapping, per-card statistics); Gemini and Grok are unverified against live APIs.
+
+## Round 6, step 1: `pipeline/full.js`
+
+`runFull({ baselineResults, humanResults, baseData, adapter, runHoldout, holdoutSeeds, hashData, botPolicyVersion,
+seedSetId, holdoutSeedSetId, elapsedMs, createdAt })` returns `{ ok: true, value }` (or an error result, never a throw).
+`value` is the `POST /v1/playtest/full` body minus the transport fields (`runId`, `gameId`, `elapsedMs`; the server adds them):
+`botPolicyVersion, seedSetId, holdoutSeedSetId, baseline, proposal{...patch, origin, changes[{path, label, old, new}]},
+validation, patchedDataHash, patched, verdict, humanMatches`.
+- `runHoldout(patchedData, seeds)` is injected (the server runs the engine there). `hashData` is injected too, so no clock,
+  network or engine import lives in this file.
+- Guards: holdout seeds must be non-empty integers and must not overlap the baseline seeds; the holdout results must use
+  only the requested seeds and be pinned to the patched data hash (`DATA_HASH_MISMATCH` otherwise); a throwing
+  `runHoldout` becomes `SIMULATION_FAILED`.
+- Invalid patch: no holdout run; `validation.ok` is false, `patched` and `patchedDataHash` are `null`, verdict `inconclusive`
+  with the reason. The shared interface does not say what to send here, so this is my choice; the server and web must
+  handle `patched: null`.
+- Verdict change: `judgePatch` returns `inconclusive` when seed sets differ. A holdout uses fresh seeds by design, so
+  `judgePatch(..., { holdoutSeeds: true })` skips only that one check (all other gates stay). The default is unchanged and
+  `full.js` is the only caller that sets it. The patched report carries `holdoutSeedSetId`.
+- `changes[].label` reads the move id and its hero from `baseData` ("Bari · Spirit Arrow power"); `old` comes from `baseData`.
+- Tests: `test/full.test.js` (fake adapter, stub `runHoldout`; accepted, rejected, human rows, invalid patch, 9 bad-input cases).
