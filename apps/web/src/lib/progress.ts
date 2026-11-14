@@ -1,23 +1,60 @@
 import type { Report, ReportRow } from "./contract";
 
-/** WebSocket topic message `playtest.progress`: cumulative counts so far. `rows` is optional on the wire. */
-export interface ProgressMsg {
-  done: number;
-  total: number;
-  rows?: { dimension: string; wins: number; games: number }[];
+/** One matchup in `playtest.progress` (services/room README): wins are keyed by hero id. */
+export interface MatchupProgress {
+  matchup: string;
+  heroes: string[];
+  wins: Record<string, number>;
+  games: number;
+  draws: number;
+  invalidMatches: number;
+  /**
+   * Not sent by the server today (see CHANGE_REQUEST.md). For a mirror matchup: games won by the first seat, which is
+   * what makes a mirror win rate meaningful.
+   */
+  seatWins?: number;
 }
 
-export const toRows = (p: ProgressMsg): ReportRow[] | null =>
-  p.rows?.map((r) => ({
-    dimension: r.dimension,
-    wins: r.wins,
-    games: r.games,
-    winRate: r.games ? r.wins / r.games : 0,
-    ci95: [0, 1],
-    uses: 0,
-    opportunities: 0,
-    outlier: false,
-  })) ?? null;
+/** `playtest.progress` payload as the room server sends it. */
+export interface ProgressMsg {
+  runId?: string;
+  gameId?: string;
+  dataHash?: string;
+  matchesDone: number;
+  totalMatches: number;
+  elapsedMs?: number;
+  matchups: MatchupProgress[];
+}
+
+export function isProgressMsg(p: unknown): p is ProgressMsg {
+  const m = p as ProgressMsg;
+  return !!m && Number.isFinite(m.matchesDone) && Number.isFinite(m.totalMatches) && Array.isArray(m.matchups);
+}
+
+/**
+ * A mirror matchup (hero vs itself) has one win counter for both seats, so every decided game counts as a win for
+ * "the hero". That is not a win rate; such rows are left out unless the server reports seat-based wins (`seatWins`).
+ */
+const isMirrorWithoutSeats = (m: MatchupProgress) => m.heroes[0] === m.heroes[1] && m.seatWins === undefined;
+
+/** Rows for the chart: win rate of the first-named hero (the server sorts hero ids alphabetically). */
+export function toRows(p: ProgressMsg): ReportRow[] {
+  return p.matchups
+    .filter((m) => m.heroes.length === 2 && !isMirrorWithoutSeats(m))
+    .map((m) => {
+      const wins = m.seatWins ?? m.wins[m.heroes[0]] ?? 0;
+      return {
+        dimension: `${m.heroes[0]} vs ${m.heroes[1]}`,
+        wins,
+        games: m.games,
+        winRate: m.games ? wins / m.games : 0,
+        ci95: [0, 1],
+        uses: 0,
+        opportunities: 0,
+        outlier: false,
+      };
+    });
+}
 
 function xorshift32(x: number): number {
   x ^= x << 13;
@@ -28,8 +65,9 @@ function xorshift32(x: number): number {
 }
 
 /**
- * Mock progress for ?mock=1: counts grow monotonically toward the final report's wins/games with a noise term that
- * shrinks to zero, so the last tick equals the stored report exactly. Deterministic (seeded), integers only.
+ * Mock progress for ?mock=1, in the server's message shape. Counts grow monotonically toward the final report's
+ * wins/games with a noise term that shrinks to zero, so the last tick equals the stored report exactly.
+ * Deterministic (seeded), integers only.
  */
 export function mockProgress(
   final: Report,
@@ -44,7 +82,7 @@ export function mockProgress(
   const tick = () => {
     i += 1;
     const f = i / steps;
-    const rows = final.rows.map((r, k) => {
+    const matchups = final.rows.map((r, k): MatchupProgress => {
       const games = i === steps ? r.games : Math.round((r.games * i) / steps);
       let wins = i === steps ? r.wins : Math.round((r.wins * i) / steps);
       if (i < steps) {
@@ -57,9 +95,22 @@ export function mockProgress(
       wins = Math.max(p.wins, Math.min(wins, games - (p.games - p.wins)));
       wins = Math.min(wins, games);
       prev[k] = { wins, games };
-      return { dimension: r.dimension, wins, games };
+      const [a, b] = r.dimension.split(" vs ");
+      return {
+        matchup: r.dimension,
+        heroes: [a, b ?? a],
+        wins: { [a]: wins },
+        games,
+        draws: 0,
+        invalidMatches: 0,
+        seatWins: wins,
+      };
     });
-    onTick({ done: i === steps ? total : Math.round((total * i) / steps), total, rows });
+    onTick({
+      matchesDone: i === steps ? total : Math.round((total * i) / steps),
+      totalMatches: total,
+      matchups,
+    });
     if (i >= steps) clearInterval(timer);
   };
   const timer = setInterval(tick, opts.stepMs ?? 110);

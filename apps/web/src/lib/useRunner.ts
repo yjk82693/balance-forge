@@ -22,7 +22,7 @@ function playStoredRun(run: PlaytestRun, onProgress: (p: ProgressMsg) => void, s
       run.baseline,
       (p) => {
         onProgress(p);
-        if (p.done >= p.total) resolve();
+        if (p.matchesDone >= p.totalMatches) resolve();
       },
       { steps: 25, stepMs: 100 },
     );
@@ -59,7 +59,7 @@ export function useRunner() {
     setLive({ done: 0, total: MATCHES, rows: null });
     const controller = new AbortController();
     abort.current = controller;
-    const onProgress = (p: ProgressMsg) => setLive({ done: p.done, total: p.total, rows: toRows(p) });
+    const onProgress = (p: ProgressMsg) => setLive({ done: p.matchesDone, total: p.totalMatches, rows: toRows(p) });
     const stopListening = subscribeProgress(onProgress);
     try {
       const result = await runPlaytest(MATCHES, controller.signal, onProgress);

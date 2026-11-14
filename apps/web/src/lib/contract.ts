@@ -18,6 +18,8 @@ export interface MatchConfig {
   players: string[];
   mode: "realtime" | "turn" | "party";
   maxTicks: number;
+  /** v0.1.1 addendum: per-match hero or deck per seat */
+  options?: { assignments?: Record<string, string> };
 }
 
 export interface Outcome {

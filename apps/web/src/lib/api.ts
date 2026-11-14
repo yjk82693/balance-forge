@@ -1,7 +1,8 @@
-import type { PatchProposal, Report, ReportRow } from "./contract";
+import type { MatchResult, PatchProposal, Report, ReportRow } from "./contract";
 import { fixturePatch } from "./fixtures";
 import { mockReport } from "./mockReport";
-import { mockProgress, type ProgressMsg } from "./progress";
+import { isProgressMsg, mockProgress, type ProgressMsg } from "./progress";
+import { reportFromResults, type RunInfo } from "./reportFromResults";
 import { createTransport } from "../mock/transport";
 import { isMockMode } from "../mock/types";
 
@@ -34,6 +35,8 @@ export interface PlaytestRun {
   proposal?: Proposal;
   patched?: Report;
   verdict?: Verdict;
+  /** matchId of one finished bot match, for GET /v1/replay/:matchId */
+  replayMatchId?: string;
   /** client-side flag: data came from fixtures (?mock=1), not from a run */
   sample?: boolean;
 }
@@ -60,50 +63,8 @@ const isRow = (r: unknown): r is ReportRow => {
   );
 };
 
-const isReport = (r: unknown): r is Report =>
-  !!r && typeof r === "object" && Array.isArray((r as Report).rows) && typeof (r as Report).validMatches === "number";
-
 /** Drops rows with impossible counts (wins > games, NaN, negatives) so charts never draw nonsense. */
 const cleanReport = (r: Report): Report => ({ ...r, rows: r.rows.filter(isRow) });
-
-const ORIGINS: PatchOrigin[] = ["gemini", "fallback", "manual"];
-const VERDICTS: VerdictKind[] = ["accepted", "rejected", "inconclusive"];
-
-/** Accepts the documented shape plus a few obvious aliases; anything else is a "shape" error, never a crash. */
-export function normalizeRun(raw: unknown): PlaytestRun {
-  const o = (raw ?? {}) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  const baseline = o.baseline ?? o.before ?? o.report;
-  if (!isReport(baseline)) throw new ApiError("The server's reply had no report.", "shape");
-  const patched = o.patched ?? o.after;
-  const p = o.proposal ?? (o.patch ? { patch: o.patch, origin: o.origin, validation: o.validation } : undefined);
-  const proposal: Proposal | undefined =
-    p && p.patch
-      ? {
-          patch: {
-            baseDataHash: String(p.patch.baseDataHash ?? ""),
-            replacements: Array.isArray(p.patch.replacements) ? p.patch.replacements : [],
-            rationale: String(p.patch.rationale ?? ""),
-          } as PatchProposal,
-          changes: Array.isArray(p.changes) ? p.changes : undefined,
-          origin: ORIGINS.includes(p.origin) ? p.origin : "manual",
-          validation: {
-            ok: p.validation?.ok !== false && !(p.validation?.errors?.length > 0),
-            errors: Array.isArray(p.validation?.errors) ? p.validation.errors.map(String) : [],
-          },
-        }
-      : undefined;
-  const v = o.verdict;
-  const verdictKind = typeof v === "string" ? v : v?.verdict;
-  const verdict: Verdict | undefined = VERDICTS.includes(verdictKind)
-    ? { verdict: verdictKind, reasons: Array.isArray(v?.reasons) ? v.reasons.map(String) : [] }
-    : undefined;
-  return {
-    baseline: cleanReport(baseline),
-    patched: isReport(patched) ? cleanReport(patched) : undefined,
-    proposal,
-    verdict,
-  };
-}
 
 /**
  * Real mode: listen to the `playtest.progress` topic while a run is in flight.
@@ -114,8 +75,7 @@ export function subscribeProgress(onMsg: (p: ProgressMsg) => void): () => void {
   const t = createTransport("observer");
   const off = t.subscribe((env) => {
     if (env.type !== "playtest.progress") return;
-    const p = env.payload as ProgressMsg;
-    if (typeof p?.done === "number" && typeof p?.total === "number") onMsg(p);
+    if (isProgressMsg(env.payload)) onMsg(env.payload);
   });
   return () => {
     off();
@@ -133,7 +93,7 @@ export async function runPlaytest(
     await new Promise<void>((resolve, reject) => {
       const stop = mockProgress(final, (p) => {
         onProgress?.(p);
-        if (p.done >= p.total) resolve();
+        if (p.matchesDone >= p.totalMatches) resolve();
       });
       signal?.addEventListener("abort", () => {
         stop();
@@ -153,23 +113,48 @@ export async function runPlaytest(
       verdict: { verdict: "accepted", reasons: ["sample verdict for the fixtures; not computed"] },
     };
   }
-  let res: Response;
+  return runRealPlaytest(matches, signal);
+}
+
+const MESSAGES: Record<string, string> = {
+  RATE_LIMITED: "Another run is already going.",
+  INVALID_SCHEMA: "The server didn't accept the request.",
+};
+
+async function readJson<T>(res: Response, what: string): Promise<T> {
   try {
-    res = await fetch("/v1/playtest/run", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId: "hero_arena", matches }),
-      signal,
-    });
+    return (await res.json()) as T;
   } catch {
-    throw new ApiError("Couldn't reach the server.", "network");
+    throw new ApiError(`The server's ${what} wasn't JSON.`, "shape");
   }
-  if (!res.ok) throw new ApiError(`The server answered ${res.status}.`, "server");
-  let json: unknown;
-  try {
-    json = await res.json();
-  } catch {
-    throw new ApiError("The server's reply wasn't JSON.", "shape");
-  }
-  return normalizeRun(json);
+}
+
+async function failFrom(res: Response): Promise<never> {
+  const body = (await res.json().catch(() => ({}))) as { code?: string };
+  throw new ApiError(MESSAGES[body.code ?? ""] ?? `The server answered ${res.status}.`, "server");
+}
+
+/** POST /v1/playtest/run, then GET the returned resultsPath and build the report from the match results. */
+async function runRealPlaytest(matches: number, signal?: AbortSignal): Promise<PlaytestRun> {
+  const get = async (path: string, init?: RequestInit) => {
+    try {
+      return await fetch(path, { ...init, signal });
+    } catch (e) {
+      if ((e as Error).name === "AbortError") throw e;
+      throw new ApiError("Couldn't reach the server.", "network");
+    }
+  };
+  const res = await get("/v1/playtest/run", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ gameId: "hero_arena", pairs: Math.max(1, Math.round(matches / 2)) }),
+  });
+  if (!res.ok) return failFrom(res);
+  const info = await readJson<RunInfo>(res, "run reply");
+  if (typeof info?.resultsPath !== "string") throw new ApiError("The server's reply had no results path.", "shape");
+  const resultsRes = await get(info.resultsPath);
+  if (!resultsRes.ok) return failFrom(resultsRes);
+  const results = await readJson<MatchResult[]>(resultsRes, "results");
+  if (!Array.isArray(results) || results.length === 0) throw new ApiError("The run returned no matches.", "shape");
+  return { baseline: cleanReport(reportFromResults(results, info)), replayMatchId: results[0].matchId };
 }
