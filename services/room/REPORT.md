@@ -142,3 +142,21 @@ combat.ko, projectile.spawn and projectile.expire (hit/lifetime/bounds). IDs are
 RNG, clock or display fields enter simulation state. Viewer audience filtering protects card.peek events, and
 resending an unchanged view does not repeat transient events. Five event/replay tests passed, including all
 expiry reasons, one KO per elimination, deterministic event streams, private filtering and real step forwarding.
+
+## Phone reconnect and clear errors
+
+Completed K. A private seatToken in the owner's room.status reserves a disconnected active-match seat for exactly
+10 seconds. reconnect {joinCode, seatToken, lastAck?} (or room.join with seatToken) resumes the same seat/hero,
+match, content pin, sequence cursor and receipts. Tokens rotate on resume; expired/active/foreign tokens cannot
+claim a seat. Tokens never appear in peer seat lists, MatchResults or replays. Simulation continues neutrally
+while disconnected; no new controller may replace a player mid-match.
+Malformed JSON, shape/domain violations, bad URLs/upgrades, binary messages, stale epochs and failed sends are
+contained and return stable error codes plus readable messages. Transient result-write failures retain a retry
+queue and do not emit a false saved result or escape the timer callback. Five new reconnect/hardening tests passed,
+including the exact ten-second boundary, duplicate receipts, private tokens, send/write failures, and a 300-tick
+match through production handlers. The combined room/runner run passed 14 tests with zero failures.
+
+Per the current no-network instruction, the five real-listener integration tests now require explicit external
+opt-in: `RUN_SOCKET_TESTS=1 node --test services/room/room.test.js`. They are skipped in the default suite, not
+claimed as verified. New socket-free tests invoke the actual message handlers and HTTP request listener using
+in-memory streams, while real worker_threads and persistence still execute.
