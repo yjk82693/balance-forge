@@ -29,7 +29,7 @@ function PlayBadge({ mock, playing }: { mock: boolean; playing: boolean }) {
 export function Arena({ gameId }: { gameId: string }) {
   const game = gameById(gameId);
   const { transport, status } = useTransport("display");
-  const { room, observation, events, result } = useRoom(transport);
+  const { room, observation, events, result, views } = useRoom(transport);
   const srv = useServerState(status);
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const cardsObs =
@@ -70,7 +70,7 @@ export function Arena({ gameId }: { gameId: string }) {
           {gameId === "hero_cards" ? (
             <CardsCanvas observation={cardsObs} names={names} />
           ) : (
-            <ArenaCanvas observation={arenaObs} events={events} />
+            <ArenaCanvas observation={arenaObs} events={events} views={views} />
           )}
           <div className="arena-overlay">
             {gameId !== "hero_cards" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
