@@ -142,9 +142,18 @@ if (!live) {
   await printUrls('recorded');
 }
 
-for (const signal of ['SIGINT', 'SIGTERM']) {
+// Stop the room server with us: ask politely, then force it after 3 s so no orphan keeps the port open.
+let stopping = false;
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => {
-    live?.kill(signal);
-    process.exit(0);
+    if (stopping) return;
+    stopping = true;
+    if (!live || live.exitCode !== null) process.exit(0);
+    live.once('exit', () => process.exit(0));
+    live.kill('SIGTERM');
+    setTimeout(() => {
+      live.kill('SIGKILL');
+      process.exit(0);
+    }, 3000);
   });
 }
