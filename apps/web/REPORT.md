@@ -8,6 +8,8 @@ Status: all five requested items are built; `npm run build -w apps/web` passes. 
 - The Broken / Patched toggle (lobby and dashboard top bars) is global for the tab.
 
 ## Assumptions the server must meet (please check)
+
+> Superseded: these were written before the room server existed. Items 1-3 turned out wrong; see "Live server check" at the end for what the real server does.
 1. **WebSocket:** `ws(s)://<same host>/ws`, envelopes as in contract v0.1. The display sends `room.create {gameId, seats}` on every open, then `game.select {gameId, dataVersion}` and `match.reset` from the lobby, `match.start {gameId}`. Controllers send `room.join {joinCode,name,hero}` and `input.submit` (arena: `move`, `melee`, `projectile`, `guard`; cards: `play {handIndex, slot?}`, `end_turn`). Cards inputs carry `turnId` = the observation's `turnId`.
 2. **Not in the addendum, added by the UI:** `room.status.payload.gameId` (optional; falls back to `match.started.config.gameId`, then `hero_arena`) so the phone knows which controller to show; `game.select.dataVersion` (`"broken"|"patched"`); `room.create` from the display. If the server ignores them nothing breaks, but cards phones will show the arena pad until `match.started` arrives.
 3. **POST `/v1/playtest/run`**, body `{gameId:"hero_arena", matches:1000}`. Reply (see `src/lib/api.ts`, `normalizeRun`):
@@ -87,3 +89,51 @@ Checks run: `npm test` (all node:test suites in the repo): **46 of 46 pass**, 45
 - No real server in the repo, so nothing in the web app has been run against `/ws` or `/v1/playtest/run`; the assumptions listed under Round 3 still need a check against the real server.
 - Not verified at a true 1920x1080 window or on a physical phone (touch, vibration, audio), and the light theme has not been looked at on screen.
 - The line-length rule was not applied to `styles.css` (one long selector list).
+
+---
+
+## Live server check
+
+Checked against `services/room` on `jokerstar/engine` (06860c2), started locally from a scratch worktree on
+127.0.0.1 and driven both by node scripts (protocol level) and by the built web app in Chrome. Mock mode (`?mock=1`)
+was changed to emit the same shapes.
+
+### Message and field check
+| Item | Server (real) | Web before | Now |
+|---|---|---|---|
+| Display connection | `/ws?role=display&gameId=` creates a room, or `POST /v1/rooms` then `/ws?roomId&hostToken` | plain `/ws` + `room.create {gameId, seats}` (extra field rejected, closed schemas) | creates the room with `POST /v1/rooms`, keeps `roomId` + `hostToken` in `sessionStorage`, re-attaches after reload or drop (same join code); falls back to a new room if the host token is refused |
+| Envelope | server assigns `sessionId`; non-join messages must carry the room's `roomId` and current `epoch` (`AUTH_EXPIRED` / `STALE_TURN`) | own random `sessionId`, epoch fixed at 1 | uses the server's `sessionId`, `roomId` and the latest `epoch` it saw |
+| `game.select` | `{gameId, dataHash?}` closed | sent `dataVersion` | sent only when the room's game differs, `{gameId}` only |
+| `subscribe` | not a message; `playtest.progress` goes to every connected socket | sent `subscribe {topic}` | observer connection sends nothing |
+| Start | needs exactly 2 connected seats | enabled with 1 | enabled with 2; copy "Two players start a match"; 2 slots |
+| `room.join` | `{joinCode, name, hero}`; code 4 chars | max 6 chars | 4 chars |
+| Reconnect | `reconnect {joinCode, seatToken, lastAck?}`; `lastAck >= 0`; 10 s; token rotates | re-sent `room.join` | `seatToken` from `room.status` stored in `sessionStorage` with a timestamp; after a reload or a socket drop within 10 s the phone sends `reconnect` and keeps its seat; refused tokens are cleared; `lastAck` omitted when nothing was acknowledged (-1 was rejected) |
+| `state.view` | `{observation, tick, turnId, epoch, viewHash, events}` | read `observation` only | also reads `events` |
+| Events | `combat.hit {source,target,amount,guarded,ignoresGuard,x,y}`, `combat.guard {playerId,phase:activate\|block,x,y}`, `combat.ko {playerId,source,x,y}`, `projectile.spawn {id,owner,kind,x,y,vx,vy,life,...}`, `projectile.expire {id,owner,x,y,reason}`, `action.used {playerId,actionId}` | HP diffs only | hit numbers (real amounts, blue when guarded), guard effect, KO, shot sounds, melee swing (Nightcrow's uses `crow_dive`); HP diffs remain as a fallback when no `events` field is present |
+| Entities | `hero, x, y, hp, maxHp, facing, ...` (`maxHp` is sent; e.g. 540) | default 100 | uses `maxHp` |
+| Projectile `kind` | move id: `spirit_arrow`, `projectile`, `crow_swarm` | assumed effect names | effect sprite by kind, else the owner's signature effect (`crow_swarm` -> `crow_dive`) |
+| Actions | `actions.available`: `melee, projectile, guard, move`; one move and one attack per tick, increasing `seq` | same | unchanged; matches |
+| `input.ack` | `{seq, status, acceptedTick}`, envelope `seq` = input seq | same | unchanged |
+| Cards | `play {handIndex, slot?}`, `end_turn {}`, observation `{activePlayer, round, turnId, entities, peek, hand, outcome}`, entity has `deckId`, no `maxHp`; new cards `mechanical_crows` and `forethought` (kind `peek`); hero `nightcrow` picks the crow deck | missing the new cards | card names/effects added; unknown kinds fall back safely |
+| `playtest.progress` | `{runId, gameId, dataHash, matchesDone, totalMatches, elapsedMs, matchups: [{matchup, heroes, wins:{hero:n}, games, draws, invalidMatches}]}` | `{done, total, rows}` | reads the real fields; win rate of the first-named hero; mirror rows hidden (see CHANGE_REQUEST 4) |
+| `POST /v1/playtest/run` | body `{gameId, pairs}` (1-1000 pairs); reply `{resultsPath, elapsedMs, matchCount, dataHash, recorded}`; `GET resultsPath` = MatchResult[] | body `{gameId, matches}`; expected `{baseline, patched, proposal, verdict}` | sends `pairs = matches / 2`, fetches the results, builds the report in the browser (`lib/reportFromResults.ts`: grouping by `config.options.assignments`, invalid matches counted apart); no proposal, patched report or verdict exists on the server (CHANGE_REQUEST 2) |
+| `GET /v1/replay/:matchId` | `{matchId, seed, config, frames, finalStateHash}`, frames are inputs | not used | used for the seed shown under the compare view; frames cannot be rendered in the browser (CHANGE_REQUEST 1) |
+
+Measured on the real server: 1,000 bot matches (500 pairs, Bari vs Real Armor) in 29-30 s; the first 40-match run took 1.2 s. Progress arrived about every 100 ms. Reconnecting a phone after a reload mid-match restored its seat and view and rotated the token; a reconnect after 11 s was refused with `AUTH_EXPIRED`, as documented.
+
+### Live vs mock, per screen
+- **Launcher:** same in both; static page, no server call (the "Mock server" status label only appears with `?mock=1`).
+- **Lobby:** live checked: real room and join code, QR, two phones joined, "Live server" status, Start only with 2 seats, host room kept across a reload; mock now also shows 2 slots.
+- **Phone controller:** live checked: join, hero picker with all five heroes, move/attack inputs acknowledged, HP from `maxHp`, reload within 10 s resumed the seat; touch, vibration and gamepad not tried on real devices.
+- **Arena:** live checked: real match drawn from live observations with the pulsing `live` badge, Nightcrow vs Bari and Real Armor sprites; event handling follows the real payloads (verified from a captured stream), but floating damage numbers and effects were not watched on screen against the live server.
+- **Hero Cards:** protocol checked with a script (two seats, start, hand of 5, `play` accepted, `card.*` events); the table and phone hand UI were not opened against the live server.
+- **Dashboard:** live checked: run button, live progress and counter, final report with `recorded · 1,000 matches · 30 s`, the human row (empty), stored-replay seed under the compare view. Mock-only: diff card values, patched data, verdict, 15 matchups (the live run has one matchup); the side-by-side frames are illustrative in both modes.
+
+### Fixes made in this pass (one commit each)
+protocol alignment (host room, session ids, epochs, closed payloads, two-player start, reconnect), `state.view` events,
+real playtest API and progress, replaying the latest room messages to late subscribers (lobby -> arena mount),
+`live` badge, `lastAck` and 4-character code fixes, stored replay seed, peek and crow-deck cards.
+
+### Not verified
+No physical phone, no second computer on the LAN, no `RUN_SOCKET_TESTS` run of the engine's own tests, no test of the
+reconnect window under a real network drop (a page reload was used). The server was started with `HOST=127.0.0.1`.
