@@ -17,12 +17,13 @@ export interface MatchupIntent {
   strength: Strength;
 }
 export interface Intent {
-  version: number;
+  /** the server wants a short string (it names the intent a result was judged against) */
+  version: string;
   /** keyed "a vs b", the hero ids in alphabetical order, like the report's dimensions */
   matchups: Record<string, MatchupIntent>;
 }
 
-export const EVEN_INTENT: Intent = { version: 0, matchups: {} };
+export const EVEN_INTENT: Intent = { version: "", matchups: {} };
 
 /** The key a pair is stored under: hero ids sorted, as the report names its rows. */
 export const pairKey = (a: string, b: string) => [a, b].sort().join(" vs ");
@@ -40,7 +41,8 @@ export function parseIntent(raw: unknown): Intent {
     const favored = v.favored === a || v.favored === b ? (v.favored as string) : undefined;
     if (strength !== "even" && favored) matchups[pairKey(a, b)] = { favored, strength };
   }
-  return { version: typeof raw.version === "number" ? raw.version : 0, matchups };
+  const version = typeof raw.version === "string" || typeof raw.version === "number" ? String(raw.version) : "";
+  return { version, matchups };
 }
 
 /** What a row `a vs b` should come to, for the hero named first (a). */
@@ -130,7 +132,8 @@ export async function saveIntent(intent: Intent): Promise<Intent> {
   const res = await fetch(PATH, {
     method: "PUT",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ version: intent.version, matchups }),
+    // A saved change is a new version of the intent: a short string, as the server requires (PUT intent.version).
+    body: JSON.stringify({ version: `ui-${Date.now().toString(36)}`, matchups }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
