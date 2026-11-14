@@ -373,3 +373,19 @@ Updated services/runner/recorded-roster-metrics.json; deterministic result data 
 Still blocked: packages/analysis/pipeline/full.js is absent from this worktree, so its existing integration test
 remains pending. Live socket tests retain their RUN_SOCKET_TESTS=1 permission gate; no networking was attempted.
 No dependencies, commits or pushes; changes are left for the external commit process.
+
+## Polish 02:21
+
+Already clean; no further code changes were needed after reviewing bad inputs, empty-data handling,
+reconnects, persistence and replay limits. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated
+skips, 1 existing pending integration; 47,741.785875 ms. The suite includes deterministic replay and
+120-column readability checks. No dead-code or console-noise cleanup was needed; `git diff --check` passes.
+
+Fresh measured runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid;
+5,974.436625 ms, 50.213940 matches/s including startup, recorded 2026-11-14T07:21:05.558Z.
+Updated the recorded runner metrics; match results remained deterministic. No web build/FPS measurement
+because the web app is outside ownership.
+
+Still blocked: analysis pipeline full.js is absent from this worktree; its existing integration remains pending.
+The six live socket tests retain their opt-in gate. No tests were weakened, skipped or deleted this pass.
+No dependencies, networking, commits or pushes; leaving the report and measured metrics for external commits.
