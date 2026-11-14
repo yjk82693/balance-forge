@@ -92,7 +92,9 @@ async function setup(t, options = {}) {
   const address = await server.listen(0, '127.0.0.1'),
     base = `http://127.0.0.1:${address.port}`;
   const listeningAt = performance.now();
-  const catalog = await fetch(base + '/v1/games', {signal: AbortSignal.timeout(1000)});
+  const catalog = await fetch(base + '/v1/games', {
+    signal: AbortSignal.timeout(1000)
+  });
   assert.equal(catalog.status, 200);
   assert.equal((await catalog.json()).length, 2);
   assert.ok(performance.now() - listeningAt < 1000, 'Catalog must answer within one second of listening.');

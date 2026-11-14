@@ -8,7 +8,7 @@ export const games = {
   hero_arena: arena,
   hero_cards: cards
 };
-function cardAction(game, state, seq) {
+export function cardAction(game, state, seq) {
   const view = game.observe(state, state.payload.activePlayer),
     e = view.payload.entities.find(e => e.id === view.viewerId);
   const index = view.payload.hand.findIndex(c => c.cost <= e.energy && (c.kind !== 'summon' || e.units.length < 2));

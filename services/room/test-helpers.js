@@ -43,6 +43,7 @@ export async function localServer(t, options = {}) {
   const root = await mkdtemp(join(tmpdir(), 'engine-local-'));
   const server = createRoomServer({
     storageDir: root,
+    analysisEnv: {},
     ...options
   });
   clearInterval(server.timer);

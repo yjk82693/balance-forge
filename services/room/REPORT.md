@@ -277,3 +277,169 @@ This dependency blocks live execution before server setup or any TCP bind. The f
 or passing. After analysis is merged, it also requires an environment permitting loopback listeners (the earlier
 sandbox rejected them). Temporary data was not created by the preflight failure; no repository runtime output
 was changed. No commits were attempted under the sandbox rule.
+
+## Round 6 full route
+
+Added /v1/playtest/full request validation/defaults and lazy wiring to the analysis full pipeline, with real
+phase-labelled worker batches, retained candidate versions, offline/Gemini adapter selection, isolated test env,
+and disjoint baseline/holdout seed arrays. Added roster and retained dataHash selection to /v1/playtest/run.
+The analysis full.js module is not present yet: the route returns an explicit 503 and its integration test is
+marked TODO, as requested. No report or verdict is fabricated. Roster/pin and existing progress tests run normally.
+This step will be completed against the real module when it lands; callback details are in CHANGE_REQUEST.md.
+
+## First seat win counts
+
+Added seatWins (first physical seat wins, excluding invalid matches/draws) to every progress matchup row, overall
+progress, worker metrics and /v1/playtest/run summary. Tests reconcile row totals and summaries with actual
+MatchResult winners; mirror matchups are counted by seat rather than by identical hero IDs.
+
+## Bounded replay observations
+
+Added GET /v1/replay/:matchId/views?dataHash=<hash>&every=6. Both original and candidate versions use replayOnData
+and return player-safe display observations, accumulated public events, view hashes and source/selected data pins.
+Replay observers receive copies so they cannot change simulation state. Responses are bounded to 601 samples and
+1 MiB; invalid intervals/unknown pins and incompatible replay frames fail explicitly. New tests cover events,
+deterministic candidate playback, original hashes, privacy and size rejection.
+
+## Solo play and lobby roster
+
+match.start {bot:true} now fills one empty arena seat with the stable chooseActions policy; card bots use the
+existing runner turn policy. Accepted bot inputs enter the same authority and replay stream. Solo results and
+replay metadata carry optional botSeats; normal two-human and worker MatchResult shapes remain unchanged.
+Reset removes virtual seats. New tests cover real bot uses, recording/hash replay, no-human rejection and no
+replacement of connected players. Thirteen focused solo/contract/reconnect tests passed.
+
+## Prejoin room metadata
+
+Room status includes gameId and playableHeroes before taking a seat via /ws?roomId=... or /ws?joinCode=....
+Unassociated sockets report gameId:null and an empty roster until a room is identified. Join validation uses the
+actual room/content roster, while starter cards retain their existing hero-to-standard-deck compatibility.
+No prejoin seat/token authority is granted; tests verify the arena and cards metadata and spectator status.
+
+## Extended live flow
+
+The existing socket-gated E2E scenario now also calls /v1/playtest/full without dropping its earlier pipeline,
+patch, holdout or replay assertions. It checks the shared reports/changes/validation, human count, both phase
+streams, first-seat counts and disjoint phase seeds, plus original/candidate replay-view responses.
+Tests force analysisEnv={} so a developer's real Gemini key can never cause network calls in test runs.
+
+## Full analysis bridge verification
+
+Read the new full.js from the analysis worktree and adapted the bridge to its actual runFull callback API.
+That file is still absent from main and this worktree. As requested, production returns 503 and its real-module
+integration test remains TODO until the module lands; no synthetic report is returned.
+An additional offline check used a temporary Node loader solely to import the real read-only analysis-branch
+module, without copying it or adding a production fallback. The production route completed 60 baseline and
+60 holdout matches across all 15 matchups, with separate phase progress, disjoint seeds, origin=fake,
+humanMatches=1 and verdict=inconclusive in 3,185 ms. Candidate data stayed retained without promoting over base.
+This verifies the bridge against the actual interface; it does not claim the missing main-module integration
+or any TCP/WebSocket execution has passed. Temporary validation files stayed outside the repository.
+
+## Round 6 verification
+
+Final `node --test`: 164 passed, 0 failed, 6 unchanged socket-gated skips, 1 explicitly requested pending full.js
+integration test; 49,881.446333 ms. The 100-seed determinism matrix stayed green. Focused solo/card, schema,
+reconnect, pin/roster, progress/counts, replay/privacy/limits and documentation tests pass. Declarations type-check.
+The API reference/captures and E2E scenario include the new full/view routes and metadata. No tests were weakened;
+only the new full-module integration is pending under the user's explicit instruction.
+Remaining dependency: merge packages/analysis/pipeline/full.js (and its analysis changes) into this worktree,
+then regenerate examples and run the pending test without its temporary dependency gate. Real socket verification
+still needs listener permission and RUN_SOCKET_TESTS=1; no networking was attempted this round.
+
+## Polish 00:51
+
+The earlier polish baseline was clean (153 passed, 0 failed, 6 existing socket skips); Round 6 then authorized
+these feature changes. Removed unused imports, split worker/HTTP coordination into named helpers, enforced
+120 columns, and preserved the stable bot API. No web files/build or render-FPS claims (web is not owned).
+Measured the final runner: 300 valid matches, 15 matchups, 2 workers, 100 first-seat wins, 0 invalid;
+5,900.796416 ms, 50.840595 matches/s including startup, recorded 2026-11-14T05:40:15.940Z. Actual artifacts remain
+services/runner/recorded-roster-match-results.json and recorded-roster-metrics.json.
+No dependencies, external calls, pushes or commits. Files are left for the external commit process.
+
+## Polish 01:26
+
+Rejected blank, whitespace and non-decimal PORT settings before constructing server resources. Invalid matches
+now clear win/draw credit even when their terminal step succeeded before observation failed, without changing
+simulation state or its hash. Added regression tests for both cases; existing assertions and gates are unchanged.
+
+Final `node --test`: 166 passed, 0 failed, 6 existing socket-gated skips, 1 existing pending integration;
+47,832.063334 ms. Both 120-column source/documentation checks and `git diff --check` pass. Reviewed console noise;
+production CLI benchmark output remains intentional. No web build or render-FPS measurement (web is not owned).
+
+Fresh benchmark: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+4,636.518917 ms, 64.703715 matches/s including worker startup, recorded 2026-11-14T06:25:29.170Z.
+Updated services/runner/recorded-roster-metrics.json; deterministic result data stayed unchanged.
+
+Still blocked: packages/analysis/pipeline/full.js is absent from this worktree, so its existing integration test
+remains pending. Live socket tests retain their RUN_SOCKET_TESTS=1 permission gate; no networking was attempted.
+No dependencies, commits or pushes; changes are left for the external commit process.
+
+## Polish 02:21
+
+Already clean; no further code changes were needed after reviewing bad inputs, empty-data handling,
+reconnects, persistence and replay limits. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated
+skips, 1 existing pending integration; 47,741.785875 ms. The suite includes deterministic replay and
+120-column readability checks. No dead-code or console-noise cleanup was needed; `git diff --check` passes.
+
+Fresh measured runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid;
+5,974.436625 ms, 50.213940 matches/s including startup, recorded 2026-11-14T07:21:05.558Z.
+Updated the recorded runner metrics; match results remained deterministic. No web build/FPS measurement
+because the web app is outside ownership.
+
+Still blocked: analysis pipeline full.js is absent from this worktree; its existing integration remains pending.
+The six live socket tests retain their opt-in gate. No tests were weakened, skipped or deleted this pass.
+No dependencies, networking, commits or pushes; leaving the report and measured metrics for external commits.
+
+## Polish 03:21
+
+Already clean; no additional code changes were needed after reviewing input validation, empty-data errors,
+disconnect handling and persistence. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated skips,
+1 existing pending integration; 47,639.992041 ms. Determinism and all 120-column readability checks pass.
+No dead-code or console-noise changes were needed. No tests were weakened, skipped or deleted this pass.
+
+Fresh runner measurement: 300 valid matches, 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+5,864.320833 ms, 51.156819 matches/s including worker startup, recorded 2026-11-14T08:21:16.585Z.
+Updated recorded runner metrics; deterministic match-result data is unchanged. No web build/FPS measurement
+because the web app is outside ownership.
+
+Existing blockers remain: analysis pipeline full.js is absent here, and live socket tests require their opt-in
+listener gate. No dependencies, network calls, commits or pushes. Stopping with report and metrics only.
+
+## Polish 04:21
+
+Already clean; no code changes needed. Reviewed input validation, empty-data and disconnect handling;
+no new gaps, dead code or console noise found. Full `node --test`: 166 passed, 0 failed, 6 unchanged
+socket-gated skips, 1 existing pending integration; 47,972.919042 ms. Determinism and 120-column checks pass.
+No tests were weakened, skipped or deleted this pass.
+
+Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid;
+5,875.167875 ms, 51.062371 matches/s including startup, recorded 2026-11-14T09:21:28.686Z.
+Updated recorded metrics; deterministic result data stayed unchanged. Web is outside ownership, so no
+web build or render-FPS measurement. Existing blockers: analysis pipeline full.js remains absent here;
+live socket tests retain their opt-in listener gate. No dependencies, network, commits or pushes. Stopping.
+
+## Polish 05:21
+
+Already clean; no code changes needed after reviewing validation, empty-data errors, disconnects and replay
+persistence. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated skips, 1 existing pending
+integration; 49,721.493417 ms. Determinism and 120-column checks pass; no dead code or console noise found.
+No tests were weakened, skipped or deleted this pass.
+
+Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+6,005.457792 ms, 49.954560 matches/s including startup, recorded 2026-11-14T10:21:38.205Z.
+Updated recorded metrics; deterministic result data is unchanged. Web is outside ownership, so no build/FPS
+measurement. Existing blockers: analysis pipeline full.js is absent here; socket tests retain their opt-in gate.
+No dependencies, network calls, commits or pushes. Stopping with report and metrics only.
+
+## Polish 06:21
+
+Already clean; no code changes needed after reviewing bad-input validation, empty-data errors, disconnect
+handling and replay persistence. Full `node --test`: 166 passed, 0 failed, 6 unchanged socket-gated skips,
+1 existing pending integration; 47,718.663584 ms. Determinism and 120-column readability checks pass.
+No dead code or console noise found; no tests weakened, skipped or deleted this pass.
+
+Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid matches;
+6,385.128458 ms, 46.984176 matches/s including startup, recorded 2026-11-14T11:21:44.455Z.
+Updated recorded metrics; deterministic result data stayed unchanged. Web is outside ownership, so no
+web build/FPS measurement. Existing blockers: analysis pipeline full.js remains absent here; live socket
+tests retain their opt-in gate. No dependencies, network calls, commits or pushes. Stopping.

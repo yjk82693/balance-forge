@@ -52,8 +52,8 @@ Example: `curl -sS -H 'content-type: application/json' -d '{"gameId":"hero_arena
 
 ```json
 {
-  "roomId": "3012328c-8d90-45d4-8562-672eb502a55a",
-  "joinCode": "DMES",
+  "roomId": "22d3e7dc-990b-4293-a4f3-32531218dc24",
+  "joinCode": "QLB3",
   "hostToken": "REDACTED_PRIVATE_HOST_TOKEN_00000000",
   "epoch": 1
 }
@@ -127,11 +127,12 @@ Bari/Real Armor; cards defaults to two standard decks. A concurrent run returns 
 
 ```json
 {
-  "resultsPath": "/v1/playtest/results/2eda5c48-253b-49ae-9641-0d4ae8b5aa37.json",
-  "elapsedMs": 111.77195800000001,
+  "resultsPath": "/v1/playtest/results/9d14df30-71cb-49c7-b7e0-a7f06f1c7de7.json",
+  "elapsedMs": 130.04091599999998,
   "matchCount": 2,
   "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
-  "recorded": true
+  "recorded": true,
+  "seatWins": 0
 }
 ```
 
@@ -139,13 +140,13 @@ Connected sockets receive playtest.progress while the HTTP request waits for com
 
 ### GET /v1/playtest/results/:id.json
 
-Example: `curl -sS "$BASE/v1/playtest/results/2eda5c48-253b-49ae-9641-0d4ae8b5aa37.json"`
+Example: `curl -sS "$BASE/v1/playtest/results/9d14df30-71cb-49c7-b7e0-a7f06f1c7de7.json"`
 
 200: the exact MatchResult array. Full body: examples.json → http.results. First result excerpt:
 
 ```json
 {
-  "matchId": "bot-2eda5c48-253b-49ae-9641-0d4ae8b5aa37-1",
+  "matchId": "bot-9d14df30-71cb-49c7-b7e0-a7f06f1c7de7-run-1",
   "outcome": {
     "status": "win",
     "winners": [
@@ -162,7 +163,7 @@ Each complete result also includes config, statistics and finalStateHash. Invali
 
 ### GET /v1/replay/:matchId
 
-Example: `curl -sS "$BASE/v1/replay/human-16206091-21a5-4765-866a-76ae742ea4d4"`
+Example: `curl -sS "$BASE/v1/replay/human-29552fda-b39d-4f9b-9c37-30d0f45f7a4d"`
 
 200: {matchId, seed, config, frames, finalStateHash}, only for archived matches; unknown IDs return 404.
 Accepted frames include neutral ticks and authoritative timeouts; rejected controller arrivals are excluded.
@@ -170,7 +171,7 @@ Response excerpt (complete: examples.json → http.replay):
 
 ```json
 {
-  "matchId": "human-16206091-21a5-4765-866a-76ae742ea4d4",
+  "matchId": "human-29552fda-b39d-4f9b-9c37-30d0f45f7a4d",
   "seed": 1,
   "frames": [
     {
@@ -241,8 +242,8 @@ roomId/sessionId/epoch and your own requestId/seq. The message examples below sh
 {
   "protocolVersion": "0.1",
   "type": "input.submit",
-  "roomId": "d68ddcf2-b269-417c-b85a-f2dc99918c26",
-  "sessionId": "8076dd57-38ac-4462-b692-e57126b2cafe",
+  "roomId": "eeb37e35-e76f-4753-8291-9a7cac310140",
+  "sessionId": "502aaae8-809f-4eab-a431-3747dff074dc",
   "requestId": "r12",
   "seq": 12,
   "epoch": 2,
@@ -282,7 +283,7 @@ Joins in the lobby; replies with room.status, your seat and a private token. Pla
 
 ```json
 {
-  "joinCode": "K3NM",
+  "joinCode": "5XS5",
   "name": "Two",
   "hero": "real_armor"
 }
@@ -342,7 +343,7 @@ Resumes a disconnected seat within ten seconds. Rotates token and resends pinned
 
 ```json
 {
-  "joinCode": "K3NM",
+  "joinCode": "5XS5",
   "seatToken": "REDACTED_PRIVATE_SEAT_TOKEN_00000000"
 }
 ```
@@ -367,9 +368,16 @@ Room code, phase, game and seats. you/seatToken appear only for their owner.
 
 ```json
 {
-  "joinCode": "K3NM",
+  "joinCode": "5XS5",
   "phase": "lobby",
   "gameId": "hero_arena",
+  "playableHeroes": [
+    "bari",
+    "real_armor",
+    "daewi",
+    "sepia",
+    "nightcrow"
+  ],
   "seats": [
     {
       "seat": "p1",
@@ -490,7 +498,7 @@ Saved MatchResult in result; excerpt below. Full config/statistics/hash are in e
 ```json
 {
   "result": {
-    "matchId": "human-16206091-21a5-4765-866a-76ae742ea4d4",
+    "matchId": "human-29552fda-b39d-4f9b-9c37-30d0f45f7a4d",
     "outcome": {
       "status": "draw",
       "winners": [],
@@ -508,12 +516,13 @@ Initial, approximately 100 ms, and final worker progress. Counts below come from
 
 ```json
 {
-  "runId": "2eda5c48-253b-49ae-9641-0d4ae8b5aa37",
+  "runId": "9d14df30-71cb-49c7-b7e0-a7f06f1c7de7",
   "gameId": "hero_arena",
   "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
   "matchesDone": 2,
   "totalMatches": 2,
-  "elapsedMs": 112,
+  "seatWins": 0,
+  "elapsedMs": 130,
   "matchups": [
     {
       "matchup": "bari vs real_armor",
@@ -526,6 +535,7 @@ Initial, approximately 100 ms, and final worker progress. Counts below come from
         "real_armor": 1
       },
       "games": 2,
+      "seatWins": 0,
       "draws": 0,
       "invalidMatches": 0
     }
@@ -578,3 +588,56 @@ never draws. Restart does not preserve live rooms.
 `node --test` runs real workers, persistence and production handlers without network. Five existing TCP tests
 require external listener permission: `RUN_SOCKET_TESTS=1 node --test services/room/room.test.js`.
 Those tests enforce catalog readiness within one second after listening. See REPORT.md for actual verification.
+
+## Round 6 dashboard additions
+
+### POST /v1/playtest/full
+
+```sh
+curl -sS -H 'content-type: application/json' \
+  -d '{"gameId":"hero_arena","roster":true,"pairs":50,"holdoutPairs":50}' "$BASE/v1/playtest/full"
+```
+
+pairs and holdoutPairs default to 50; roster defaults to false. The response contains runId, gameId, elapsedMs,
+botPolicyVersion, seedSetId, holdoutSeedSetId, baseline Report, proposal with origin/changes, validation, patched
+Report/dataHash, verdict and humanMatches. The additional seatWins summary has baseline/holdout first-seat counts.
+Baseline seeds 1..pairs never overlap holdout 1000001..1000000+holdoutPairs. Both streams include phase equal to
+baseline or holdout. Candidates are retained by hash without automatically replacing the current baseline.
+Production selects Gemini when GEMINI_API_KEY is set, otherwise fake; tests explicitly pass an empty adapter env.
+
+The analysis full.js module is required. Until it is integrated, this endpoint returns HTTP 503 with
+{"code":"TRANSPORT_UNAVAILABLE","message":"The service could not complete the request. Retry after reconnecting."}.
+The full captured response is in examples.json → http.full; a pending integration test is never a fabricated pass.
+
+/v1/playtest/run additionally accepts roster:true and dataHash to scan all roster matchups or a retained version:
+
+```sh
+curl -sS -H 'content-type: application/json' \
+  -d '{"gameId":"hero_arena","pairs":1,"roster":true}' "$BASE/v1/playtest/run"
+```
+
+Its seatWins is the number of valid matches won by config.players[0], not hero wins. Every progress matchup row
+also has seatWins, so mirror cells can display physical-seat advantage without inventing a hero winner.
+
+### GET /v1/replay/:matchId/views
+
+```sh
+curl -sS "$BASE/v1/replay/$MATCH_ID/views?every=6"
+curl -sS "$BASE/v1/replay/$MATCH_ID/views?dataHash=$PATCHED_HASH&every=6"
+```
+
+200: {matchId, gameId, seed, sourceDataHash, dataHash, every, views, finalStateHash}. Each view contains tick,
+observation, accumulated public events and viewHash. Full captured example: examples.json → http.views.
+Original playback verifies the recorded final hash; candidates use the same accepted frame stream. Invalid or
+incompatible replay inputs return an explicit error. Private cards/RNG are excluded. At most 601 views and 1 MiB
+are returned; use a larger sampling interval if RATE_LIMITED rejects an oversized request.
+
+### Solo start and prejoin picker
+
+A phone can inspect status before joining by connecting to /ws?joinCode=<code> or /ws?roomId=<id>. Status includes
+actual gameId and playableHeroes; an unassociated /ws reports gameId:null and an empty roster until identified.
+The same authority checks hero selection against that roster. Cards retain starter-hero compatibility.
+
+After one human phone joins, the host can send match.start payload {"bot":true}. The empty seat is filled by the
+standard bot, exposed as bot:true in that seat's status; results/replays mark botSeats:["p2"] (or the actual bot
+seat). Normal two-human/worker results omit botSeats. Reset drops the virtual seat; no human seat is replaced.

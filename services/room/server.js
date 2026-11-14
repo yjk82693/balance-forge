@@ -8,10 +8,12 @@ import { join } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Authority } from '../../packages/sim/index.js';
 import { hash, validate, validateSchema } from '../../packages/contracts/index.js';
-import { integer, object } from '../../packages/contracts/shapes.js';
-import { runBatch, pairedJobs } from '../runner/index.js';
-import { games } from '../runner/match.js';
-import { Storage, writeJson } from './storage.js';
+import { object } from '../../packages/contracts/shapes.js';
+import { runPlaytest, fullPlaytest } from './playtests.js';
+import { replayViews } from './replay-views.js';
+import { games, cardAction } from '../runner/match.js';
+import { chooseActions } from '../../packages/games/action/bot.js';
+import { Storage } from './storage.js';
 import { parseEnvelope, validatePayload, assertDepth, errorCode } from './protocol.js';
 import { messages } from './errors.js';
 const directory = fileURLToPath(new URL('./', import.meta.url));
@@ -62,6 +64,7 @@ export class RoomServer {
     staticDir = defaultStatic,
     turnTimeoutMs = 15000,
     workers = 2,
+    analysisEnv = process.env,
     clock = () => performance.now()
   } = {}) {
     if (!Number.isInteger(turnTimeoutMs) || turnTimeoutMs < 1) throw Error('INVALID_SCHEMA');
@@ -73,6 +76,7 @@ export class RoomServer {
     this.staticDir = resolve(staticDir);
     this.turnTimeoutMs = turnTimeoutMs;
     this.workers = workers;
+    this.analysisEnv = analysisEnv;
     this.rooms = new Map();
     this.codes = new Map();
     this.sessions = new Set();
@@ -206,9 +210,10 @@ export class RoomServer {
     });
     ws.on('close', () => this.disconnect(session));
     try {
-      const roomId = url.searchParams.get('roomId');
-      if (roomId) {
-        const room = this.rooms.get(roomId);
+      const roomId = url.searchParams.get('roomId'),
+        joinCode = url.searchParams.get('joinCode');
+      if (roomId || joinCode) {
+        const room = roomId ? this.rooms.get(roomId) : this.codes.get(joinCode.toUpperCase());
         if (!room) throw Error('AUTH_EXPIRED');
         const token = url.searchParams.get('hostToken');
         if (token && token !== room.hostToken) throw Error('AUTH_EXPIRED');
@@ -226,6 +231,8 @@ export class RoomServer {
         this.status(room);
       } else this.send(session, 'room.status', {
         joinCode: '',
+        gameId: null,
+        playableHeroes: [],
         phase: 'lobby',
         seats: []
       });
@@ -271,21 +278,34 @@ export class RoomServer {
       } catch {}
     }
   }
+  playableHeroes(room) {
+    const {
+      data
+    } = this.storage.get(room.gameId, room.selectedHash);
+    if (room.gameId === 'hero_arena') return data.characters.map(character => character.id);
+    const decks = data.gameRules.decks.map(deck => deck.id);
+    return decks.includes('standard') ? games.hero_arena.data.characters.map(character => character.id) : decks;
+  }
   status(room, request) {
     for (const s of room.members) this.send(s, 'room.status', {
       joinCode: room.code,
       phase: room.phase,
       gameId: room.gameId,
+      playableHeroes: this.playableHeroes(room),
       seats: room.seats.map(({
         seat,
         name,
         hero,
-        session
+        session,
+        bot
       }) => ({
         seat,
         name,
         hero,
-        connected: !!session
+        connected: !!session || !!bot,
+        ...(bot ? {
+          bot: true
+        } : {})
       })),
       ...(s.seat ? {
         you: s.seat,
@@ -321,7 +341,7 @@ export class RoomServer {
       this.expireSeats(room, this.now());
       if (session.room && session.room !== room) throw Error('ILLEGAL_ACTION');
       if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
-      if (!games.hero_arena.data.characters.some(c => c.id === env.payload.hero)) throw Error('INVALID_SCHEMA');
+      if (!this.playableHeroes(room).includes(env.payload.hero)) throw Error('INVALID_SCHEMA');
       if (session.seat) {
         const seat = room.seats.find(s => s.seat === session.seat);
         seat.name = env.payload.name.trim();
@@ -367,20 +387,38 @@ export class RoomServer {
     }
   }
   start(room, options, request) {
-    if (room.phase !== 'lobby' || room.seats.filter(s => s.session).length !== 2) throw Error('ILLEGAL_ACTION');
+    if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
     const gameId = options.gameId ?? room.gameId,
       game = games[gameId];
     const {
       data
     } = this.storage.get(gameId, gameId === room.gameId ? room.selectedHash : undefined);
-    const players = room.seats.map(s => s.seat).sort();
+    let seats = room.seats.filter(seat => seat.session);
+    if (options.bot && seats.length === 1) {
+      const available = this.playableHeroes({
+        gameId,
+        selectedHash: gameId === room.gameId ? room.selectedHash : undefined
+      });
+      seats = [...seats, {
+        seat: ['p1', 'p2'].find(id => id !== seats[0].seat),
+        name: 'Scripted bot',
+        hero: available.find(id => id !== seats[0].hero) ?? available[0],
+        session: null,
+        bot: true,
+        token: null,
+        expiresAt: 0
+      }];
+    }
+    if (seats.length !== 2) throw Error('ILLEGAL_ACTION');
+    const players = seats.map(s => s.seat).sort();
     const config = game.makeConfig(data, options.seed ?? 1, players);
     config.options = {
-      assignments: Object.fromEntries(room.seats.map(s => [s.seat, gameId === 'hero_arena' ?
+      assignments: Object.fromEntries(seats.map(s => [s.seat, gameId === 'hero_arena' ?
         s.hero : data.gameRules.decks.some(d => d.id === s.hero) ? s.hero : 'standard']))
     };
     if (options.maxTicks !== undefined) config.maxTicks = options.maxTicks;
     const authority = new Authority(game.adapter, config, data);
+    room.seats = seats;
     room.authority = authority;
     room.game = game;
     if (gameId !== room.gameId) room.selectedHash = undefined;
@@ -442,10 +480,23 @@ export class RoomServer {
   views(room, events = []) {
     for (const session of room.members) this.view(session, events);
   }
+  submitBots(room, systemInputs) {
+    if (systemInputs.length) return;
+    const authority = room.authority,
+      state = authority.state;
+    for (const seat of room.seats) {
+      if (!seat.bot) continue;
+      const inputs = authority.config.mode === 'turn' ? state.payload.activePlayer === seat.seat ? [cardAction(
+        room.game, state, state.tick)] : [] : chooseActions(room.game.observe(state, seat.seat), state.tick * 2,
+        authority.config.players.indexOf(seat.seat));
+      for (const input of inputs) authority.submit(input);
+    }
+  }
   advance(room, systemInputs = []) {
     if (room.phase !== 'playing') return;
     try {
       const turn = room.authority.state.turnId;
+      this.submitBots(room, systemInputs);
       const result = room.authority.advance(systemInputs);
       if (room.authority.state.turnId !== turn) room.deadline = this.now() + this.turnTimeoutMs;
       this.views(room, result.events);
@@ -457,6 +508,14 @@ export class RoomServer {
   finish(room, failure) {
     if (room.phase !== 'playing') return;
     const a = room.authority;
+    const statistics = structuredClone(room.game.statistics(a.state));
+    // A terminal step may succeed before view delivery fails; invalid matches earn no result credit.
+    if (failure) {
+      for (const player of statistics.players) {
+        player.wins = 0;
+        player.draws = 0;
+      }
+    }
     const result = {
       matchId: room.matchId,
       config: a.config,
@@ -465,17 +524,23 @@ export class RoomServer {
         winners: [],
         reason: 'invalid_match'
       } : room.game.outcome(a.state),
-      statistics: room.game.statistics(a.state),
+      statistics,
       finalStateHash: room.game.hash(a.state),
       valid: !failure,
-      errorCode: failure ?? ''
+      errorCode: failure ?? '',
+      ...(room.seats.some(seat => seat.bot) ? {
+        botSeats: room.seats.filter(seat => seat.bot).map(seat => seat.seat)
+      } : {})
     };
     const recording = {
       matchId: room.matchId,
       seed: a.config.seed,
       config: a.config,
       frames: a.frames,
-      finalStateHash: result.finalStateHash
+      finalStateHash: result.finalStateHash,
+      ...(result.botSeats ? {
+        botSeats: result.botSeats
+      } : {})
     };
     room.result = result;
     room.phase = 'ended';
@@ -549,6 +614,10 @@ export class RoomServer {
       this.expireSeats(room, now);
       if (room.phase !== 'playing') continue;
       if (room.authority.config.mode === 'turn') {
+        if (room.seats.some(seat => seat.bot && seat.seat === room.authority.state.payload.activePlayer)) {
+          this.advance(room);
+          continue;
+        }
         if (now >= room.deadline) this.advance(room, [{
           kind: 'system.timeout',
           playerId: room.authority.state.payload.activePlayer,
@@ -606,6 +675,19 @@ export class RoomServer {
       });
       return;
     }
+    const viewsRoute = path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})\/views$/);
+    if (request.method === 'GET' && viewsRoute) {
+      const everyText = url.searchParams.get('every');
+      if (everyText !== null && !/^[0-9]+$/.test(everyText)) throw Error('INVALID_SCHEMA');
+      const result = replayViews(this.storage, viewsRoute[1], {
+        dataHash: url.searchParams.get('dataHash') ?? undefined,
+        every: everyText === null ? 6 : Number(everyText)
+      });
+      json(response, result ? 200 : 404, result ?? {
+        code: 'INVALID_SCHEMA'
+      });
+      return;
+    }
     const replayRoute = path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})$/);
     if (request.method === 'GET' && replayRoute) {
       const recording = this.storage.getReplay(replayRoute[1]);
@@ -631,66 +713,21 @@ export class RoomServer {
         return;
       }
     }
-    if (request.method === 'POST' && path === '/v1/playtest/run') {
+    if (request.method === 'POST' && ['/v1/playtest/run', '/v1/playtest/full'].includes(path)) {
       const body = await readBody(request);
-      validateSchema(object({
-        gameId: {
-          enum: ['hero_arena', 'hero_cards']
-        },
-        pairs: integer(1, 1000)
-      }), body);
       if (this.runningBatch) throw Error('RATE_LIMITED');
       this.runningBatch = true;
-      const task = (async () => {
-        const {
-          data,
-          dataHash
-        } = this.storage.get(body.gameId);
-        const id = randomUUID();
-        const jobs = pairedJobs({
-          gameId: body.gameId,
-          data,
-          seeds: Array.from({
-            length: body.pairs
-          }, (_, i) => i + 1)
-        });
-        jobs.forEach((job, i) => {
-          job.matchId = `bot-${id}-${i + 1}`;
-        });
-        const batch = await runBatch(jobs, {
-          workers: this.workers,
-          captureReplays: true,
-          onProgress: progress => {
-            for (const session of this.sessions) this.send(session, 'playtest.progress', {
-              runId: id,
-              gameId: body.gameId,
-              dataHash,
-              ...progress
-            });
-          }
-        });
-        batch.replays.forEach(recording => this.storage.recordReplay(recording));
-        const resultsPath = `/v1/playtest/results/${id}.json`;
-        writeJson(join(this.storage.directory, 'playtests', `${id}.json`), batch.results);
-        writeJson(join(this.storage.directory, 'playtests', `${id}.metrics.json`), batch.metrics);
-        json(response, 200, {
-          resultsPath,
-          elapsedMs: batch.metrics.elapsedMs,
-          matchCount: batch.results.length,
-          dataHash,
-          recorded: true
-        });
-      })();
+      const task = (path.endsWith('/full') ? fullPlaytest : runPlaytest)(this, body);
       this.tasks.add(task);
       try {
-        await task;
+        json(response, 200, await task);
       } finally {
         this.tasks.delete(task);
         this.runningBatch = false;
       }
       return;
     }
-    const resultRoute = path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36})\.json$/);
+    const resultRoute = path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36}(?:-(?:baseline|holdout))?)\.json$/);
     if (request.method === 'GET' && resultRoute) {
       try {
         const data = await readFile(join(this.storage.directory, 'playtests', `${resultRoute[1]}.json`));

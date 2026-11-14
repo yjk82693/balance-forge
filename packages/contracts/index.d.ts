@@ -140,6 +140,7 @@ export type GameData = {
   }>;
 };
 export type MatchResult = {
+  botSeats?: Array<string>;
   "matchId": string;
   "config": MatchConfig;
   "outcome": Outcome;

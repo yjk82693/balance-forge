@@ -90,3 +90,20 @@ test('failed atomic writes remove temporary files and replay/result identity mis
   }
   assert.equal(server.storage.humans.length, 1);
 });
+test('a failed terminal view records no win or draw credit and preserves authoritative state', async t => {
+  const { server, host, room } = await localServer(t);
+  host.request('match.start', { maxTicks: 1 });
+  room.game = {
+    ...room.game,
+    observe: () => { throw Error('INVALID_SCHEMA'); }
+  };
+  server.advance(room);
+  const result = server.storage.humans[0];
+  assert.equal(room.phase, 'ended');
+  assert.equal(result.valid, false);
+  assert.equal(result.outcome.status, 'running');
+  assert.equal(result.errorCode, 'INVALID_SCHEMA');
+  assert.ok(result.statistics.players.every(player => player.wins === 0 && player.draws === 0));
+  assert.ok(room.game.statistics(room.authority.state).players.every(player => player.draws === 1));
+  assert.equal(result.finalStateHash, room.game.hash(room.authority.state));
+});

@@ -824,6 +824,16 @@
         "errorCode": {
           "type": "string",
           "maxLength": 128
+        },
+        "botSeats": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
         }
       },
       "required": [
