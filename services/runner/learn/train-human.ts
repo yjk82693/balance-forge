@@ -36,7 +36,8 @@ function dataFor(config, dataDir) {
 }
 
 /** Loads the usable matches: [{ matchId, seats, recording, data }] and the excluded ones with their reasons. */
-export function loadMatches({ results, replaysDir, dataDir }) {
+export function loadMatches({ results, replaysDir, dataDir }: {
+  results: any[]; replaysDir: string; dataDir?: string }) {
   const used = [], excluded = [];
   for (const result of results) {
     const id = result.matchId;
@@ -110,7 +111,8 @@ function fit(train, test, { seed, steps }) {
 }
 
 export function trainHumanStyle({ results, replaysDir, dataDir, seed = 1, testShare = 0.3, steps = 200, folds = 5,
-  createdAt = new Date().toISOString() }) {
+  createdAt = new Date().toISOString() }: { results: any[]; replaysDir: string; dataDir?: string; seed?: number;
+  testShare?: number; steps?: number; folds?: number; createdAt?: string }) {
   const { used, excluded } = loadMatches({ results, replaysDir, dataDir });
   if (used.length < 4) throw Error(`only ${used.length} usable matches: no model is trained`);
   const order = shuffled(used, seed);
@@ -147,12 +149,12 @@ export function trainHumanStyle({ results, replaysDir, dataDir, seed = 1, testSh
         perFold: cv.map(f => ({ matches: f.matches, rows: f.rows, accuracy: f.accuracy,
           baselineAccuracy: f.baselineAccuracy })) },
       classShare: Object.fromEntries(CLASSES.map((name, c) => [name, round6(allRows.filter(r => r.y === c).length /
-        allRows.length)]).filter(([, share]) => share > 0)) },
+        allRows.length)]).filter(([, share]) => (share as number) > 0)) },
     caveats: CAVEATS };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: Record<string, string> = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   if (!flags.results || !flags.replays) {
     throw Error('usage: --results <human-results.json> --replays <dir> [--data <dir>]');

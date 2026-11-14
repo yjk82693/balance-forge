@@ -66,7 +66,8 @@ export function evaluateVector({ hero, params, population = {}, opponents, seeds
  * A matchup measured with named bot sets: `botFor(hero)` returns the bot object a hero uses. First hero's win rate
  * with a Wilson interval over `seeds` x both seat orders (a draw is a game, not a win).
  */
-export function measureMatchup({ heroes: [a, b], botFor, seeds, maxTicks = MAX_TICKS }) {
+export function measureMatchup({ heroes: [a, b], botFor, seeds, maxTicks = MAX_TICKS }: {
+  heroes: string[]; botFor: (hero: string) => any; seeds: number[]; maxTicks?: number }) {
   let wins = 0;
   let games = 0;
   let ticks = 0;

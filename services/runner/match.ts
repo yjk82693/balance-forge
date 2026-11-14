@@ -5,6 +5,11 @@ import { hash, validate, validateOutcome, compareIds } from '../../packages/cont
 import { emptyStatistics } from '../../packages/sim/index.ts';
 import * as cardBot from '../../packages/games/cards/bot.ts';
 import { learnedBot } from './learn/load.ts';
+import type { GameData, MatchConfig } from '../../packages/contracts/types.ts';
+
+/** One match to play: its config, the game data it runs on and (optionally) which bot policy plays it. */
+export type MatchJob = { matchId: string; config: MatchConfig; data: GameData; botPolicy?: string };
+export type JobOptions = { seeds?: number[]; heroes?: string[]; gameId?: string; data?: GameData; botPolicy?: string };
 export { botPolicyVersion };
 // The scripted policy's version per game: results are tagged with the bot that produced them.
 export const scriptedVersionOf = gameId => (gameId === 'hero_cards' ? cardBot.botPolicyVersion : botPolicyVersion);
@@ -140,7 +145,7 @@ export function pairedJobs({
   gameId = 'hero_arena',
   data,
   botPolicy
-} = {}) {
+}: JobOptions = {}): MatchJob[] {
   const game = getGame(gameId);
   data ??= game.data;
   validate('GameData', data);
@@ -182,7 +187,7 @@ export function rosterJobs({
   gameId = 'hero_arena',
   data,
   botPolicy
-} = {}) {
+}: Omit<JobOptions, 'heroes'> = {}): MatchJob[] {
   const game = getGame(gameId);
   data ??= game.data;
   validate('GameData', data);

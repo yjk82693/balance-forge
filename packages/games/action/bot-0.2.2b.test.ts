@@ -8,7 +8,7 @@ import { data, initial, makeConfig, observe, step } from './index.ts';
 import { compareIds } from '../../contracts/index.ts';
 // scripted-0.2.2b is a candidate variant of 0.2.2. Unit tests only.
 const reach = v2.reaches();
-const stateOf = (a, b, positions = {}) => {
+const stateOf = (a: string, b: string, positions: { x1?: number; x2?: number } = {}) => {
   const config = makeConfig(data, 3, ['p1', 'p2'], 1800, { p1: a, p2: b });
   const state = initial(config, data);
   state.payload.entities[0].x = positions.x1 ?? 4200;

@@ -6,7 +6,8 @@ import { chooseActions } from './bot.ts';
 import { hash, validate, validateGamePayload, restoreSnapshot, applyPatch, validateData,
   validateOutcome } from '../../contracts/index.ts';
 import { Authority, replay } from '../../sim/index.ts';
-const make = (data = game.data, seed = 1, maxTicks = 1800, assignments) => game.initial(game.makeConfig(data, seed, [
+const make = (data = game.data, seed = 1, maxTicks = 1800, assignments?: Record<string, string>) =>
+  game.initial(game.makeConfig(data, seed, [
   'p1', 'p2'], maxTicks, assignments), data);
 const frame = (state, actions = []) => ({
   tick: state.tick + 1,
@@ -51,7 +52,7 @@ test('descriptor, config, state, observation and step implement shared contract'
   assert.equal('rng' in view, false);
   assert.equal('config' in view.payload, false);
   assert.equal(game.legalActions(view).length, 4);
-  const fixture = JSON.parse(readFileSync(new URL('../../../fixtures/ws_messages.json', import.meta.url)));
+  const fixture = JSON.parse(readFileSync(new URL('../../../fixtures/ws_messages.json', import.meta.url), 'utf8'));
   const action = fixture.find(m => m.type === 'input.submit').payload;
   state = advance(state, game.data, 240);
   validate('StepResult', game.step(state, frame(state, [action]), game.data));

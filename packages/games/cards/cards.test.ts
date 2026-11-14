@@ -60,7 +60,7 @@ test('six rounds resolve exactly twelve turns; timeout is an authoritative frame
         turnId: state.turnId
       }]
     };
-    state = game.step(state, frame, game.data).state;
+    state = game.step(state, frame as any, game.data).state;
   }
   assert.equal(state.turnId, 12);
   assert.equal(state.payload.round, 6);
@@ -159,7 +159,7 @@ test('turn/seat/empty/forged timeout rejection and snapshot continuation', () =>
       playerId: 'p1',
       turnId: 0
     }]
-  }]) assert.throws(() => game.step(state, frame, game.data));
+  }] as any[]) assert.throws(() => game.step(state, frame, game.data));
   assert.equal(hash(state), before);
   const restored = restoreSnapshot({
     config: state.payload.config,

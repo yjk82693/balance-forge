@@ -61,7 +61,7 @@ test('bot seeds and choices are reproducible, seat-specific and independent of s
   assert.notEqual(bot.deriveBotSeed(1, 0), bot.deriveBotSeed(1, 1));
   assert.notEqual(bot.deriveBotSeed(1, 0), bot.deriveBotSeed(2, 0));
   for (const args of [[0, 0], [1, -1], [1, 64], [1.5, 0]]) {
-    assert.throws(() => bot.deriveBotSeed(...args), /INVALID_SCHEMA/);
+    assert.throws(() => bot.deriveBotSeed(...(args as [number, number])), /INVALID_SCHEMA/);
   }
   const state = initial(makeConfig(data), data);
   const before = structuredClone(state), view = observe(state, 'p1');

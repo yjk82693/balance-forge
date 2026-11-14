@@ -79,7 +79,7 @@ export function incomingProjectile(view, hero, policy) {
  * The decision, shared with scripted-0.2.2b. `options.standOff(context)` may replace the stand-off distance of this
  * tick (0.2.2 keeps the seeded one); it gets { me, enemy, legal, policy, view } and returns a distance in whole units.
  */
-export function decide(view, seq, variant, options = {}) {
+export function decide(view, seq: number, variant: number, options: { standOff?: (context: any) => number } = {}) {
   const legal = legalActions(view),
     me = view.payload.entities.find(e => e.id === view.viewerId),
     enemy = view.payload.entities.find(e => e.id !== view.viewerId);

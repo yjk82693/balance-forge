@@ -28,7 +28,7 @@ export function evalMatchup({ heroes, pairs = 100, dir = learnedDir(), maxTicks 
   const learned = Object.keys(paramsByHero).length ? makeLearnedBot(paramsByHero) : null;
   const [a, b] = heroes;
   const run = botFor => measureMatchup({ heroes, botFor, seeds, maxTicks });
-  const rows = { scriptedVsScripted: run(() => scriptedBot) };
+  const rows: Record<string, any> = { scriptedVsScripted: run(() => scriptedBot) };
   if (learned) {
     rows.learnedVsLearned = run(() => learned);
     rows.learnedFirstVsScripted = run(h => (h === a ? learned : scriptedBot));
@@ -40,13 +40,13 @@ export function evalMatchup({ heroes, pairs = 100, dir = learnedDir(), maxTicks 
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: Record<string, string | true> = {};
   for (let i = 2; i < process.argv.length; i += 2) {
     flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1] ?? true;
   }
   try {
     const pairs = flags.pairs === undefined ? 100 : Number(flags.pairs);
-    const dir = flags['learned-dir'] ?? learnedDir();
+    const dir = String(flags['learned-dir'] ?? learnedDir());
     const list = flags.table !== undefined ? MAIN_MATCHUPS : [String(flags.heroes ?? '').split(',')];
     console.log(JSON.stringify(list.map(heroes => evalMatchup({ heroes, pairs, dir })), null, 1));
   } catch (error) {

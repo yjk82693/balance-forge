@@ -16,7 +16,8 @@ export const EMPTY_INTENT = Object.freeze({ version: 'default', matchups: {} });
 const analysis = () => import('../../packages/analysis/src/intent.ts');
 
 export class DesignError extends Error {
-  constructor(message) {
+  declare code: string;
+  constructor(message: string) {
     super(message);
     this.code = 'INVALID_SCHEMA';
   }
@@ -26,6 +27,8 @@ const heroIdsOf = gameId => (gameId === 'hero_arena' ? games.hero_arena.data.cha
   games.hero_cards.data.gameRules.decks).map(item => item.id);
 
 export class DesignStore {
+  declare directory: string;
+  declare runtimeDirectory: string | undefined;
   /** defaultDir: the committed defaults (never written). runtimeDir: where a PUT saves; without it a PUT fails. */
   constructor(defaultDir = DESIGN_DIR, runtimeDir = undefined) {
     this.directory = defaultDir;

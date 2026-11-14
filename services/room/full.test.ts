@@ -236,7 +236,7 @@ test('pipeline failures retain their public code and readable message in HTTP re
 });
 test('real pipeline validation errors pass through the full route without generic transport masking', async t => {
   const { server } = await localServer(t);
-  server.storage.humans = [{}];
+  server.storage.humans = [{}] as any;
   const response = await http(server, '/v1/playtest/full', {
     method: 'POST', body: { gameId: 'hero_arena', pairs: 1, holdoutPairs: 1 }
   });
@@ -330,7 +330,7 @@ async function withLearned(files, fn) {
   resetLearnedCache();
   try {
     for (const [hero, over] of Object.entries(files)) writeText(join(dir, `${hero}.json`), JSON.stringify({
-      policy: 'learned-cem-1', hero, params: { ...DEFAULT_PARAMS, ...over } }));
+      policy: 'learned-cem-1', hero, params: { ...DEFAULT_PARAMS, ...(over as object) } }));
     return await fn(dir);
   } finally {
     if (before === undefined) delete process.env.BALANCE_FORGE_LEARNED_DIR;

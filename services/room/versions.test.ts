@@ -25,7 +25,7 @@ test('version roots, manual branches and approval survive a storage restart', as
   assert.equal(restored.get('hero_arena').dataHash, second.dataHash);
   assert.equal(restored.get('hero_arena', base.dataHash).data.moves[1].power, 92);
   assert.equal((await readdir(join(root, 'data', 'versions'))).some(name => name.endsWith('.tmp')), false);
-  assert.equal(JSON.parse(await readFile(join(root, 'data', 'versions', 'hero_arena.json'))).length, 3);
+  assert.equal(JSON.parse(await readFile(join(root, 'data', 'versions', 'hero_arena.json'), 'utf8')).length, 3);
 });
 test('version list/detail/approval and current selection routes preserve room pins and retained data', async t => {
   const { server, host, room } = await localServer(t);

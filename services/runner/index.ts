@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { availableParallelism } from 'node:os';
 import { validate } from '../../packages/contracts/index.ts';
 import { scriptedVersionOf } from './match.ts';
+import type { MatchJob } from './match.ts';
 import { learnedBot } from './learn/load.ts';
 export { pairedJobs, runMatch, rosterJobs, botPolicies } from './match.ts';
 function addMatch(groups, result) {
@@ -27,11 +28,12 @@ function addMatch(groups, result) {
   if (result.outcome.status === 'draw') row.draws++;
   for (const winner of result.outcome.winners) row.wins[result.config.options?.assignments[winner] ?? winner]++;
 }
-export async function runBatch(jobs, {
+export type BatchOptions = { workers?: number; captureReplays?: boolean; onProgress?: (progress: any) => unknown };
+export async function runBatch(jobs: MatchJob[], {
   workers = Math.min(4, availableParallelism()),
   captureReplays = false,
   onProgress
-} = {}) {
+}: BatchOptions = {}) {
   if (!Number.isInteger(workers) || workers < 1 || workers > 64 || !Array.isArray(jobs) || !jobs.length) throw Error(
     'INVALID_SCHEMA');
   if (typeof onProgress !== 'undefined' && typeof onProgress !== 'function') throw Error('INVALID_SCHEMA');
@@ -64,13 +66,13 @@ export async function runBatch(jobs, {
     // Observers cannot change final match outcomes or crash worker cleanup.
     try {
       const pending = onProgress(progress);
-      pending?.catch?.(() => {});
+      (pending as any)?.catch?.(() => {});
     } catch {}
   };
   report();
   const timer = onProgress ? setInterval(report, 100) : null;
   try {
-    await Promise.all(chunks.map(chunk => new Promise((resolve, reject) => {
+    await Promise.all(chunks.map(chunk => new Promise<void>((resolve, reject) => {
       const worker = new Worker(new URL('./worker.ts', import.meta.url), {
         workerData: {
           jobs: chunk,

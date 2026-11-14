@@ -72,7 +72,7 @@ export function evalHumanStyle({ model, pairs = 100 }) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: Record<string, string> = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   const path = flags.model ?? fileURLToPath(new URL('./learned/human-style.json', import.meta.url));
   console.log(JSON.stringify(evalHumanStyle({ model: JSON.parse(readFileSync(path, 'utf8')),

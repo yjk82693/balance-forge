@@ -1,3 +1,4 @@
+import type { GameData } from '../../contracts/types.ts';
 import { deepFreeze } from '../../sim/index.ts';
 const credit = {
   authorKey: 'balance_forge',
@@ -12,7 +13,7 @@ const move = (id, archetype, power, weightTier, effects = []) => ({
   effects,
   ...credit
 });
-export const data = deepFreeze({
+export const data: GameData = deepFreeze({
   v: 1,
   gameId: 'hero_arena',
   characters: [{

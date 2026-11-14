@@ -96,7 +96,7 @@ export async function autoPlaytest(server, body) {
     },
     // Replay findings for the designer hand-over: 20 seeds of the pair, both seat orders, in this process.
     explain: async ({ matchup }) => {
-      const replay = await forensics({ heroes: matchup.split(' vs '), seeds: 20 });
+      const replay: any = await forensics({ heroes: matchup.split(' vs '), seeds: 20 } as any);
       return replay.ok ? forensicsSentence(replay.value) : null;
     },
     seedsFor: autoSeeds, botPolicyVersion, onProgress, onRecord

@@ -171,7 +171,7 @@ test('bad upgrade, transport send failure and a transient result write failure d
   broken.send = () => {
     throw Error('broken pipe');
   };
-  assert.doesNotThrow(() => server.connect(broken, new URL('http://localhost/ws')));
+  assert.doesNotThrow(() => server.connect(broken as any, new URL('http://localhost/ws')));
   assert.equal(broken.readyState, 3);
   const save = server.storage.record.bind(server.storage);
   server.storage.record = () => {
@@ -204,7 +204,7 @@ test('socket-free production handlers finish and replay a 300-tick human match',
     seed: 23
   });
   for (let tick = 1; tick <= 300; tick++) {
-    for (const [ws, id, dx] of [[host, 'p1', -1000], [phone, 'p2', 1000]]) {
+    for (const [ws, id, dx] of [[host, 'p1', -1000], [phone, 'p2', 1000]] as Array<[any, string, number]>) {
       // Advance rate-limit clocks without changing logical simulation time.
       const session = [...server.sessions].find(s => s.ws === ws);
       session.window -= 1000;
