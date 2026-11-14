@@ -1,10 +1,10 @@
-import type { PatchProposal, Report } from "../lib/contract";
+import type { Report } from "../lib/contract";
 import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
 import { Axis, Interval, Plot, ciText, rowStats } from "./WinRateChart";
 
 /** "/moves/1/power" -> "Move 1 power"; "/tuning/damageScalePermille" -> "Damage scale". */
-function describePath(path: string): string {
+export function describePath(path: string): string {
   const m = path.match(/^\/moves\/(\d+)\/power$/);
   if (m) return `Move ${m[1]} power`;
   if (path === "/tuning/damageScalePermille") return "Damage scale (‰)";
@@ -14,15 +14,16 @@ function describePath(path: string): string {
 interface Props {
   before: Report;
   after: Report;
-  patch: PatchProposal;
   showAfter: boolean;
 }
 
-export function PatchCompare({ before, after, patch, showAfter }: Props) {
+export function PatchCompare({ before, after, showAfter }: Props) {
   const pairs = before.rows
     .map((b) => ({ b: rowStats(b), a: after.rows.find((r) => r.dimension === b.dimension) }))
     .filter((p) => p.a && (p.a.wins !== p.b.row.wins || p.a.games !== p.b.row.games))
-    .map((p) => ({ b: p.b, a: rowStats(p.a!) }));
+    .map((p) => ({ b: p.b, a: rowStats(p.a!) }))
+    .sort((x, y) => Math.abs(y.a.rate - y.b.rate) - Math.abs(x.a.rate - x.b.rate))
+    .slice(0, 2);
 
   return (
     <div className="viz patch">
@@ -66,10 +67,6 @@ export function PatchCompare({ before, after, patch, showAfter }: Props) {
           </div>
         );
       })}
-      <p className="small patch-note">
-        {patch.replacements.map((r) => `${describePath(r.path)} → ${r.value}`).join(" · ")}
-      </p>
-      <p className="caption">{patch.rationale}</p>
     </div>
   );
 }
