@@ -31,8 +31,9 @@ test('reference lists every implemented client and server message with schema-va
 test('reference covers every HTTP route, retained versions and static HEAD with captured response bodies', () => {
   for (const route of ['GET /v1/games', 'POST /v1/rooms', 'GET /v1/data/:gameId', 'POST /v1/data/:gameId/apply-patch',
     'POST /v1/playtest/run', 'POST /v1/playtest/full', 'GET /v1/replay/:matchId/views',
-    'GET /v1/playtest/results/:id.json', 'GET /v1/replay/:matchId', 'GET /*', 'HEAD /*', 'GET /ws']) assert.ok(
-    readme.includes(`### ${route}`), route);
+    'GET /v1/playtest/results/:id.json', 'GET /v1/replay/:matchId', 'GET /*', 'HEAD /*', 'GET /ws',
+    'GET /v1/versions/:gameId', 'GET /v1/versions/:gameId/:hash', 'POST /v1/versions/:gameId/:hash/approve',
+    'POST /v1/data/:gameId/select', 'POST /v1/playtest/auto']) assert.ok(readme.includes(`### ${route}`), route);
   for (const descriptor of examples.http.games.response.body) validate('GameDescriptor', descriptor);
   const base = examples.http.data.response.body;
   validate('GameData', base.data);
@@ -48,6 +49,15 @@ test('reference covers every HTTP route, retained versions and static HEAD with 
   results.forEach(result => validate('MatchResult', result));
   assert.equal(results.length, examples.http.playtest.response.body.matchCount);
   assert.equal(examples.http.applyPatch.response.body.baseDataHash, base.dataHash);
+  const versions = examples.http.versions.response.body, patched = examples.http.applyPatch.response.body.dataHash;
+  assert.equal(versions[0].parentHash, null);
+  assert.equal(versions[0].dataHash, base.dataHash);
+  assert.ok(versions.some(record => record.dataHash === patched && record.parentHash === base.dataHash));
+  assert.equal(examples.http.version.response.body.dataHash, patched);
+  assert.ok(Array.isArray(examples.http.version.response.body.diff));
+  assert.equal(examples.http.approve.response.body.approved, true);
+  assert.equal(examples.http.autoInvalid.response.status, 400);
+  assert.deepEqual(examples.http.select.response.body, { gameId: 'hero_arena', dataHash: base.dataHash });
 });
 test('fresh production-handler captures retain the documented catalog, data and message shapes', async () => {
   const current = await collectExamples();
