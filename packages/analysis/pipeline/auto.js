@@ -24,6 +24,7 @@ import { AnalysisError, fail, toErrorResult } from '../src/errors.js';
 
 export const MAX_ROUNDS = 5;
 const DEFAULT_ROUNDS = 3;
+const MAX_CANDIDATES = 2; // candidates per round, tried in recommendation order
 const SEATS = 2; // every seed is played with both seat orders
 
 /** The root record of a version tree (the base data). */
@@ -43,6 +44,26 @@ export function focusTargets(flagged) {
   }
   const focus = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || (a < b ? -1 : 1))[0];
   return focus === undefined ? [] : flagged.filter((d) => d.split(' vs ').includes(focus));
+}
+
+/**
+ * One candidate per recommendation, at most two, each as a diagnosis whose first recommendation is that one (the
+ * adapter prefers the first). Only the focus hero's recommendations are candidates: they share the round's target
+ * matchups.
+ * Without a diagnosis (or without recommendations) there is one plain candidate.
+ */
+export function candidateDiagnoses(diagnosis, focusHero) {
+  const recs = (diagnosis?.recommendations ?? []).filter((r) => focusHero === null || r.hero === focusHero);
+  if (!diagnosis || recs.length === 0) return [diagnosis ?? null];
+  const picked = [];
+  for (const rec of recs) if (!picked.some((p) => p.path === rec.path)) picked.push(rec);
+  return picked.slice(0, MAX_CANDIDATES).map((rec) => ({ ...diagnosis, recommendations: [rec,
+    ...diagnosis.recommendations.filter((r) => r !== rec)] }));
+}
+
+/** Summed improvement of a verdict's targets: how many points closer to 50% (negative when further away). */
+export function improvement(targets = []) {
+  return targets.reduce((sum, t) => sum + Math.abs(t.before.rate - 0.5) - Math.abs(t.after.rate - 0.5), 0);
 }
 
 const sideOf = (row) => ({ rate: row.winRate, ci95: row.ci95, games: row.games });
@@ -139,8 +160,31 @@ class Run {
     const byDiagnosis = diagnosis ? flagged.filter((d) => d.split(' vs ').includes(diagnosis.focusHero)) : [];
     const targets = byDiagnosis.length ? byDiagnosis : focusTargets(flagged);
     const baselineResults = results.filter((r) => targets.includes(heroMatchup(r)?.dimension));
-    let patched = null;
     if (diagnosis) this.diagnoses.push({ round, diagnosis });
+    const round_ = { round, head, flagged, targets, baselineResults };
+    const variants = candidateDiagnoses(diagnosis, byDiagnosis.length ? diagnosis.focusHero : null);
+    const outcomes = [];
+    for (const [index, variant] of variants.entries()) {
+      const outcome = await this.candidate(round_, variant, index, variants.length);
+      if (outcome.failed) {
+        if (outcomes.some((o) => o.record)) continue; // the other candidate already produced a result
+        return outcome.stop;
+      }
+      if (outcome.skipped) continue;
+      if (outcomes.some((o) => o.record?.dataHash === outcome.record.dataHash)) continue; // the same version again
+      outcomes.push(outcome);
+    }
+    return this.choose(round_, outcomes);
+  }
+
+  /**
+   * One candidate: the adapter is asked with this candidate's recommendation first, the patch is validated and applied,
+   * the holdout runs on the round's fresh seeds for the target matchups, and the verdict is judged. Nothing is emitted
+   * here: both candidates are compared first.
+   */
+  async candidate({ round, head, flagged, targets, baselineResults }, diagnosis, index, count) {
+    const { input } = this;
+    let patched = null;
     const rootData = input.rootData ?? input.data;
     const full = await runFull({ baselineResults, baseData: head.data, rootData, diagnosis, adapter: input.adapter,
       hashData: input.hashData,
@@ -150,20 +194,35 @@ class Run {
       }, holdoutSeeds: input.seedsFor(round, 'holdout'), botPolicyVersion: input.botPolicyVersion,
     seedSetId: input.seedSetId, createdAt: input.now(),
     runHoldout: (patchedData, seeds) => this.batch(round, 'holdout', patched.dataHash, targets, seeds) });
-    if (!full.ok) return { stop: 'error', error: full.error };
+    if (!full.ok) return { failed: true, stop: { stop: 'error', error: full.error } };
     const body = full.value;
-    if (!body.validation.ok) return { stop: 'not_accepted', invalidPatch: body.validation };
+    if (!body.validation.ok) return { failed: true, stop: { stop: 'not_accepted', invalidPatch: body.validation } };
     // A patch that changes nothing would make a record that is its own parent; it is simply not accepted.
-    if (body.patchedDataHash === head.hash) return { stop: 'not_accepted', noChange: true };
+    if (body.patchedDataHash === head.hash) return { failed: true, stop: { stop: 'not_accepted', noChange: true } };
     const accepted = body.verdict.verdict === 'accepted';
-    const approved = accepted && !input.requireApproval;
-    this.emit({ dataHash: body.patchedDataHash, parentHash: head.hash, gameId: input.gameId, createdAt: input.now(),
-      origin: body.proposal.origin, changes: body.proposal.changes, rationale: body.proposal.rationale,
-      target: targetOf(targets, this.reportOf(baselineResults, 'r-target'), body.patched), verdict: body.verdict,
-      approved, ...(approved ? { note: 'auto-approved' } : {}) });
-    if (!accepted) return { stop: 'not_accepted' };
-    if (!approved) return { stop: 'awaiting_approval' };
-    return { head: { hash: body.patchedDataHash, data: patched.data }, scope: flagged };
+    const record = { dataHash: body.patchedDataHash, parentHash: head.hash, gameId: input.gameId,
+      createdAt: input.now(), origin: body.proposal.origin, changes: body.proposal.changes,
+      rationale: body.proposal.rationale, target: targetOf(targets, this.reportOf(baselineResults, 'r-target'),
+        body.patched), verdict: body.verdict, approved: false,
+      ...(count > 1 ? { note: `candidate ${index + 1} of ${count}` } : {}) };
+    return { record, accepted, gain: improvement(body.verdict.targets), data: patched.data, flagged };
+  }
+
+  /** Emits every candidate as a sibling record and continues from the accepted one that improved most. */
+  choose({ flagged }, outcomes) {
+    const accepted = outcomes.filter((o) => o.accepted);
+    const best = accepted.reduce((top, o) => (top === null || o.gain > top.gain ? o : top), null);
+    const approve = best !== null && !this.input.requireApproval;
+    for (const outcome of outcomes) {
+      const chosen = approve && outcome === best;
+      const why = outcome.accepted && !chosen && approve ? 'accepted, not chosen: the other candidate improved more'
+        : chosen ? 'auto-approved' : null;
+      const note = [outcome.record.note, why].filter(Boolean).join('; ');
+      this.emit({ ...outcome.record, approved: chosen, ...(note ? { note } : {}) });
+    }
+    if (best === null) return { stop: 'not_accepted' };
+    if (!approve) return { stop: 'awaiting_approval' };
+    return { head: { hash: best.record.dataHash, data: best.data }, scope: flagged };
   }
 
   /** One all-matchups run on the last accepted hash, compared with the first scan. */

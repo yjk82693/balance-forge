@@ -529,3 +529,19 @@ room is the nearer of the absolute bound and the 40% band around the root value 
 means not offered, and `sizePct` is capped by the room that is left (rounded down to 5). Data without `health` and `speed`
 keeps the old behaviour. The offline stand-in applies a stat recommendation to the current value and clamps it to the 40%
 band. 4 new diagnose tests and 1 stand-in test.
+
+## Two candidates per round
+
+Step 3 of widening the levers. A round now tries up to two candidates, the first two distinct recommendations of the focus
+hero (`candidateDiagnoses`): the adapter is asked once per candidate with that recommendation first in the diagnosis context
+(the stand-in and the prompt follow the first one). Each candidate is validated, applied with the injected `applyPatch` and
+holdout-tested on the round's holdout seeds for the same target matchups (both candidates use the same fresh seeds, so they
+compare like with like), and judged by the per-target gate. Both become version records with the same `parentHash`
+(siblings), noted "candidate 1 of 2" and so on. The run continues from the accepted candidate; if both are accepted, the one
+with the larger summed improvement (`improvement`: points closer to 50% over all targets) is approved and the other is
+kept as "accepted, not chosen: the other candidate improved more". If neither is accepted the run stops `not_accepted` with
+both records unapproved. With `requireApproval` both stay unapproved and the run waits. A candidate that repeats a version
+(same hash as the other or as the parent), changes nothing or fails validation is skipped; the round only fails if no
+candidate produced a result. Without a diagnosis there is one plain candidate, as before. The `seedsFor` interface is unchanged.
+7 new tests in `test/auto.test.js` (siblings and parent, better of two, next round from the chosen record, neither accepted,
+approval, skipped candidates, `candidateDiagnoses`).
