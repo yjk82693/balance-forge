@@ -12,7 +12,7 @@ const mean = (xs, f) => (xs.length ? xs.reduce((s, x) => s + f(x), 0) / xs.lengt
 const round = (x, digits = 1) => Math.round(x * 10 ** digits) / 10 ** digits;
 
 /** One match, tick by tick: distances, availability of melee, and how every melee swing ended. */
-function playOne(engine, heroes, seed, swap) {
+export function playOne(engine, heroes, seed, swap) {
   const { arena, chooseActions, deriveBotSeed, compareIds, data } = engine;
   const assignments = swap ? { p1: heroes[1], p2: heroes[0] } : { p1: heroes[0], p2: heroes[1] };
   const config = arena.makeConfig(data, seed, ['p1', 'p2'], 1800, assignments);
@@ -49,7 +49,7 @@ function playOne(engine, heroes, seed, swap) {
     state = step.state;
   }
   const winner = arena.outcome(state).winners[0];
-  return { seed, swap, seats: assignments, ticks, swings, winnerHero: assignments[winner], duration: state.tick,
+  return { seed, swap, seats: assignments, ticks, swings, winner, winnerHero: assignments[winner], duration: state.tick,
     hp: Object.fromEntries(state.payload.entities.map((e) => [assignments[e.id], e.hp])) };
 }
 
