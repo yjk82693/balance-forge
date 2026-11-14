@@ -17,6 +17,7 @@ import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
+import { syncHero } from "../lib/heroSync";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 
@@ -116,6 +117,23 @@ export function Controller({ initialCode }: { initialCode: string }) {
     }
   }, [status, transport]);
 
+  // The room learns the hero from room.join only. When the hero this phone shows differs from the room's record (the
+  // person changed it after joining, or a saved seat was resumed), tell the room while it is still in the lobby.
+  const lastHeroSent = useRef<string | undefined>(undefined);
+  const seatHero = room?.seats.find((s) => s.seat === seat)?.hero;
+  useEffect(() => {
+    if (seatHero === joined?.hero) lastHeroSent.current = undefined;
+    const sent = syncHero(transport, {
+      phase: room?.phase,
+      seatHero,
+      wanted: joined?.hero ?? "",
+      online,
+      seated: !!seat && !!joined,
+      lastSent: lastHeroSent.current,
+    });
+    if (sent) lastHeroSent.current = sent;
+  }, [transport, room?.phase, seatHero, joined, online, seat]);
+
   // Remember the seat token the server hands out, and keep its age fresh while we hear from the server.
   useEffect(() => {
     if (!joined || !room?.you || !room.seatToken) return;
@@ -198,6 +216,28 @@ export function Controller({ initialCode }: { initialCode: string }) {
             Tap to rejoin.
           </button>
         </div>
+      )}
+      {room?.phase === "lobby" && (
+        <fieldset className="heroes seated-heroes" disabled={!online}>
+          <legend className="caption">Change hero</legend>
+          {HEROES.map((h) => (
+            <label
+              key={h.id}
+              className={`hero-pick${hero === h.id ? " on" : ""}`}
+              style={{ ["--hero" as string]: `var(${h.cssVar})` }}
+            >
+              <input
+                type="radio"
+                name="seated-hero"
+                value={h.id}
+                checked={hero === h.id}
+                onChange={() => setJoined({ ...joined, hero: h.id })}
+              />
+              <HeroPortrait hero={h.id} size={40} />
+              <span className="small">{h.name}</span>
+            </label>
+          ))}
+        </fieldset>
       )}
       {isCards ? (
         <CardsHand

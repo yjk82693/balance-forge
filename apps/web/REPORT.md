@@ -563,3 +563,10 @@ result. The recorded roster stays on the right (arena).
 `fetchVersions`, `fetchVersion`, `approveVersion`, `makeCurrent`, `runAutoBalance` and `loadHistory` take a `gameId`
 (default hero_arena); the paths live in `src/lib/versionPaths.ts`. The Versions screen follows the dashboard game, and
 the cards lobby's Patched button selects the newest accepted hero_cards version.
+
+## Phone hero follows room.hero
+
+A seated phone in the lobby can change its hero ("Change hero" row); the change, and a resumed seat whose stored hero
+differs from the room's record, send `room.hero { hero }` (`src/lib/heroSync.ts`, lobby only, once per hero so a refusal
+is not retried). The phone always shows the hero from room.status (`me.hero`), the stored one only before the first
+status. Test: `apps/web/test/hero-sync.test.mjs`. Not exercised against the live room.
