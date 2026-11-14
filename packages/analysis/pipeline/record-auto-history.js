@@ -5,16 +5,18 @@
 // compare with what POST /v1/playtest/auto stores. Generated data is not committed by this script.
 //
 // Offline adapter (origin "fake"): the plain fake adapter proposes one fixed patch, so a second round would be a no-op.
-// This stand-in is deterministic and also offline: it lowers the second move of the hero that wins the most lopsided
-// flagged matchup by 20%. It is a placeholder for a model, not a balance method.
+// This stand-in is deterministic and also offline: for the focus hero of a round it lowers (if winning) or raises (if
+// losing) the hero's most-used attack by 20%. It is a placeholder for a model, not a balance method.
 import { writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { baseVersionRecord, runAuto, MAX_ROUNDS } from './auto.js';
+import { baseVersionRecord, focusTargets, runAuto, MAX_ROUNDS } from './auto.js';
 import { errorResult, toErrorResult } from '../src/errors.js';
 
 const SEEDS_PER_PHASE = 100;
-const POWER_FACTOR_PERMILLE = 800;
+const LOWER_PERMILLE = 800;
+const RAISE_PERMILLE = 1200;
+const MAX_POWER = 10000;
 
 /** Same seed plan as the room service: 200 seeds per round, scan first, then holdout. */
 export const seedsFor = (round, phase) => Array.from({ length: SEEDS_PER_PHASE }, (_, i) => (round - 1) * 200 +
@@ -25,21 +27,58 @@ export const matchupsOf = (data) => {
   return roster.flatMap((hero, i) => roster.slice(i).map((other) => `${hero} vs ${other}`));
 };
 
-/** Offline stand-in adapter; `dataOf(hash)` gives the data a report was measured on. */
-export function steppingAdapter(dataOf) {
-  return { async proposeWithOrigin(report) {
+const ATTACKS = ['melee', 'projectile'];
+
+/** Applies a diagnosis recommendation: its path, its direction and its size in percent of the current value. */
+function followRecommendation(report, data, rec) {
+  if (!rec) return null;
+  if (!/^\/moves\/\d+\/power$/.test(rec.path)) return null; // only a move's power is a lever (no global scaling)
+  const current = data.moves[Number(rec.path.split('/')[2])]?.power;
+  if (!Number.isInteger(current)) return null;
+  const factor = 100 + (rec.direction === 'up' ? rec.sizePct : -rec.sizePct);
+  const value = Math.min(MAX_POWER, Math.max(0, Math.round((current * factor) / 100)));
+  return { origin: 'fake', proposal: { baseDataHash: report.dataHash, replacements: [{ path: rec.path, value }],
+    rationale: `Offline stand-in follows the first recommendation (${rec.direction} ${rec.sizePct}%): ${rec.why}` } };
+}
+
+/**
+ * Offline stand-in adapter (origin "fake"): follows the diagnosis context when there is one (first recommendation).
+ * Without it: the focus hero is the one in the most flagged matchups of the report. If it is winning (over those
+ * matchups) its most-used attack loses 20% power; if it is losing it gains 20%.
+ * `dataOf(hash)` gives the data a report was measured on; `usesOf(hero)` gives { actionId: uses } counted so far.
+ */
+export function steppingAdapter(dataOf, usesOf = () => ({})) {
+  return { async proposeWithOrigin(report, context = {}) {
     const data = dataOf(report.dataHash);
-    const row = report.rows.filter((r) => r.outlier && !/^(\S+) vs \1$/.test(r.dimension))
-      .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5) || (a.dimension < b.dimension ? -1 : 1))[0]
-      ?? report.rows[0];
-    const [first, second] = row.dimension.split(' vs ');
-    const hero = data.characters.find((c) => c.id === (row.winRate >= 0.5 ? first : second));
-    const moveId = hero.moveIds[1] ?? hero.moveIds[0];
-    const index = data.moves.findIndex((m) => m.id === moveId);
-    const value = Math.max(1, Math.floor((data.moves[index].power * POWER_FACTOR_PERMILLE) / 1000));
+    const followed = followRecommendation(report, data, context.diagnosis?.recommendations?.[0]);
+    if (followed) return followed;
+    const rows = report.rows.filter((r) => r.outlier && !/^(\S+) vs \1$/.test(r.dimension));
+    const dimensions = focusTargets(rows.map((r) => r.dimension));
+    const heroId = focusHeroOf(dimensions);
+    const mine = rows.filter((r) => dimensions.includes(r.dimension));
+    const games = mine.reduce((n, r) => n + r.games, 0);
+    const winRate = mine.reduce((n, r) => n + r.games * (r.dimension.split(' vs ')[0] === heroId ? r.winRate
+      : 1 - r.winRate), 0) / games;
+    const hero = data.characters.find((c) => c.id === heroId);
+    const uses = usesOf(heroId);
+    const action = [...ATTACKS].sort((x, y) => (uses[y] ?? 0) - (uses[x] ?? 0) || (x < y ? -1 : 1))[0];
+    const move = data.moves.find((m) => hero.moveIds.includes(m.id) && m.archetype === action)
+      ?? data.moves.find((m) => hero.moveIds.includes(m.id) && ATTACKS.includes(m.archetype));
+    const index = data.moves.indexOf(move);
+    const winning = winRate >= 0.5;
+    const factor = winning ? LOWER_PERMILLE : RAISE_PERMILLE;
+    const value = Math.min(MAX_POWER, Math.max(1, Math.floor((move.power * factor) / 1000)));
     return { origin: 'fake', proposal: { baseDataHash: report.dataHash, replacements: [{ path:
-      `/moves/${index}/power`, value }], rationale: `Offline stand-in: lower ${moveId} of ${hero.id} by 20%.` } };
+      `/moves/${index}/power`, value }], rationale: `Offline stand-in: ${winning ? 'lower' : 'raise'} ${move.id} of `
+      + `${hero.id} by 20% (${hero.id} is ${winning ? 'winning' : 'losing'}; its most-used attack is ${action}).` } };
   } };
+}
+
+/** The hero that appears in every dimension of a focus set (the focus hero); alphabetical if several do. */
+function focusHeroOf(dimensions) {
+  const counts = new Map();
+  for (const d of dimensions) for (const h of d.split(' vs ')) counts.set(h, (counts.get(h) ?? 0) + 1);
+  return [...counts.keys()].sort((x, y) => counts.get(y) - counts.get(x) || (x < y ? -1 : 1))[0];
 }
 
 function parse(argv) {
@@ -67,8 +106,19 @@ export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => ne
     const versions = new Map();
     const keep = (data) => { const dataHash = contracts.hash(data); versions.set(dataHash, data); return dataHash; };
     const fromHash = keep(arena.data);
+    const usage = {}; // hero -> actionId -> uses, counted over every match run so far (what the stand-in "saw")
+    const count = (results) => {
+      for (const r of results) {
+        for (const p of r.statistics.players) {
+          const hero = r.config.options.assignments[p.playerId];
+          usage[hero] ??= {};
+          for (const a of p.actions) usage[hero][a.actionId] = (usage[hero][a.actionId] ?? 0) + a.uses;
+        }
+      }
+    };
     const result = await runAuto({ gameId: arena.data.gameId, fromHash, data: structuredClone(arena.data), rounds,
-      requireApproval: false, adapter: steppingAdapter((hash) => versions.get(hash)), hashData: contracts.hash,
+      requireApproval: false, hashData: contracts.hash,
+      adapter: steppingAdapter((hash) => versions.get(hash), (hero) => usage[hero] ?? {}),
       allMatchups: matchupsOf(arena.data), seedsFor, botPolicyVersion: match.botPolicyVersion, now,
       applyPatch: (base, proposal) => {
         const data = applyEngine(base, proposal);
@@ -78,7 +128,9 @@ export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => ne
         const jobs = matchups.flatMap((m) => runner.pairedJobs({ data: versions.get(dataHash), seeds,
           heroes: m.split(' vs ') }));
         jobs.forEach((job, i) => { job.matchId = `m-${i + 1}`; });
-        return (await runner.runBatch(jobs, { workers: 2 })).results;
+        const results = (await runner.runBatch(jobs, { workers: 2 })).results;
+        count(results);
+        return results;
       } });
     if (result.stoppedBecause === 'error') return errorResult(result.error?.code ?? 'INTERNAL',
       result.error?.message ?? 'the run failed');

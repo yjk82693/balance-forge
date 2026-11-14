@@ -40,6 +40,9 @@ test('runFull: shared-interface body, with old values in proposal.changes', asyn
     new: 72 }]);
   assert.deepEqual(b.validation, { ok: true, errors: [] });
   assert.equal(b.verdict.verdict, 'accepted', b.verdict.reasons.join('; '));
+  assert.deepEqual(b.verdict.targets.map((t) => [t.matchup, t.outcome]), [['bari vs real_armor', 'improved']]);
+  assert.equal(b.verdict.targets[0].before.rate, 0.79);
+  assert.equal(b.verdict.targets[0].after.rate, 0.54);
   assert.equal(b.humanMatches, 0);
   assert.equal(b.botPolicyVersion, b.baseline.botPolicyVersion);
   assert.notEqual(b.holdoutSeedSetId, b.seedSetId);
@@ -140,4 +143,86 @@ test('a fair baseline with a thin sample is fair too (under 30 games there is no
   const out = await runFull(input({ baselineResults: pairedResults({ seeds: 5, winner: () => 'a' }),
     holdoutSeeds: holdoutSeeds.slice(0, 5) }));
   assert.equal(out.value.fair, true);
+});
+
+// --- diagnosis: the focus heroes against every other hero, passed to the adapter as context ---
+const three = ['bari', 'daewi', 'sepia'];
+const diagData = { tuning: { damageScalePermille: 1000 },
+  characters: three.map((id) => ({ id, moveIds: [`${id}_melee`, `${id}_shot`] })),
+  moves: three.flatMap((id, i) => [{ id: `${id}_melee`, archetype: 'melee', power: 50 },
+    { id: `${id}_shot`, archetype: 'projectile', power: i === 0 ? 92 : 90 }]) };
+const diagHash = (d) => (d.moves[1].power === 92 ? BASE_HASH : PATCHED_HASH);
+const diagBaseline = () => pairedResults({ heroes: ['bari', 'daewi'], seeds: 100, winner: rate(0.99) });
+const diagSeeds = Array.from({ length: 100 }, (_, i) => 2000 + i);
+const diagStub = (table) => async (matchups, seeds) => matchups.flatMap((dimension) => pairedResults({
+  heroes: dimension.split(' vs '), seeds: seeds.length, winner: (s) => (s % 100 < table[dimension] * 100 ? 'a' : 'b') })
+  .map((r, i) => ({ ...r, matchId: `${dimension}-${i}`, config: { ...r.config, seed: seeds[r.config.seed - 1] } })));
+const diagInput = (extra = {}) => input({ baselineResults: diagBaseline(), baseData: diagData, hashData: diagHash,
+  diagnoseSeeds: diagSeeds, runDiagnose: diagStub({ 'bari vs sepia': 0.9, 'daewi vs sepia': 0.5 }),
+  runHoldout: async () => holdoutOf(0.9), ...extra });
+
+test('runFull diagnoses the flagged matchup and hands the diagnosis to the adapter as context', async () => {
+  let seen;
+  const adapter = { async proposeWithOrigin(report, context) {
+    seen = context;
+    return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: 'x',
+      replacements: [{ path: '/moves/1/power', value: 72 }] } };
+  } };
+  const out = await runFull(diagInput({ adapter }));
+  assert.equal(out.ok, true, JSON.stringify(out));
+  const d = out.value.diagnosis;
+  assert.equal(d.matchup, 'bari vs daewi');
+  assert.equal(d.classification, 'overall_strong'); // bari beats daewi and sepia; daewi is fair against sepia
+  assert.equal(d.heroes.find((h) => h.hero === 'bari').opponents.length, 2);
+  assert.equal(seen.diagnosis, d); // the adapter got the same object
+});
+
+test('runFull without runDiagnose has diagnosis: null; a fair baseline never runs the diagnosis', async () => {
+  const plain = await runFull(input());
+  assert.equal(plain.value.diagnosis, null);
+  let called = false;
+  const fair = await runFull(diagInput({ baselineResults: fairResults(),
+    runDiagnose: async () => { called = true; return []; } }));
+  assert.equal(fair.value.fair, true);
+  assert.equal(fair.value.diagnosis, null);
+  assert.equal(called, false);
+});
+
+test('diagnosis seeds must be fresh, a failed run is a coded error, a bad pin is refused', async () => {
+  const code = (o) => (o.ok ? 'ok' : o.error.code);
+  assert.equal(code(await runFull(diagInput({ diagnoseSeeds: [1, 2, 3] }))), 'INVALID_INPUT'); // baseline seeds
+  assert.equal(code(await runFull(diagInput({ diagnoseSeeds: holdoutSeeds }))), 'INVALID_INPUT'); // holdout seeds
+  assert.equal(code(await runFull(diagInput({ diagnoseSeeds: undefined }))), 'INVALID_INPUT');
+  assert.equal(code(await runFull(diagInput({ runDiagnose: async () => { throw new Error('boom'); } }))),
+    'SIMULATION_FAILED');
+  const wrongPin = diagStub({ 'bari vs sepia': 0.9, 'daewi vs sepia': 0.5 });
+  assert.equal(code(await runFull(diagInput({ runDiagnose: async (m, s) => (await wrongPin(m, s)).map((r) => ({
+    ...r, config: { ...r.config, dataHash: 'd'.repeat(64) } })) }))), 'DATA_HASH_MISMATCH');
+});
+
+test('a diagnosis that cannot be built does not stop the run: diagnosis null plus diagnosisError', async () => {
+  const out = await runFull(diagInput({ baseData: { characters: diagData.characters, tuning: {} },
+    hashData: () => BASE_HASH,
+    applyPatch: (data) => ({ data, dataHash: PATCHED_HASH }) }));
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.equal(out.value.diagnosis, null);
+  assert.ok(out.value.diagnosisError);
+});
+
+test('change labels: a unique move names its hero, a shared move lists every hero it changes', async () => {
+  const shared = { tuning: {}, characters: [{ id: 'bari', moveIds: ['melee', 'spirit_arrow'] },
+    { id: 'daewi', moveIds: ['melee', 'heavy_melee'] }, { id: 'real_armor', moveIds: ['melee'] }],
+  moves: [{ id: 'melee', power: 50 }, { id: 'spirit_arrow', power: 92 }, { id: 'heavy_melee', power: 80 }] };
+  const labelFor = async (index) => {
+    const data = structuredClone(shared);
+    const hash = (d) => (d.moves[1].power === 92 && d.moves[0].power === 50 ? BASE_HASH : PATCHED_HASH);
+    const out = await runFull(input({ baseData: data, hashData: hash, adapter: { async proposeWithOrigin(report) {
+      return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: 'x',
+        replacements: [{ path: `/moves/${index}/power`, value: 40 }] } };
+    } } }));
+    assert.equal(out.ok, true, JSON.stringify(out));
+    return out.value.proposal.changes[0].label;
+  };
+  assert.equal(await labelFor(1), 'Bari · Spirit Arrow power');
+  assert.equal(await labelFor(0), 'Melee power (shared: Bari, Daewi, Real Armor)');
 });

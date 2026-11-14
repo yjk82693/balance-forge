@@ -443,3 +443,66 @@ has `fair: true`, `proposal: null`, `validation: null`, `patched: null`, `patche
 and no holdout run is made. A flagged matchup goes through as before and now says `fair: false`. Under 30 games there is no
 outlier, so a thin sample is also reported as fair. `measureFull`'s tiny wiring test changed accordingly. Tests in
 `test/full.test.js` (fair without adapter call, flagged still goes through, mirror-only, thin sample).
+
+## Per-target verdict gate (Round 8 decision)
+
+**In plain words (for the tutor).** A patch changes a few numbers, so it can fix some matchups and leave others alone. The old
+rule asked every flagged matchup to improve, so one matchup that no Bari change could move (Bari beats Daewi 99% whatever
+Spirit Arrow does) blocked a patch that had fixed the others. Now each flagged matchup ("target") gets its own outcome, and
+the patch is judged on the whole picture:
+- **improved:** with at least 200 games after the patch, the matchup is closer to 50% and either (a) the new 95% interval lies
+  wholly on the 50% side of the old interval, or (b) the distance to 50% shrank by at least 5 points. Both are checks against
+  noise, not against a single percentage.
+- **worse:** the same test in the other direction (further from 50% by at least 5 points, or an interval wholly on the far side).
+- **unchanged:** anything else, including fewer than 200 games.
+
+**Accepted** needs at least one improved target, no worse target, no new extreme matchup (a side above 65% with 200 games) and no
+rise in invalid matches. **Rejected** if any of those fail, or if enough games show that no target moved. **Inconclusive** when
+nothing improved but some target had too few games. The verdict carries the evidence: `verdict.targets` is
+`[{ matchup, before: {rate, ci95, games}, after: {rate, ci95, games}, outcome: 'improved'|'unchanged'|'worse' }]`, and `reasons`
+has one line per target ("bari vs sepia: improved (88.0% [83.0%-92.0%] n=200 -> 70.0% [63.0%-76.0%] n=200)") so the screen
+can show exactly which matchup the patch helped. `runFull` returns it in `verdict`, and `runAuto` stores the same array in each
+version record's `verdict` (the engine's version schema accepts it). A fair stop and an invalid patch have no targets
+(`verdict` without `targets` or with `[]`). The old per-target fields (`dimension`, `before`/`after` as plain numbers,
+`ci95After`, `improved`) are gone. 8 new verdict tests (`test/verdict.test.js`).
+
+**Offline stand-in direction (history script only).** For the focus hero of a round: if it is winning over the round's
+matchups, its most-used attack (melee or projectile, counted from the matches it has seen) is lowered by 20%; if it is
+losing, raised by 20%. Origin stays `fake`. Tests in `test/measure.test.js`.
+
+## Diagnosis (Round 8)
+
+`src/diagnose.js` (`buildDiagnosis`, `diagnosisMatchups`, `focusMatchupOf`). For a flagged matchup "A vs B" both heroes are
+measured against every other hero (non-mirror; with 5 heroes the 3 + 3 other matchups plus the flagged one), from results
+only; nothing is applied. Output `{ focusHero, matchup, heroes, classification, recommendations }`:
+- `heroes[]`: `{ hero, overall {rate, ci95, games}, opponents [{ opponent, rate, ci95, games }], strength { role:
+  'winner'|'loser', overallRate, marginPts, opponentsOutsideBand, worstOpponent } }`. Both sides are treated the same: the
+  winner gets how much stronger than the rest and how many opponents it beats beyond the fair band (95% interval wholly above
+  55%, at least 30 games), the loser the same below 45%. `worstOpponent` is where the hero is furthest from 50% in its role
+  direction.
+- `classification` (the flagged partner is left out of the counts, "most" means more than half of the other opponents):
+  `overall_strong` (the winner is above the band against most) -> nerf the winner; `overall_weak` (the loser is below the band
+  against most) -> buff the loser; both -> the larger gap decides; neither -> `counter_specific` (change the interaction).
+- `recommendations[]` (ranked, one or two per hero): `{ hero, role, path, direction 'up'|'down', sizePct, why, expected, scope }`.
+  The first one follows the classification (strong: the winner's nerf; weak: the loser's buff; counter: the winner's most-used
+  attack in this matchup), then the other hero's. `sizePct` is 0.8 x the overall gap in points (0.5 x for an interaction),
+  rounded to 5, within 5..30. The lever is chosen by use count (melee or projectile) from the use counts in the
+  results, because damage per move is not recorded yet (engine request in `CHANGE_REQUEST.md`); `why` says so.
+  Moves are shared (melee, projectile and guard each belong to several heroes), so levers are ranked: the hero's own unique
+  attacks first (most used first), then its other unique moves, then shared attacks (most used first). A shared move carries
+  `alsoAffects: [heroes it would also change]` and its `why` says it ranks below the hero's own moves; an own move has
+  `alsoAffects: []`. At most two levers per hero. There is no global lever (`damageScalePermille` scales every hero, so it is not
+  a way to change one hero's strength); that option was dropped. `expected` is a plain sentence ("brings 4 of 4 matchups toward the band"), an
+  expectation not a measurement.
+- Use: `runFull` accepts `runDiagnose(matchups, seeds)` and `diagnoseSeeds` (must not overlap baseline or holdout seeds), puts
+  `diagnosis` in the body (`null` without `runDiagnose`, on a fair stop or if it cannot be built, then with `diagnosisError`)
+  and gives it to the adapter as `context` (`proposeWithOrigin(report, { diagnosis })`); the LLM prompt carries aggregate numbers
+  only. The patch still goes through validation and the holdout. `runAuto` diagnoses the most lopsided flagged matchup each
+  round (reusing the scan where it covers the heroes, else running the missing matchups on the round's scan seeds as phase
+  `diagnose`), targets the matchups of the hero it recommends, and returns `diagnoses: [{ round, diagnosis }]`. So "Bari beats
+  Daewi, Daewi loses to everyone" becomes a Daewi buff. The offline stand-in follows the first recommendation. Tests:
+  `test/diagnose.test.js` (each classification, lever, size, global, errors, prompt), `test/full.test.js`, `test/auto.test.js`.
+
+Change labels in `runFull` follow the same ownership: a move only one hero owns reads "Bari · Spirit Arrow power"; a shared move
+reads "Projectile power (shared: Daewi, Real Armor, Sepia)" instead of naming whichever hero happens to be listed first. 5 new
+diagnose tests (shared-move ranking, own non-attack move first, hero with only shared moves, no global lever) and a label test.

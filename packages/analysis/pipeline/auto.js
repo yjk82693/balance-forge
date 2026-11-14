@@ -1,7 +1,8 @@
 // Automatic rounds over runFull. Round 1 scans `allMatchups` on `fromHash`; every later round scans only the matchups
-// the previous scan flagged. A round proposes a patch for one hero's flagged matchups (see focusTargets; mirror rows
-// are never targets),
-// applies it, runs the holdout on fresh seeds for those matchups and judges it. One version record per round.
+// the previous scan flagged. A round diagnoses the most lopsided flagged matchup (both heroes against every other
+// hero), picks the hero the diagnosis recommends and proposes a patch for that hero's flagged matchups (mirror rows
+// are never targets; without a diagnosis see focusTargets), applies it, runs the holdout on fresh seeds for those
+// matchups and judges it. One version record per round.
 //
 // input: { gameId, fromHash, data (the data for fromHash), rounds (1..5, default 3), requireApproval (default true),
 //   adapter, hashData, applyPatch(data, proposal) -> { data, dataHash }, runBatch(dataHash, matchups, seeds) ->
@@ -9,11 +10,13 @@
 //   e.g. "bari vs daewi"), botPolicyVersion, seedSetId, onProgress({ round, phase, matchesDone, totalMatches }),
 //   onRecord(versionRecord), now() -> ISO string }
 // returns { records, stoppedBecause: 'fair'|'not_accepted'|'regression'|'rounds'|'awaiting_approval'|'error',
-//   error?, finalCheck: Report | null, headHash }. Never throws. finalCheck is one all-matchups run on the last
-//   accepted hash, skipped while awaiting approval. Regression = that check shows a new extreme matchup (> 65%,
-//   n >= 200) compared with the first scan; the record of the last accepted version is then marked rejected.
+//   error?, finalCheck: Report | null, headHash, diagnoses: [{ round, diagnosis }] }. Never throws. finalCheck is one
+//   all-matchups run on the last accepted hash, skipped while awaiting approval. Regression = that check shows a new
+//   extreme matchup (> 65%, n >= 200) compared with the first scan; the record of the last accepted version is then
+//   marked rejected.
 import { analyzePhase } from './pipeline.js';
 import { runFull } from './full.js';
+import { buildDiagnosis, diagnosisMatchups, focusMatchupOf } from '../src/diagnose.js';
 import { heroMatchup } from '../src/group.js';
 import { isMirror, newExtremeRows } from '../src/verdict.js';
 import { AnalysisError, fail, toErrorResult } from '../src/errors.js';
@@ -75,6 +78,23 @@ class Run {
   constructor(input) {
     this.input = input;
     this.records = [];
+    this.diagnoses = [];
+  }
+
+  /**
+   * Both heroes of the focus matchup against every other hero. Matchups the scan already covered are reused; the
+   * rest run on the round's scan seeds (phase "diagnose"). Null when it cannot be built; the round carries on.
+   */
+  async diagnose(round, head, scanReport, scanResults) {
+    const matchup = focusMatchupOf(scanReport);
+    const heroIds = (head.data.characters ?? []).map((c) => c.id);
+    if (!matchup || heroIds.length < 3) return null;
+    const have = new Set(scanResults.map((r) => heroMatchup(r)?.dimension));
+    const missing = diagnosisMatchups(matchup, heroIds).filter((d) => !have.has(d));
+    const extra = missing.length ? await this.batch(round, 'diagnose', head.hash, missing,
+      this.input.seedsFor(round, 'scan')) : [];
+    const built = buildDiagnosis([...scanResults, ...extra], { matchup, data: head.data });
+    return built.ok ? built.value : null;
   }
 
   progress(round, phase, matchesDone, totalMatches) {
@@ -112,10 +132,16 @@ class Run {
     if (round === 1) this.firstScan = scanReport;
     const flagged = scanReport.rows.filter((r) => r.outlier && !isMirror(r)).map((r) => r.dimension);
     if (flagged.length === 0) return { stop: 'fair' };
-    const targets = focusTargets(flagged);
+    const diagnosis = await this.diagnose(round, head, scanReport, results);
+    // The diagnosis picks the hero: a weak hero is buffed, a strong one nerfed, whichever side of the flagged
+    // matchup it is on. Without a diagnosis the hero in the most flagged matchups is used.
+    const byDiagnosis = diagnosis ? flagged.filter((d) => d.split(' vs ').includes(diagnosis.focusHero)) : [];
+    const targets = byDiagnosis.length ? byDiagnosis : focusTargets(flagged);
     const baselineResults = results.filter((r) => targets.includes(heroMatchup(r)?.dimension));
     let patched = null;
-    const full = await runFull({ baselineResults, baseData: head.data, adapter: input.adapter, hashData: input.hashData,
+    if (diagnosis) this.diagnoses.push({ round, diagnosis });
+    const full = await runFull({ baselineResults, baseData: head.data, diagnosis, adapter: input.adapter,
+      hashData: input.hashData,
       applyPatch: (data, proposal) => {
         patched = input.applyPatch(data, proposal);
         return patched;
@@ -176,14 +202,17 @@ async function execute(input, run) {
     ({ head, scope } = next);
   }
   if (reason === 'awaiting_approval' || reason === 'error') {
-    return { records: run.records, stoppedBecause: reason, finalCheck: null, headHash: head.hash, ...extra };
+    return { records: run.records, stoppedBecause: reason, finalCheck: null, headHash: head.hash,
+      diagnoses: run.diagnoses, ...extra };
   }
   const check = await run.finalCheck(head);
   if (check.regression.length) {
     const headHash = run.rejectAccepted(head.hash, check.regression);
-    return { records: run.records, stoppedBecause: 'regression', finalCheck: check.report, headHash, ...extra };
+    return { records: run.records, stoppedBecause: 'regression', finalCheck: check.report, headHash,
+      diagnoses: run.diagnoses, ...extra };
   }
-  return { records: run.records, stoppedBecause: reason, finalCheck: check.report, headHash: head.hash, ...extra };
+  return { records: run.records, stoppedBecause: reason, finalCheck: check.report, headHash: head.hash,
+    diagnoses: run.diagnoses, ...extra };
 }
 
 export async function runAuto(input = {}) {
@@ -199,6 +228,7 @@ export async function runAuto(input = {}) {
     return await execute(settings, run);
   } catch (e) {
     const error = e instanceof AnalysisError ? { code: e.code, message: e.message } : toErrorResult(e).error;
-    return { records: run.records, stoppedBecause: 'error', finalCheck: null, headHash: settings.fromHash, error };
+    return { records: run.records, stoppedBecause: 'error', finalCheck: null, headHash: settings.fromHash,
+      diagnoses: run.diagnoses, error };
   }
 }

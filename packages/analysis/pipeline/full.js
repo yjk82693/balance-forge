@@ -3,7 +3,9 @@
 // Returns { ok: true, value: body } or an error result; body has the shared-interface fields except the transport
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
+import { buildDiagnosis, diagnosisMatchups, focusMatchupOf } from '../src/diagnose.js';
 import { buildEvidence } from '../src/evidence.js';
+import { heroMatchup } from '../src/group.js';
 import { isMirror } from '../src/verdict.js';
 import { HUMAN_PREFIX, withExtras } from '../src/extras.js';
 import { applyPatchToData } from '../src/replay.js';
@@ -22,10 +24,12 @@ function describeChange(baseData, { path, value }) {
   const moveId = baseData.moves?.[index]?.id;
   // The engine lists a hero's moves in `moveIds`; `moves` is accepted too.
   const ownsMove = (c) => [c.moveIds, c.moves].some((ids) => Array.isArray(ids) && ids.includes(moveId));
-  const hero = baseData.characters?.find(ownsMove)?.id;
+  const owners = (baseData.characters ?? []).filter(ownsMove).map((c) => c.id);
   const name = moveId ? `${titleCase(moveId)} power` : `Move ${index} power`;
-  return { path, label: hero ? `${titleCase(hero)} · ${name}` : name, old: baseData.moves?.[index]?.power,
-    new: value };
+  // A move that several heroes own changes all of them; the label says so instead of naming one owner.
+  const label = owners.length === 1 ? `${titleCase(owners[0])} · ${name}`
+    : owners.length > 1 ? `${name} (shared: ${owners.map(titleCase).join(', ')})` : name;
+  return { path, label, old: baseData.moves?.[index]?.power, new: value };
 }
 
 const seedsOf = (results) => new Set(results.map((r) => r.config.seed));
@@ -49,7 +53,7 @@ function checkHoldoutResults(holdoutResults, holdoutSeeds, patchedDataHash) {
   }
 }
 
-const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive',
+const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive', targets: [],
   reasons: ['the patch did not pass validation, so no holdout run was made', ...errors.slice(0, 3)] });
 
 /** Patched data and its hash: from the injected `applyPatch` (the engine's own) or from our pure copy. */
@@ -82,6 +86,7 @@ function fairBody(baseline, evidence, holdoutSeedSetId) {
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
     evidence,
+    diagnosis: null,
     fair: true,
     proposal: null,
     validation: null,
@@ -90,6 +95,40 @@ function fairBody(baseline, evidence, holdoutSeedSetId) {
     verdict: { verdict: 'inconclusive', reasons: ['no outlier: the matchup is within the fair band'] },
     humanMatches: baseline.humanMatches ?? 0,
   };
+}
+
+/**
+ * Diagnosis for the focus matchup: the focus heroes against every other hero, run by the injected `runDiagnose`
+ * (matchups, seeds) on fresh seeds. Returns { value } or { error }; a failed diagnosis never stops the run.
+ */
+async function diagnoseStep(input, baseline) {
+  const { baselineResults, baseData, holdoutSeeds, diagnoseSeeds, runDiagnose } = input;
+  if (input.diagnosis) return { value: input.diagnosis };
+  if (typeof runDiagnose !== 'function') return { value: null };
+  const matchup = focusMatchupOf(baseline);
+  const heroIds = (baseData.characters ?? []).map((c) => c.id);
+  const matchups = matchup ? diagnosisMatchups(matchup, heroIds) : [];
+  if (matchups.length === 0) return { value: null };
+  if (!Array.isArray(diagnoseSeeds) || diagnoseSeeds.length === 0 || !diagnoseSeeds.every(Number.isInteger)) {
+    fail('INVALID_INPUT', 'diagnoseSeeds must be a non-empty array of integers');
+  }
+  const taken = new Set([...baselineResults.map((r) => r.config.seed), ...holdoutSeeds]);
+  if (diagnoseSeeds.some((seed) => taken.has(seed))) {
+    fail('INVALID_INPUT', 'diagnose seeds must not overlap other seeds');
+  }
+  let results;
+  try {
+    results = await runDiagnose(matchups, [...diagnoseSeeds]);
+  } catch (e) {
+    return fail('SIMULATION_FAILED', `the diagnosis run failed: ${String(e?.message ?? e).slice(0, 120)}`);
+  }
+  assertMatchResults(results, 'diagnosis results');
+  if (results.some((r) => r.config.dataHash !== baseline.dataHash)) {
+    fail('DATA_HASH_MISMATCH', 'diagnosis results are not pinned to the baseline data');
+  }
+  const own = baselineResults.filter((r) => heroMatchup(r)?.dimension === matchup);
+  const built = buildDiagnosis([...own, ...results], { matchup, data: baseData });
+  return built.ok ? { value: built.value } : { error: built.error };
 }
 
 async function runFullUnsafe(input) {
@@ -109,13 +148,16 @@ async function runFullUnsafe(input) {
   const evidenceBody = evidence.ok ? evidence.value : null; // null only if it could not be built
   const flagged = baseline.rows.some((r) => r.outlier && !r.dimension.startsWith(HUMAN_PREFIX) && !isMirror(r));
   if (!flagged) return fairBody(baseline, evidenceBody, holdoutSeedSetId);
-  const step = await proposeStep(baseline, adapter);
+  const diagnosed = await diagnoseStep(input, baseline);
+  const step = await proposeStep(baseline, adapter, { context: diagnosed.value ? { diagnosis: diagnosed.value } : {} });
   const body = {
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
     evidence: evidenceBody,
+    diagnosis: diagnosed.value ?? null,
+    ...(diagnosed.error ? { diagnosisError: diagnosed.error } : {}),
     fair: false,
     proposal: { ...step.proposal, origin: step.origin,
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },
@@ -135,8 +177,9 @@ async function runFullUnsafe(input) {
   const out = verifyStep(baseline, holdoutResults, { reportId: 'r-patched', botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: body.holdoutSeedSetId,
     verdict: { holdoutSeeds: true } });
-  return { ...body, patchedDataHash, patched: withExtras(out.report, { createdAt }), verdict: {
-    verdict: out.verdict.verdict, reasons: out.verdict.reasons } };
+  const { verdict, reasons, targets } = out.verdict;
+  return { ...body, patchedDataHash, patched: withExtras(out.report, { createdAt }), verdict: { verdict, reasons,
+    targets } };
 }
 
 export const runFull = safely(runFullUnsafe);
