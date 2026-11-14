@@ -57,7 +57,7 @@ export async function measureFull({ mode = 'nonroster', pairs = 100, engineRoot,
       holdoutSeedSetId: `holdout-${HOLDOUT_FIRST_SEED}-${HOLDOUT_FIRST_SEED + pairs - 1}` });
     if (isError(out)) return out;
     const body = out.value;
-    return { ok: true, value: { mode, pairs, botPolicyVersion: bot.botPolicyVersion,
+    return { ok: true, value: { mode, pairs, botPolicyVersion: bot.botPolicyVersion, fair: body.fair,
       baseline: rowOf(body.baseline), holdout: rowOf(body.patched), proposal: body.proposal,
       validation: body.validation, verdict: body.verdict, phases, elapsedMs: Math.round(performance.now() - start) } };
   } catch (e) {
