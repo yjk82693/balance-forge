@@ -725,3 +725,8 @@ Auto route, designer hand-over: runAuto gets an `explain({hero, matchup})` hook 
 matchup (both seat orders, in this process, no network) with the analysis forensics and returns a sentence with the
 numbers, which is appended to the `needs_designer` evidence. Findings for Daewi vs Real Armor are in the analysis
 report ("Why Daewi loses").
+
+Bot candidate scripted-0.2.2 (packages/games/action/bot-0.2.2.js, not adopted): stand-off distance drawn from the
+hero's own reach and no melee swing out of reach, no hero branches, same seeding. Unit tests only so far; the side-
+by-side measurement of the roster (win rates and intervals, whiff rate per hero) waits for the power to be on. See
+BOT.md.
