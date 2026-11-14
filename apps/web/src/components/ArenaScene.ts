@@ -20,9 +20,11 @@ const HERO_FX: Record<string, string> = {
 // Art-space playfield rectangle (1920x1080); multiplied by the canvas scale at runtime.
 const FIELD_ART = { x: 150, y: 140, w: 1770 - 150, h: 1000 - 140 };
 const HERO_SCALE = 0.36;
+/** The hero pictures were drawn at 512 px; a smaller texture (the WebP) is scaled up to the same size on screen. */
+const HERO_ART_PX = 512;
 /** How far ahead (in ticks) the scene looks for an attack to lean into. */
 const ANTICIPATE_TICKS = 5;
-const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
+const FONT = '"UI Symbols", "Inter", "Noto Sans KR", system-ui, sans-serif';
 
 export interface ArenaAssets {
   floor: string;
@@ -172,7 +174,8 @@ export class ArenaScene extends Phaser.Scene {
           p.x,
           p.y,
           this.textures.exists(key) ? key : "__MISSING",
-        ).setOrigin(0.5, 498 / 512).setScale(HERO_SCALE * this.k);
+        ).setOrigin(0.5, 498 / 512);
+        sprite.setScale(this.heroScale(sprite));
         v = {
           id: e.id,
           hero: e.hero,
@@ -467,6 +470,10 @@ export class ArenaScene extends Phaser.Scene {
     }
   }
 
+  private heroScale(sprite: Phaser.GameObjects.Image): number {
+    return HERO_SCALE * this.k * (HERO_ART_PX / sprite.width);
+  }
+
   /** Swap in the hero's attack, hit or ko still while one is active; otherwise the full-body picture. */
   private showPose(v: HeroView) {
     const key = this.feel.pose(v.id, v.hero) ?? `hero:${v.hero}`;
@@ -528,7 +535,8 @@ export class ArenaScene extends Phaser.Scene {
           sy += b * 0.012;
         }
       }
-      v.sprite.setScale(HERO_SCALE * this.k * sx, HERO_SCALE * this.k * sy);
+      const scale = this.heroScale(v.sprite);
+      v.sprite.setScale(scale * sx, scale * sy);
       const lunge = this.feel.offset(v.id, v.sprite.flipX ? -1 : 1);
       if (!v.ko) v.sprite.setAngle(lunge.angle);
       this.showPose(v);

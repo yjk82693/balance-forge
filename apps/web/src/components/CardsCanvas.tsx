@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import type { CardsPayload, Observation } from "../lib/contract";
-import { assetUrl, loadManifest } from "../lib/assets";
+import { assetUrl, loadManifest, preferWebp } from "../lib/assets";
 import { SUMMON_ART } from "../lib/cards";
 import { CardsScene, TABLE_H, TABLE_W, type CardsAssets, type CardsMeta } from "./CardsScene";
 
@@ -22,7 +22,7 @@ export function CardsCanvas({ observation, names }: Props) {
       if (cancelled || !host.current) return;
       const u = (f: string) => assetUrl(`assets/hero_cards/ui/${f}.png`);
       const assets: CardsAssets = {
-        table: assetUrl("assets/hero_cards/backgrounds/table.png"),
+        table: assetUrl(preferWebp("assets/hero_cards/backgrounds/table.png")),
         cardBack: u("card_back"),
         hudSlot: u("hud_slot"),
         deckCounter: u("deck_counter"),

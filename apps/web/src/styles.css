@@ -1,4 +1,14 @@
 /* Tokens: docs/ui-tone.md section 10. Dark is default; light is dashboard-only. */
+/*
+ * Arrows, geometric shapes and check marks are not in Inter's Latin files, so the browser fell through to Noto Sans KR and
+ * downloaded its 530 KB Korean file on every screen with an arrow. These glyphs come from a font already on the device.
+ */
+@font-face {
+  font-family: "UI Symbols";
+  src: local("Arial"), local("Helvetica"), local("Segoe UI Symbol"), local("DejaVu Sans");
+  unicode-range: U+2190-21FF, U+25A0-25FF, U+2713-2714;
+}
+
 :root,
 [data-theme="dark"] {
   --bg: #0d1219;
@@ -89,7 +99,7 @@
 }
 
 :root {
-  --font-sans: "Inter", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "UI Symbols", "Inter", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-ko: "Noto Sans KR", "Inter", system-ui, sans-serif;
   --fs-eyebrow: 12px;
   --fs-caption: 12px;
