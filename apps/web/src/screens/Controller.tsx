@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
@@ -12,10 +12,12 @@ import { clearSeat, loadSeat, saveSeat } from "../lib/seat";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
-import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardsHand } from "../components/CardsHand";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
+
+// Phaser is the heaviest part of the page; the join form and the controls do not wait for it.
+const ArenaCanvas = lazy(() => import("../components/ArenaCanvas").then((m) => ({ default: m.ArenaCanvas })));
 
 const ERRORS: Record<string, string> = {
   AUTH_EXPIRED: "That code didn't match. Check the big screen and try again.",
@@ -199,13 +201,15 @@ export function Controller({ initialCode }: { initialCode: string }) {
       <>
       {arenaOn && (
         <div className="phone-arena">
-          <ArenaCanvas
-            observation={observation && isArenaPayload(observation.payload) ? (observation as Observation) : null}
-            events={events}
-            views={views}
-            compact
-            smooth
-          />
+          <Suspense fallback={null}>
+            <ArenaCanvas
+              observation={observation && isArenaPayload(observation.payload) ? (observation as Observation) : null}
+              events={events}
+              views={views}
+              compact
+              smooth
+            />
+          </Suspense>
         </div>
       )}
       <section className={`phone-body${arenaOn ? " tight" : ""}`} aria-live="polite">
