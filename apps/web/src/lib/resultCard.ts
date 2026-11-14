@@ -26,6 +26,8 @@ export interface Finding extends Rate {
 
 export interface PatchFact {
   field: string;
+  /** the allowlisted path, to look up a hero stat's allowed range */
+  path: string;
   old?: number;
   next: number;
   rationale: string;
@@ -114,6 +116,7 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
     patch: run.proposal && !run.fair
       ? changes.slice(0, 3).map((c) => ({
           field: c.label ?? describePath(c.path),
+          path: c.path,
           old: c.old,
           next: c.new,
           rationale: run.proposal!.patch.rationale,

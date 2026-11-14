@@ -136,6 +136,7 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     evidence: null,
     patch: v.changes.map((c) => ({
       field: c.label ?? describePath(c.path),
+      path: c.path,
       old: c.old,
       next: c.new,
       rationale: v.rationale,
