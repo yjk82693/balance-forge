@@ -121,8 +121,9 @@ Example:
 curl -sS -H 'content-type: application/json' -d '{"gameId":"hero_arena","pairs":1}'   "$BASE/v1/playtest/run"
 ```
 
-pairs is an integer 1..1000. Each seed runs twice with swapped assignments. The default arena matchup remains
-Bari/Real Armor; cards defaults to two standard decks. A concurrent run returns RATE_LIMITED.
+pairs is an integer 1..1000. Each seed runs twice with swapped assignments. Optional heroes ["a","b"] picks the
+matchup (see POST /v1/playtest/full for its errors). The default arena matchup remains Bari/Real Armor; cards
+defaults to two standard decks. A concurrent run returns RATE_LIMITED.
 200 response; elapsedMs is from this capture's actual worker run, not a performance guarantee:
 
 ```json
@@ -609,6 +610,19 @@ Production selects Gemini when GEMINI_API_KEY is set, otherwise fake; tests expl
 The analysis full.js module is integrated. Pipeline failures retain their public code and readable message,
 for example HTTP 400 {"code":"SIMULATION_FAILED","message":"The holdout run could not complete."}.
 The full captured success response is in examples.json → http.full.
+
+Any two heroes: optional `heroes: ["a", "b"]` (both ids playable in the data version, different) tests that one
+matchup instead of the default; each seed still runs twice with swapped seats. `heroes` cannot be combined with
+`roster`. Errors are HTTP 400 with their own code: `MIRROR_MATCHUP` (same hero twice: a mirror only measures the
+first-seat advantage), `HERO_NOT_PLAYABLE` (unknown id), `INVALID_SCHEMA` (not exactly two strings, or heroes with
+roster). The same field works on /v1/playtest/run. Captured: http.fullPair, http.mirrorInvalid.
+
+Fair matchups stop early: when the baseline has no outlier for the tested matchup (95% interval wholly outside 45-55%
+with at least 30 games; mirror rows do not count), the response has `fair: true`, `proposal: null`,
+`validation: null`, `patched: null`, `patchedDataHash: null` and verdict `inconclusive` with the reason "no outlier:
+the matchup is within the fair band". No proposal is requested (no LLM call), no holdout runs, no version is
+recorded and `seatWins.holdout` is null. A flagged matchup says `fair: false` and continues as described above.
+Because 30 games are needed, a run with fewer pairs than 15 for one matchup is always fair.
 
 /v1/playtest/run additionally accepts roster:true and dataHash to scan all roster matchups or a retained version:
 

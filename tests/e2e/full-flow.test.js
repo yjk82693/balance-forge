@@ -364,8 +364,10 @@ async function analyzeAndPatch(context, display, humans, baseline, original, ana
 }
 async function fullDashboard(context, display, dataHash) {
   const after = display.messages.length;
+  // One lopsided pair (40 games): enough for an outlier, so a patch is proposed. A fair one stops at the baseline.
   const body = await context.request('/v1/playtest/full', {
     gameId: 'hero_arena',
+    heroes: ['bari', 'daewi'],
     pairs: 20,
     holdoutPairs: 20
   });
