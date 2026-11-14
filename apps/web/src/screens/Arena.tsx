@@ -5,6 +5,7 @@ import { go } from "../lib/router";
 import { gameById } from "../lib/games";
 import { heroName } from "../lib/heroes";
 import { ArenaCanvas } from "../components/ArenaCanvas";
+import { CardBanner } from "../components/CardBanner";
 import { CardsCanvas } from "../components/CardsCanvas";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
@@ -31,7 +32,8 @@ function PlayBadge({ mock, playing }: { mock: boolean; playing: boolean }) {
 /** Laptop main screen: the arena as the players see it. */
 export function Arena({ gameId }: { gameId: string }) {
   const game = gameById(gameId);
-  const { transport, status } = useTransport("display");
+  // The room kept for this game: without the game id the big screen of Hero Cards joined a Hero Arena room instead.
+  const { transport, status } = useTransport("display", gameId);
   const { room, observation, events, result, views } = useRoom(transport);
   const srv = useServerState(status);
   const net = useNetStats(transport);
@@ -40,6 +42,7 @@ export function Arena({ gameId }: { gameId: string }) {
   const cardsObs =
     observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
+  const heroes = Object.fromEntries((room?.seats ?? []).flatMap((s) => (s.hero ? [[s.seat, s.hero]] : [])));
   // Remember the finished match so the dashboard can show "you just played this".
   useEffect(() => {
     if (!result || gameId !== "hero_arena") return;
@@ -73,7 +76,10 @@ export function Arena({ gameId }: { gameId: string }) {
       <main className="arena-screen">
         <div className="arena-stage">
           {gameId === "hero_cards" ? (
-            <CardsCanvas observation={cardsObs} names={names} />
+            <>
+              <CardsCanvas observation={cardsObs} names={names} heroes={heroes} />
+              <CardBanner views={views} names={names} heroes={heroes} />
+            </>
           ) : (
             <ArenaCanvas observation={arenaObs} events={events} views={views} bufferStats={bufferStats} />
           )}

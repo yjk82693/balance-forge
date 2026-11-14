@@ -2300,3 +2300,38 @@ table.sr-only { display: block; max-width: 1px; }
 .designer-section { margin-top: var(--space-3); }
 .designer-card { background: var(--surface-2); border-radius: var(--radius-md); padding: var(--space-3); border-left: 3px solid var(--warning); }
 .tried-list { list-style: none; margin: var(--space-2) 0; padding: 0; display: grid; gap: var(--space-1); }
+.slot-art { vertical-align: middle; margin-right: 6px; border-radius: 6px; }
+
+/* played-card banner and turn chip over the cards table */
+.card-banner {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 70%;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  background: rgba(13, 18, 25, 0.92);
+  box-shadow: var(--shadow-card, 0 6px 24px #0008), 0 0 0 2px var(--accent);
+  animation: banner-in 220ms var(--ease-out, ease-out);
+}
+.card-banner img { border-radius: var(--radius-sm, 6px); object-fit: cover; }
+.card-banner p { margin: 0; }
+.turn-chip {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translateX(-50%);
+  z-index: 15;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: rgba(13, 18, 25, 0.92);
+  font-weight: 700;
+  animation: banner-in 220ms var(--ease-out, ease-out);
+}
+@keyframes banner-in { from { opacity: 0; margin-top: -12px; } to { opacity: 1; margin-top: 0; } }
+@media (prefers-reduced-motion: reduce) { .card-banner, .turn-chip { animation: none; } }

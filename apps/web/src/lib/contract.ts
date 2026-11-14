@@ -172,7 +172,8 @@ export interface CardsEntity {
   ward: number;
   handCount: number;
   deckCount: number;
-  units: { id: string; power: number; sleepUntil: number }[];
+  /** `kind` is the card id the unit was summoned by (the server sends it; older views may lack it) */
+  units: { id: string; kind?: string; power: number; sleepUntil: number }[];
 }
 
 /** hero_cards observation payload (packages/games/cards/schemas.js). `hand` is only the viewer's. */

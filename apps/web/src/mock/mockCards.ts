@@ -1,8 +1,9 @@
-import type { CardDef, CardsPayload, Outcome } from "../lib/contract";
+import type { CardDef, CardsPayload, GameEvent, Outcome } from "../lib/contract";
 import { CARDS_RULES, STANDARD_CARDS } from "../lib/cards";
 
 interface Unit {
   id: string;
+  kind: string;
   power: number;
   sleepUntil: number;
 }
@@ -25,6 +26,8 @@ interface Side {
 export class CardsMock {
   turnId = 0;
   tick = 0;
+  /** what the last action did, as the real engine reports it (card.played, card.hit, turn.ended) */
+  events: GameEvent[] = [];
   outcome: Outcome = { status: "running", winners: [], reason: "in_progress" };
   private sides: Side[];
   private nextUnit = 0;
@@ -76,16 +79,23 @@ export class CardsMock {
     if (!this.running || s.id !== seat) return "STALE_TURN";
     const card = s.hand[handIndex];
     if (!this.playable(s, card)) return "ILLEGAL_ACTION";
+    this.events = [];
     s.hand.splice(handIndex, 1);
     s.discard.push(card);
     s.energy -= card.cost;
     const enemy = this.sides[(this.turnId + 1) % 2];
-    if (card.kind === "summon") s.units.push({ id: `u${this.nextUnit++}`, power: card.power, sleepUntil: 0 });
+    if (card.kind === "summon") {
+      s.units.push({ id: `u${this.nextUnit++}`, kind: card.id, power: card.power, sleepUntil: 0 });
+    }
     else if (card.kind === "ward") s.ward = Math.min(100, s.ward + card.power);
     else {
+      const before = enemy.hp;
       this.damage(enemy, card.power, card.ignoresWard);
       if (card.kind === "hypnosis") for (const u of enemy.units) u.sleepUntil = this.turnId + 2;
+      const amount = before - enemy.hp;
+      this.emit("card.hit", { source: s.id, target: enemy.id, amount, ignoresWard: card.ignoresWard });
     }
+    this.emit("card.played", { playerId: s.id, cardId: card.id });
     this.tick += 1;
     if (enemy.hp === 0) this.outcome = { status: "win", winners: [s.id], reason: "hp_zero" };
     else if (s.energy === 0) this.endTurn(seat);
@@ -95,8 +105,10 @@ export class CardsMock {
   endTurn(seat: string): string | null {
     const s = this.active;
     if (!this.running || s.id !== seat) return "STALE_TURN";
+    if (!this.events.length || this.events[this.events.length - 1].kind !== "card.played") this.events = [];
     const enemy = this.sides[(this.turnId + 1) % 2];
     for (const u of s.units) if (u.sleepUntil <= this.turnId) this.damage(enemy, u.power, false);
+    this.emit("turn.ended", { playerId: s.id, turnId: this.turnId });
     this.turnId += 1;
     this.tick += 1;
     if (enemy.hp === 0) this.outcome = { status: "win", winners: [s.id], reason: "hp_zero" };
@@ -113,6 +125,10 @@ export class CardsMock {
       this.refill(next);
     }
     return null;
+  }
+
+  private emit(kind: string, payload: Record<string, unknown>) {
+    this.events.push({ eventId: `${this.tick}:${this.events.length}`, audience: [], kind, payload });
   }
 
   private damage(target: Side, amount: number, ignoresWard: boolean) {
