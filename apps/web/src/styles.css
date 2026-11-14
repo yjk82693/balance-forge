@@ -578,3 +578,115 @@ p {
 .tile.disabled .tile-body .small {
   color: var(--text-3);
 }
+
+/* Lobby */
+.lobby-bar {
+  height: 6px;
+  background: var(--game, var(--accent));
+  opacity: 0.9;
+}
+.lobby {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1080fr) minmax(0, 768fr);
+  gap: var(--space-5);
+  padding: var(--space-6) var(--space-5);
+  align-items: start;
+}
+.lobby-join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.join-row {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.qr-card {
+  width: 408px;
+  max-width: 100%;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--qr-bg);
+  box-shadow: var(--shadow-card);
+}
+.qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+.qr-fallback {
+  color: #1b2330;
+}
+.room-code {
+  font-size: var(--fs-code);
+  line-height: 120px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.join-url {
+  color: var(--text-1);
+  font-weight: 500;
+}
+.chips {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.chip {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  animation: chip-in var(--dur-data) var(--ease-out);
+}
+.chip.open {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+  animation: none;
+}
+.chip.away .portrait {
+  opacity: 0.5;
+}
+.chip-name {
+  flex: 1;
+  min-width: 0;
+}
+@keyframes chip-in {
+  from {
+    background: var(--surface-3);
+  }
+}
+.lobby-note {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  font-weight: 500;
+  min-height: 16px;
+}
+.lobby-players .btn {
+  width: 100%;
+}
+@media (max-width: 1100px) {
+  .lobby {
+    grid-template-columns: 1fr;
+  }
+  .room-code {
+    font-size: 72px;
+    line-height: 80px;
+  }
+  .display {
+    font-size: 40px;
+    line-height: 48px;
+  }
+}
