@@ -49,7 +49,7 @@ export function PatchCompare({ before, after, showAfter }: Props) {
                 {heroName(b.matchup.a)} <span className="text-2">vs</span> {heroName(b.matchup.b)}
               </span>
             </div>
-            <Plot>
+            <Plot band={b.target.band}>
               <div className="viz-bar before-bar" title={ciText(b)} style={{ width: `${b.rate * 100}%` }} />
               <Interval s={b} />
               <div

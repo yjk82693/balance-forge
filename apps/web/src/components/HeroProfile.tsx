@@ -2,14 +2,19 @@ import type { Classification, Diagnosis, HeroProfileData, OpponentRate, Recommen
 import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
 import { HeroPortrait } from "./HeroPortrait";
-import { BAND, MIN_GAMES } from "./WinRateChart";
+import { MIN_GAMES } from "./WinRateChart";
+import { targetFor } from "../lib/intent";
 import { rangeNote } from "../lib/statPaths";
 import { describePath } from "./PatchCompare";
 
-/** Which side of the fair band the whole interval sits on, if either (and only with enough games to say). */
-function outside(r: VerdictRate): "win" | "lose" | null {
+/**
+ * Which side of the fair band the whole interval sits on, if either (and only with enough games to say). The band is
+ * the designer's intended result for `hero` against `opponent`, ±5 points: 45–55% where even is intended.
+ */
+function outside(r: VerdictRate, hero: string, opponent: string): "win" | "lose" | null {
   if (r.games < MIN_GAMES) return null;
-  return r.ci95[0] > BAND[1] ? "win" : r.ci95[1] < BAND[0] ? "lose" : null;
+  const [lo, hi] = targetFor(hero, opponent).band;
+  return r.ci95[0] > hi ? "win" : r.ci95[1] < lo ? "lose" : null;
 }
 
 const nameList = (heroes: string[]) => heroes.map(heroName).join(", ");
@@ -32,8 +37,8 @@ export function classificationLine(d: Diagnosis): string | null {
   if (!d.classification || !who || !profile) return null;
   if (d.classification === "overall_strong") return `${heroName(who)} is strong against everyone`;
   if (d.classification === "overall_weak") return `${heroName(who)} is weak against everyone`;
-  const wins = profile.opponents.filter((o) => outside(o) === "win").map((o) => o.opponent);
-  const loses = profile.opponents.filter((o) => outside(o) === "lose").map((o) => o.opponent);
+  const wins = profile.opponents.filter((o) => outside(o, profile.hero, o.opponent) === "win").map((o) => o.opponent);
+  const loses = profile.opponents.filter((o) => outside(o, profile.hero, o.opponent) === "lose").map((o) => o.opponent);
   if (wins.length && !loses.length) return `${heroName(who)} only beats ${nameList(wins)}`;
   if (loses.length && !wins.length) return `${heroName(who)} only loses to ${nameList(loses)}`;
   return `${heroName(who)} is unbalanced against specific opponents`;
@@ -45,7 +50,7 @@ function headline(p: HeroProfileData): string {
   const s = p.strength;
   if (!s) return p.overall ? `${name} wins ${pct(p.overall.rate)}% overall` : name;
   const margin = s.marginPts !== undefined ? Math.round(Math.abs(s.marginPts)) : undefined;
-  const k = s.opponentsOutsideBand ?? p.opponents.filter((o) => outside(o) !== null).length;
+  const k = s.opponentsOutsideBand ?? p.opponents.filter((o) => outside(o, p.hero, o.opponent) !== null).length;
   const of = p.opponents.length ? ` of ${p.opponents.length}` : "";
   return s.role === "winner"
     ? `${name} is ${margin !== undefined ? `+${margin} pts above even, ` : ""}beats ${k}${of} outside the fair band`
@@ -55,13 +60,24 @@ function headline(p: HeroProfileData): string {
 const place = (x: number) => `${Math.max(0, Math.min(1, x)) * 100}%`;
 
 /** One row: label, a 0-100% track with the 45-55% band, the interval and the rate. */
-function RateRow({ label, rate, strong }: { label: string; rate: VerdictRate; strong?: boolean }) {
+interface RateRowProps {
+  label: string;
+  rate: VerdictRate;
+  strong?: boolean;
+  /** the fair band for this row; 45–55% when not given */
+  band?: [number, number];
+}
+
+function RateRow({ label, rate, strong, band }: RateRowProps) {
   const [lo, hi] = rate.ci95;
   return (
     <li className={`rate-row${strong ? " strong" : ""}`}>
       <span className="small rate-label">{label}</span>
       <span className="rate-track" role="img" aria-label={`${pct(rate.rate)}%, interval ${pct(lo)} to ${pct(hi)}%`}>
-        <span className="rate-band" />
+        <span
+          className="rate-band"
+          style={band ? { left: place(band[0]), width: `${(band[1] - band[0]) * 100}%` } : undefined}
+        />
         <span className="rate-ci" style={{ left: place(lo), width: `${Math.max(0, hi - lo) * 100}%` }} />
         <span className="rate-dot" style={{ left: place(rate.rate) }} />
       </span>
@@ -104,7 +120,12 @@ function ProfileCard({ p, d, patchPaths }: { p: HeroProfileData; d: Diagnosis; p
       <ul className="rate-rows">
         {p.overall && <RateRow label="Overall" rate={p.overall} strong />}
         {opponents.map((o) => (
-          <RateRow key={o.opponent} label={`vs ${heroName(o.opponent)}`} rate={o} />
+          <RateRow
+            key={o.opponent}
+            label={`vs ${heroName(o.opponent)}`}
+            rate={o}
+            band={targetFor(p.hero, o.opponent).band}
+          />
         ))}
       </ul>
       {mine.length > 0 && (

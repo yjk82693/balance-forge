@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type SceneId = "match" | "bots" | "profile" | "patch" | "replay" | "verdict" | "history";
+export type SceneId = "match" | "intent" | "bots" | "profile" | "patch" | "replay" | "verdict" | "history";
 
 export interface Scene {
   id: SceneId;
@@ -9,10 +9,9 @@ export interface Scene {
   min: number;
 }
 
-const FIRST_SCENES: Scene[] = [
-  { id: "match", title: "The match", min: 5 },
-  { id: "bots", title: "Bots play", min: 8 },
-];
+const MATCH_SCENE: Scene = { id: "match", title: "The match", min: 5 };
+const INTENT_SCENE: Scene = { id: "intent", title: "What the designer wants", min: 8 };
+const BOTS_SCENE: Scene = { id: "bots", title: "Bots play", min: 8 };
 const PROFILE_SCENE: Scene = { id: "profile", title: "Hero profile", min: 12 };
 const MIDDLE_SCENES: Scene[] = [
   { id: "patch", title: "The patch", min: 8 },
@@ -20,13 +19,15 @@ const MIDDLE_SCENES: Scene[] = [
 ];
 
 /**
- * The flow. The hero profile comes between the result and the patch when the run has a diagnosis; the version history
- * comes last when there is one to show, otherwise the verdict is the end.
+ * The flow. The design intent chart comes before the bots when the designer wants anything but even. The hero profile
+ * comes between the result and the patch when the run has a diagnosis; the version history comes last when there is
+ * one to show, otherwise the verdict is the end.
  */
-export function scenesFor(opts: { profile: boolean; history: boolean }): Scene[] {
+export function scenesFor(opts: { intent: boolean; profile: boolean; history: boolean }): Scene[] {
   const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history ? 8 : 0 };
   const history: Scene[] = opts.history ? [{ id: "history", title: "Version history", min: 0 }] : [];
-  return [...FIRST_SCENES, ...(opts.profile ? [PROFILE_SCENE] : []), ...MIDDLE_SCENES, verdict, ...history];
+  const first = [MATCH_SCENE, ...(opts.intent ? [INTENT_SCENE] : []), BOTS_SCENE];
+  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...MIDDLE_SCENES, verdict, ...history];
 }
 
 const TICK_MS = 250;

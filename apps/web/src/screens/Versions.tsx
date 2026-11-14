@@ -11,6 +11,7 @@ import { botRows } from "../lib/groups";
 import { go } from "../lib/router";
 import { pct } from "../lib/stats";
 import { useManifest } from "../lib/assets";
+import { useIntent } from "../lib/intent";
 import { loadDesigner } from "../lib/designer";
 import { useHeroStats } from "../lib/heroStats";
 import {
@@ -51,6 +52,7 @@ function BotResult({ run, target }: { run: PlaytestRun; target?: string }) {
 
 export function Versions() {
   useManifest();
+  useIntent();
   useHeroStats();
   const [list, setList] = useState<VersionList | null>(null);
   const [source, setSource] = useState<HistorySource>("recorded");

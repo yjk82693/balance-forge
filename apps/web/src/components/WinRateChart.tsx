@@ -1,6 +1,7 @@
 import type { ReportRow } from "../lib/contract";
 import { humanLabel, isHumanDimension } from "../lib/groups";
 import { heroName } from "../lib/heroes";
+import { targetFor, type Target } from "../lib/intent";
 import { pct, wilson } from "../lib/stats";
 import { HeroPortrait } from "./HeroPortrait";
 
@@ -27,15 +28,22 @@ export interface RowStats {
   small: boolean;
   outlier: boolean;
   matchup: Matchup;
+  /** what the designer intends for this matchup (even unless the intent says otherwise) */
+  target: Target;
 }
 
-/** Wilson interval from wins/games; outlier = interval entirely outside the balanced band, never for tiny n. */
+/**
+ * Wilson interval from wins/games; outlier = interval entirely outside the intended band (the target ±5 points, 45–55%
+ * when the matchup is meant to be even), never for tiny n.
+ */
 export function rowStats(row: ReportRow): RowStats {
   const [lo, hi] = wilson(row.wins, row.games);
   const small = row.games < MIN_GAMES;
   const human = isHumanDimension(row.dimension);
   // Human rows are descriptive: a handful of games never raises an outlier alarm.
-  const outlier = !human && !small && (lo > BAND[1] || hi < BAND[0]);
+  const matchup = parseMatchup(row.dimension);
+  const target = human ? targetFor("", "") : targetFor(matchup.a, matchup.b);
+  const outlier = !human && !small && (lo > target.band[1] || hi < target.band[0]);
   return {
     row,
     rate: row.games ? row.wins / row.games : 0,
@@ -43,7 +51,8 @@ export function rowStats(row: ReportRow): RowStats {
     hi,
     small,
     outlier,
-    matchup: parseMatchup(row.dimension),
+    matchup,
+    target,
   };
 }
 
@@ -65,10 +74,11 @@ export function Axis() {
   );
 }
 
-export function Plot({ children }: { children: React.ReactNode }) {
+/** The 0-100% track with the fair band (the intended result ±5; 45–55% unless the designer wants otherwise). */
+export function Plot({ children, band = BAND }: { children: React.ReactNode; band?: [number, number] }) {
   return (
     <div className="viz-plot">
-      <div className="viz-band" style={{ left: `${BAND[0] * 100}%`, width: `${(BAND[1] - BAND[0]) * 100}%` }} />
+      <div className="viz-band" style={{ left: `${band[0] * 100}%`, width: `${(band[1] - band[0]) * 100}%` }} />
       {children}
       <div className="viz-baseline" />
     </div>
@@ -119,8 +129,9 @@ export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense
           <div className="viz-label">
             <RowLabel s={s} dense={dense} />
             {s.outlier && <span className="badge outlier">▲ Outlier</span>}
+            {s.target.favored && <span className="caption intended">{s.target.label}</span>}
           </div>
-          <Plot>
+          <Plot band={s.target.band}>
             <div
               className={`viz-bar${s.outlier ? " warn" : ""}${s.small ? " small-n" : ""}`}
               style={{ width: `${s.rate * 100}%` }}
@@ -133,7 +144,7 @@ export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense
         </div>
       ))}
       <p className="caption viz-foot">
-        Dashed line = 50%. Shaded band = 45–55%. Whiskers = 95% CI (Wilson).
+        Dashed line = 50%. Shaded band = the intended result ±5 (45–55% where even). Whiskers = 95% CI (Wilson).
       </p>
       <table className="sr-only">
         <caption>Win rate by matchup</caption>
