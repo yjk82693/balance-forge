@@ -66,7 +66,7 @@ export function newExtremeRows(before, after, minGames = MIN_GAMES) {
  * options.targets: dimensions to judge; default = non-mirror rows flagged outlier in `before`. Mirror rows are
  * not default targets, but they still count in the "new extreme matchup" check below.
  */
-export function judgePatch(before, after, options: any = {}) {
+export function judgePatch(before, after, options: any = {}): any {
   assertReport(before, 'before');
   assertReport(after, 'after');
   const minGames = options.minGames ?? MIN_GAMES;

@@ -78,7 +78,7 @@ export class JsonFileStorage {
 
 /** Not wired anywhere. A later, reviewed step may implement this against TigerData. */
 export class TigerDataStorage {
-  async saveReport() { throw new Error('TigerDataStorage is not implemented'); }
+  async saveReport(_report?: unknown) { throw new Error('TigerDataStorage is not implemented'); }
   async listReports() { throw new Error('TigerDataStorage is not implemented'); }
   async getReport() { throw new Error('TigerDataStorage is not implemented'); }
 }

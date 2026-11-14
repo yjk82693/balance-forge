@@ -23,7 +23,7 @@ export const BOT_SEED_DERIVATIONS = {
 // The engine's bot is `chooseActions(view, seq, variant)` returning an array (arena-0.1.1 and later).
 // The older single-action `chooseAction(view, tick, variant)` is still accepted.
 export function createArenaSimulator({ arena, chooseActions, chooseAction, hash, compareIds,
-  botSeed = BOT_SEED_DERIVATIONS['scripted-0.1.1'] }) {
+  botSeed = BOT_SEED_DERIVATIONS['scripted-0.1.1'] as any }: any) {
   const needed = { 'arena.initial': arena?.initial, 'arena.observe': arena?.observe, 'arena.step': arena?.step,
     'arena.outcome': arena?.outcome, 'arena.hash': arena?.hash, hash, compareIds };
   const missing = Object.keys(needed).filter((k) => typeof needed[k] !== 'function');
@@ -62,7 +62,7 @@ export function createArenaSimulator({ arena, chooseActions, chooseAction, hash,
 }
 
 /** Result-style loader: { ok: true, value: simulator } or an ENGINE_UNAVAILABLE error result. */
-export async function loadArenaSimulator(engineRoot) {
+export async function loadArenaSimulator(engineRoot?): Promise<any> {
   const load = (rel) => (engineRoot ? import(pathToFileURL(join(resolve(engineRoot), rel)).href)
     : import(new URL(`../../../${rel}`, import.meta.url).href));
   try {

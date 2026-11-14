@@ -27,7 +27,7 @@ test('applyPatchToData: pure, bounded, checks base hash and move index', () => {
   assert.equal(patched.moves[1].power, 5);
   assert.equal(patched.tuning.damageScalePermille, 900);
   assert.equal(data.moves[1].power, 20); // input untouched
-  const attempt = (proposal, opts) => { try { applyPatchToData(data, proposal, opts); } catch (e) { return e.code; } };
+  const attempt = (proposal, opts?) => { try { applyPatchToData(data, proposal, opts); } catch (e) { return e.code; } };
   assert.equal(attempt({ baseDataHash: 'f'.repeat(64), replacements: [{ path: '/moves/1/power', value: 5 }],
     rationale: '' }, { hashData: h }), 'PATCH_BASE_MISMATCH');
   assert.equal(attempt({ baseDataHash: h(data), replacements: [{ path: '/moves/7/power', value: 5 }],

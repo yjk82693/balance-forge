@@ -123,7 +123,7 @@ export function forensicsSentence(summary) {
 }
 
 /** Replays `seeds` seeds of heroes[0] vs heroes[1], both seat orders. Resolves { ok, value } or an error result. */
-export async function forensics({ heroes, seeds = 100, engineRoot }: any = {}) {
+export async function forensics({ heroes, seeds = 100, engineRoot }: any = {}): Promise<any> {
   try {
     if (!Array.isArray(heroes) || heroes.length !== 2 || heroes[0] === heroes[1]) {
       return errorResult('INVALID_INPUT', 'heroes must be two different hero ids');

@@ -13,7 +13,8 @@ const HASH = 'a'.repeat(64);
 
 // All 15 matchups (10 distinct pairs + 5 mirrors). `a` side (alphabetically first) wins `rate` of seeds;
 // in mirrors the seat-1 hero ("a" in the helper) wins `rate` of the matches.
-function fullRoster({ seeds = 40, rate = () => 0.5 } = {}) {
+type Rate = (x: string, y: string) => number;
+function fullRoster({ seeds = 40, rate = (() => 0.5) as Rate }: any = {}) {
   const out = [];
   ROSTER.forEach((x, i) => {
     for (const y of ROSTER.slice(i)) {

@@ -268,7 +268,7 @@ test('a failing model shows in the response: origin fallback with the reason, ne
     [async () => ({ ok: false, status: 404, json: async () => ({ error: 'secret body' }) }), /HTTP 404/],
     [async () => { throw new Error('connect ECONNREFUSED'); }, /ECONNREFUSED/],
     [async () => ({ ok: true, json: async () => ({}) }), /empty model response/]];
-  for (const [fetch, reason] of failures) {
+  for (const [fetch, reason] of failures as Array<[any, RegExp]>) {
     const adapter = createAdapter('gemini', { GEMINI_API_KEY: 'super-secret-key' }, { fetch, retries: 0 });
     const out = await runFull(input({ adapter }));
     assert.equal(out.ok, true, JSON.stringify(out));

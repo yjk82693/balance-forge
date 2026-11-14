@@ -87,7 +87,7 @@ test('applyPatchToData produces the data the engine produces', () => {
     replacements: [{ path: '/characters/0/health', value: Math.floor(root.characters[0].health * 1.56) }] };
   assert.equal(engineAccepts(grown, drift), false);
   assert.throws(() => applyPatchToData(grown, drift, { hashData: contracts.hash, rootData: root }),
-    (error) => error.code === 'INVALID_PATCH' && /within 40%/.test(error.message));
+    (error: any) => error.code === 'INVALID_PATCH' && /within 40%/.test(error.message));
 });
 
 test('the LLM schema accepts the new paths and the prompt lists the heroes with their allowed ranges', () => {

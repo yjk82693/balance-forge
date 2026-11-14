@@ -94,7 +94,7 @@ function focusHeroOf(dimensions) {
 }
 
 /** The recorded file: a summary of the run and the version records (base first). */
-export function buildHistoryFile({ result, history, rounds, botPolicyVersion, simVersion, createdAt }) {
+export function buildHistoryFile({ result, history, rounds, botPolicyVersion, simVersion, createdAt }: any) {
   return { summary: { stoppedBecause: result.stoppedBecause, rounds, needs_designer: result.needs_designer ?? [],
     botPolicyVersion, simVersion, createdAt }, versions: history };
 }

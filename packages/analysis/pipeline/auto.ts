@@ -406,7 +406,7 @@ async function execute(input, run) {
     diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
 }
 
-export async function runAuto(input: any = {}) {
+export async function runAuto(input: any = {}): Promise<any> {
   const settings = { rounds: DEFAULT_ROUNDS, requireApproval: true, now: () => new Date().toISOString(), ...input };
   try {
     checkInput(settings);

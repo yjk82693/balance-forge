@@ -60,7 +60,7 @@ export function reportOf(name, totals) {
 }
 
 /** Runs every policy on the roster. Resolves { ok: true, value: { pairs, policies: [...] } } or an error result. */
-export async function compareBots({ pairs = 100, heroes, engineRoot, policies = POLICIES }: any = {}) {
+export async function compareBots({ pairs = 100, heroes, engineRoot, policies = POLICIES }: any = {}): Promise<any> {
   try {
     if (!Number.isInteger(pairs) || pairs < 1 || pairs > 1000) {
       return errorResult('INVALID_INPUT', 'pairs must be 1..1000');

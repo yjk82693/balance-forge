@@ -35,8 +35,8 @@ export const isError = (r) => r !== null && typeof r === 'object' && r.ok === fa
   typeof r.error?.code === 'string';
 
 /** Wrap a (sync or async) function: returns { ok: true, value } or an error result. Never throws. */
-export function safely(fn) {
-  return (...args) => {
+export function safely(fn: (...args: any[]) => any): (...args: any[]) => any {
+  return (...args: any[]) => {
     try {
       const out = fn(...args);
       if (out && typeof out.then === 'function') {
