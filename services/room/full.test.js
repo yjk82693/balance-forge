@@ -170,3 +170,15 @@ test('pipeline failures retain their public code and readable message in HTTP re
     code: 'SIMULATION_FAILED', message: 'The holdout run could not complete.'
   });
 });
+test('real pipeline validation errors pass through the full route without generic transport masking', async t => {
+  const { server } = await localServer(t);
+  server.storage.humans = [{}];
+  const response = await http(server, '/v1/playtest/full', {
+    method: 'POST', body: { gameId: 'hero_arena', pairs: 1, holdoutPairs: 1 }
+  });
+  assert.equal(response.status, 400);
+  const body = response.json();
+  assert.equal(body.code, 'INVALID_INPUT');
+  assert.ok(body.message.includes('human results'));
+  assert.equal(server.runningBatch, false);
+});

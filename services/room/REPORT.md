@@ -481,3 +481,12 @@ results and metrics. Regenerated services/room/examples.json with production han
 The analysis-owned recorded copy and its hard-coded scripted-0.1.1 test still require the owner follow-up noted
 above; no files outside ownership were changed. Older non-roster recordings remain historical, not derivatives
 of this roster run. No outside network or commits.
+
+Step 4: /v1/playtest/full now accepts optional dataHash and passes pipeline error codes/messages through HTTP.
+seatWins.baseline and seatWins.holdout are numeric first-seat counts; holdout is null if no run occurred.
+README and examples describe the integrated pipeline, retained-version selection and public errors.
+Focused bot/full/documentation/readability tests: 15 passed, 0 failed. Added an actual pipeline-validation error
+regression plus tests for retained baseline pins and public error transport; no external adapter calls.
+Known full-suite blockers are analysis-owned tests: recorded.test.js compares the stale recorded report and
+requests scripted-0.1.1; replay.test.js:164 expects 300 games rather than this required 3,000-game run.
+Left both tests unchanged and documented precise owner follow-ups in services/room/CHANGE_REQUEST.md.

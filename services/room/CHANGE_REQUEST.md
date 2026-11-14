@@ -27,3 +27,13 @@ Round 6 explicitly asks recorded solo results to identify their bot seat. Added 
 MatchResult.botSeats: string[] in the owned schema/types (normal bot/human result shapes remain unchanged).
 Room persistence verifies IDs reference config.players. Integrator should record this optional addition in the
 shared contract; spec and fixtures remain untouched by this branch.
+
+## Round 7 recording consumers
+
+The new required roster run has 100 pairs per matchup: 3,000 games and policy scripted-0.2.0.
+Please regenerate packages/analysis/recorded/recorded-roster-report.json from the new runner recordings and
+update packages/analysis/test/recorded.test.js to request scripted-0.2.0 (or read it from runner metrics).
+packages/analysis/test/replay.test.js:164 still asserts exactly 300 games; the required new run has 3,000.
+Please update that expected run size while preserving every replay/hash/outcome/duration assertion.
+The matching regenerated report is services/runner/recorded-roster-report.json. These files are outside
+engine ownership; their tests remain failing until the analysis owner integrates the recording update.

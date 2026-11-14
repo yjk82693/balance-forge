@@ -39,6 +39,14 @@ test('incoming hostile projectiles trigger a generic legal guard without changin
     const view = observe(state, 'p1'), before = structuredClone(view);
     assert.equal(bot.chooseAction(view, 0).actionId, 'guard');
     assert.deepEqual(view, before);
+    view.payload.projectiles[0].ignoresGuard = true;
+    assert.equal(bot.chooseAction(view, 0).actionId, 'guard');
+    view.payload.projectiles[0].owner = 'p1';
+    assert.notEqual(bot.chooseAction(view, 0).actionId, 'guard');
+    view.payload.projectiles[0].owner = 'p2';
+    view.payload.projectiles[0].y += 2000;
+    assert.notEqual(bot.chooseAction(view, 0).actionId, 'guard');
+    view.payload.projectiles[0].y -= 2000;
     view.payload.projectiles[0].vx = 300;
     assert.notEqual(bot.chooseAction(view, 0).actionId, 'guard');
     view.payload.projectiles[0].vx = -300;
