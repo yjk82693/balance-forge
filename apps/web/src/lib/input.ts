@@ -3,8 +3,8 @@ import type { ActionInput } from "./contract";
 export type ButtonAction = "melee" | "projectile" | "guard";
 export type InputSource = "touch" | "gamepad" | "keyboard";
 
-const MOVE_INTERVAL_MS = 33; // ~30 sends/s for small changes, well under the 120/s/seat cap in the contract
-/** A change in the move vector (of 1000) this large, a stop, or a start is sent at once; smaller ones wait for the cap. */
+const MOVE_INTERVAL_MS = 33; // ~30 sends/s for small changes, far under the contract's 120/s/seat cap
+/** A change this large in the move vector (of 1000), a stop or a start is sent at once; smaller ones wait. */
 const BIG_CHANGE = 150;
 const clampInt = (v: number) => Math.max(-1000, Math.min(1000, Math.round(v * 1000)));
 

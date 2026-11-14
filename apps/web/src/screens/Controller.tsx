@@ -8,6 +8,7 @@ import { useManifest } from "../lib/assets";
 import { go } from "../lib/router";
 import { InputPipeline } from "../lib/input";
 import { useGamepad } from "../lib/gamepad";
+import { usePreventPageGestures } from "../lib/touchGuard";
 import { clearSeat, loadSeat, saveSeat } from "../lib/seat";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
@@ -66,6 +67,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const online = status === "online";
   const playing = !!seat && !!joined;
   const padName = useGamepad(pipeline, playing && online);
+  usePreventPageGestures(playing && gameId !== "hero_cards"); // the cards hand scrolls sideways, so it is left alone
 
   useEffect(() => {
     if (import.meta.env.DEV && transport) {
@@ -233,8 +235,12 @@ export function Controller({ initialCode }: { initialCode: string }) {
         )}
         {padName && <p className="caption">Gamepad connected</p>}
       </section>
+      <Stick pipeline={pipeline} disabled={!online} />
       <div className={`pad${online ? "" : " dim"}`}>
-        <Stick pipeline={pipeline} disabled={!online} />
+        <div className="stick-idle" aria-hidden="true">
+          <div className="stick-ring" />
+          <div className="stick-knob" />
+        </div>
         <div className="btn-cluster">
           <ActionButton
             className="b-guard"
