@@ -199,7 +199,7 @@ export class RoomServer {
     const result={matchId:room.matchId,config:a.config,
       outcome:failure?{status:'running',winners:[],reason:'invalid_match'}:room.game.outcome(a.state),
       statistics:room.game.statistics(a.state),finalStateHash:room.game.hash(a.state),valid:!failure,errorCode:failure??''};
-    this.storage.record(result);room.result=result;room.phase='ended';
+    this.storage.record(result,{matchId:room.matchId,seed:a.config.seed,config:a.config,frames:a.frames,finalStateHash:result.finalStateHash});room.result=result;room.phase='ended';
     for(const s of room.members)this.send(s,'match.ended',{result});
     this.status(room);
   }
@@ -238,6 +238,11 @@ export class RoomServer {
       const room=this.createRoom(body.gameId);
       json(response,201,{roomId:room.id,joinCode:room.code,hostToken:room.hostToken,epoch:room.epoch});return;
     }
+    const replayRoute=path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})$/);
+    if(request.method==='GET'&&replayRoute){
+      const recording=this.storage.getReplay(replayRoute[1]);
+      json(response,recording?200:404,recording??{code:'INVALID_SCHEMA'});return;
+    }
     const dataRoute=path.match(/^\/v1\/data\/(hero_arena|hero_cards)(\/apply-patch)?$/);
     if(dataRoute) {
       if(request.method==='GET'&&!dataRoute[2]){json(response,200,this.storage.get(dataRoute[1],url.searchParams.get('dataHash')??undefined));return;}
@@ -252,8 +257,12 @@ export class RoomServer {
       if(this.runningBatch)throw Error('RATE_LIMITED');this.runningBatch=true;
       const task=(async()=>{
         const {data,dataHash}=this.storage.get(body.gameId);
-        const batch=await runBatch(pairedJobs({gameId:body.gameId,data,seeds:Array.from({length:body.pairs},(_,i)=>i+1)}),{workers:this.workers});
-        const id=randomUUID(),resultsPath=`/v1/playtest/results/${id}.json`;
+        const id=randomUUID();
+        const jobs=pairedJobs({gameId:body.gameId,data,seeds:Array.from({length:body.pairs},(_,i)=>i+1)});
+        jobs.forEach((job,i)=>{job.matchId=`bot-${id}-${i+1}`;});
+        const batch=await runBatch(jobs,{workers:this.workers,captureReplays:true});
+        batch.replays.forEach(recording=>this.storage.recordReplay(recording));
+        const resultsPath=`/v1/playtest/results/${id}.json`;
         writeJson(join(this.storage.directory,'playtests',`${id}.json`),batch.results);
         writeJson(join(this.storage.directory,'playtests',`${id}.metrics.json`),batch.metrics);
         json(response,200,{resultsPath,elapsedMs:batch.metrics.elapsedMs,matchCount:batch.results.length,

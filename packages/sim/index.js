@@ -115,3 +115,9 @@ export function replay(adapter, config, data, frames) {
   for (const frame of frames) state = adapter.step(state, frame, data).state;
   return state;
 }
+// Counterfactual playback changes only the immutable data pin, preserving seed, assignments and accepted inputs.
+// If the candidate makes a recorded action illegal, replay throws instead of silently replacing that input.
+export function replayOnData(adapter, recording, data) {
+  const config = {...structuredClone(recording.config), dataHash: pinData(data)};
+  return replay(adapter, config, data, recording.frames);
+}

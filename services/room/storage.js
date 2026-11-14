@@ -58,9 +58,22 @@ export class Storage {
     const digest=this.addVersion(candidate);this.current.set(gameId,digest);this.saveIndex();
     return {dataHash:digest,baseDataHash:base.dataHash};
   }
-  record(result) {
+  recordReplay(recording) {
+    if(!/^[A-Za-z0-9_-]{1,128}$/.test(recording.matchId))throw Error('INVALID_SCHEMA');
+    validate('MatchConfig',recording.config);
+    if(recording.seed!==recording.config.seed)throw Error('INVALID_SCHEMA');
+    recording.frames.forEach(frame=>validate('InputFrame',frame));
+    writeJson(join(this.directory,'replays',`${recording.matchId}.json`),recording);
+  }
+  getReplay(matchId) {
+    if(!/^[A-Za-z0-9_-]{1,128}$/.test(matchId))throw Error('INVALID_SCHEMA');
+    const path=join(this.directory,'replays',`${matchId}.json`);
+    return existsSync(path)?JSON.parse(readFileSync(path,'utf8')):null;
+  }
+  record(result,recording) {
     validate('MatchResult',result);
     if(this.humans.some(r=>r.matchId===result.matchId))return;
+    if(recording)this.recordReplay(recording);
     const records=[...this.humans,result];writeJson(this.humanPath,records);this.humans=records;
   }
 }
