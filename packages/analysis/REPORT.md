@@ -588,3 +588,36 @@ orders (200 matches); Daewi wins 5 (2.5%):
   ("Replays of daewi vs real_armor: In range, daewi's swings landed 6% (interrupted 51%, blocked 43%; 9.09 ticks from start to
   hit) against 88% for real_armor (2.97 ticks). 80 of 200 replays never came within melee range (1900); daewi started 71% of its
   swings out of range.") to the evidence; a failing `explain` is ignored. Tests: `test/forensics.test.js`, `test/auto.test.js`.
+
+## Finding: balance depends on play style (bot policies side by side)
+
+`pipeline/bot-compare.js` (`compareBots`; `--pairs 100 [--heroes a,b,c] [--engine-root dir]`) plays the roster in this process for
+each policy and reports per matchup the first hero's win rate with a Wilson 95% interval, per hero the melee swings and the whiff
+rate, and the share of ticks within melee range (1900). 100 pairs: 200 matches per matchup (mirrors: 100, first-seat wins),
+13.7 minutes on one core. The Chairman kept scripted-0.2.1 for the demo and the final recorded run; 0.2.2 and 0.2.2b stay
+documented, unadopted candidates (engine `bot-0.2.2.js`, `bot-0.2.2b.js`, BOT.md).
+
+| | 0.2.1 (production) | 0.2.2 (own-reach stand-off, no out-of-range swings) | 0.2.2b (0.2.2, but projectile users still close in) |
+|---|---|---|---|
+| Ticks within melee range | 31.0% | 13.2% | 61.3% |
+| Whiff rate, all heroes | 55-69% | 0% | 0% |
+| bari vs daewi | 99.0 [96-100] | 100 [98-100] | 100 [98-100] |
+| bari vs nightcrow / sepia | 88.0 [83-92] | 57.0 [50-64] | 98.5 [96-99] |
+| bari vs real_armor | 79.5 [73-85] | 54.0 [47-61] | 90.0 [85-93] |
+| daewi vs real_armor | 2.5 [1-6] | 0.0 [0-2] | 0.0 [0-2] |
+| daewi vs nightcrow / sepia | 16.5 [12-22] | 0.0 [0-2] | 0.0 [0-2] |
+| nightcrow vs real_armor | 30.5 [25-37] | 12.0 [8-17] | 12.5 [9-18] |
+| nightcrow vs sepia | 31.5 [25-38] | 18.0 [13-24] | 46.0 [39-53] |
+| real_armor vs sepia | 55.0 [48-62] | 36.0 [30-43] | 86.0 [81-90] |
+
+Swings per hero over the roster: 0.2.1 10,000-22,000 (55-69% whiff, 57-70% started out of reach), 0.2.2 1,500-5,700, 0.2.2b
+3,400-7,800 (0% whiff in both). Nightcrow and Sepia have identical stats in the data, hence identical rows.
+
+What it shows: the same numbers (same data, same seeds) give a different game under a different play style. 0.2.2 removes every
+wasted swing, but projectile heroes then never close in (0% of ticks within range for every pair without Daewi), the fights
+become ranged duels, and the designed Bari flaw almost disappears (Bari vs Real Armor 79.5% -> 54.0%). 0.2.2b keeps melee in
+every fight and makes the flaw worse (90.0%) and many more matchups lopsided. Daewi is at 0% against Nightcrow, Real Armor and
+Sepia under both new policies: once his heavy melee is really in range it lands about 1,400-1,500 times but is interrupted
+about 2,600-2,800 times (10-tick startup against 3-tick jabs). A balance verdict is therefore a verdict about a data version
+played by one policy; the platform records `botPolicyVersion` with every report for exactly this reason.
+Tests: `test/bot-compare.test.js`.
