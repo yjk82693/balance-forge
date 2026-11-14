@@ -49,7 +49,7 @@ function checkHoldoutResults(holdoutResults, holdoutSeeds, patchedDataHash) {
   }
 }
 
-const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive',
+const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive', targets: [],
   reasons: ['the patch did not pass validation, so no holdout run was made', ...errors.slice(0, 3)] });
 
 /** Patched data and its hash: from the injected `applyPatch` (the engine's own) or from our pure copy. */
@@ -135,8 +135,9 @@ async function runFullUnsafe(input) {
   const out = verifyStep(baseline, holdoutResults, { reportId: 'r-patched', botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: body.holdoutSeedSetId,
     verdict: { holdoutSeeds: true } });
-  return { ...body, patchedDataHash, patched: withExtras(out.report, { createdAt }), verdict: {
-    verdict: out.verdict.verdict, reasons: out.verdict.reasons } };
+  const { verdict, reasons, targets } = out.verdict;
+  return { ...body, patchedDataHash, patched: withExtras(out.report, { createdAt }), verdict: { verdict, reasons,
+    targets } };
 }
 
 export const runFull = safely(runFullUnsafe);

@@ -443,3 +443,29 @@ has `fair: true`, `proposal: null`, `validation: null`, `patched: null`, `patche
 and no holdout run is made. A flagged matchup goes through as before and now says `fair: false`. Under 30 games there is no
 outlier, so a thin sample is also reported as fair. `measureFull`'s tiny wiring test changed accordingly. Tests in
 `test/full.test.js` (fair without adapter call, flagged still goes through, mirror-only, thin sample).
+
+## Per-target verdict gate (Round 8 decision)
+
+**In plain words (for the tutor).** A patch changes a few numbers, so it can fix some matchups and leave others alone. The old
+rule asked every flagged matchup to improve, so one matchup that no Bari change could move (Bari beats Daewi 99% whatever
+Spirit Arrow does) blocked a patch that had fixed the others. Now each flagged matchup ("target") gets its own outcome, and
+the patch is judged on the whole picture:
+- **improved:** with at least 200 games after the patch, the matchup is closer to 50% and either (a) the new 95% interval lies
+  wholly on the 50% side of the old interval, or (b) the distance to 50% shrank by at least 5 points. Both are checks against
+  noise, not against a single percentage.
+- **worse:** the same test in the other direction (further from 50% by at least 5 points, or an interval wholly on the far side).
+- **unchanged:** anything else, including fewer than 200 games.
+
+**Accepted** needs at least one improved target, no worse target, no new extreme matchup (a side above 65% with 200 games) and no
+rise in invalid matches. **Rejected** if any of those fail, or if enough games show that no target moved. **Inconclusive** when
+nothing improved but some target had too few games. The verdict carries the evidence: `verdict.targets` is
+`[{ matchup, before: {rate, ci95, games}, after: {rate, ci95, games}, outcome: 'improved'|'unchanged'|'worse' }]`, and `reasons`
+has one line per target ("bari vs sepia: improved (88.0% [83.0%-92.0%] n=200 -> 70.0% [63.0%-76.0%] n=200)") so the screen
+can show exactly which matchup the patch helped. `runFull` returns it in `verdict`, and `runAuto` stores the same array in each
+version record's `verdict` (the engine's version schema accepts it). A fair stop and an invalid patch have no targets
+(`verdict` without `targets` or with `[]`). The old per-target fields (`dimension`, `before`/`after` as plain numbers,
+`ci95After`, `improved`) are gone. 8 new verdict tests (`test/verdict.test.js`).
+
+**Offline stand-in direction (history script only).** For the focus hero of a round: if it is winning over the round's
+matchups, its most-used attack (melee or projectile, counted from the matches it has seen) is lowered by 20%; if it is
+losing, raised by 20%. Origin stays `fake`. Tests in `test/measure.test.js`.

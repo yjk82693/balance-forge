@@ -40,6 +40,9 @@ test('runFull: shared-interface body, with old values in proposal.changes', asyn
     new: 72 }]);
   assert.deepEqual(b.validation, { ok: true, errors: [] });
   assert.equal(b.verdict.verdict, 'accepted', b.verdict.reasons.join('; '));
+  assert.deepEqual(b.verdict.targets.map((t) => [t.matchup, t.outcome]), [['bari vs real_armor', 'improved']]);
+  assert.equal(b.verdict.targets[0].before.rate, 0.79);
+  assert.equal(b.verdict.targets[0].after.rate, 0.54);
   assert.equal(b.humanMatches, 0);
   assert.equal(b.botPolicyVersion, b.baseline.botPolicyVersion);
   assert.notEqual(b.holdoutSeedSetId, b.seedSetId);
