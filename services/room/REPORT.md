@@ -181,3 +181,19 @@ Real TCP/WebSocket transport remains unverified here: five opt-in tests require 
 listeners. Production handlers, HTTP routing/static confinement, workers, persistence/retries, replay, progress,
 private events and reconnect behavior were exercised without network. The UI transport/build remains the web
 owner's responsibility; this task did not change apps/web.
+
+## Polish 23:17
+
+- Fixed inherited schema/reference lookups, sparse-array validation, empty/unknown runner inputs, snapshot config
+  mismatches, replay/result identity checks, failed atomic-write cleanup, and stale hashes after game switches.
+- Failed data-index writes now leave both the in-memory and persisted current content pin unchanged.
+- Split contract validation/canonicalization and arena combat into named helpers; removed unused imports and a
+  redundant lookup. Every owned file is within 120 columns. Only intentional CLI output remains.
+- Initial suite: 68 passed, 0 failed. Final suite: 77 passed, 0 failed, 5 unchanged opt-in network skips; 51.26 s.
+  No test was weakened, removed or newly skipped. Contract declarations type-check; 12 final focused tests pass.
+- Final recorded measurement: 300 valid matches, 15 matchups, 2 workers, 4,318.634625 ms, 69.466400 matches/s
+  including startup, at 2026-11-14T04:17:24.632Z. All 300 complete results/hashes match the pre-refactor run.
+  Artifacts: services/runner/recorded-roster-match-results.json and recorded-roster-metrics.json.
+- Still unverified: real TCP/WebSocket transport under the no-network rule. Existing socket-free production-handler
+  tests cover disconnect/reconnect and persistence. No web build/render FPS: the web app is outside ownership.
+- No dependencies, network, push or commits; files are left for the external commit process.

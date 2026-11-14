@@ -45,8 +45,10 @@ export function validateConfig(config, data, descriptor, simVersion) {
 }
 export function validateOutcome(outcome, players) {
   validate('Outcome', outcome);
-  if (outcome.winners.some(id => !players.includes(id)) ||
-    outcome.status === 'win' !== outcome.winners.length > 0) fail();
+  if (outcome.winners.some(id => !players.includes(id))) fail();
+  const hasWinners = outcome.winners.length > 0;
+  if (outcome.status === 'win' && !hasWinners) fail();
+  if (outcome.status !== 'win' && hasWinners) fail();
 }
 export function validateFrame(state, frame, players, specs, legal, allowMoveAndAttack = false) {
   validate('InputFrame', frame);
