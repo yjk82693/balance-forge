@@ -69,6 +69,55 @@ export class Authority {
     this.lastSeq = new Map();
     this.pending = new Map();
     this.frames = [];
+    // Held movement: seat -> last accepted non-zero move vector. Only seats listed in holdMoves (human seats) hold;
+    // bots send a move every tick themselves. The held vector is re-sent by the server on ticks without a new move.
+    this.holdMoves = new Set();
+    this.held = new Map();
+  }
+  // Drops a seat's held movement (disconnect, or any other reason the seat can no longer move).
+  release(playerId) {
+    this.held.delete(playerId);
+  }
+  trackHold(action) {
+    const holds = this.config.gameId === 'hero_arena' && action.actionId === 'move';
+    if (!holds || !this.holdMoves.has(action.playerId)) return;
+    const { moveX, moveY } = action.params;
+    if (moveX === 0 && moveY === 0) this.held.delete(action.playerId);
+    else this.held.set(action.playerId, { moveX, moveY });
+  }
+  // Server-generated move for every held seat that sent no move for this tick. It never carries an attack, is part of
+  // the accepted frame (so replays reproduce it), and does not touch receipts or the seat's sequence numbers: it reuses
+  // the seat's latest sequence number, or the one just below a queued attack, so state.lastSeq never moves backwards.
+  injectHeldMoves() {
+    const tick = this.state.tick + 1;
+    for (const [playerId, vector] of [...this.held]) {
+      const queued = this.pending.get(playerId) ?? [];
+      if (queued.some(a => a.actionId === 'move')) continue;
+      const attack = queued.find(a => a.actionId !== 'move');
+      const seq = attack ? attack.seq - 1 : this.lastSeq.get(playerId) ?? 0;
+      const move = {
+        playerId,
+        seq,
+        tick,
+        turnId: this.state.turnId,
+        actionId: 'move',
+        params: { ...vector }
+      };
+      try {
+        validate('ActionInput', move);
+        if (seq < 0) throw Error('ILLEGAL_ACTION');
+        // The same pure-copy check as submit: a stunned or knocked-out seat cannot move, so its hold ends.
+        this.adapter.step(this.state, {
+          tick,
+          actions: [...queued, move].sort((a, b) => a.seq - b.seq),
+          systemInputs: []
+        }, this.data);
+      } catch {
+        this.held.delete(playerId);
+        continue;
+      }
+      this.pending.set(playerId, [...queued, move]);
+    }
   }
   submit(action) {
     validate('ActionInput', action);
@@ -95,9 +144,11 @@ export class Authority {
     };
     this.receipts.set(key, receipt);
     this.lastSeq.set(action.playerId, action.seq);
+    this.trackHold(action);
     return structuredClone(receipt);
   }
   advance(systemInputs = []) {
+    if (this.held.size) this.injectHeldMoves();
     const frame = {
       tick: this.state.tick + 1,
       actions: [...this.pending.values()].flat().sort((a, b) => compareIds(a.playerId, b.playerId) || a.seq - b.seq),
@@ -107,6 +158,7 @@ export class Authority {
     this.state = result.state;
     this.pending.clear();
     this.frames.push(frame);
+    if (this.held.size && this.adapter.outcome(this.state).status !== 'running') this.held.clear();
     return result;
   }
 }

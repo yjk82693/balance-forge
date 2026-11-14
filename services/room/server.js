@@ -423,6 +423,7 @@ export class RoomServer {
     if (options.maxTicks !== undefined) config.maxTicks = options.maxTicks;
     const authority = new Authority(game.adapter, config, data);
     room.seats = seats;
+    authority.holdMoves = new Set(room.seats.filter(s => !s.bot).map(s => s.seat));
     room.authority = authority;
     room.game = game;
     if (gameId !== room.gameId) room.selectedHash = undefined;
@@ -645,6 +646,7 @@ export class RoomServer {
     room.members.delete(session);
     const seat = room.seats.find(s => s.session === session);
     if (seat) {
+      room.authority?.release(seat.seat); // a held stick must not keep a disconnected phone's hero walking
       seat.session = null;
       seat.expiresAt = !this.closed && room.phase === 'playing' ? this.now() + 10000 : 0;
       if (!seat.expiresAt) seat.token = null;

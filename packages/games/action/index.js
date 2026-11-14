@@ -375,7 +375,10 @@ export function step(state, frame, data) {
   const players = state.payload.config.players;
   validateFrame(state, frame, players, actions, a => {
     const e = state.payload.entities.find(e => e.id === a.playerId);
-    return a.seq > e.lastSeq && available(e, frame.tick, state.payload.hitStop).some(s =>
+    // A move may repeat the seat's latest sequence number: the room re-sends a held stick as a server-generated move
+    // (see Authority.injectHeldMoves). Clients cannot do this; Authority.submit still requires strictly rising seq.
+    const freshSeq = a.actionId === 'move' ? a.seq >= e.lastSeq : a.seq > e.lastSeq;
+    return freshSeq && available(e, frame.tick, state.payload.hitStop).some(s =>
       s.actionId === a.actionId) && (a.actionId !== 'projectile' || a.params.aimX !== 0 || a.params.aimY !== 0);
   }, true);
   if (frame.systemInputs.length) throw Error('ILLEGAL_ACTION');
