@@ -534,3 +534,9 @@ The probe (cost and power ±1 for each card) streams no progress. After the base
 elapsed time, until the holdout phase or the result arrives. If the engine later sends `phase: "probe"` (or
 `"diagnose"` for cards) with a counter, that counter is shown instead. The rule is `src/lib/runPhase.ts`, tested in
 `apps/web/test/cards-dashboard.test.mjs`. `?mock=1` pauses three seconds after the baseline to show it.
+
+### Intent version is a string
+
+The live server rejected saving an intent ("INVALID_SCHEMA: intent.version must be a short string") because the web
+sent a number. `Intent.version` is now a string, read from the server as given, and every save sends a fresh short
+string (`ui-<base36 time>`). This is what the "Intended?" chips and the intent page use.
