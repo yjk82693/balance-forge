@@ -213,3 +213,25 @@ Order, best first (`lib/replaySource.ts`):
   path was **not** run against a real endpoint.
 - The `/full` response in the task has no `replay` field; if the analysis puts the timeline somewhere else, only
   `replayFrom` in `lib/fullRun.ts` needs to change.
+
+## Step 6: "Play vs bot" in the lobby
+- A secondary button next to "Start match" sends `match.start {gameId, bot: true}`; it is enabled with at least one player
+  connected, "Start match" still needs two. The lobby now waits for the server's `playing` status before going to the big
+  screen, and if the server answers with an error it stays on the lobby and says why ("The server can't start yet..." /
+  "This server can't start a match against a bot yet.").
+- Checked in the mock (starts with one player) and against the real room server on `main` (6745e53), which does not know
+  `bot` yet: the button was refused and the lobby showed the message. Bot start itself was **not** run against a real
+  server because none supports it yet.
+- Bug found and fixed while doing this: the lobby's "start from a clean lobby" reset ran on every phase change, so a match
+  started from the lobby would have been reset by its own status message. It now runs once per visit.
+
+## Checks for round 6
+- `npm run build -w apps/web` passes; no line over 120 characters; `tsc` clean.
+- Real server (`main` at 6745e53, run locally): the dashboard falls back from the missing `/v1/playtest/full` to the pairs
+  run and showed `recorded · 1,000 matches · 28 s` with live progress; the lobby, join and refusal path worked.
+  Not exercised against a real `/full`, `/views` or bot start (they do not exist in the repo yet).
+- 1920x1080: the dashboard stage and lobby were looked at with the 15-matchup live run, the human group and the
+  side-by-side replay. 390x844 (iframe): the lobby and dashboard looked broken (top bar overflow, cut-off QR, squeezed diff
+  card and replays); fixed with a phone layout (stacked cards, wrapped top bar, one-column chart rows, scrollable
+  matches table) and re-checked. The phone controller was not changed this round.
+- Mock-only switches: `?mock=1&replay=timeline` shows the HP-timeline replay path.
