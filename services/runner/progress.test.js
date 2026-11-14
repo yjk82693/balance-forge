@@ -36,3 +36,13 @@ test('progress is monotonic, periodically streamed, and agrees with unchanged or
     assert.equal(Object.values(row.wins).reduce((a, b) => a + b, 0) + row.draws, 2);
   }
 });
+
+test('first-seat wins reconcile between each matchup row, progress totals and final run summary', async () => {
+  const updates=[];
+  const batch = await runBatch(rosterJobs({ seeds: [3] }), { workers: 2, onProgress: progress => updates.push(progress) });
+  for(const progress of updates)
+    assert.equal(progress.seatWins, progress.matchups.reduce((sum,row)=>sum+row.seatWins,0));
+  const expected = batch.results.filter(result => result.valid &&
+    result.outcome.winners.includes(result.config.players[0])).length;
+  assert.equal(batch.metrics.seatWins, expected);
+});

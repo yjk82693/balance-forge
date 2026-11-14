@@ -110,17 +110,22 @@ export class Authority {
     return result;
   }
 }
-export function replay(adapter, config, data, frames) {
+export function replay(adapter, config, data, frames, { onStep } = {}) {
   let state = adapter.initial(config, data);
-  for (const frame of frames) state = adapter.step(state, frame, data).state;
+  if(onStep!==undefined&&typeof onStep!=='function')throw Error('INVALID_SCHEMA');
+  onStep?.({state:structuredClone(state),events:[],frame:null});
+  for(const frame of frames){
+    const result=adapter.step(state,frame,data);state=result.state;
+    onStep?.({state:structuredClone(state),events:structuredClone(result.events),frame:structuredClone(frame)});
+  }
   return state;
 }
 // Counterfactual playback changes only the immutable data pin, preserving seed, assignments and accepted inputs.
 // If the candidate makes a recorded action illegal, replay throws instead of silently replacing that input.
-export function replayOnData(adapter, recording, data) {
+export function replayOnData(adapter, recording, data, options) {
   const config = {
     ...structuredClone(recording.config),
     dataHash: pinData(data)
   };
-  return replay(adapter, config, data, recording.frames);
+  return replay(adapter, config, data, recording.frames, options);
 }

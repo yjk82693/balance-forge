@@ -277,3 +277,12 @@ This dependency blocks live execution before server setup or any TCP bind. The f
 or passing. After analysis is merged, it also requires an environment permitting loopback listeners (the earlier
 sandbox rejected them). Temporary data was not created by the preflight failure; no repository runtime output
 was changed. No commits were attempted under the sandbox rule.
+
+## Round 6 full route
+
+Added /v1/playtest/full request validation/defaults and lazy wiring to the analysis full pipeline, with real
+phase-labelled worker batches, retained candidate versions, offline/Gemini adapter selection, isolated test env,
+and disjoint baseline/holdout seed arrays. Added roster and retained dataHash selection to /v1/playtest/run.
+The analysis full.js module is not present yet: the route returns an explicit 503 and its integration test is
+marked TODO, as requested. No report or verdict is fabricated. Roster/pin and existing progress tests run normally.
+This step will be completed against the real module when it lands; callback details are in CHANGE_REQUEST.md.

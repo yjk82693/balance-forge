@@ -9,7 +9,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Authority } from '../../packages/sim/index.js';
 import { hash, validate, validateSchema } from '../../packages/contracts/index.js';
 import { integer, object } from '../../packages/contracts/shapes.js';
-import { runBatch, pairedJobs } from '../runner/index.js';
+import { runPlaytest, fullPlaytest } from './playtests.js';
+import { replayViews } from './replay-views.js';
 import { games } from '../runner/match.js';
 import { Storage, writeJson } from './storage.js';
 import { parseEnvelope, validatePayload, assertDepth, errorCode } from './protocol.js';
@@ -62,6 +63,7 @@ export class RoomServer {
     staticDir = defaultStatic,
     turnTimeoutMs = 15000,
     workers = 2,
+    analysisEnv = process.env,
     clock = () => performance.now()
   } = {}) {
     if (!Number.isInteger(turnTimeoutMs) || turnTimeoutMs < 1) throw Error('INVALID_SCHEMA');
@@ -73,6 +75,7 @@ export class RoomServer {
     this.staticDir = resolve(staticDir);
     this.turnTimeoutMs = turnTimeoutMs;
     this.workers = workers;
+    this.analysisEnv = analysisEnv;
     this.rooms = new Map();
     this.codes = new Map();
     this.sessions = new Set();
@@ -606,6 +609,15 @@ export class RoomServer {
       });
       return;
     }
+    const viewsRoute=path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})\/views$/);
+    if(request.method==='GET'&&viewsRoute){
+      const everyText=url.searchParams.get('every');
+      if(everyText!==null&&!/^[0-9]+$/.test(everyText))throw Error('INVALID_SCHEMA');
+      const result=replayViews(this.storage,viewsRoute[1],{
+        dataHash:url.searchParams.get('dataHash')??undefined,every:everyText===null?6:Number(everyText)
+      });
+      json(response,result?200:404,result??{code:'INVALID_SCHEMA'});return;
+    }
     const replayRoute = path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})$/);
     if (request.method === 'GET' && replayRoute) {
       const recording = this.storage.getReplay(replayRoute[1]);
@@ -631,66 +643,17 @@ export class RoomServer {
         return;
       }
     }
-    if (request.method === 'POST' && path === '/v1/playtest/run') {
-      const body = await readBody(request);
-      validateSchema(object({
-        gameId: {
-          enum: ['hero_arena', 'hero_cards']
-        },
-        pairs: integer(1, 1000)
-      }), body);
-      if (this.runningBatch) throw Error('RATE_LIMITED');
-      this.runningBatch = true;
-      const task = (async () => {
-        const {
-          data,
-          dataHash
-        } = this.storage.get(body.gameId);
-        const id = randomUUID();
-        const jobs = pairedJobs({
-          gameId: body.gameId,
-          data,
-          seeds: Array.from({
-            length: body.pairs
-          }, (_, i) => i + 1)
-        });
-        jobs.forEach((job, i) => {
-          job.matchId = `bot-${id}-${i + 1}`;
-        });
-        const batch = await runBatch(jobs, {
-          workers: this.workers,
-          captureReplays: true,
-          onProgress: progress => {
-            for (const session of this.sessions) this.send(session, 'playtest.progress', {
-              runId: id,
-              gameId: body.gameId,
-              dataHash,
-              ...progress
-            });
-          }
-        });
-        batch.replays.forEach(recording => this.storage.recordReplay(recording));
-        const resultsPath = `/v1/playtest/results/${id}.json`;
-        writeJson(join(this.storage.directory, 'playtests', `${id}.json`), batch.results);
-        writeJson(join(this.storage.directory, 'playtests', `${id}.metrics.json`), batch.metrics);
-        json(response, 200, {
-          resultsPath,
-          elapsedMs: batch.metrics.elapsedMs,
-          matchCount: batch.results.length,
-          dataHash,
-          recorded: true
-        });
-      })();
+    if(request.method==='POST'&&['/v1/playtest/run','/v1/playtest/full'].includes(path)){
+      const body=await readBody(request);
+      if(this.runningBatch)throw Error('RATE_LIMITED');
+      this.runningBatch=true;
+      const task=(path.endsWith('/full')?fullPlaytest:runPlaytest)(this,body);
       this.tasks.add(task);
-      try {
-        await task;
-      } finally {
-        this.tasks.delete(task);
-        this.runningBatch = false;
-      }
+      try {json(response,200,await task);}
+      finally {this.tasks.delete(task);this.runningBatch=false;}
       return;
     }
-    const resultRoute = path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36})\.json$/);
+    const resultRoute = path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36}(?:-(?:baseline|holdout))?)\.json$/);
     if (request.method === 'GET' && resultRoute) {
       try {
         const data = await readFile(join(this.storage.directory, 'playtests', `${resultRoute[1]}.json`));
