@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { CompareReplay } from "../components/CompareReplay";
-import { DiffCard } from "../components/DiffCard";
 import { FitStage } from "../components/FitStage";
 import { LivePanel } from "../components/LivePanel";
 import { MatchesTable, type MatchRow } from "../components/MatchesTable";
 import { ReportPanel } from "../components/ReportPanel";
+import { ResultCard } from "../components/ResultCard";
 import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
 import { VersionToggle } from "../components/VersionToggle";
@@ -22,8 +22,11 @@ import {
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { loadJustPlayed } from "../lib/justPlayed";
+import { loadRecordedRun } from "../lib/recorded";
+import { buildFacts } from "../lib/resultCard";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
+import type { PlaytestRun } from "../lib/api";
 import { isMockMode } from "../mock/types";
 
 /** Sample rows with the match the viewer just played pinned on top (replacing the fixture human row). */
@@ -57,6 +60,13 @@ export function Dashboard() {
       document.documentElement.dataset.theme = "dark";
     };
   }, [theme]);
+
+  // The all-matchups table and "other findings" come from the stored roster run, never from the live one.
+  const [roster, setRoster] = useState<PlaytestRun | null>(null);
+  useEffect(() => {
+    loadRecordedRun().then(setRoster, () => setRoster(null));
+  }, []);
+  const facts = useMemo(() => (run ? buildFacts(run, roster) : null), [run, roster]);
 
   const canPatch = !!run?.patched;
   const showPatched = canPatch && version === "patched";
@@ -96,8 +106,8 @@ export function Dashboard() {
 
         <main className="dash-grid">
           <div className="dash-left">
-            {run?.proposal ? (
-              <DiffCard proposal={run.proposal} sample={run.sample} />
+            {facts && !busy ? (
+              <ResultCard facts={facts} />
             ) : (
               <section className="panel diff">
                 <div className="panel-head">
@@ -117,7 +127,14 @@ export function Dashboard() {
               active={showPatched ? "patched" : "broken"}
               source={replaySource}
             />
-            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} elapsed={elapsed} holdout={live.holdout} />
+            <LivePanel
+              busy={busy}
+              done={live.done}
+              total={live.total}
+              phase={live.phase}
+              elapsed={elapsed}
+              holdout={live.holdout}
+            />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
                 <span id="matches-title" className="eyebrow">
@@ -139,6 +156,7 @@ export function Dashboard() {
               busy={busy}
               live={live}
               error={error}
+              roster={roster}
               notice={notice}
               elapsed={elapsed}
               showPatched={showPatched}

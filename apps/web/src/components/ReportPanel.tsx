@@ -33,12 +33,14 @@ interface Props {
   /** seconds since the run started */
   elapsed?: number;
   notice: string | null;
+  /** the stored roster run: the all-matchups table when the live run covers one matchup only */
+  roster?: PlaytestRun | null;
   showPatched: boolean;
   onRun: () => void;
 }
 
 /** Right-hand panel: live counter while bots play, then the report, patch comparison and verdict. */
-export function ReportPanel({ run, busy, live, error, notice, elapsed = 0, showPatched, onRun }: Props) {
+export function ReportPanel({ run, busy, live, error, notice, elapsed = 0, roster, showPatched, onRun }: Props) {
   const report = run ? (showPatched && run.patched ? run.patched : run.baseline) : null;
   return (
     <section className="panel report" aria-labelledby="report-title" aria-busy={busy}>
@@ -75,7 +77,9 @@ export function ReportPanel({ run, busy, live, error, notice, elapsed = 0, showP
         </div>
       )}
 
-      {!busy && run && report && <FinishedReport run={run} report={report} showPatched={showPatched} />}
+      {!busy && run && report && (
+        <FinishedReport run={run} report={report} showPatched={showPatched} roster={roster ?? null} />
+      )}
     </section>
   );
 }
@@ -91,6 +95,9 @@ function HumanGroup({ rows }: { rows: ReportRow[] }) {
     </div>
   );
 }
+
+/** A run with fewer matchups than this is not a roster run. */
+const ROSTER_MIN_ROWS = 5;
 
 /** At most this many matchups are repeated in the holdout strip (the same ones the baseline shows as most lopsided). */
 const HOLDOUT_ROWS = 3;
@@ -129,7 +136,27 @@ function LiveReport({ live, elapsed }: { live: LiveState; elapsed: number }) {
   );
 }
 
-function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report: Report; showPatched: boolean }) {
+interface FinishedProps {
+  run: PlaytestRun;
+  report: Report;
+  showPatched: boolean;
+  roster: PlaytestRun | null;
+}
+
+/** A live run covers one matchup; the table of all of them is the stored roster report, labelled as such. */
+function RecordedRoster({ roster }: { roster: PlaytestRun }) {
+  const rows = outliersFirst(botRows(roster.baseline.rows).map(rowStats)).map((s) => s.row);
+  return (
+    <div className="human-group">
+      <p className="eyebrow" style={{ color: "var(--text-2)" }}>
+        All matchups <span className="badge recorded">recorded</span>
+      </p>
+      <WinRateChart rows={rows} dense />
+    </div>
+  );
+}
+
+function FinishedReport({ run, report, showPatched, roster }: FinishedProps) {
   const bots = botRows(report.rows);
   const humans = humanRows(report.rows);
   if (bots.length === 0) {
@@ -165,6 +192,9 @@ function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report
       <hr className="divider" />
       <WinRateChart rows={sorted.map((s) => s.row)} dense />
       {humans.length > 0 && <HumanGroup rows={humans} />}
+      {bots.length < ROSTER_MIN_ROWS && roster && botRows(roster.baseline.rows).length > bots.length && (
+        <RecordedRoster roster={roster} />
+      )}
 
       {run.patched && (
         <>
