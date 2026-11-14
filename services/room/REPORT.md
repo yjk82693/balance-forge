@@ -762,3 +762,9 @@ per-target verdict. Without `heroes` or `roster` the matchup is `nightcrow vs st
 - Patch allowlist (contract v0.1.4): `/gameRules/cards/N/cost` 1..3 and `/gameRules/cards/N/power` 1..10, no power on
   the peek card. The analysis validator and the engine `applyPatch` agree (cross-check test).
 - Probe runs write no replays, files or progress events, and are not copied to the outside stores.
+
+## Design intent: the committed file is read-only
+`services/room/design/<gameId>-intent.json` is the committed default and the server never writes it. A PUT saves the
+runtime intent in `services/room/data/design/` (git-ignored); GET answers with the runtime intent when there is one,
+else the default. A PUT without `notes` keeps the notes of the intent it replaces. Tools that must be stable
+(recorded.test, benchmark.ts) read the committed file directly.

@@ -86,7 +86,7 @@ export class RoomServer {
     this.turnTimeoutMs = turnTimeoutMs;
     this.workers = workers;
     this.analysisEnv = analysisEnv;
-    this.design = new DesignStore(designDir);
+    this.design = new DesignStore(designDir, join(this.storage.directory, 'data', 'design'));
     if (runAuto !== undefined && typeof runAuto !== 'function') throw Error('INVALID_SCHEMA');
     this.runAuto = runAuto;
     this.rooms = new Map();
