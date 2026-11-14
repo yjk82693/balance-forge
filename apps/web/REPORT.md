@@ -55,5 +55,5 @@ All six blocks are built and committed in order H, N, G, I, K, J. `npm run build
 
 ## Known gaps
 - Console: in real mode with no server the browser itself logs failed WebSocket and 404 requests; the app adds no errors of its own. In mock mode the console was clean in the screens I opened.
-- The 15-row dashboard was checked at the scaled 1920x1080 layout only; the phone controller and cards hand at a 390x844 iframe. The cards screens were not re-checked after the round 3 changes except through the shared scene code.
+- The 15-row dashboard was checked at the scaled 1920x1080 layout only; the phone controller and cards hand at a 390x844 iframe. The Hero Cards table was re-checked after the Phaser scale-mode change and renders correctly; the cards phone hand was not re-opened after the contrast pass.
 - Replays are illustrative until the engine publishes accepted frame streams.
