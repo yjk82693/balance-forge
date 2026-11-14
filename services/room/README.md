@@ -776,3 +776,6 @@ Optional MongoDB Atlas and Tiger Data sinks (`services/sinks/`), off without `MO
 `GET /v1/sinks` returns `{enabled, status: {name: {written, failed}}}` (never connection strings);
 `GET /v1/trend/:gameId?matchup=a vs b` returns the win-rate points per data version, or `404 TRANSPORT_UNAVAILABLE`
 without Tiger Data.
+
+Human play uses a gentler bot (scripted-0.2.1-gentle); balance measurements never use it. A room match against the bot
+records `botPolicyVersion` in its human MatchResult, and the analysis keeps such matches out of the bot rows.

@@ -17,6 +17,12 @@ export function groupByDataHash(results) {
  */
 export const isCountable = (result) => result?.valid === true && result.outcome?.status !== 'running';
 
+/**
+ * A match a person played against the room's bot (the result names the bot policy, e.g. scripted-0.2.1-gentle).
+ * It belongs to the human group and never to the bot rows: that policy is not the measurement bot.
+ */
+export const isRoomBotMatch = (result) => typeof result?.botPolicyVersion === 'string';
+
 export const assignmentsOf = (result) => result.config.options?.assignments ?? null;
 
 /** Hero-aware matchup: heroes sorted alphabetically, focal side = first hero. Null without assignments. */

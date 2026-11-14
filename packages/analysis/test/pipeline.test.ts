@@ -110,3 +110,19 @@ test('CLI adds extras and human rows when files are given', async () => {
   assert.equal(rep.rows.length, 2);
   assert.equal(JSON.parse(readFileSync(join(dir, 'verdict.json'), 'utf8')).verdict, 'accepted');
 });
+
+test('analyzePhase keeps matches played against the room bot out of the bot rows', async () => {
+  const { pairedResults } = await import('./helpers.ts');
+  const { analyzePhase } = await import('../pipeline/pipeline.ts');
+  const bots = pairedResults({ seeds: 40, winner: () => 'a' });
+  const room = pairedResults({ seeds: 40, winner: () => 'b' }).map((r) => ({ ...r, matchId: `room-${r.matchId}`,
+    botSeats: ['p2'], botPolicyVersion: 'scripted-0.2.1-gentle' }));
+  const alone = analyzePhase(bots).report;
+  const mixed = analyzePhase([...bots, ...room]).report;
+  assert.deepEqual(mixed.rows, alone.rows); // the 80 room matches changed no bot number
+  assert.equal(mixed.validMatches, alone.validMatches);
+  const { addHumanRows } = await import('../src/human.ts');
+  const withHumans = addHumanRows(alone, room); // they stay in the human group
+  assert.ok(withHumans.rows.some((row) => row.dimension.startsWith('human: ')));
+  assert.equal(withHumans.humanMatches, 80);
+});

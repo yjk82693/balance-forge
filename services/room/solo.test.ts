@@ -5,7 +5,7 @@ import { validate } from '../../packages/contracts/index.ts';
 import { replayOnData } from '../../packages/sim/index.ts';
 import * as arena from '../../packages/games/action/index.ts';
 import { hash } from '../../packages/contracts/index.ts';
-import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.ts';
+import { chooseActionsGentle, deriveBotSeed } from '../../packages/games/action/bot.ts';
 test('solo arena fills only the empty seat, runs the standard bot and records its seat explicitly', async t => {
   const {
     server,
@@ -27,10 +27,12 @@ test('solo arena fills only the empty seat, runs the standard bot and records it
   validate('MatchResult', result);
   assert.equal(result.valid, true);
   assert.deepEqual(result.botSeats, ['p2']);
+  assert.equal(result.botPolicyVersion, 'scripted-0.2.1-gentle'); // the room bot is the gentle policy, and says so
   assert.ok(result.statistics.players.find(player => player.playerId === 'p2').actions.some(action => action.uses > 0));
   const recording = server.storage.getReplay(result.matchId);
   assert.equal(hash(replayOnData(arena.adapter, recording, room.authority.data)), result.finalStateHash);
   assert.deepEqual(server.storage.humans[0].botSeats, ['p2']);
+  assert.equal(server.storage.humans[0].botPolicyVersion, 'scripted-0.2.1-gentle');
   host.request('match.reset', {});
   assert.equal(room.seats.length, 1);
 });
@@ -98,14 +100,15 @@ test('solo card turns advance with the runner bot policy and retain the bot-seat
   const result = host.take('match.ended').payload.result;
   assert.equal(result.valid, true);
   assert.deepEqual(result.botSeats, ['p2']);
+  assert.equal('botPolicyVersion' in result, false); // the cards bot has no gentle policy
 });
 
-test('solo room uses the same match-seeded seat policy as the runner', async t => {
+test('solo room plays the gentle policy with the same match-seeded seat variant as the runner', async t => {
   const { server, host, phone, room } = await localServer(t);
   phone.close();
   host.request('match.start', { bot: true, seed: 91, maxTicks: 20 });
   for (let tick = 0; tick < 20; tick++) {
-    const expected = chooseActions(arena.observe(room.authority.state, 'p2'), tick * 2, deriveBotSeed(91, 1));
+    const expected = chooseActionsGentle(arena.observe(room.authority.state, 'p2'), tick * 2, deriveBotSeed(91, 1));
     server.advance(room);
     const actions = room.authority.frames[tick].actions.filter(input => input.playerId === 'p2');
     assert.deepEqual(actions, expected);
