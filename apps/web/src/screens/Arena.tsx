@@ -1,5 +1,6 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { stubObservation } from "../lib/tentacleStub";
 import { saveJustPlayed } from "../lib/justPlayed";
 import { go } from "../lib/router";
 import { gameById } from "../lib/games";
@@ -7,6 +8,8 @@ import { heroName } from "../lib/heroes";
 import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardBanner } from "../components/CardBanner";
 import { CardsCanvas } from "../components/CardsCanvas";
+import { TentacleCanvas } from "../components/TentacleCanvas";
+import { TENTACLE_GAME_ID, isTentaclePayload, waveLabel, type TentaclePayload } from "../lib/tentacle";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { isMockMode } from "../mock/types";
@@ -41,6 +44,20 @@ export function Arena({ gameId }: { gameId: string }) {
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const cardsObs =
     observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
+  const tentacle = gameId === TENTACLE_GAME_ID;
+  // Development only: #/arena/tentacle_run?stub=1 shows a made-up run (never in a production build).
+  const stub = import.meta.env.DEV && tentacle && location.hash.includes("stub=1");
+  const [stubTick, setStubTick] = useState(0);
+  useEffect(() => {
+    if (!stub) return;
+    const t = setInterval(() => setStubTick((n) => n + 3), 50);
+    return () => clearInterval(t);
+  }, [stub]);
+  const tentObs = stub
+    ? stubObservation(stubTick)
+    : tentacle && observation && isTentaclePayload(observation.payload)
+      ? (observation as Observation<TentaclePayload>)
+      : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
   const heroes = Object.fromEntries((room?.seats ?? []).flatMap((s) => (s.hero ? [[s.seat, s.hero]] : [])));
   // Remember the finished match so the dashboard can show "you just played this".
@@ -75,7 +92,9 @@ export function Arena({ gameId }: { gameId: string }) {
       </TopBar>
       <main className="arena-screen">
         <div className="arena-stage">
-          {gameId === "hero_cards" ? (
+          {tentacle ? (
+            <TentacleCanvas observation={tentObs} />
+          ) : gameId === "hero_cards" ? (
             <>
               <CardsCanvas observation={cardsObs} names={names} heroes={heroes} />
               <CardBanner views={views} names={names} heroes={heroes} />
@@ -85,15 +104,17 @@ export function Arena({ gameId }: { gameId: string }) {
           )}
           <DebugReadout stats={net} buffer={bufferStats} />
           <div className="arena-overlay">
-            {gameId !== "hero_cards" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
+            {gameId === "hero_arena" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
+            {tentObs && <span className="caption">{waveLabel(tentObs.payload)}</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
-          {srv === "unreachable" ? (
+          {srv === "unreachable" && !stub ? (
             <div className="stage-overlay">
               <ServerDown compact onRetry={() => transport?.reconnect()} />
             </div>
           ) : (
-            !observation && (
+            !observation &&
+            !stub && (
               <div className="stage-overlay" aria-busy="true">
                 <div className="panel">
                   <p className="eyebrow">{srv === "connecting" ? "Connecting" : "Waiting"}</p>
@@ -110,12 +131,19 @@ export function Arena({ gameId }: { gameId: string }) {
           )}
           {result && (
             <div className="result-card panel" role="status">
-              <p className="eyebrow">Match over</p>
+              <p className="eyebrow">{tentacle ? "Run over" : "Match over"}</p>
               <p className="h2">
-                {result.outcome.status === "win" ? `${winner?.name ?? heroName(winnerHero)} wins` : "A draw"}
+                {tentacle
+                  ? result.outcome.status === "win"
+                    ? "The Man-Shark is down"
+                    : "Sepia went down"
+                  : result.outcome.status === "win"
+                    ? `${winner?.name ?? heroName(winnerHero)} wins`
+                    : "A draw"}
               </p>
               <p className="text-2">
-                {heroName(winnerHero)} · {fmtTime(result.statistics.durationTicks)}
+                {tentacle && tentObs ? `${waveLabel(tentObs.payload)} · ` : `${heroName(winnerHero)} · `}
+                {fmtTime(result.statistics.durationTicks)}
               </p>
               <div className="result-actions">
                 <button className="btn primary" onClick={() => go("/dashboard")}>

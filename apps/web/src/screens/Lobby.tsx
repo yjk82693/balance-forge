@@ -12,6 +12,8 @@ import { LobbyVersion } from "../components/LobbyVersion";
 import { ServerDown, useServerState } from "../components/ServerDown";
 
 const SLOTS = 2;
+/** Games played alone: one seat starts the run. */
+const SOLO_GAMES = ["tentacle_run"];
 const START_WAIT_MS = 6000;
 /** The room server starts a match with exactly two connected players. */
 const PLAYERS_TO_START = 2;
@@ -124,17 +126,20 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
       </div>
     );
   }
+  const solo = SOLO_GAMES.includes(gameId);
+  const slots = solo ? 1 : SLOTS;
+  const needed = solo ? 1 : PLAYERS_TO_START;
   const connecting = !room;
   const code = room?.joinCode ?? "····";
   const url = joinUrl(code);
   const seats = room?.seats ?? [];
   const here = seats.filter((s) => s.connected).length;
   const arena = game.status === "ready";
-  const canStart = here === PLAYERS_TO_START && arena && status === "online";
+  const canStart = here === needed && arena && status === "online";
   const reason = !arena
     ? `${game.title} can't be played on the big screen yet.`
-    : here < PLAYERS_TO_START
-      ? `Waiting for ${PLAYERS_TO_START - here} more ${PLAYERS_TO_START - here === 1 ? "player" : "players"}`
+    : here < needed
+      ? `Waiting for ${needed - here} more ${needed - here === 1 ? "player" : "players"}`
       : "";
   const canBot = here >= 1 && arena && status === "online";
   const begin = (bot: boolean) => {
@@ -194,12 +199,12 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
         <section className="panel lobby-players" aria-labelledby="players-title">
           <div className="panel-head">
             <span id="players-title" className="eyebrow">
-              Players · {here} of {SLOTS} here
+              Players · {here} of {slots} here
             </span>
           </div>
           <ul className="chips" aria-live="polite" aria-busy={connecting}>
-            {connecting && Array.from({ length: SLOTS }, (_, i) => <li key={`sk-${i}`} className="chip sk" />)}
-            {!connecting && Array.from({ length: SLOTS }, (_, i) => {
+            {connecting && Array.from({ length: slots }, (_, i) => <li key={`sk-${i}`} className="chip sk" />)}
+            {!connecting && Array.from({ length: slots }, (_, i) => {
               const s = seats[i];
               if (!s) {
                 return (
@@ -235,7 +240,9 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
             })}
           </ul>
           <p className="caption lobby-note" aria-live="polite">
-            {connecting ? "Getting the room ready…" : (left ?? "Two players start a match.")}
+            {connecting
+              ? "Getting the room ready…"
+              : (left ?? (solo ? "One player starts the run." : "Two players start a match."))}
           </p>
           <button
             className="btn primary touch"
@@ -243,16 +250,18 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
             aria-busy={starting === "match"}
             onClick={() => begin(false)}
           >
-            Start match
+            {solo ? "Start run" : "Start match"}
           </button>
-          <button
-            className="btn secondary touch"
-            aria-disabled={!canBot || !!starting}
-            aria-busy={starting === "bot"}
-            onClick={() => begin(true)}
-          >
-            Play vs bot
-          </button>
+          {!solo && (
+            <button
+              className="btn secondary touch"
+              aria-disabled={!canBot || !!starting}
+              aria-busy={starting === "bot"}
+              onClick={() => begin(true)}
+            >
+              Play vs bot
+            </button>
+          )}
           {(refusal || reason) && (
             <p className="caption lobby-note" role={refusal ? "alert" : undefined}>
               {refusal || reason}

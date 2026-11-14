@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
+import { TENTACLE_GAME_ID, isTentaclePayload, waveLabel } from "../lib/tentacle";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { Stick } from "../components/Stick";
@@ -78,6 +79,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const padName = useGamepad(pipeline, playing && online);
   // A cards view means the cards hand, whatever the room status said about the game when this phone joined.
   const isCards = gameId === "hero_cards" || isCardsPayload(observation?.payload);
+  const isTentacle = gameId === TENTACLE_GAME_ID || isTentaclePayload(observation?.payload);
   usePreventPageGestures(playing && !isCards); // the cards hand scrolls sideways, so it is left alone
 
   useEffect(() => {
@@ -195,6 +197,8 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const me = room?.seats.find((s) => s.seat === seat);
   const hero = me?.hero ?? joined.hero;
   const mine = myArenaEntity(observation?.payload, seat);
+  const run = isTentaclePayload(observation?.payload) ? observation.payload : null;
+  const runner = run?.entities.find((e) => e.kind === "player");
   const ended = !!result || room?.phase === "ended";
   const gameOn = room?.phase === "playing";
 
@@ -251,7 +255,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
         />
       ) : (
       <>
-      {arenaOn && (
+      {arenaOn && !isTentacle && (
         <div className="phone-arena">
           <Suspense fallback={null}>
             <ArenaCanvas
@@ -275,13 +279,17 @@ export function Controller({ initialCode }: { initialCode: string }) {
             <span className="text-2">{gameOn ? "Watch the big screen." : "Waiting for the host to start."}</span>
           </p>
         )}
-        {mine && (
-          <div className="hp" aria-label={`HP ${mine.hp}`}>
+        {isTentacle && run && <p className="small">{waveLabel(run)}</p>}
+        {(mine ?? runner) && (
+          <div className="hp" aria-label={`HP ${(mine ?? runner)!.hp}`}>
             <span className="caption">HP</span>
             <span className="hp-track">
-              <span className="hp-fill" style={{ width: `${hpPercent(mine.hp, mine.maxHp)}%` }} />
+              <span
+                className="hp-fill"
+                style={{ width: `${hpPercent((mine ?? runner)!.hp, (mine ?? runner)!.maxHp)}%` }}
+              />
             </span>
-            <span className="small">{mine.hp}</span>
+            <span className="small">{(mine ?? runner)!.hp}</span>
           </div>
         )}
         {padName && <p className="caption">Gamepad connected</p>}
@@ -292,6 +300,26 @@ export function Controller({ initialCode }: { initialCode: string }) {
           <div className="stick-ring" />
           <div className="stick-knob" />
         </div>
+        {isTentacle ? (
+          <div className="btn-cluster">
+            <ActionButton
+              className="b-guard"
+              label="Latch"
+              size={88}
+              icon="assets/sepia_tentacle_run/ui/icon_tentacle.png"
+              disabled={!online}
+              onPress={() => pipeline?.press("latch")}
+            />
+            <ActionButton
+              className="b-attack"
+              label="Whip"
+              size={88}
+              icon="assets/hero_arena/ui/skill_melee.png"
+              disabled={!online}
+              onPress={() => pipeline?.press("whip")}
+            />
+          </div>
+        ) : (
         <div className="btn-cluster">
           <ActionButton
             className="b-guard"
@@ -318,12 +346,13 @@ export function Controller({ initialCode }: { initialCode: string }) {
             onPress={() => pipeline?.press("projectile")}
           />
         </div>
+        )}
       </div>
       </>
       )}
       <DebugReadout stats={net} buffer={bufferStats} />
       <footer className="phone-foot">
-        {!isCards && (
+        {!isCards && !isTentacle && (
           <button className="btn secondary touch" aria-pressed={arenaOn} onClick={() => setArenaOn(!arenaOn)}>
             {arenaOn ? "Arena: on" : "Arena: off"}
           </button>
