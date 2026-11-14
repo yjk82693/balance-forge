@@ -38,7 +38,8 @@ test('an outlier row gets use rates, opportunities and damage share for both sid
   assert.deepEqual(row.focal.actions, [
     { actionId: 'guard', opportunities: 800, uses: 400, useRate: 0.5, damage: null },
     { actionId: 'projectile', opportunities: 1600, uses: 800, useRate: 0.5, damage: null }]);
-  assert.deepEqual(row.other.actions, [{ actionId: 'melee', opportunities: 640, uses: 320, useRate: 0.5, damage: null }]);
+  assert.deepEqual(row.other.actions,
+    [{ actionId: 'melee', opportunities: 640, uses: 320, useRate: 0.5, damage: null }]);
 });
 
 test('no damage by move or guard-hit data is invented: it is null and listed as missing', () => {
