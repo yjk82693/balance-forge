@@ -73,3 +73,21 @@ test('moves and the damage scale keep their old bounds and several paths can be 
   const twice = { ...proposal, replacements: [proposal.replacements[2], proposal.replacements[2]] };
   assert.throws(() => applyPatch(root, twice), /PATCH_REJECTED/); // a repeated path
 });
+
+// Hero Cards (contract v0.1.4): cost 1..3, power 1..10, no power on a peek card; both validators agree.
+test('card patches: bounds, indexes and the peek card', async () => {
+  const { data } = await import('../games/cards/index.js');
+  const propose = (path, value) => ({ baseDataHash: hash(data), replacements: [{ path, value }], rationale: 'test' });
+  const cards = data.gameRules.cards;
+  const peek = cards.findIndex(card => card.kind === 'peek');
+  const spark = cards.findIndex(card => card.id === 'spark');
+  assert.equal(applyPatch(data, propose(`/gameRules/cards/${spark}/power`, 5)).gameRules.cards[spark].power, 5);
+  assert.equal(applyPatch(data, propose(`/gameRules/cards/${spark}/cost`, 3)).gameRules.cards[spark].cost, 3);
+  for (const [path, value] of [[`/gameRules/cards/${spark}/cost`, 0], [`/gameRules/cards/${spark}/cost`, 4],
+    [`/gameRules/cards/${spark}/power`, 0], [`/gameRules/cards/${spark}/power`, 11],
+    [`/gameRules/cards/${peek}/power`, 2], ['/gameRules/cards/99/cost', 2]]) {
+    assert.throws(() => applyPatch(data, propose(path, value)), /PATCH_REJECTED|INVALID_SCHEMA/, `${path}=${value}`);
+  }
+  assert.throws(() => applyPatch(data, propose('/gameRules/cards/01/cost', 2)), /INVALID_SCHEMA/);
+  assert.throws(() => applyPatch(data, propose('/gameRules/health', 2)), /INVALID_SCHEMA/);
+});

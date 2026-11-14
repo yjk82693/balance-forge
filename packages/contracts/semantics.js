@@ -93,6 +93,15 @@ function heroStatPatch(result, root, path, value) {
   if (value < low || value > high || !withinFortyPercent(value, rootHero[stat])) fail('PATCH_REJECTED');
   result.characters[Number(index)][stat] = value;
 }
+// Hero Cards (contract v0.1.4): cost 1..3, power 1..10; a peek card has no power to change.
+const CARD_BOUNDS = { cost: [1, 3], power: [1, 10] };
+function cardPatch(result, path, value) {
+  const [, , , index, field] = path.split('/');
+  const card = result.gameRules?.cards?.[Number(index)];
+  const [low, high] = CARD_BOUNDS[field];
+  if (!card || value < low || value > high || (field === 'power' && card.kind === 'peek')) fail('PATCH_REJECTED');
+  card[field] = value;
+}
 export function applyPatch(data, proposal, root = data) {
   validate('PatchProposal', proposal);
   if (proposal.baseDataHash !== hash(data)) fail('PATCH_REJECTED');
@@ -107,6 +116,8 @@ export function applyPatch(data, proposal, root = data) {
     if (path === '/tuning/damageScalePermille') {
       if (value < 100 || value > 3000) fail('PATCH_REJECTED');
       result.tuning.damageScalePermille = value;
+    } else if (path.startsWith('/gameRules/cards/')) {
+      cardPatch(result, path, value);
     } else if (path.startsWith('/characters/')) {
       heroStatPatch(result, root, path, value);
     } else {

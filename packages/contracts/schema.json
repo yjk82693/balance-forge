@@ -1020,7 +1020,7 @@
             "properties": {
               "path": {
                 "type": "string",
-                "pattern": "^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|characters/(0|[1-9][0-9]*)/(health|speed))$"
+                "pattern": "^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power))$"
               },
               "value": {
                 "type": "integer",
