@@ -1,0 +1,153 @@
+{
+  "policy": "learned-cem-1",
+  "hero": "real_armor",
+  "params": {
+    "standOff": 600,
+    "reaction": 8,
+    "guardChance": 90,
+    "meleeClose": 1796,
+    "aggression": 81,
+    "aimBias": 21,
+    "strafePeriod": 58
+  },
+  "trainedOn": {
+    "seeds": {
+      "first": 5000001,
+      "perOpponent": 7,
+      "evaluationSeedsExcluded": "1..1000 and 7000001..7000100"
+    },
+    "generations": 10,
+    "population": 16,
+    "opponents": [
+      "bari",
+      "daewi",
+      "sepia"
+    ],
+    "heldOut": [
+      "nightcrow"
+    ],
+    "opponentParams": "the population current at training time (scripted 0.2.1 until that hero was trained)",
+    "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+    "simVersion": "arena-0.1.1",
+    "proposer": {
+      "origin": "cem",
+      "seed": 2
+    },
+    "matches": 6720
+  },
+  "fitness": [
+    {
+      "generation": 0,
+      "best": 0.6904761904761905,
+      "mean": 0.5915178571428571,
+      "eliteMean": 0.6726190476190476,
+      "fellBack": 0
+    },
+    {
+      "generation": 1,
+      "best": 0.6666666666666666,
+      "mean": 0.6220238095238095,
+      "eliteMean": 0.6666666666666666,
+      "fellBack": 0
+    },
+    {
+      "generation": 2,
+      "best": 0.6666666666666666,
+      "mean": 0.6376488095238095,
+      "eliteMean": 0.6666666666666666,
+      "fellBack": 0
+    },
+    {
+      "generation": 3,
+      "best": 0.6904761904761905,
+      "mean": 0.6450892857142856,
+      "eliteMean": 0.6845238095238094,
+      "fellBack": 0
+    },
+    {
+      "generation": 4,
+      "best": 0.7142857142857143,
+      "mean": 0.6577380952380951,
+      "eliteMean": 0.7023809523809523,
+      "fellBack": 0
+    },
+    {
+      "generation": 5,
+      "best": 0.7142857142857143,
+      "mean": 0.6584821428571428,
+      "eliteMean": 0.6964285714285714,
+      "fellBack": 0
+    },
+    {
+      "generation": 6,
+      "best": 0.7380952380952381,
+      "mean": 0.681547619047619,
+      "eliteMean": 0.7202380952380953,
+      "fellBack": 0
+    },
+    {
+      "generation": 7,
+      "best": 0.7619047619047619,
+      "mean": 0.6860119047619047,
+      "eliteMean": 0.7261904761904763,
+      "fellBack": 0
+    },
+    {
+      "generation": 8,
+      "best": 0.7142857142857143,
+      "mean": 0.6577380952380952,
+      "eliteMean": 0.6904761904761904,
+      "fellBack": 0
+    },
+    {
+      "generation": 9,
+      "best": 0.7142857142857143,
+      "mean": 0.6711309523809522,
+      "eliteMean": 0.7023809523809523,
+      "fellBack": 0
+    }
+  ],
+  "bestFitness": 0.7619047619047619,
+  "heldOutEval": [
+    {
+      "opponent": "nightcrow",
+      "seeds": {
+        "first": 7000001,
+        "count": 100
+      },
+      "learned": {
+        "games": 200,
+        "wins": 188,
+        "winRate": 0.94,
+        "ci95": [
+          0.898067,
+          0.965348
+        ],
+        "meanTicks": 491.16
+      },
+      "defaults": {
+        "games": 200,
+        "wins": 180,
+        "winRate": 0.9,
+        "ci95": [
+          0.850593,
+          0.93433
+        ],
+        "meanTicks": 539.355
+      },
+      "scripted": {
+        "games": 200,
+        "wins": 97,
+        "winRate": 0.485,
+        "ci95": [
+          0.416673,
+          0.553893
+        ],
+        "meanTicks": 577.365
+      }
+    }
+  ],
+  "trainingMs": 252923,
+  "createdAt": "2026-11-14T17:20:00.319Z",
+  "paramsHash": "f4f0821598795da179b6a6a5476bc4ee0c76f41f6e72c5abe1e40df574db7b33"
+}
