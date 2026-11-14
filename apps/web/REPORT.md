@@ -137,3 +137,11 @@ real playtest API and progress, replaying the latest room messages to late subsc
 ### Not verified
 No physical phone, no second computer on the LAN, no `RUN_SOCKET_TESTS` run of the engine's own tests, no test of the
 reconnect window under a real network drop (a page reload was used). The server was started with `HOST=127.0.0.1`.
+
+## Polish 00:10
+
+Checked again after the live-server pass: `npm test` 46 of 46 pass (43 s), `npm run build -w apps/web` passes, `tsc` is clean, no line over 120 characters in `apps/web/src`, and the only `console` call is the error boundary's warning. No test was changed, skipped or deleted. Performance numbers from "Polish 23:00" still stand; nothing that affects rendering changed except the arena now handles `events`, which added no measurable cost in a 118 fps arena run earlier (not re-measured).
+
+**Changed:** removed one unused export (`getDemoVersion`, left over when the lobby stopped sending the data version).
+
+**Still blocked / open** (unchanged, see "Live server check" and `CHANGE_REQUEST.md`): replay views and a patch proposal/verdict API need the engine; the Hero Cards screens and floating damage numbers were not watched against the live server; no physical phone or LAN test.

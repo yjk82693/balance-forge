@@ -12,7 +12,6 @@ let version: DemoVersion = (() => {
 })();
 const subs = new Set<() => void>();
 
-export const getDemoVersion = () => version;
 export function setDemoVersion(v: DemoVersion) {
   version = v;
   try {
