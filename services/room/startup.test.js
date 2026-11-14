@@ -188,3 +188,16 @@ test('server closes active HTTP connections before closing its listener', async 
   await server.close();
   assert.deepEqual(calls, ['connections', 'listener']);
 });
+test('close() drops open HTTP connections before it waits for http.close()', async t => {
+  const { server } = await localServer(t);
+  const order = [];
+  server.http.closeAllConnections = () => order.push('closeAllConnections');
+  Object.defineProperty(server.http, 'listening', { value: true, configurable: true });
+  server.http.close = callback => {
+    order.push('close');
+    callback();
+  };
+  await server.close();
+  assert.deepEqual(order, ['closeAllConnections', 'close']);
+  Object.defineProperty(server.http, 'listening', { value: false, configurable: true });
+});

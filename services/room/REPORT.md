@@ -647,3 +647,16 @@ replays and MatchResults stay deterministic, and it makes no receipt and no chan
 - Tests: `services/room/held-move.test.js` (8): silence keeps moving every tick, `(0, 0)` stops, a new vector
   replaces the old one, no attack is carried and sequence numbers stay valid, stun stops it, bots and match end,
   replay reproduces the final hash, and a room test where a disconnect stops a held stick.
+
+## Round 8 engine steps
+
+- Version routes (web shape): GET /v1/versions/:gameId and POST /v1/data/:gameId/select both return {versions,
+  currentHash} (the history, oldest first, and the server-wide current hash). Tests, README and examples.json
+  follow.
+- Approval: a record whose verdict is rejected cannot be approved (400 ILLEGAL_ACTION), so a version rejected by the
+  final roster check is never shipped. Accepted, inconclusive and manual records can still be approved by a person.
+- Shutdown: close() drops open HTTP connections (closeAllConnections) before it waits for tasks, the websocket
+  server and http.close(); startup.js already forces exit after 3 seconds. New test records the call order.
+- Follow-up (Tony): simVersion stays arena-0.1.1 for now. The held-move seq rule change (a move may repeat the
+  seat's latest seq) is bumped once, together with the final recorded regeneration, so recorded files and their
+  metadata change only once.

@@ -657,6 +657,10 @@ export class RoomServer {
     if (room.host === session) room.host = null;
     this.status(room);
   }
+  // The version history plus the server-wide current version ("Make current" needs it).
+  versionList(gameId) {
+    return { versions: this.storage.versionStore.list(gameId), currentHash: this.storage.get(gameId).dataHash };
+  }
   async handleHttp(request, response) {
     let url;
     try {
@@ -708,7 +712,7 @@ export class RoomServer {
       const versions = this.storage.versionStore;
       if (request.method === 'GET' && !approve) {
         const record = dataHash ? versions.get(gameId, dataHash) : null;
-        if (!dataHash) json(response, 200, versions.list(gameId));
+        if (!dataHash) json(response, 200, this.versionList(gameId));
         else json(response, record ? 200 : 404, record ? { ...record, diff: record.changes } : {
           code: 'HASH_MISMATCH'
         });
@@ -725,7 +729,8 @@ export class RoomServer {
     if (request.method === 'POST' && selectRoute) {
       const body = await readBody(request);
       validateSchema(object({ dataHash: { type: 'string', pattern: '^[0-9a-f]{64}$' } }), body);
-      json(response, 200, this.storage.select(selectRoute[1], body.dataHash));
+      this.storage.select(selectRoute[1], body.dataHash);
+      json(response, 200, this.versionList(selectRoute[1]));
       return;
     }
     const dataRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards)(\/apply-patch)?$/);
@@ -856,9 +861,11 @@ export class RoomServer {
       } catch {}
     }
     for (const matchId of [...this.pendingRecords.keys()]) this.flushRecord(matchId);
+    // Drop keep-alive and in-flight HTTP connections first: http.close() waits for them, and one idle connection
+    // would hold the process open until the shutdown deadline in startup.js forces an exit.
+    this.http.closeAllConnections();
     await Promise.allSettled([...this.tasks]);
     await new Promise(resolve => this.ws.close(resolve));
-    this.http.closeAllConnections();
     if (this.http.listening) await new Promise((resolve, reject) => this.http.close(error => error ? reject(
       error) : resolve()));
   }
