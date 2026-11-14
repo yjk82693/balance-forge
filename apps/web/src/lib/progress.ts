@@ -1,8 +1,11 @@
 import type { Report, ReportRow } from "./contract";
 import { isHumanDimension, isMirror } from "./groups";
 
-/** Which part of a run is going: the baseline, the holdout on the patched data, or the hero diagnosis. */
-export type RunPhase = "baseline" | "holdout" | "diagnose";
+/**
+ * Which part of a run is going: the baseline, the holdout on the patched data, the hero diagnosis, or (Hero Cards) the
+ * card lever probe. The server sends no probe progress today; the screen works it out, and uses it if it ever arrives.
+ */
+export type RunPhase = "baseline" | "holdout" | "diagnose" | "probe";
 
 /** One matchup in `playtest.progress` (services/room README): wins are keyed by hero id. */
 export interface MatchupProgress {

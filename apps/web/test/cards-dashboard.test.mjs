@@ -62,3 +62,25 @@ test("the cards scene exists only when a Hero Cards result does", () => {
   assert.ok(withCards.indexOf("cards") > withCards.indexOf("verdict"));
   assert.ok(withCards.indexOf("cards") < withCards.indexOf("history"));
 });
+
+import { isIndeterminate, shownPhase } from "../src/lib/runPhase.ts";
+
+const live = (o) => ({ done: 0, total: 0, rows: null, ...o });
+
+test("a finished baseline with no later phase is the card probe, with no counter of its own", () => {
+  assert.equal(shownPhase(live({ phase: "baseline", done: 200, total: 200 }), true), "probe");
+  assert.equal(isIndeterminate(live({ phase: "baseline", done: 200, total: 200 }), true), true);
+});
+
+test("a baseline still counting, the holdout and the arena are left as they are", () => {
+  assert.equal(shownPhase(live({ phase: "baseline", done: 50, total: 200 }), true), "baseline");
+  assert.equal(shownPhase(live({ phase: "holdout", done: 200, total: 200 }), true), "holdout");
+  assert.equal(shownPhase(live({ phase: "baseline", done: 200, total: 200 }), false), "baseline");
+  assert.equal(isIndeterminate(live({ phase: "baseline", done: 200, total: 200 }), false), false);
+});
+
+test("probe progress, when the engine streams it, gets its own counter", () => {
+  const streamed = live({ phase: "probe", done: 200, total: 200, diagnose: { done: 400, total: 2800 } });
+  assert.equal(shownPhase(streamed, true), "probe");
+  assert.equal(isIndeterminate(streamed, true), false);
+});

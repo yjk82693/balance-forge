@@ -526,3 +526,11 @@ lives in `src/lib/presentStart.ts` and is tested in `apps/web/test/present-start
   `proposal.changes`, `verdict.targets`) and in `?mock=1` (sample data, labelled so). Not yet against the live engine.
 - Screenshots: `cards-dashboard-sample.png` and `cards-dashboard-phone-sample.png` (sample data),
   `cards-present-scene-stub.png` (stub numbers). None of them are results.
+
+### Card probe phase
+
+The probe (cost and power ±1 for each card) streams no progress. After the baseline, the cards dashboard now says
+"Probing card levers (cost and power ±1 for each card)" with a shimmering bar (still under reduced motion) and the
+elapsed time, until the holdout phase or the result arrives. If the engine later sends `phase: "probe"` (or
+`"diagnose"` for cards) with a counter, that counter is shown instead. The rule is `src/lib/runPhase.ts`, tested in
+`apps/web/test/cards-dashboard.test.mjs`. `?mock=1` pauses three seconds after the baseline to show it.
