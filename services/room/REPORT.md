@@ -222,3 +222,13 @@ GET /v1/games is registered before listen and needed 0.50 ms after an in-memory 
 the test enforces <1 second. Existing opt-in TCP tests now also enforce the one-second readiness check after
 binding. Real OS port contention/TCP timing remains unverified under the no-network sandbox; no tests were skipped
 or weakened to obtain the new results. tools/demo.mjs was read from the integration worktree, not modified.
+
+## Protocol examples
+
+Replaced the abbreviated README with every implemented HTTP route (including retained data, static GET/HEAD and
+/ws upgrade) and all eight incoming/nine outgoing application message types. Each has an example and response
+shape; large bodies are explicitly labelled excerpts and linked to complete captures in examples.json.
+The captures use real handlers, persistence and workers, with private tokens redacted; no TCP listeners.
+Added a reproducible generator and three tests checking schema-valid examples, complete message/route coverage,
+and fresh handler responses against the documented catalog, data and observation. All three pass.
+README examples explain host/phone ownership, tokens, input/transport sequences, reconnect, progress and errors.
