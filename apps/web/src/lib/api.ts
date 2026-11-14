@@ -43,6 +43,45 @@ export interface VerdictTarget {
   outcome: TargetOutcome;
 }
 
+/** What the diagnosis found about one opponent of a hero. */
+export interface OpponentRate extends VerdictRate {
+  opponent: string;
+}
+export type Classification = "overall_strong" | "overall_weak" | "counter_specific";
+/** How far one hero stands from even; the winner is the one above it, the loser the one below. */
+export interface HeroStrength {
+  role: "winner" | "loser";
+  overallRate?: number;
+  /** percentage points above (or below) 50% */
+  marginPts?: number;
+  /** how many opponents sit outside the fair band */
+  opponentsOutsideBand?: number;
+  worstOpponent?: string;
+}
+export interface HeroProfileData {
+  hero: string;
+  overall: VerdictRate | null;
+  opponents: OpponentRate[];
+  strength?: HeroStrength;
+}
+/** One suggested change, ranked: which hero, which field, which way and by how much, and why. */
+export interface Recommendation {
+  hero: string;
+  role?: "winner" | "loser";
+  path: string;
+  direction: "up" | "down";
+  sizePct: number;
+  why: string;
+  expected?: string;
+}
+/** The `diagnosis` of a /full body (request flag `diagnose: true`): a profile of each hero and what to change. */
+export interface Diagnosis {
+  focusHero?: string;
+  heroes: HeroProfileData[];
+  classification?: Classification;
+  recommendations: Recommendation[];
+}
+
 export interface Verdict {
   verdict: VerdictKind;
   reasons: string[];
@@ -56,6 +95,8 @@ export interface PlaytestRun {
   proposal?: Proposal;
   patched?: Report;
   verdict?: Verdict;
+  /** hero profiles and recommendations, when the request asked to diagnose */
+  diagnosis?: Diagnosis;
   /** per-matchup evidence from the run body (`evidence`), when the server sent it */
   evidence?: RunEvidence;
   /** id of the run, when the server gave one */
@@ -157,6 +198,7 @@ export async function runPlaytest(
   signal?: AbortSignal,
   onProgress?: (p: ProgressMsg) => void,
   heroes?: [string, string],
+  diagnose = false,
 ): Promise<PlaytestRun> {
   if (isMockMode()) {
     // Baseline run, then the holdout run on the patched data, like the real /full endpoint.
@@ -179,7 +221,7 @@ export async function runPlaytest(
         : undefined,
     };
   }
-  return (await runFullPlaytest(signal, heroes)) ?? runRealPlaytest(matches, signal);
+  return (await runFullPlaytest(signal, heroes, diagnose)) ?? runRealPlaytest(matches, signal);
 }
 
 /** Pairs per seat assignment for the live run: Bari vs Real Armor, 400 matches, over the 200-game verdict gate. */
@@ -191,13 +233,22 @@ export const FULL_RUN_PAIRS = 100;
  * The all-matchups table is not part of this run; it comes from the recorded roster report. Returns null when the
  * server has no such endpoint (404/405), so the caller can fall back to the plain bot run.
  */
-async function runFullPlaytest(signal?: AbortSignal, heroes?: [string, string]): Promise<PlaytestRun | null> {
+async function runFullPlaytest(
+  signal?: AbortSignal,
+  heroes?: [string, string],
+  diagnose = false,
+): Promise<PlaytestRun | null> {
   let res: Response;
   try {
     res = await fetch("/v1/playtest/full", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId: "hero_arena", ...(heroes ? { heroes } : {}), pairs: FULL_RUN_PAIRS }),
+      body: JSON.stringify({
+        gameId: "hero_arena",
+        ...(heroes ? { heroes } : {}),
+        ...(diagnose ? { diagnose: true } : {}),
+        pairs: FULL_RUN_PAIRS,
+      }),
       signal,
     });
   } catch (e) {
@@ -205,12 +256,12 @@ async function runFullPlaytest(signal?: AbortSignal, heroes?: [string, string]):
     throw new ApiError("Couldn't reach the server.", "network");
   }
   if (res.status === 404 || res.status === 405) return null;
-  // A server that rejects `heroes` must not be answered with a different matchup than the one picked: show the error.
-  if (res.status === 400 && heroes) {
+  // A server that rejects `heroes` or `diagnose` must not be answered with a different run: show the error.
+  if (res.status === 400 && (heroes || diagnose)) {
     const { code, text } = await readError(res);
-    const names = heroes.map(heroName).join(" vs ");
+    const what = [heroes ? heroes.map(heroName).join(" vs ") : "", diagnose ? "with diagnosis" : ""].filter(Boolean);
     const said = `${code ? `${code}: ` : ""}${text}`;
-    throw new ApiError(`The server didn't accept the matchup ${names}. ${said}`, "server", code, true);
+    throw new ApiError(`The server didn't accept this run (${what.join(", ")}). ${said}`, "server", code, true);
   }
   if (!res.ok) return failFrom(res);
   const run = runFromFull(await readJson<unknown>(res, "run reply"));

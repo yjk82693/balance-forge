@@ -57,3 +57,37 @@ export function defaultMatchup(played: JustPlayed | null, roster: PlaytestRun | 
 export function currentMatchup(played: JustPlayed | null, roster: PlaytestRun | null): Matchup {
   return loadChosen() ?? defaultMatchup(played, roster);
 }
+
+const DIAGNOSE_KEY = "bf-diagnose";
+
+/** The matchup's row in the recorded roster report is an outlier (a flagged matchup is worth diagnosing). */
+export function isFlagged(m: Matchup, roster: PlaytestRun | null): boolean {
+  if (!roster) return false;
+  const [a, b] = [...m].sort();
+  const names = [`${a} vs ${b}`, `${b} vs ${a}`];
+  const row = botRows(roster.baseline.rows).find((r) => names.includes(r.dimension));
+  return !!row && rowStats(row).outlier;
+}
+
+/** A person's choice for the "Diagnose heroes" option, if they made one. */
+export function loadDiagnose(): boolean | null {
+  try {
+    const raw = sessionStorage.getItem(DIAGNOSE_KEY);
+    return raw === null ? null : raw === "1";
+  } catch {
+    return null;
+  }
+}
+
+export function saveDiagnose(on: boolean) {
+  try {
+    sessionStorage.setItem(DIAGNOSE_KEY, on ? "1" : "0");
+  } catch {
+    /* storage blocked: the choice lasts until the page is left */
+  }
+}
+
+/** Diagnose when the person said so, else when the matchup is flagged. */
+export function currentDiagnose(m: Matchup, roster: PlaytestRun | null): boolean {
+  return loadDiagnose() ?? isFlagged(m, roster);
+}

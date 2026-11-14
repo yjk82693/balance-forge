@@ -23,7 +23,7 @@ import {
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { loadJustPlayed } from "../lib/justPlayed";
-import { currentMatchup, saveChosen, type Matchup } from "../lib/matchup";
+import { currentDiagnose, currentMatchup, saveChosen, saveDiagnose, type Matchup } from "../lib/matchup";
 import { loadRecordedRun } from "../lib/recorded";
 import { buildFacts } from "../lib/resultCard";
 import { useReplaySource } from "../lib/replaySource";
@@ -75,6 +75,8 @@ export function Dashboard() {
     saveChosen(m);
     setPicked(m);
   };
+  const [diagnoseChoice, setDiagnoseChoice] = useState<boolean | null>(null);
+  const diagnose = diagnoseChoice ?? currentDiagnose(matchup, roster);
   const facts = useMemo(() => (run ? buildFacts(run, roster) : null), [run, roster]);
 
   const canPatch = !!run?.patched;
@@ -108,7 +110,27 @@ export function Dashboard() {
             disabled={busy || mock}
             title={mock ? "Sample data: the matchup is fixed." : undefined}
           />
-          <button className="btn primary" onClick={() => start(matchup)} aria-busy={busy} aria-disabled={busy}>
+          <label
+            className="small toggle"
+            title={mock ? "Sample data: no diagnosis." : "Profile each hero against every opponent and suggest a change."}
+          >
+            <input
+              type="checkbox"
+              checked={diagnose && !mock}
+              disabled={busy || mock}
+              onChange={(e) => {
+                saveDiagnose(e.target.checked);
+                setDiagnoseChoice(e.target.checked);
+              }}
+            />{" "}
+            Diagnose heroes
+          </label>
+          <button
+            className="btn primary"
+            onClick={() => start(matchup, diagnose)}
+            aria-busy={busy}
+            aria-disabled={busy}
+          >
             {busy && <span className="spinner" aria-hidden="true" />}
             {busy ? "Bots are playing…" : "Let the bots play"}
           </button>
@@ -152,6 +174,7 @@ export function Dashboard() {
               phase={live.phase}
               elapsed={elapsed}
               holdout={live.holdout}
+              diagnose={live.diagnose}
             />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
@@ -178,7 +201,7 @@ export function Dashboard() {
               notice={notice}
               elapsed={elapsed}
               showPatched={showPatched}
-              onRun={() => start(matchup)}
+              onRun={() => start(matchup, diagnose)}
             />
           </div>
         </main>

@@ -12,7 +12,7 @@ import { fixtureMatchConfig } from "../lib/fixtures";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
-import { currentMatchup } from "../lib/matchup";
+import { currentDiagnose, currentMatchup } from "../lib/matchup";
 import { loadRecordedRun } from "../lib/recorded";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
@@ -49,12 +49,15 @@ export function Present({ auto }: { auto: boolean }) {
     loadRecordedRun()
       .then((r) => (roster.current = r))
       .catch(() => null)
-      .finally(() => void start(matchup()));
+      .finally(() => void start(matchup(), currentDiagnose(matchup(), roster.current)));
   }, [start, matchup]);
 
   const finished = !!run && !busy;
   const ready = useCallback((id: SceneId) => id !== "bots" || finished || !!error, [finished, error]);
-  const restart = useCallback(() => void start(matchup()), [start, matchup]);
+  const restart = useCallback(
+    () => void start(matchup(), currentDiagnose(matchup(), roster.current)),
+    [start, matchup],
+  );
   const history = useHistory(finished);
   const scenes = useMemo(() => scenesFor(!!history && history.list.versions.length > 1), [history]);
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
@@ -241,6 +244,7 @@ function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, 
         phase={live.phase}
         elapsed={elapsed}
         holdout={live.holdout}
+        diagnose={live.diagnose}
       />
       <section className="panel">
         <div className="panel-head">
