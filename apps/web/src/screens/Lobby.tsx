@@ -12,6 +12,7 @@ import { VersionToggle } from "../components/VersionToggle";
 import { ServerDown, useServerState } from "../components/ServerDown";
 
 const SLOTS = 2;
+const START_WAIT_MS = 6000;
 /** The room server starts a match with exactly two connected players. */
 const PLAYERS_TO_START = 2;
 
@@ -80,7 +81,14 @@ export function Lobby({ gameId }: { gameId: string }) {
     else if (error) {
       setStarting(null);
       setRefusal(startError(error.code, error.message));
+      return;
     }
+    // No answer at all (dropped connection, silent server): do not leave the buttons disabled forever.
+    const t = setTimeout(() => {
+      setStarting(null);
+      setRefusal("The server didn't answer. Try again.");
+    }, START_WAIT_MS);
+    return () => clearTimeout(t);
   }, [starting, phase, error, gameId]);
 
   useEffect(() => {

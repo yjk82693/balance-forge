@@ -235,3 +235,13 @@ Order, best first (`lib/replaySource.ts`):
   card and replays); fixed with a phone layout (stacked cards, wrapped top bar, one-column chart rows, scrollable
   matches table) and re-checked. The phone controller was not changed this round.
 - Mock-only switches: `?mock=1&replay=timeline` shows the HP-timeline replay path.
+
+## Polish 01:10
+
+Checked: `npm test` 159 tests, 153 pass, 6 skipped, 0 fail (48 s; the skips are other folders' opt-in socket and end-to-end tests, none are web tests and none were changed). `npm run build -w apps/web` passes, `tsc` is clean, no line over 120 characters in `apps/web/src`, no unused exports, and the only `console` call is the error boundary's warning.
+
+**Changed:** the lobby could leave "Start match" and "Play vs bot" disabled forever if the server never answered a start request; it now gives up after 6 s and says "The server didn't answer. Try again."
+
+**Performance** (production build, `?mock=1`, display about 120 Hz, devicePixelRatio 2, viewport 1512x857, frames counted with `requestAnimationFrame`): dashboard idle with two Phaser canvases 102 fps (worst frame 74 ms); dashboard during the two-phase live batch with 15 matchup bars, human group and mini-arenas 88 fps (worst frame 74 ms). Earlier numbers were 111 and 99 fps with a worst frame of 34-42 ms; the dashboard now draws more rows and a second phase, and one worst-frame spike is higher, but it stays smooth. Not re-measured: arena (118 fps earlier), phones, long sessions. The matches/s figure belongs to the runner (roster sample: 300 matches in 4.3 s, about 69 matches/s), not to the web app.
+
+**Still blocked / open:** `/v1/playtest/full`, `/v1/replay/:id/views`, `recorded-roster-report.json` and bot start do not exist in the repo yet, so those paths were only checked with the mock and with pure-function tests; no physical phone test.
