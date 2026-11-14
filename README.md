@@ -11,3 +11,6 @@ Built solo during **HackPrinceton Fall 2026** (Nov 13–15). The author made the
 - `fixtures/` — example data every package tests against
 - `docs/ui-tone.md` — visual tone and design tokens
 - `packages/`, `services/`, `apps/` — engine, bots, analysis, web
+
+## Rights
+The characters and art are original and **all rights reserved** — see [ASSETS_LICENSE.md](ASSETS_LICENSE.md). They are here to demo the platform, not for reuse.
