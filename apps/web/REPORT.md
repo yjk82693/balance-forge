@@ -249,3 +249,7 @@ Checked: `npm test` 159 tests, 153 pass, 6 skipped, 0 fail (48 s; the skips are 
 ## Polish 03:14
 
 Nothing to change. `npm test` 153 pass, 6 skipped (other folders' opt-in tests), 0 fail; `npm run build -w apps/web` passes; no line over 120 characters. Performance numbers and blocked items are unchanged from Polish 01:10.
+
+## Polish 04:14
+
+Nothing to change since Polish 03:14. Tests 153 pass, 6 skipped, 0 fail; build passes; no line over 120 characters. Blocked items unchanged.
