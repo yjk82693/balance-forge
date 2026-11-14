@@ -11,6 +11,7 @@ import { isMockMode } from "../mock/types";
 import { CardTable, LeverList } from "./CardsPanels";
 import { Collapsible } from "./Collapsible";
 import { DeckPicker } from "./DeckPicker";
+import { EmptyResult } from "./EmptyResult";
 import { FitStage } from "./FitStage";
 import { GameSwitch } from "./GameSwitch";
 import { HeadlineStrip } from "./HeadlineStrip";
@@ -142,8 +143,8 @@ export function CardsDashboard({ theme, onTheme }: Props) {
           actions={facts ? <CopyButton facts={facts} /> : null}
           empty={
             <>
-              <p className="strip-mid">Pick two decks and let the bots play.</p>
-              <p>The result appears here: the win rate, what was intended and the verdict.</p>
+              <p className="strip-mid">Pick two decks above.</p>
+              <p>The win rate, what was intended and the verdict appear here.</p>
             </>
           }
         />
@@ -164,6 +165,8 @@ export function CardsDashboard({ theme, onTheme }: Props) {
           <div className="d2-left">
             {busy ? (
               <ResultSkeleton live={live} elapsed={elapsed} cards />
+            ) : !run ? (
+              <EmptyResult onRun={go} />
             ) : (
               sections.map((sec) => (
                 <Collapsible key={sec.id} title={sec.title} note={sec.note} defaultOpen={sec.open}>

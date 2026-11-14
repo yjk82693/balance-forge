@@ -2542,3 +2542,12 @@ button.intent-btn { cursor: pointer; }
 /* Lobby: the room's data toggle with the version named beside it; the dashboard's toggle says "View". */
 .lobby-version, .view-switch { display: inline-flex; align-items: center; gap: var(--space-3); }
 .lobby-version-line { max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Before a run: one calm empty state for the whole result area. */
+.empty-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
