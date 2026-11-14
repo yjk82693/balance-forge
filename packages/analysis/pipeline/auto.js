@@ -2,7 +2,9 @@
 // the previous scan flagged. A round diagnoses the most lopsided flagged matchup (both heroes against every other
 // hero), picks the hero the diagnosis recommends and proposes a patch for that hero's flagged matchups (mirror rows
 // are never targets; without a diagnosis see focusTargets), applies it, runs the holdout on fresh seeds for those
-// matchups and judges it. One version record per round.
+// matchups and judges it. Up to three candidate patches per round, each its own version record (siblings). If no
+// candidate is accepted the hero is not abandoned silently: it goes to `needs_designer` (what was tried, how each lever
+// came out, the evidence) and the next hero is worked on in the next round.
 //
 // input: { gameId, fromHash, data (the data for fromHash), rounds (1..5, default 3), requireApproval (default true),
 //   rootData (the original game data that hero-stat bounds are measured against; default: `data`),
@@ -10,21 +12,24 @@
 //   MatchResult[], seedsFor(round, 'scan' | 'holdout') -> seeds (never overlapping), allMatchups (dimension strings,
 //   e.g. "bari vs daewi"), botPolicyVersion, seedSetId, onProgress({ round, phase, matchesDone, totalMatches }),
 //   onRecord(versionRecord), now() -> ISO string }
-// returns { records, stoppedBecause: 'fair'|'not_accepted'|'regression'|'rounds'|'awaiting_approval'|'error',
-//   error?, finalCheck: Report | null, headHash, diagnoses: [{ round, diagnosis }] }. Never throws. finalCheck is one
-//   all-matchups run on the last accepted hash, skipped while awaiting approval. Regression = that check shows a new
-//   extreme matchup (> 65%, n >= 200) compared with the first scan; the record of the last accepted version is then
-//   marked rejected.
+// returns { records, stoppedBecause: 'fair'|'needs_designer'|'regression'|'rounds'|'awaiting_approval'|'error',
+//   error?, finalCheck: Report | null, headHash, diagnoses: [{ round, diagnosis }], needs_designer: [{ hero, tried:
+//   [{ label, path, old, new, outcome }], evidence }] }. Never throws. The run stops only when nothing is flagged
+//   ('fair'), the rounds are used up ('rounds'), every flagged hero has been handed to a designer ('needs_designer'),
+//   a person has to approve ('awaiting_approval'), the final check finds a regression, or on an error. finalCheck is
+//   one all-matchups run on the last accepted hash, skipped while awaiting approval. Regression = that check shows a
+//   new extreme matchup (> 65%, n >= 200) compared with the first scan; the record of the last accepted version is
+//   then marked rejected.
 import { analyzePhase } from './pipeline.js';
 import { runFull } from './full.js';
-import { buildDiagnosis, diagnosisMatchups, focusMatchupOf } from '../src/diagnose.js';
+import { buildDiagnosis, diagnosisMatchups } from '../src/diagnose.js';
 import { heroMatchup } from '../src/group.js';
 import { isMirror, newExtremeRows } from '../src/verdict.js';
 import { AnalysisError, fail, toErrorResult } from '../src/errors.js';
 
 export const MAX_ROUNDS = 5;
 const DEFAULT_ROUNDS = 3;
-const MAX_CANDIDATES = 2; // candidates per round, tried in recommendation order
+const MAX_CANDIDATES = 3; // candidates per round, tried in recommendation order
 const SEATS = 2; // every seed is played with both seat orders
 
 /** The root record of a version tree (the base data). */
@@ -59,6 +64,31 @@ export function candidateDiagnoses(diagnosis, focusHero) {
   for (const rec of recs) if (!picked.some((p) => p.path === rec.path)) picked.push(rec);
   return picked.slice(0, MAX_CANDIDATES).map((rec) => ({ ...diagnosis, recommendations: [rec,
     ...diagnosis.recommendations.filter((r) => r !== rec)] }));
+}
+
+const pct = (x) => `${(x * 100).toFixed(1)}%`;
+
+/** One or two sentences with the numbers: how lopsided the hero is and what the levers did. */
+function evidenceText(hero, entry, tried, rows) {
+  const worst = [...rows].sort((a, b) => Math.abs(b.before.rate - 0.5) - Math.abs(a.before.rate - 0.5))[0];
+  const where = worst ? ` Worst matchup: ${worst.matchup} at ${pct(worst.before.rate)} (${worst.before.games} games), `
+    + `${pct(worst.after.rate)} after the last lever tried.` : '';
+  const overall = entry ? `${hero} wins ${pct(entry.overall.rate)} overall (${entry.overall.games} games, ` +
+    `${entry.strength.marginPts > 0 ? '+' : ''}${entry.strength.marginPts} points from 50%).` : `${hero} is flagged.`;
+  const levers = tried.map((t) => `${t.label ?? t.path} ${t.outcome}`).join(', ');
+  return `${overall} ${tried.length} lever(s) tried (${levers}), none moved a flagged matchup beyond noise.${where}`;
+}
+
+/** One lever of a hero as handed to a designer: what was tried and how it came out. */
+function leverOutcome(variant, outcome) {
+  const rec = variant?.recommendations?.[0] ?? null;
+  const base = { path: rec?.path ?? null, label: rec?.path ?? null, old: null, new: null, direction: rec?.direction,
+    sizePct: rec?.sizePct };
+  if (outcome.skipped) return { ...base, outcome: 'skipped', reason: outcome.reason };
+  const { verdict, reasons, targets } = outcome.record.verdict;
+  const change = outcome.record.changes[0];
+  return { ...base, path: change.path, label: change.label ?? change.path, old: change.old, new: change.new,
+    outcome: verdict, dataHash: outcome.record.dataHash, reasons, targets };
 }
 
 /** Summed improvement of a verdict's targets: how many points closer to 50% (negative when further away). */
@@ -101,22 +131,56 @@ class Run {
     this.input = input;
     this.records = [];
     this.diagnoses = [];
+    this.needsDesigner = []; // heroes the numbers could not fix: { hero, round, matchups, levers, evidence, ... }
+    this.escalated = new Set();
+    this.diagnosisCache = new Map();
+    this.seen = new Set(); // data hashes already recorded: a version is never tried twice
   }
 
   /**
    * Both heroes of the focus matchup against every other hero. Matchups the scan already covered are reused; the
    * rest run on the round's scan seeds (phase "diagnose"). Null when it cannot be built; the round carries on.
    */
-  async diagnose(round, head, scanReport, scanResults) {
-    const matchup = focusMatchupOf(scanReport);
+  async diagnose(round, head, matchup, scanResults) {
+    const key = `${head.hash}|${matchup}`;
+    if (this.diagnosisCache.has(key)) return this.diagnosisCache.get(key);
     const heroIds = (head.data.characters ?? []).map((c) => c.id);
     if (!matchup || heroIds.length < 3) return null;
     const have = new Set(scanResults.map((r) => heroMatchup(r)?.dimension));
     const missing = diagnosisMatchups(matchup, heroIds).filter((d) => !have.has(d));
     const extra = missing.length ? await this.batch(round, 'diagnose', head.hash, missing,
       this.input.seedsFor(round, 'scan')) : [];
-    const built = buildDiagnosis([...scanResults, ...extra], { matchup, data: head.data });
+    const built = buildDiagnosis([...scanResults, ...extra], { matchup, data: head.data,
+      rootData: this.input.rootData ?? this.input.data });
+    this.diagnosisCache.set(key, built.ok ? built.value : null);
     return built.ok ? built.value : null;
+  }
+
+  /**
+   * The next hero to work on: flagged matchups from the most lopsided down, each diagnosed, the first whose recommended
+   * hero has not been handed to a designer yet. Without a diagnosis the hero in the most flagged matchups that is still
+   * open. Null when every flagged hero has been escalated.
+   */
+  async pickFocus(round, head, scanReport, results, flagged) {
+    const distance = (d) => Math.abs((scanReport.rows.find((r) => r.dimension === d)?.winRate ?? 0.5) - 0.5);
+    const ranked = [...flagged].sort((a, b) => distance(b) - distance(a) || (a < b ? -1 : 1));
+    let anyDiagnosis = false;
+    for (const matchup of ranked) {
+      const diagnosis = await this.diagnose(round, head, matchup, results);
+      if (!diagnosis?.focusHero) continue;
+      anyDiagnosis = true;
+      if (this.escalated.has(diagnosis.focusHero)) continue;
+      const targets = flagged.filter((d) => d.split(' vs ').includes(diagnosis.focusHero));
+      return { diagnosis, hero: diagnosis.focusHero, targets, matchup };
+    }
+    if (anyDiagnosis) return null; // diagnosed, and every recommended hero has been escalated
+    const counts = new Map();
+    for (const d of flagged) for (const h of d.split(' vs ')) counts.set(h, (counts.get(h) ?? 0) + 1);
+    const hero = [...counts.keys()].filter((h) => !this.escalated.has(h))
+      .sort((a, b) => counts.get(b) - counts.get(a) || (a < b ? -1 : 1))[0];
+    if (hero === undefined) return null;
+    return { diagnosis: null, hero, targets: flagged.filter((d) => d.split(' vs ').includes(hero)),
+      matchup: ranked[0] };
   }
 
   progress(round, phase, matchesDone, totalMatches) {
@@ -142,6 +206,7 @@ class Run {
   }
 
   emit(record) {
+    this.seen.add(record.dataHash);
     this.records.push(record);
     this.input.onRecord?.(record);
   }
@@ -154,27 +219,48 @@ class Run {
     if (round === 1) this.firstScan = scanReport;
     const flagged = scanReport.rows.filter((r) => r.outlier && !isMirror(r)).map((r) => r.dimension);
     if (flagged.length === 0) return { stop: 'fair' };
-    const diagnosis = await this.diagnose(round, head, scanReport, results);
-    // The diagnosis picks the hero: a weak hero is buffed, a strong one nerfed, whichever side of the flagged
-    // matchup it is on. Without a diagnosis the hero in the most flagged matchups is used.
-    const byDiagnosis = diagnosis ? flagged.filter((d) => d.split(' vs ').includes(diagnosis.focusHero)) : [];
-    const targets = byDiagnosis.length ? byDiagnosis : focusTargets(flagged);
+    // The diagnosis picks the hero: a weak hero is buffed, a strong one nerfed, whichever side of the flagged matchup
+    // it is on. A hero the numbers could not fix is handed to a designer and the next hero is worked on.
+    const focus = await this.pickFocus(round, head, scanReport, results, flagged);
+    if (focus === null) return { stop: 'needs_designer' };
+    const { diagnosis, targets } = focus;
     const baselineResults = results.filter((r) => targets.includes(heroMatchup(r)?.dimension));
     if (diagnosis) this.diagnoses.push({ round, diagnosis });
-    const round_ = { round, head, flagged, targets, baselineResults };
-    const variants = candidateDiagnoses(diagnosis, byDiagnosis.length ? diagnosis.focusHero : null);
+    const round_ = { round, head, flagged, targets, baselineResults, hero: focus.hero };
+    const variants = candidateDiagnoses(diagnosis, diagnosis ? focus.hero : null);
     const outcomes = [];
+    const tried = [];
     for (const [index, variant] of variants.entries()) {
       const outcome = await this.candidate(round_, variant, index, variants.length);
-      if (outcome.failed) {
-        if (outcomes.some((o) => o.record)) continue; // the other candidate already produced a result
-        return outcome.stop;
-      }
+      if (outcome.failed) return outcome.stop; // an error of the run itself
+      tried.push(leverOutcome(variant, outcome));
       if (outcome.skipped) continue;
-      if (outcomes.some((o) => o.record?.dataHash === outcome.record.dataHash)) continue; // the same version again
+      if (outcomes.some((o) => o.record?.dataHash === outcome.record.dataHash)) {
+        tried[tried.length - 1] = { ...tried[tried.length - 1], outcome: 'skipped', reason: 'the same version again' };
+        continue;
+      }
       outcomes.push(outcome);
     }
-    return this.choose(round_, outcomes);
+    const chosen = this.choose(round_, outcomes);
+    if (chosen.stop !== 'not_accepted') return chosen;
+    this.escalate(round_, diagnosis, tried, outcomes);
+    return { head, scope: flagged }; // nothing changed: the next round works on the next hero
+  }
+
+  /**
+   * Hands a hero to a designer: what was tried and how each lever came out, plus the evidence in plain words with the
+   * numbers. Not a version record. Shape for the screen:
+   * { hero, tried: [{ label, path, old, new, outcome }], evidence }.
+   */
+  escalate({ round, hero, targets }, diagnosis, tried, outcomes) {
+    this.escalated.add(hero);
+    const entry = diagnosis?.heroes.find((h) => h.hero === hero) ?? null;
+    const rows = tried.find((t) => t.targets)?.targets ?? [];
+    this.needsDesigner.push({ hero, round, matchups: targets,
+      tried: tried.map(({ label, path, old, new: value, outcome, reason }) => ({ label, path, old, new: value,
+        outcome, ...(reason ? { reason } : {}) })),
+      evidence: evidenceText(hero, entry, tried, rows),
+      rawEvidence: outcomes.find((o) => o.evidence)?.evidence ?? null });
   }
 
   /**
@@ -196,16 +282,18 @@ class Run {
     runHoldout: (patchedData, seeds) => this.batch(round, 'holdout', patched.dataHash, targets, seeds) });
     if (!full.ok) return { failed: true, stop: { stop: 'error', error: full.error } };
     const body = full.value;
-    if (!body.validation.ok) return { failed: true, stop: { stop: 'not_accepted', invalidPatch: body.validation } };
+    if (!body.validation.ok) return { skipped: true, reason: `invalid patch: ${body.validation.errors[0] ?? ''}` };
     // A patch that changes nothing would make a record that is its own parent; it is simply not accepted.
-    if (body.patchedDataHash === head.hash) return { failed: true, stop: { stop: 'not_accepted', noChange: true } };
+    if (body.patchedDataHash === head.hash) return { skipped: true, reason: 'the patch changes nothing' };
+    if (this.seen.has(body.patchedDataHash)) return { skipped: true, reason: 'this version was already tried' };
     const accepted = body.verdict.verdict === 'accepted';
     const record = { dataHash: body.patchedDataHash, parentHash: head.hash, gameId: input.gameId,
       createdAt: input.now(), origin: body.proposal.origin, changes: body.proposal.changes,
       rationale: body.proposal.rationale, target: targetOf(targets, this.reportOf(baselineResults, 'r-target'),
         body.patched), verdict: body.verdict, approved: false,
       ...(count > 1 ? { note: `candidate ${index + 1} of ${count}` } : {}) };
-    return { record, accepted, gain: improvement(body.verdict.targets), data: patched.data, flagged };
+    return { record, accepted, gain: improvement(body.verdict.targets), data: patched.data, flagged,
+      evidence: body.evidence };
   }
 
   /** Emits every candidate as a sibling record and continues from the accepted one that improved most. */
@@ -220,7 +308,7 @@ class Run {
       const note = [outcome.record.note, why].filter(Boolean).join('; ');
       this.emit({ ...outcome.record, approved: chosen, ...(note ? { note } : {}) });
     }
-    if (best === null) return { stop: 'not_accepted' };
+    if (best === null) return { stop: 'not_accepted' }; // the caller escalates the hero and carries on
     if (!approve) return { stop: 'awaiting_approval' };
     return { head: { hash: best.record.dataHash, data: best.data }, scope: flagged };
   }
@@ -264,16 +352,16 @@ async function execute(input, run) {
   }
   if (reason === 'awaiting_approval' || reason === 'error') {
     return { records: run.records, stoppedBecause: reason, finalCheck: null, headHash: head.hash,
-      diagnoses: run.diagnoses, ...extra };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
   }
   const check = await run.finalCheck(head);
   if (check.regression.length) {
     const headHash = run.rejectAccepted(head.hash, check.regression);
     return { records: run.records, stoppedBecause: 'regression', finalCheck: check.report, headHash,
-      diagnoses: run.diagnoses, ...extra };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
   }
   return { records: run.records, stoppedBecause: reason, finalCheck: check.report, headHash: head.hash,
-    diagnoses: run.diagnoses, ...extra };
+    diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
 }
 
 export async function runAuto(input = {}) {
@@ -290,6 +378,6 @@ export async function runAuto(input = {}) {
   } catch (e) {
     const error = e instanceof AnalysisError ? { code: e.code, message: e.message } : toErrorResult(e).error;
     return { records: run.records, stoppedBecause: 'error', finalCheck: null, headHash: settings.fromHash,
-      diagnoses: run.diagnoses, error };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, error };
   }
 }

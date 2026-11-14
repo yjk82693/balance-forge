@@ -106,23 +106,33 @@ test('requireApproval (the default) stops after the first record and skips the f
   assert.equal(out.headHash, w.base.dataHash); // nothing was approved yet
 });
 
-test('a verdict that is not accepted stops the run; the record is kept and not approved', async () => {
+test('a verdict that is not accepted does not stop the run: the hero goes to needs_designer', async () => {
   const w = world((dim, p) => (dim === 'bari vs daewi' ? 0.8 + (92 - p) * 0.005 : 0.5)); // lowering makes it worse
   const out = await runAuto(w.input());
-  assert.equal(out.stoppedBecause, 'not_accepted');
+  // Both heroes of the flagged matchup were tried (bari, then daewi); the same patch is not tried twice.
+  assert.equal(out.stoppedBecause, 'needs_designer');
   assert.equal(out.records.length, 1);
   assert.equal(out.records[0].verdict.verdict, 'rejected');
   assert.equal(out.records[0].approved, false);
   assert.equal(out.headHash, w.base.dataHash);
   assert.equal(out.finalCheck.dataHash, w.base.dataHash);
+  assert.deepEqual(out.needs_designer.map((n) => n.hero), ['bari', 'daewi']);
+  const [bari, daewi] = out.needs_designer;
+  assert.deepEqual(bari.tried.map((t) => [t.path, t.old, t.new, t.outcome]), [['/moves/1/power', 92, 72, 'rejected']]);
+  assert.equal(bari.tried[0].label, 'B power');
+  assert.deepEqual(daewi.tried.map((t) => [t.outcome, t.reason]), [['skipped', 'this version was already tried']]);
+  assert.equal(typeof bari.evidence, 'string');
+  assert.match(bari.evidence, /bari is flagged\. 1 lever\(s\) tried \(B power rejected\)/);
+  assert.match(bari.evidence, /bari vs daewi at 80\.0% \(200 games\)/);
 });
 
-test('a patch that changes nothing is not accepted and makes no record', async () => {
+test('a patch that changes nothing makes no record; the hero is handed to a designer', async () => {
   const w = world(cleanModel, { step: 0, floor: 92 });
   const out = await runAuto(w.input());
-  assert.equal(out.stoppedBecause, 'not_accepted');
+  assert.equal(out.stoppedBecause, 'needs_designer');
   assert.equal(out.records.length, 0);
-  assert.equal(out.noChange, true);
+  assert.deepEqual(out.needs_designer.map((n) => [n.hero, n.tried[0].outcome, n.tried[0].reason]),
+    [['bari', 'skipped', 'the patch changes nothing'], ['daewi', 'skipped', 'the patch changes nothing']]);
 });
 
 test('regression: another matchup becomes extreme, so the last accepted version is marked rejected', async () => {
@@ -218,10 +228,12 @@ test('a round targets one hero; the other flagged matchups are scanned again in 
   const scans = w.calls.filter((c) => c.seeds[0] === 1);
   assert.deepEqual(scans[1].matchups, ['bari vs daewi', 'bari vs real_armor', 'daewi vs real_armor']);
   // It does not claim "fair" while a matchup is still flagged. Round 3 targets the one left, and this stub adapter has
-  // nothing left to lower (move b is at its floor), so the patch changes nothing and no third record is made.
-  assert.equal(out.stoppedBecause, 'not_accepted');
-  assert.equal(out.noChange, true);
+  // nothing left to lower (move b is at its floor), so the patch changes nothing: no third record, and the hero is
+  // handed to a designer. The rounds are used up.
+  assert.equal(out.stoppedBecause, 'rounds');
   assert.equal(out.records.length, 2);
+  assert.deepEqual(out.needs_designer.map((n) => [n.hero, n.tried[0].reason]),
+    [['daewi', 'the patch changes nothing']]);
   assert.deepEqual(scans[2].matchups, ['bari vs daewi', 'bari vs real_armor', 'daewi vs real_armor']);
 });
 
@@ -306,13 +318,16 @@ const setup = (model, extra = {}) => {
     adapter: followFirst(w.store), ...extra, ...more })) };
 };
 
-test('two candidates per round: both recorded as siblings of one parent, the accepted one continues', async () => {
+test('three candidates per round: all recorded as siblings of one parent, the accepted one continues', async () => {
   // Speed (the weak hero's first stat) helps a lot; health, the second candidate, changes nothing.
   const { w, store, run } = setup(weakDaewi(0.1, 0));
   const out = await run({ rounds: 1 });
-  assert.equal(out.records.length, 2, JSON.stringify(out.error));
-  const [speed, health] = out.records;
+  assert.equal(out.records.length, 3, JSON.stringify(out.error));
+  const [speed, health, shared] = out.records;
   assert.equal(speed.parentHash, store.dataHash);
+  assert.equal(shared.parentHash, store.dataHash);
+  assert.match(shared.changes[0].path, /^\/moves\/\d+\/power$/); // the third lever: a shared attack, ranked last
+  assert.equal(shared.verdict.verdict, 'rejected');
   assert.equal(health.parentHash, store.dataHash); // siblings: the same parent
   assert.notEqual(speed.dataHash, health.dataHash);
   assert.match(speed.changes[0].path, /^\/characters\/1\/speed$/);
@@ -320,12 +335,13 @@ test('two candidates per round: both recorded as siblings of one parent, the acc
   assert.equal(speed.verdict.verdict, 'accepted');
   assert.equal(health.verdict.verdict, 'rejected');
   assert.deepEqual([speed.approved, health.approved], [true, false]);
-  assert.match(speed.note, /candidate 1 of 2; auto-approved/);
-  assert.match(health.note, /candidate 2 of 2/);
+  assert.match(speed.note, /candidate 1 of 3; auto-approved/);
+  assert.match(health.note, /candidate 2 of 3/);
   assert.equal(out.headHash, speed.dataHash);
   const holdouts = w.calls.filter((c) => c.seeds[0] > 1000000);
-  assert.equal(holdouts.length, 2); // each candidate was holdout-tested
+  assert.equal(holdouts.length, 3); // each candidate was holdout-tested
   assert.deepEqual(holdouts[0].seeds, holdouts[1].seeds); // on the round's fresh seeds, matched between candidates
+  assert.deepEqual(holdouts[0].seeds, holdouts[2].seeds);
 });
 
 test('when both are accepted the one with the larger summed improvement continues', async () => {
@@ -344,27 +360,56 @@ test('when both are accepted the one with the larger summed improvement continue
 test('the next round continues from the chosen candidate, with that record as the parent', async () => {
   const { run } = setup(weakDaewi(0.03, 0.07)); // still flagged after round 1, so there is a round 2
   const out = await run({ rounds: 2 });
-  const [, chosen, next] = out.records;
+  const chosen = out.records.find((r) => r.approved);
+  const next = out.records.find((r) => r.parentHash === chosen.dataHash);
   assert.ok(next, JSON.stringify(out.stoppedBecause));
   assert.equal(next.parentHash, chosen.dataHash);
 });
 
-test('neither candidate accepted: both records are kept, nothing is approved, the run stops', async () => {
+test('no candidate accepted: records kept, hero to needs_designer, the run ends when no hero is left', async () => {
   const { store, run } = setup(weakDaewi(0, 0));
   const out = await run({ rounds: 3 });
-  assert.equal(out.stoppedBecause, 'not_accepted');
-  assert.equal(out.records.length, 2);
+  assert.equal(out.stoppedBecause, 'needs_designer');
+  assert.equal(out.records.length, 3); // speed, health and a shared attack, all siblings of the head
   assert.ok(out.records.every((r) => r.parentHash === store.dataHash && r.approved === false));
   assert.ok(out.records.every((r) => r.verdict.verdict !== 'accepted'));
   assert.equal(out.headHash, store.dataHash);
+  assert.equal(out.needs_designer.length, 1); // daewi is the only hero the diagnosis recommended
+  const [daewi] = out.needs_designer;
+  assert.equal(daewi.hero, 'daewi');
+  assert.deepEqual(daewi.tried.map((t) => t.path), out.records.map((r) => r.changes[0].path));
+  assert.deepEqual(daewi.tried.map((t) => t.outcome), ['rejected', 'rejected', 'rejected']);
+  assert.deepEqual(Object.keys(daewi.tried[0]).sort(), ['label', 'new', 'old', 'outcome', 'path']);
+  assert.equal(daewi.tried[0].label, 'Daewi · Speed');
+  assert.equal(daewi.tried[0].old, 85);
+  assert.match(daewi.evidence,
+    /daewi wins [0-9.]+% overall \(.* games, -[0-9.]+ points from 50%\)\. 3 lever\(s\) tried/);
+});
+
+test('after a hero is handed to a designer the next hero is worked on in the next round', async () => {
+  // Nothing the adapter tries helps Daewi (the weakest: loses to Bari and to Sepia). Bari beats Sepia 85%, and
+  // lowering Bari's health helps that matchup: the diagnosis of 'bari vs sepia' recommends Bari.
+  const bari = (data) => data.characters.find((c) => c.id === 'bari');
+  const { run } = setup((dim, p, data) => ({ 'bari vs daewi': 0.9, 'daewi vs sepia': 0.1,
+    'bari vs sepia': 0.85 - ((500 - bari(data).health) / 50) * 0.04 }[dim] ?? 0.5));
+  const out = await run({ rounds: 2 });
+  assert.notEqual(out.stoppedBecause, 'error', JSON.stringify(out.error));
+  assert.deepEqual(out.needs_designer.map((n) => n.hero), ['daewi']);
+  const paths = out.records.map((r) => r.changes[0].path);
+  assert.deepEqual(paths.slice(0, 3), ['/characters/1/speed', '/characters/1/health', paths[2]]); // round 1: daewi
+  const fixed = out.records.find((r) => r.verdict.verdict === 'accepted');
+  assert.equal(fixed.changes[0].path, '/characters/0/health'); // a later round: bari, lowered
+  assert.ok(fixed.changes[0].new < fixed.changes[0].old);
+  assert.equal(out.records.indexOf(fixed) >= 3, true);
 });
 
 test('with approval required both candidates are recorded unapproved and the run waits', async () => {
   const { run } = setup(weakDaewi(0.1, 0.1));
   const out = await run({ rounds: 2, requireApproval: true });
   assert.equal(out.stoppedBecause, 'awaiting_approval');
-  assert.equal(out.records.length, 2);
-  assert.ok(out.records.every((r) => r.approved === false && r.verdict.verdict === 'accepted'));
+  assert.equal(out.records.length, 3);
+  assert.ok(out.records.every((r) => r.approved === false));
+  assert.equal(out.records.filter((r) => r.verdict.verdict === 'accepted').length, 2); // speed and health
   assert.equal(out.finalCheck, null);
 });
 
@@ -385,18 +430,21 @@ test('a candidate that repeats a version, or fails validation, is skipped and th
       replacements: [{ path: '/characters/1/health', value: 99999 }] } };
     return followFirst(flaky.w.store).proposeWithOrigin(report, ctx);
   } } });
-  assert.equal(out.records.length, 1);
+  // call 2 was invalid and was skipped; calls 1 and 3 became records (speed accepted, the shared attack rejected)
+  assert.equal(out.records.length, 2);
   assert.equal(out.records[0].verdict.verdict, 'accepted');
+  assert.ok(out.records.every((r) => r.changes[0].new !== 99999));
+  assert.deepEqual(out.needs_designer, []);
   assert.equal(out.stoppedBecause !== 'error', true, JSON.stringify(out.error));
 });
 
-test('candidateDiagnoses: the focus hero recommendations, at most two, distinct paths, each first in its turn', () => {
+test('candidateDiagnoses: the focus hero recommendations, at most three, distinct paths, each first in turn', () => {
   const rec = (hero, path) => ({ hero, path, direction: 'up', sizePct: 10, why: '', expected: '', alsoAffects: [] });
   const diagnosis = { classification: 'overall_weak', focusHero: 'daewi', recommendations: [rec('daewi', '/p/1'),
     rec('daewi', '/p/1'), rec('daewi', '/p/2'), rec('daewi', '/p/3'), rec('bari', '/p/9')] };
   const variants = candidateDiagnoses(diagnosis, 'daewi');
-  assert.equal(variants.length, 2);
-  assert.deepEqual(variants.map((v) => v.recommendations[0].path), ['/p/1', '/p/2']);
+  assert.equal(variants.length, 3);
+  assert.deepEqual(variants.map((v) => v.recommendations[0].path), ['/p/1', '/p/2', '/p/3']);
   assert.equal(variants[1].recommendations.length, 5); // the full list is still there, only reordered
   assert.deepEqual(candidateDiagnoses(null, null), [null]); // no diagnosis: one plain candidate
   assert.equal(improvement([{ before: { rate: 0.9 }, after: { rate: 0.7 } }, { before: { rate: 0.2 },
