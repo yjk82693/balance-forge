@@ -3,8 +3,8 @@
 // normalised [0, 1] space of every parameter (seeded), keeps the top share, and refits the mean and the spread.
 // The same Proposer interface is what the model-guided coach implements, so both search under the same budget.
 //
-//   proposer.propose({ generation, count }) -> [params]          (validated by the caller; bad fields fall back)
-//   proposer.update({ generation, scored: [{ params, fitness }] })
+//   proposer.propose({ generation, count }) -> [params] or a promise of it   (validated by the caller)
+//   proposer.update({ generation, scored: [{ params, fitness }] })           (may be async)
 //   proposer.origin: 'cem' | 'gemini' | 'fake' ...                (labels where the candidates came from)
 import { PARAM_NAMES, PARAM_SPECS, sanitizeParams } from '../../../packages/games/action/bot-learned.js';
 import { makeRng, subSeed } from './rng.js';
@@ -58,7 +58,7 @@ export async function runSearch({ proposer, evaluate, generations, population, s
   const curve = [];
   let evaluated = 0;
   for (let generation = 0; generation < generations; generation++) {
-    const proposed = proposer.propose({ generation, count: population });
+    const proposed = await proposer.propose({ generation, count: population });
     let fellBack = 0;
     const candidates = proposed.slice(0, population).map(raw => {
       const { params, fellBack: bad } = sanitizeParams(raw, parent);
@@ -73,7 +73,7 @@ export async function runSearch({ proposer, evaluate, generations, population, s
     const scored = candidates.map((params, i) => ({ params, fitness: fitness[i] }));
     for (const entry of scored) if (entry.fitness > best.fitness) best = entry;
     parent = best.params;
-    proposer.update({ generation, scored });
+    await proposer.update({ generation, scored });
     const sorted = [...scored].sort((a, b) => b.fitness - a.fitness);
     const keep = Math.max(2, Math.ceil(scored.length * eliteShare));
     const mean = list => list.reduce((s, e) => s + e.fitness, 0) / list.length;
