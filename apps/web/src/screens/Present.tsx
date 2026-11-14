@@ -18,9 +18,9 @@ import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
 import { DiffCard } from "../components/DiffCard";
 import { HeroProfile } from "../components/HeroProfile";
-import { VersionRow } from "../components/VersionRow";
+import { VersionHistory } from "../components/VersionHistory";
 import { useManifest } from "../lib/assets";
-import { fetchVersions, layoutRows, loadHistory, type HistorySource, type VersionList } from "../lib/versions";
+import { fetchVersions, loadHistory, type HistorySource, type VersionList } from "../lib/versions";
 import { isMockMode } from "../mock/types";
 import type { PlaytestRun } from "../lib/api";
 
@@ -170,18 +170,13 @@ function useHistory(runFinished: boolean): HistoryState | null {
 /** Auto-balance rounds as the Versions screen shows them, read only. */
 function HistoryScene({ history }: { history: HistoryState | null }) {
   if (!history) return <Waiting what="the version history" />;
-  const rows = layoutRows(history.list.versions);
   return (
     <section className="present-wide panel">
       <div className="panel-head">
         <span className="eyebrow">Version history, newest first</span>
         <span className={`badge${history.source === "live run" ? "" : " recorded"}`}>{history.source}</span>
       </div>
-      <ul className="version-list">
-        {rows.map((r) => (
-          <VersionRow key={r.record.dataHash} row={r} current={r.record.dataHash === history.list.currentHash} />
-        ))}
-      </ul>
+      <VersionHistory versions={history.list.versions} currentHash={history.list.currentHash} />
     </section>
   );
 }

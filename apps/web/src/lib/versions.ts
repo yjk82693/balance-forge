@@ -110,6 +110,39 @@ export function layoutRows(records: VersionRecord[]): Row[] {
   return [...oldestFirst].reverse().map((record) => ({ record, lane: lanes.get(record.dataHash) ?? 0 }));
 }
 
+/** A row on its own, or sibling versions that share a parent and are drawn side by side to compare them. */
+export type Block = { kind: "row"; row: Row } | { kind: "siblings"; parent: string; rows: Row[] };
+
+export function layoutBlocks(records: VersionRecord[]): Block[] {
+  const rows = layoutRows(records);
+  const known = new Set(records.map((r) => r.dataHash));
+  const kids = new Map<string, Row[]>();
+  for (const row of rows) {
+    const p = row.record.parentHash;
+    if (p && known.has(p)) kids.set(p, [...(kids.get(p) ?? []), row]);
+  }
+  const done = new Set<string>();
+  const blocks: Block[] = [];
+  for (const row of rows) {
+    const p = row.record.parentHash;
+    const group = p ? kids.get(p) : undefined;
+    if (!p || !group || group.length < 2) blocks.push({ kind: "row", row });
+    else if (!done.has(p)) {
+      done.add(p);
+      blocks.push({ kind: "siblings", parent: p, rows: group });
+    }
+  }
+  return blocks;
+}
+
+/** How a sibling fared: the one kept, an accepted one that lost to it, or a rejected one. Null if none applies. */
+export function branchChip(v: VersionRecord): { label: string; cls: string } | null {
+  if (/not chosen/i.test(v.note ?? "")) return { label: "accepted, not chosen", cls: "warn" };
+  if (v.verdict?.verdict === "rejected") return { label: "rejected", cls: "bad" };
+  if (v.verdict?.verdict === "accepted") return { label: "chosen", cls: "ok" };
+  return null;
+}
+
 export const fieldText = (c: VersionRecord["changes"][number]) =>
   `${c.label ?? describePath(c.path)} ${c.old} → ${c.new}`;
 

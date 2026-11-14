@@ -1,8 +1,8 @@
 import { HEROES, heroName } from "./heroes";
 
 /**
- * Health and speed are hero-only patch levers (contract v0.1.2): `/characters/N/health` and `/characters/N/speed`, within
- * ±40% of the root data and inside an absolute range. N is the hero's place in the data, which is the order of HEROES.
+ * Health and speed are hero-only patch levers (contract v0.1.2): `/characters/N/health` and `/characters/N/speed`,
+ * within ±40% of the root data and inside an absolute range. N is the hero's place in the data (the order of HEROES).
  * The base values are a copy of the shipped data, used only to say what range a change may take.
  */
 const BASE: Record<string, { health: number; speed: number }> = {

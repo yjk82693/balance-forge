@@ -131,7 +131,8 @@ function recommendationFrom(raw: unknown): Recommendation | null {
   const listed = Array.isArray(raw.alsoAffects) ? raw.alsoAffects : [];
   const also = listed.filter((h): h is string => typeof h === "string");
   const alsoAffects = also.length ? also : undefined;
-  return { hero: raw.hero, role, path: raw.path, direction, sizePct, why: String(raw.why ?? ""), expected, alsoAffects };
+  const why = String(raw.why ?? "");
+  return { hero: raw.hero, role, path: raw.path, direction, sizePct, why, expected, alsoAffects };
 }
 
 /**
