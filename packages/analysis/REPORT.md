@@ -37,7 +37,7 @@ CLI output folder: `report_baseline.json`, `patch.json` (a plain PatchProposal),
 
 ## Round 3 (high-end quality pass)
 
-Order of work: H, N, J, K. Tests: `node --test packages/analysis/test/*.test.js` (80 pass, offline).
+Order of work: H, N, J, K. Tests: `node --test packages/analysis/test/*.test.js` (84 pass after the polish pass, offline).
 
 ### H. Before/after replay (`src/replay.js`, `pipeline/arena-simulator.js`, CLI `replay`)
 - `pickLopsidedMatch`: most lopsided matchup (largest distance from 50%), then the most one-sided win by its dominant side (damage margin, shorter, lower seed, matchId). Deterministic.
@@ -64,3 +64,41 @@ Order of work: H, N, J, K. Tests: `node --test packages/analysis/test/*.test.js`
 ### Still open
 - The Gemini and Grok request shapes are still unverified against the live APIs (see above).
 - `services/room/human-results.json` and per-card statistics ids are still assumptions (see above).
+
+## Performance (measured 22:40, Node 22.22.3, darwin arm64, median of 5 runs, one thread)
+
+| What | Size | Time | Throughput |
+|---|---|---|---|
+| `analyze` (15 matchups) | 3,000 matches | 3.4 ms | about 0.9 M matches/s |
+| `analyze` | 30,000 matches | 20 ms | about 1.5 M matches/s |
+| `analyze` | 180,000 matches | 148 ms | about 1.2 M matches/s |
+| `analyzePhase` (seed pairing + analyze) | 30,000 / 180,000 | 74 ms / 532 ms | about 0.34-0.40 M matches/s |
+| `buildMatchupTable` | 30,000 / 180,000 | 22 ms / 140 ms | about 1.3 M matches/s |
+| `analyze` on `services/runner/recorded-match-results.json` | 200 matches | 0.2 ms | n/a |
+| Engine, in-process single thread (`runMatch`, seeds 1-100, both seats) | 200 matches | 6.3 s | 32 matches/s |
+| Before/after replay (two engine runs of one match) | 1 match | 80 ms | n/a |
+
+- Analysis is not a bottleneck: even 180,000 matches finish in about half a second. The engine dominates (about 32 matches/s per thread here; the runner's recorded run reached 58 matches/s with 2 workers).
+- A before/after JSON is small: about 2.3 KB for a 388-tick match (16 and 18 on-change timeline points).
+- These numbers come from a throwaway benchmark run on this laptop with synthetic paired results (analysis rows) and the real engine (engine and replay rows). They are not demo results.
+- Render fps is not measured here (no UI in this package).
+- `package.json` asks for Node >= 24; this machine runs 22.22.3 and all tests pass on it.
+
+## Polish 22:40
+
+What I changed (no new features):
+- All 80 existing tests passed at the start; nothing was skipped, weakened or deleted.
+- Wrapped every line to 120 columns or less in `src/`, `pipeline/` and `test/` (about 100 lines), and moved a few long strings and ternaries into named locals. Checked that the wrap changed whitespace only, then re-ran the suite.
+- `src/group.js` has one shared `isCountable(result)`: a match counts only when it is `valid` and not still `running`. A "valid" match that never finished used to count as a loss for the focal hero; it is now counted as invalid in the analyzer, pipeline, matchup table, human group, cards and replay. Test: `test/edge-cases.test.js`.
+- `FakePatchAdapter` and `buildPrompt` now reject a malformed report with `INVALID_REPORT` instead of a `TypeError`.
+- CLI: `--metrics` must hold a JSON object, and `verify` checks the shape of `report_baseline.json` before using it (clear `INVALID_INPUT` / `INVALID_REPORT`).
+- Tidied imports in `src/human.js` (single block at the top), removed an unused test import and a stray test line.
+- No `console` output outside the CLI's JSON result and error lines; no TODO/FIXME/debugger left.
+- 4 new tests in `test/edge-cases.test.js`; the suite is now 84 tests, all passing.
+
+Still blocked or open (needs someone else):
+- Gemini and Grok request shapes are untested against the live APIs (no keys, no network allowed).
+- `services/room/human-results.json` still does not exist; the format is my assumption.
+- The Cards engine emits no per-card statistics, so `analyzeCards` returns nothing real yet.
+- The recorded runner output still uses per-seat dataHash variants without `options.assignments`; the pipeline refuses it until the engine adopts addendum item 1. `replay` works on it through `resolveDataVariants`.
+- `pipeline/arena-simulator.js` was written against the engine on `main`; it must be re-checked when `jokerstar/engine` is merged.
