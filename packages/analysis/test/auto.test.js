@@ -450,3 +450,28 @@ test('candidateDiagnoses: the focus hero recommendations, at most three, distinc
   assert.equal(improvement([{ before: { rate: 0.9 }, after: { rate: 0.7 } }, { before: { rate: 0.2 },
     after: { rate: 0.3 } }]).toFixed(2), '0.30');
 });
+
+test('explain: the replay findings are added to the evidence of a hero handed to a designer', async () => {
+  const calls = [];
+  const { run } = setup(weakDaewi(0, 0));
+  const out = await run({ rounds: 1, explain: async (args) => {
+    calls.push(args);
+    return 'Replays of daewi vs sepia: In range, daewi landed 6%.';
+  } });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].hero, 'daewi');
+  assert.equal(calls[0].matchup, 'bari vs daewi'); // the flagged matchup furthest from 50% (ties: alphabetical)
+  const [note] = out.needs_designer;
+  assert.match(note.evidence, /^daewi wins .* none moved a flagged matchup beyond noise\./);
+  assert.match(note.evidence, /Replays of daewi vs sepia: In range, daewi landed 6%\.$/);
+});
+
+test('explain that fails or returns nothing never stops the run or breaks the evidence', async () => {
+  for (const explain of [async () => { throw new Error('engine down'); }, async () => null, async () => 42, () => '']) {
+    const { run } = setup(weakDaewi(0, 0));
+    const out = await run({ rounds: 1, explain });
+    assert.equal(out.needs_designer.length, 1);
+    assert.doesNotMatch(out.needs_designer[0].evidence, /Replays of/);
+    assert.match(out.needs_designer[0].evidence, /3 lever\(s\) tried/);
+  }
+});

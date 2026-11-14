@@ -562,3 +562,29 @@ flagged hero is escalated (`needs_designer`, which replaces `not_accepted`; the 
 person must approve, the final check finds a regression, or on an error. Tests adapted for the new rules (3 candidates, the old
 stop on a rejected verdict is now an escalation) plus 2 new: all levers rejected, and "the next hero is worked on" (Daewi cannot be
 fixed, a later round fixes Bari).
+
+## Why Daewi loses (replays)
+
+`pipeline/matchup-forensics.js` (`forensics`, `summarize`, `forensicsSentence`; CLI `--heroes a,b --seeds 100 --engine-root dir`)
+replays matches of one pair with the scripted bot (policy scripted-0.2.1) in this process and reads the real simulation: distance
+over time (every 6th tick in `firstHeroLosses`), how often a melee swing is started out of range or in range, and how each swing
+ends (landed, blocked by a guard, interrupted by a stun before it lands, whiffed). Daewi vs Real Armor, 100 seeds, both seat
+orders (200 matches); Daewi wins 5 (2.5%):
+- **Bot policy, not a number problem (first finding).** The 0.2.1 bot gives each seat a seeded stand-off distance of 1200 to 3600
+  and stops closing in once inside it, but melee reaches only 1900. In 80 of 200 matches the two heroes never came within melee
+  range at all (Daewi won 5 of those 80); where they did, Daewi won 0 of 120. In both bots most swings are thrown out of range: 71%
+  of Daewi's (1,552 of 2,172) and 70% of Real Armor's (2,761 of 3,966) are started beyond 1900 and whiff.
+- **When in range, the heavy melee loses the race.** Daewi's heavy melee takes about 9 ticks from start to hit (tier 2: 10-tick
+  startup, 18 recovery, 40 cooldown); Real Armor's melee takes 3. Of Daewi's 620 in-range swings 39 landed (6%), 315 (51%) were
+  interrupted by Real Armor's 3-tick jab (stun) before they landed and 266 (43%) hit a guard. Real Armor's 1,205 in-range swings
+  landed 1,060 times (88%). Melee is available to Daewi in only 2.0% of in-range ticks (Real Armor 3.8%), because his own recovery
+  and cooldown keep it busy.
+- **Distance over time:** mean distance 7,600 at tick 0, 4,208 at 18, 2,546 at 30, about 1,900 from tick 42 on in the matches that
+  close; in a typical never-close loss (seed 1) both heroes stop at about 3,090 apart and trade whiffed swings for 848 ticks.
+- **So:** raising heavy_melee power or speed cannot help while the swing is interrupted or whiffs; what separates the heroes is
+  startup time (10 vs 3 ticks), not power, and the bot's stand-off distance decides whether melee is ever possible. Startup
+  ticks live in the weight tiers, which are not in the patch allowlist: this is for a designer (and the bot policy), exactly what
+  `needs_designer` is for. `runAuto` takes an optional `explain({ hero, matchup })` and appends such a replay sentence
+  ("Replays of daewi vs real_armor: In range, daewi's swings landed 6% (interrupted 51%, blocked 43%; 9.09 ticks from start to
+  hit) against 88% for real_armor (2.97 ticks). 80 of 200 replays never came within melee range (1900); daewi started 71% of its
+  swings out of range.") to the evidence; a failing `explain` is ignored. Tests: `test/forensics.test.js`, `test/auto.test.js`.
