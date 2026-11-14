@@ -60,6 +60,6 @@ test('the gentle bot attacks less often than the scripted one, with a hold after
     for (let i = 1; i < ticks.length; i++) gaps.push(ticks[i] - ticks[i - 1]);
   }
   assert.ok(gentle < scripted, `gentle ${gentle} attacks vs scripted ${scripted}`);
-  // an attack is followed by startup, recovery and the 8 tick hold before the next one
-  assert.ok(gaps.every(gap => gap >= 8), `shortest gap ${Math.min(...gaps)}`);
+  // an attack is followed by startup, recovery and the 40 tick hold before the next one
+  assert.ok(gaps.every(gap => gap >= 40), `shortest gap ${Math.min(...gaps)}`);
 });
