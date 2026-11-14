@@ -49,7 +49,7 @@ export function analyzeCards(results) {
       cardId,
       plays: c.plays,
       opportunities: c.opportunities,
-      playRate: useRate(c),
+      playRate: useRate({ uses: c.plays, opportunities: c.opportunities }),
       played,
       notPlayed: side(c.nw, c.ng),
       dominant: c.pg >= 30 && isOutlier(played.ci95, c.pg) && played.ci95[0] > 0.55,
