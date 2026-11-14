@@ -6,7 +6,7 @@ import * as scripted from './bot.ts';
 import { data, initial, legalActions, makeConfig, observe, step } from './index.ts';
 import { compareIds } from '../../contracts/index.ts';
 const { DEFAULT_PARAMS, PARAM_NAMES, PARAM_SPECS } = learned;
-const view = (a, b, over = {}) => {
+const view = (a: string, b: string, over: { x1?: number; x2?: number } = {}) => {
   const config = makeConfig(data, 3, ['p1', 'p2'], 1800, { p1: a, p2: b });
   const state = initial(config, data);
   state.payload.entities[0].x = over.x1 ?? 4200;
@@ -30,9 +30,9 @@ test('parameters: ranges are checked in code, a bad field falls back to the pare
   }
   assert.throws(() => learned.validateParams({ ...DEFAULT_PARAMS, extra: 1 }), /INVALID_SCHEMA/);
   assert.throws(() => learned.validateParams(null), /INVALID_SCHEMA/);
-  const parent = { ...DEFAULT_PARAMS, standOff: 3000 };
+  const parent: any = { ...DEFAULT_PARAMS, standOff: 3000 };
   const { params, fellBack } = learned.sanitizeParams({ standOff: 99999, reaction: 4, guardChance: -3, bogus: 1,
-    meleeClose: 1200.5 }, parent);
+    meleeClose: 1200.5 } as any, parent);
   assert.deepEqual(params, { standOff: 3000, reaction: 4, guardChance: 75, meleeClose: 1900, aggression: 90,
     aimBias: 0, strafePeriod: 40 });
   assert.deepEqual(fellBack, ['standOff', 'guardChance', 'meleeClose', 'aggression', 'aimBias', 'strafePeriod']);
@@ -48,7 +48,7 @@ test('the params hash tags the bot version, is order independent, and changes wi
   assert.equal(learned.paramsHash(a), learned.paramsHash(reordered));
   assert.match(learned.policyVersion(a), /^learned-cem-1\+[0-9a-f]{8}$/);
   assert.equal(learned.policyVersion(a), learned.policyVersion(reordered));
-  const changed = structuredClone(a);
+  const changed: any = structuredClone(a);
   changed.bari.aimBias = 1;
   assert.notEqual(learned.policyVersion(changed), learned.policyVersion(a));
   assert.equal(learned.makeLearnedBot(a).botPolicyVersion, learned.policyVersion(a));
@@ -70,7 +70,8 @@ test('decisions are deterministic, legal, and shaped like the scripted ones', ()
 
 test('each parameter does what it says', () => {
   const far = view('bari', 'real_armor').view; // 5,000 apart
-  const moveX = params => learned.decideWith(params, far, 4, 9).find(i => i.actionId === 'move').params.moveX;
+  const moveX = (params: any): number => (learned.decideWith(params, far, 4, 9)
+    .find(i => i.actionId === 'move').params as any).moveX;
   assert.equal(moveX({ ...DEFAULT_PARAMS, standOff: 6000 }), 0); // already inside its stand-off: holds
   assert.equal(moveX({ ...DEFAULT_PARAMS, standOff: 600 }), 1000); // outside it: closes in
   const attacks = params => learned.decideWith(params, far, 4, 9)
@@ -81,17 +82,17 @@ test('each parameter does what it says', () => {
   const meleeAt = params => learned.decideWith(params, near, 4, 9).some(i => i.actionId === 'melee');
   assert.equal(meleeAt({ ...DEFAULT_PARAMS, standOff: 2400, meleeClose: 1900 }), true);
   assert.equal(meleeAt({ ...DEFAULT_PARAMS, standOff: 2400, meleeClose: 800 }), false); // outside its own melee rule
-  const aim = bias => learned.decideWith({ ...DEFAULT_PARAMS, aimBias: bias }, far, 4, 9).find(i => i.actionId ===
-    'projectile').params;
+  const aim = (bias: number): any => learned.decideWith({ ...DEFAULT_PARAMS, aimBias: bias }, far, 4, 9)
+    .find(i => i.actionId === 'projectile').params;
   assert.equal(aim(0).aimY, 0);
   assert.ok(aim(200).aimY > 0 && aim(-200).aimY < 0); // sideways of a horizontal aim line
-  const flips = new Set();
+  const flips = new Set<string>();
   for (let tick = 0; tick < 400; tick++) {
     const state = view('bari', 'real_armor', { x1: 4200, x2: 5000 }).state;
     state.tick = tick;
     const v = observe(state, 'p1');
     const params = { ...DEFAULT_PARAMS, standOff: 6000, strafePeriod: 8 };
-    const move = learned.decideWith(params, v, 1, 4).find(i => i.actionId === 'move');
+    const move: any = learned.decideWith(params, v, 1, 4).find(i => i.actionId === 'move');
     if (move) flips.add(`${Math.floor(tick / 8)}:${move.params.moveY}`);
   }
   assert.ok([...flips].some(f => f.endsWith(':1000')) && [...flips].some(f => f.endsWith(':-1000')));
