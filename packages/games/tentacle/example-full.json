@@ -1,0 +1,295 @@
+{
+  "note": "STUB: field names and shapes are final; the numbers are from a 60-run stub and an illustrative patch, not a recorded result",
+  "runId": "00000000-0000-4000-8000-000000000000",
+  "gameId": "tentacle_run",
+  "botPolicyVersion": "tentacle-bot-0.1.0",
+  "simVersion": "tentacle-0.1.0",
+  "intentVersion": "tentacle-default",
+  "runs": 60,
+  "holdoutRuns": 60,
+  "seedSetId": "runs-1-60",
+  "holdoutSeedSetId": "holdout-1000001-1000060",
+  "fair": false,
+  "baseline": {
+    "dataHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "validRuns": 60,
+    "invalidRuns": 0,
+    "winRate": 0.033333,
+    "winCi95": [
+      0.009189,
+      0.11364
+    ],
+    "meanTicks": 2293,
+    "waves": [
+      {
+        "wave": 1,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 60,
+        "clearRate": 1.0,
+        "ci95": [
+          0.939826,
+          1.0
+        ],
+        "target": 0.7,
+        "deltaToTarget": 0.3,
+        "deaths": 0,
+        "outlier": false
+      },
+      {
+        "wave": 2,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 60,
+        "clearRate": 1.0,
+        "ci95": [
+          0.939826,
+          1.0
+        ],
+        "target": 0.7,
+        "deltaToTarget": 0.3,
+        "deaths": 0,
+        "outlier": false
+      },
+      {
+        "wave": 3,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 60,
+        "clearRate": 1.0,
+        "ci95": [
+          0.939826,
+          1.0
+        ],
+        "target": 0.65,
+        "deltaToTarget": 0.35,
+        "deaths": 0,
+        "outlier": false
+      },
+      {
+        "wave": 4,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 10,
+        "clearRate": 0.166667,
+        "ci95": [
+          0.093131,
+          0.280319
+        ],
+        "target": 0.65,
+        "deltaToTarget": -0.483333,
+        "deaths": 50,
+        "outlier": true
+      },
+      {
+        "wave": 5,
+        "kind": "wave",
+        "reached": 10,
+        "reachRate": 0.166667,
+        "cleared": 9,
+        "clearRate": 0.9,
+        "ci95": [
+          0.595844,
+          0.982124
+        ],
+        "target": 0.6,
+        "deltaToTarget": 0.3,
+        "deaths": 1,
+        "outlier": false
+      },
+      {
+        "wave": 6,
+        "kind": "boss",
+        "reached": 9,
+        "reachRate": 0.15,
+        "cleared": 2,
+        "clearRate": 0.222222,
+        "ci95": [
+          0.063224,
+          0.547417
+        ],
+        "target": 0.5,
+        "deltaToTarget": -0.277778,
+        "deaths": 7,
+        "outlier": false
+      }
+    ]
+  },
+  "flaggedWave": {
+    "wave": 4,
+    "clearRate": 0.166667,
+    "ci95": [
+      0.093131,
+      0.280319
+    ],
+    "target": 0.65,
+    "deltaToTarget": -0.483333
+  },
+  "proposal": {
+    "origin": "gemini",
+    "rationale": "Wave 4 is far below its target: lower the sentries' damage and slow their fire.",
+    "changes": [
+      {
+        "path": "/gameRules/waves/3/enemyDamage",
+        "label": "Wave 4 \u00b7 Enemy damage",
+        "old": 40,
+        "new": 18
+      },
+      {
+        "path": "/gameRules/waves/3/fireIntervalTicks",
+        "label": "Wave 4 \u00b7 Fire interval (ticks)",
+        "old": 30,
+        "new": 60
+      }
+    ]
+  },
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "patchedDataHash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "patched": {
+    "dataHash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "validRuns": 60,
+    "invalidRuns": 0,
+    "winRate": 0.2,
+    "winCi95": [
+      0.118284,
+      0.31782
+    ],
+    "meanTicks": 3100,
+    "waves": [
+      {
+        "wave": 1,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 60,
+        "clearRate": 1.0,
+        "ci95": [
+          0.939826,
+          1.0
+        ],
+        "target": 0.7,
+        "deltaToTarget": 0.3,
+        "deaths": 0,
+        "outlier": false
+      },
+      {
+        "wave": 2,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 60,
+        "clearRate": 1.0,
+        "ci95": [
+          0.939826,
+          1.0
+        ],
+        "target": 0.7,
+        "deltaToTarget": 0.3,
+        "deaths": 0,
+        "outlier": false
+      },
+      {
+        "wave": 3,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 60,
+        "clearRate": 1.0,
+        "ci95": [
+          0.939826,
+          1.0
+        ],
+        "target": 0.65,
+        "deltaToTarget": 0.35,
+        "deaths": 0,
+        "outlier": false
+      },
+      {
+        "wave": 4,
+        "kind": "wave",
+        "reached": 60,
+        "reachRate": 1.0,
+        "cleared": 38,
+        "clearRate": 0.633333,
+        "ci95": [
+          0.506828,
+          0.743793
+        ],
+        "target": 0.65,
+        "deltaToTarget": -0.016667,
+        "deaths": 22,
+        "outlier": false
+      },
+      {
+        "wave": 5,
+        "kind": "wave",
+        "reached": 38,
+        "reachRate": 0.633333,
+        "cleared": 35,
+        "clearRate": 0.921053,
+        "ci95": [
+          0.792003,
+          0.972786
+        ],
+        "target": 0.6,
+        "deltaToTarget": 0.321053,
+        "deaths": 3,
+        "outlier": false
+      },
+      {
+        "wave": 6,
+        "kind": "boss",
+        "reached": 35,
+        "reachRate": 0.583333,
+        "cleared": 12,
+        "clearRate": 0.342857,
+        "ci95": [
+          0.208315,
+          0.508484
+        ],
+        "target": 0.5,
+        "deltaToTarget": -0.157143,
+        "deaths": 23,
+        "outlier": false
+      }
+    ]
+  },
+  "verdict": {
+    "verdict": "accepted",
+    "reasons": [
+      "wave 4: improved (16.7% -> 63.3%)",
+      "1 of 1 target(s) moved toward their target beyond noise; none moved away"
+    ],
+    "targets": [
+      {
+        "wave": 4,
+        "before": {
+          "rate": 0.166667,
+          "ci95": [
+            0.093131,
+            0.280319
+          ],
+          "games": 60
+        },
+        "after": {
+          "rate": 0.633333,
+          "ci95": [
+            0.506828,
+            0.743793
+          ],
+          "games": 60
+        },
+        "outcome": "improved"
+      }
+    ]
+  },
+  "humanRuns": 0,
+  "elapsedMs": 20000
+}
