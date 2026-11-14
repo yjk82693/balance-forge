@@ -546,3 +546,58 @@ regression, which passes in the final owned suite above. No pending full.js inte
 Final artifact check: roster results/metrics/report share the unchanged base dataHash and scripted-0.2.1;
 examples.json full response is HTTP 200 with scripted-0.2.1. git diff --check and 120-column checks pass.
 No hero data changes, dependencies, outside network calls, pushes or commits were performed.
+
+## Round 8
+
+Measured production room pump callbacks over a ten-second window with two in-process WebSocket transports,
+seed 91, Bari vs Real Armor, scripted-0.2.1 inputs. No listener or outside network was used. The match ended
+at tick 437; pump timing covers the full window, including the remaining idle time. Message sizes measure
+UTF-8 bytes of the complete serialized state.view envelope, including events, excluding WebSocket/TCP headers.
+
+| Measurement | Before: setInterval | After: monotonic deadline scheduler |
+| --- | --- | --- |
+| Window (ms) | 10,001.108 | 10,000.723 |
+| Pump intervals sampled | 1,135 | 1,231 |
+| Pump interval min / avg / max (ms) | 7.115 / 8.800 / 14.141 | 2.363 / 8.118 / 24.539 |
+| Active step interval min / avg / max (ms) | 8.139 / 16.661 / 25.600 | 7.005 / 16.658 / 31.426 |
+| state.view messages | 876 | 876 |
+| state.view bytes min / avg / max | 947 / 1,062.932 / 1,515 | 947 / 1,062.932 / 1,515 |
+
+Replaced the 8 ms setInterval with monotonic, deadline-based setTimeout scheduling. It skips stale callback
+deadlines instead of bursting callbacks and cancels cleanly, including shutdown inside a callback. The existing
+60 Hz fixed-step simulation accumulator is unchanged; scheduling time never enters simulation state. Drift is
+corrected, but OS/event-loop jitter still exists (the measured maximum is higher in this sample). No protocol
+changes. Reproduce the post-change measurement with `node services/room/measure-timing.js`; all writes are temp.
+
+Shutdown follow-up: close() now calls http.closeAllConnections() before http.close(). SIGINT/SIGTERM arms a
+three-second deadline that prints a readable message and forces exit code 1 if close has not completed;
+completed shutdown cancels it, and repeated signals do not rearm it. Added tests for HTTP close order,
+forced-exit timing, deadline cancellation, scheduler drift/late callbacks and cancellation.
+
+Verification: services/room plus services/runner node:test suite: 51 passed, 0 failed, 5 unchanged socket-gated
+skips; 11,415.332167 ms. Focused scheduler/startup/readability suite: 11 passed, 0 failed. Source/documentation
+120-column checks and git diff --check pass. Existing Round 7 analysis-owned recording/replay follow-ups remain
+outside ownership. No tests weakened, dependencies, network calls, pushes or commits.
+
+## Round 8 versions
+
+Step 1: added an atomic JSON version ledger at data/versions/<gameId>.json within the configured storage
+root. Original data receives an approved base root; apply-patch and full runs retain parent hashes, numeric
+changes, rationale and available target/verdict summaries. Content hashes identify records; no-op/repeated
+content keeps the existing record rather than overwriting its provenance. Branches retain their shared parent.
+Version metadata is separate from immutable GameData files. Reused the existing atomic writer via files.js.
+Tests cover roots, branching, approval persistence/restart, retained base data and full-run parent/target data.
+
+Step 2: added GET /v1/versions/:gameId, GET /v1/versions/:gameId/:hash, POST approval and POST current-version
+selection. Detail responses flatten the shared record and add diff; approval takes {} and never selects data.
+Selection atomically changes only the server-wide current pin, preserving retained data and existing room pins.
+Tests exercise every route, persistence/restart, missing hashes, cross-game pins and malformed input without
+state mutation. Initial version/persistence group: 8 passed, 0 failed; full/persistence group: 11 passed, 0 failed.
+
+Current step clean point: final service/runner/E2E discovery run has 62 passed, 0 failed, 7 socket-gated skips
+(5 room tests and 2 E2E scenarios), no TODO; 11,313.999083 ms. The focused version/auto group has 11 passed.
+Only the new analysis runAuto boundary is stubbed by explicit injection; real workers/storage/routes are used.
+Current /auto wiring follows Tony's FINAL interface, but the real module is absent until main 1736a3a is merged.
+The README/example-capture updates and real runAuto integration verification are not finished. Detailed file,
+function, interface, route and test handoff is in services/room/HANDOFF.md. No further feature edits started.
+Stopping at Tony's request for an outside commit/merge and continuation by another agent. No commits or network.

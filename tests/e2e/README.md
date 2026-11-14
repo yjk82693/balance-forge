@@ -40,3 +40,8 @@ Known environment limits and actual test results are recorded under Round 5 in s
 
 Round 6 also requires packages/analysis/pipeline/full.js. The full-route call uses the offline adapter even if
 the developer shell has a Gemini key, and checks response reports, changes, seat wins, and phase seed separation.
+
+The additional version scenario injects the agreed runAuto analysis boundary (twoRoundAuto test stub), while
+using real workers, HTTP, version persistence and WebSocket clients. It verifies two rounds → two child records,
+selecting the first record and playing that hash in a room. This is route/transport integration coverage, not
+verification of the analysis auto algorithm. The original full live-flow scenario still uses real analysis.

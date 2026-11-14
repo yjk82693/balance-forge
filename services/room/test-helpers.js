@@ -46,7 +46,7 @@ export async function localServer(t, options = {}) {
     analysisEnv: {},
     ...options
   });
-  clearInterval(server.timer);
+  server.scheduler.stop();
   t.after(async () => {
     await server.close();
     await rm(root, {
