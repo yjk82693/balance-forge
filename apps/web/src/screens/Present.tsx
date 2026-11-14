@@ -11,6 +11,7 @@ import { fixtureMatchConfig } from "../lib/fixtures";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
+import { loadSkill, policyFor } from "../lib/botPolicy";
 import { currentDiagnose, currentMatchup } from "../lib/matchup";
 import { needsMoreGames } from "../lib/resultCard";
 import { loadRecordedRun } from "../lib/recorded";
@@ -57,13 +58,13 @@ export function Present({ auto }: { auto: boolean }) {
     loadRecordedRun()
       .then((r) => (roster.current = r))
       .catch(() => null)
-      .finally(() => void start(matchup(), currentDiagnose(matchup(), roster.current)));
+      .finally(() => void start(matchup(), currentDiagnose(matchup(), roster.current), policyFor(loadSkill())));
   }, [start, matchup]);
 
   const finished = !!run && !busy;
   const ready = useCallback((id: SceneId) => id !== "bots" || finished || !!error, [finished, error]);
   const restart = useCallback(
-    () => void start(matchup(), currentDiagnose(matchup(), roster.current)),
+    () => void start(matchup(), currentDiagnose(matchup(), roster.current), policyFor(loadSkill())),
     [start, matchup],
   );
   const history = useHistory(finished);
