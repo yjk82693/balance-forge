@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { localServer, http } from './test-helpers.ts';
@@ -66,4 +66,38 @@ test('reanalyze under an intent equals a fresh run under that intent, and runs n
   const unknown = await http(server, '/v1/playtest/reanalyze', { method: 'POST', body: {
     runId: '00000000-0000-4000-8000-000000000000' } });
   assert.equal(unknown.status, 400);
+});
+
+test('a PUT never touches the committed default: it writes the runtime intent, GET prefers it', async t => {
+  const designDir = await withDesignDir(t);
+  const defaultFile = join(designDir, 'hero_arena-intent.json');
+  const before = await readFile(defaultFile, 'utf8');
+  const { server } = await localServer(t, { designDir });
+  assert.equal((await put(server, chart)).status, 200);
+  assert.equal(await readFile(defaultFile, 'utf8'), before); // the committed default is read-only
+  const runtime = join(server.storage.directory, 'data', 'design', 'hero_arena-intent.json');
+  assert.equal(JSON.parse(await readFile(runtime, 'utf8')).version, 'test-chart');
+  assert.equal((await http(server, '/v1/design/hero_arena/intent')).json().version, 'test-chart');
+  assert.equal((await server.design.getDefault('hero_arena')).version, 'all-even-test'); // stable reads
+});
+
+test('a PUT without notes keeps the notes of the intent it replaces', async t => {
+  const designDir = await withDesignDir(t);
+  await writeFile(join(designDir, 'hero_arena-intent.json'), JSON.stringify({ version: 'noted',
+    matchups: { 'bari vs daewi': { favored: 'bari', strength: 'slight' } },
+    notes: { 'bari vs daewi': 'Bari has the reach.' } }));
+  const { server } = await localServer(t, { designDir });
+  const chips = { matchups: { 'bari vs daewi': { favored: 'bari', strength: 'strong' } } };
+  const saved = (await put(server, chips)).json();
+  assert.equal(saved.matchups['bari vs daewi'].strength, 'strong');
+  assert.deepEqual(saved.notes, { 'bari vs daewi': 'Bari has the reach.' });
+  assert.match(saved.version, /^intent-/);
+  const again = (await put(server, { ...chips, notes: { 'bari vs daewi': 'New note.' } })).json();
+  assert.deepEqual(again.notes, { 'bari vs daewi': 'New note.' }); // given notes replace them
+});
+
+test('the committed intent file is what the stable tools read', async () => {
+  const committed = JSON.parse(await readFile(new URL('./design/hero_arena-intent.json', import.meta.url), 'utf8'));
+  assert.equal(committed.version, '2026-11-14-v1');
+  assert.ok(Object.keys(committed.notes).length >= 10);
 });
