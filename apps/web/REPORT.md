@@ -165,3 +165,20 @@ of the response mapping.
   baseline-only run. A script checked this on a response built from the interface text.
 - Origin badges: `gemini`, `grok`, `fallback`, `manual` as is; `fake` is shown as "offline sample" with a tooltip saying
   no model was called.
+
+## Step 2: live progress and phases
+- `playtest.progress` is read as the room server sends it (`matchesDone`, `totalMatches`, `matchups[].wins/games`) plus the
+  new `phase` (`baseline` | `holdout`). The report panel and the live panel name the running phase ("Baseline",
+  "Holdout on the patched data"); the counter shows "…" until the first message gives a total.
+- Win rate is the first-named hero's. Mirror rows (`bari vs bari`) are hidden unless the row carries `seatWins`, in which
+  case `seatWins` is the win count. The same rule applies to the final report (`lib/groups.ts: botRows`) and to the
+  before/after comparison. `?mock=1` now plays a baseline phase and then a holdout phase, with `seatWins` on mirror rows.
+- Checked with a script: a progress message with a normal row, a mirror row without `seatWins`, a mirror row with it and a
+  human row gives exactly the normal row and the seat-based mirror row.
+
+## Step 3: human rows
+- Rows named `human: a vs b` are a separate group ("Human matches") under the bot chart. They are never parsed as heroes
+  (no portraits, `a` and `b` shown as text, so a player's name can never become a hero id or markup), never count for the
+  headline, the target matchup or the replay heroes, and never raise an outlier alarm. Small samples show "Too few games
+  yet". They are left out of the live bars.
+- `?mock=1` includes one such row so the group can be seen.

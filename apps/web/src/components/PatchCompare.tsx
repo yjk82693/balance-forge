@@ -1,6 +1,7 @@
 import type { Report } from "../lib/contract";
 import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
+import { botRows } from "../lib/groups";
 import { Axis, Interval, Plot, ciText, rowStats } from "./WinRateChart";
 
 /** "/moves/1/power" -> "Move 1 power"; "/tuning/damageScalePermille" -> "Damage scale". */
@@ -18,8 +19,9 @@ interface Props {
 }
 
 export function PatchCompare({ before, after, showAfter }: Props) {
-  const pairs = before.rows
-    .map((b) => ({ b: rowStats(b), a: after.rows.find((r) => r.dimension === b.dimension) }))
+  const afterRows = botRows(after.rows);
+  const pairs = botRows(before.rows)
+    .map((b) => ({ b: rowStats(b), a: afterRows.find((r) => r.dimension === b.dimension) }))
     .filter((p) => p.a && (p.a.wins !== p.b.row.wins || p.a.games !== p.b.row.games))
     .map((p) => ({ b: p.b, a: rowStats(p.a!) }))
     .sort((x, y) => Math.abs(y.a.rate - y.b.rate) - Math.abs(x.a.rate - x.b.rate))

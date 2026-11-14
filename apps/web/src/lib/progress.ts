@@ -1,4 +1,5 @@
 import type { Report, ReportRow } from "./contract";
+import { isHumanDimension, isMirror } from "./groups";
 
 /** One matchup in `playtest.progress` (services/room README): wins are keyed by hero id. */
 export interface MatchupProgress {
@@ -28,6 +29,7 @@ export interface ProgressMsg {
   matchups: MatchupProgress[];
 }
 
+/** Wire shape check; per-matchup rows are checked when they are turned into chart rows. */
 export function isProgressMsg(p: unknown): p is ProgressMsg {
   const m = p as ProgressMsg;
   return !!m && Number.isFinite(m.matchesDone) && Number.isFinite(m.totalMatches) && Array.isArray(m.matchups);
@@ -37,14 +39,15 @@ export function isProgressMsg(p: unknown): p is ProgressMsg {
  * A mirror matchup (hero vs itself) has one win counter for both seats, so every decided game counts as a win for
  * "the hero". That is not a win rate; such rows are left out unless the server reports seat-based wins (`seatWins`).
  */
-const isMirrorWithoutSeats = (m: MatchupProgress) => m.heroes[0] === m.heroes[1] && m.seatWins === undefined;
+const isMirrorWithoutSeats = (m: MatchupProgress) =>
+  isMirror(`${m.heroes[0]} vs ${m.heroes[1]}`) && m.seatWins === undefined;
 
 /** Rows for the chart: win rate of the first-named hero (the server sorts hero ids alphabetically). */
 export function toRows(p: ProgressMsg): ReportRow[] {
   return p.matchups
-    .filter((m) => m.heroes.length === 2 && !isMirrorWithoutSeats(m))
+    .filter((m) => !isHumanDimension(m.matchup) && m.heroes?.length === 2 && !isMirrorWithoutSeats(m))
     .map((m) => {
-      const wins = m.seatWins ?? m.wins[m.heroes[0]] ?? 0;
+      const wins = m.seatWins ?? m.wins?.[m.heroes[0]] ?? 0;
       return {
         dimension: `${m.heroes[0]} vs ${m.heroes[1]}`,
         wins,

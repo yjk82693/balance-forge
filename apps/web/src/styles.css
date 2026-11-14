@@ -1606,7 +1606,7 @@ p {
 /* Dense 15-row chart */
 .viz.dense .viz-row {
   min-height: 28px;
-  grid-template-columns: 250px minmax(0, 1fr) 52px;
+  grid-template-columns: 250px minmax(0, 1fr) 100px;
   gap: var(--space-2);
 }
 .viz.dense .viz-row.head {
@@ -1944,4 +1944,12 @@ p {
   .badge.live .dot {
     animation: none;
   }
+}
+
+.human-group {
+  margin-top: var(--space-3);
+}
+
+.viz.dense .viz-value {
+  white-space: nowrap;
 }

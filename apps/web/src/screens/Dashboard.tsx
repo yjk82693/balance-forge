@@ -9,6 +9,7 @@ import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
 import { VersionToggle } from "../components/VersionToggle";
 import { rowStats } from "../components/WinRateChart";
+import { botRows } from "../lib/groups";
 import { useManifest } from "../lib/assets";
 import {
   SAMPLE_HUMAN_ID,
@@ -58,7 +59,7 @@ export function Dashboard() {
 
   const canPatch = !!run?.patched;
   const showPatched = canPatch && version === "patched";
-  const baseStats = run ? run.baseline.rows.map(rowStats) : [];
+  const baseStats = run ? botRows(run.baseline.rows).map(rowStats) : [];
   const target = baseStats.find((s) => s.row.dimension === pickTargetDimension(baseStats));
   // Replay heroes follow the baseline's target matchup, so they stay put when the toggle flips.
   const replayHeroes: [string, string] = target

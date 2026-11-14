@@ -1,5 +1,6 @@
 import type { PlaytestRun } from "../lib/api";
-import type { Report } from "../lib/contract";
+import type { Report, ReportRow } from "../lib/contract";
+import { botRows, humanRows } from "../lib/groups";
 import { VERDICT_COPY, fmtSeconds, headlineFor, n, outliersFirst, pickTargetDimension } from "../lib/dashboardData";
 import type { LiveState } from "../lib/useRunner";
 import { heroName } from "../lib/heroes";
@@ -77,6 +78,18 @@ export function ReportPanel({ run, busy, live, error, notice, showPatched, onRun
   );
 }
 
+/** Human matches are their own group under the bot chart; their names are labels, not heroes. */
+function HumanGroup({ rows }: { rows: ReportRow[] }) {
+  return (
+    <div className="human-group">
+      <p className="eyebrow" style={{ color: "var(--text-2)" }}>
+        Human matches
+      </p>
+      <WinRateChart rows={rows} dense />
+    </div>
+  );
+}
+
 function LiveReport({ live }: { live: LiveState }) {
   return (
     <>
@@ -92,16 +105,19 @@ function LiveReport({ live }: { live: LiveState }) {
 }
 
 function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report: Report; showPatched: boolean }) {
-  if (report.rows.length === 0) {
+  const bots = botRows(report.rows);
+  const humans = humanRows(report.rows);
+  if (bots.length === 0) {
     return (
       <div className="empty">
         <p className="h3">The report has no matchups.</p>
         <p className="text-2">Run the bots again; a report needs at least one finished match.</p>
+        {humans.length > 0 && <HumanGroup rows={humans} />}
       </div>
     );
   }
-  const stats = report.rows.map(rowStats);
-  const baseStats = run.baseline.rows.map(rowStats);
+  const stats = bots.map(rowStats);
+  const baseStats = botRows(run.baseline.rows).map(rowStats);
   const targetDim = pickTargetDimension(baseStats);
   const sorted = outliersFirst(stats);
   const shown = stats.find((s) => s.row.dimension === targetDim) ?? sorted[0];
@@ -117,11 +133,12 @@ function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report
       <p className="report-meta">
         <RecordedBadges report={report} sample={run.sample} />
         <span className="caption">
-          {report.seedSetId} · {report.draws} draws · {report.rows.length} matchups
+          {report.seedSetId} · {report.draws} draws · {bots.length} matchups
         </span>
       </p>
       <hr className="divider" />
       <WinRateChart rows={sorted.map((s) => s.row)} dense />
+      {humans.length > 0 && <HumanGroup rows={humans} />}
 
       {run.patched && (
         <>
