@@ -4,7 +4,7 @@ import { xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta, cl
 import { schemas, actions } from './schemas.js';
 export { data } from './data.js';
 export { hash };
-export const simVersion = 'cards-0.1.0';
+export const simVersion = 'cards-0.1.1';
 registerGame('hero_cards', 1, schemas);
 export const describe = () => ({
   gameId: 'hero_cards',
@@ -46,9 +46,13 @@ function refill(state, e, data) {
 export function initial(config, data) {
   validateConfig(config, data, describe(), simVersion);
   pinData(data);
-  if (config.options && Object.values(config.options.assignments).some(id => id !== 'standard')) throw Error(
-    'INVALID_SCHEMA');
-  if (new Set(data.gameRules.cards.map(c => c.id)).size !== 5) throw Error('INVALID_SCHEMA');
+  const decks = data.gameRules.decks;
+  const cardIds = new Set(data.gameRules.cards.map(c => c.id));
+  if (cardIds.size !== data.gameRules.cards.length || new Set(decks.map(d =>
+    d.id)).size !== decks.length) throw Error('INVALID_SCHEMA');
+  for (const deck of decks) if (deck.cardIds.some(id => !cardIds.has(id))) throw Error('INVALID_SCHEMA');
+  const assigned = config.options?.assignments ?? Object.fromEntries(config.players.map(id => [id, 'standard']));
+  if (Object.values(assigned).some(id => !decks.some(d => d.id === id))) throw Error('INVALID_SCHEMA');
   const state = {
     tick: 0,
     rng: config.seed,
@@ -60,6 +64,12 @@ export function initial(config, data) {
       round: 1,
       entities: [...config.players].sort(compareIds).map(id => ({
         id,
+        deckId: assigned[id],
+        peek: {
+          playerId: '',
+          cardId: '',
+          expiresTurn: 0
+        },
         hp: data.gameRules.health,
         energy: 3,
         ward: 0,
@@ -81,7 +91,7 @@ export function initial(config, data) {
   for (const e of state.payload.entities) {
     e.deck = shuffle(state, Array.from({
       length: 3
-    }, () => data.gameRules.cards.map(c => c.id)).flat());
+    }, () => decks.find(d => d.id === e.deckId).cardIds).flat());
     refill(state, e, data);
   }
   validateGamePayload('hero_cards', 1, 'state', state.payload);
@@ -100,6 +110,7 @@ export function observe(state, viewerId) {
       turnId: state.turnId,
       entities: p.entities.map(e => ({
         id: e.id,
+        deckId: e.deckId,
         hp: e.hp,
         energy: e.energy,
         ward: e.ward,
@@ -107,6 +118,11 @@ export function observe(state, viewerId) {
         deckCount: e.deck.length,
         units: structuredClone(e.units)
       })),
+      peek: e && state.turnId < e.peek.expiresTurn ? structuredClone(e.peek) : {
+        playerId: '',
+        cardId: '',
+        expiresTurn: 0
+      },
       hand: e ? e.hand.map(id => structuredClone(p.cards.find(c => c.id === id))) : [],
       outcome: structuredClone(p.outcome)
     }
@@ -182,9 +198,24 @@ export function step(state, frame, data) {
       e.energy -= card.cost;
       if (card.kind === 'summon') e.units.push({
         id: `u${q.nextUnit++}`,
+        kind: card.id,
         power: card.power,
         sleepUntil: 0
-      });else if (card.kind === 'ward') e.ward = clamp(e.ward + card.power, 0, 100);else {
+      });else if (card.kind === 'peek') {
+        e.peek = {
+          playerId: enemy.id,
+          cardId: enemy.deck.at(-1) ?? '',
+          expiresTurn: state.turnId + 1
+        };
+        events.push({
+          eventId: `${next.tick}:${events.length}`,
+          audience: [e.id],
+          kind: 'card.peek',
+          payload: {
+            ...e.peek
+          }
+        });
+      } else if (card.kind === 'ward') e.ward = clamp(e.ward + card.power, 0, 100);else {
         const amount = damage(card.power, card.ignoresWard);
         if (card.kind === 'hypnosis') for (const unit of enemy.units) unit.sleepUntil = state.turnId + 2;
         event('card.hit', {

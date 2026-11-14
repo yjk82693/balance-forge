@@ -3,7 +3,7 @@ export const card = object({
   id: text(),
   cost: int(0, 3),
   kind: {
-    enum: ['damage', 'ward', 'summon', 'hypnosis']
+    enum: ['damage', 'ward', 'summon', 'hypnosis', 'peek']
   },
   power: int(0, 100),
   ignoresWard: {
@@ -11,11 +11,25 @@ export const card = object({
   }
 });
 const unit = object({
+  kind: text(),
   id: text(),
   power: int(0, 100),
   sleepUntil: int(0, 12)
+}, ['id', 'power', 'sleepUntil']);
+const peek = object({
+  playerId: {
+    type: 'string',
+    maxLength: 128
+  },
+  cardId: {
+    type: 'string',
+    maxLength: 128
+  },
+  expiresTurn: int(0, 12)
 });
 export const entity = object({
+  deckId: text(),
+  peek,
   id: text(),
   hp: int(0, 100),
   energy: int(0, 3),
@@ -27,6 +41,7 @@ export const entity = object({
   lastSeq: int(-1)
 });
 const visible = object({
+  deckId: text(),
   id: text(),
   hp: int(0, 100),
   energy: int(0, 3),
@@ -65,11 +80,15 @@ export const schemas = {
       const: 6
     },
     health: int(1, 100),
-    cards: array(card, 5, 5)
+    cards: array(card, 32, 5),
+    decks: array(object({
+      id: text(),
+      cardIds: array(text(), 5, 5)
+    }), 8, 1)
   }),
   state: object({
     config: ref('MatchConfig'),
-    cards: array(card, 5, 5),
+    cards: array(card, 32, 5),
     activePlayer: text(),
     round: int(1, 6),
     entities: array(entity, 2, 2),
@@ -83,6 +102,7 @@ export const schemas = {
     turnId: int(0, 12),
     entities: array(visible, 2, 2),
     hand: array(card, 5),
+    peek,
     outcome: ref('Outcome')
   })
 };

@@ -54,6 +54,25 @@ export const data = deepFreeze({
       kind: 'damage',
       power: 2,
       ignoresWard: false
+    }, {
+      id: 'mechanical_crows',
+      cost: 2,
+      kind: 'summon',
+      power: 2,
+      ignoresWard: false
+    }, {
+      id: 'forethought',
+      cost: 1,
+      kind: 'peek',
+      power: 0,
+      ignoresWard: false
+    }],
+    decks: [{
+      id: 'standard',
+      cardIds: ['spark', 'ward', 'sentinel', 'hypnosis', 'pulse']
+    }, {
+      id: 'nightcrow',
+      cardIds: ['spark', 'ward', 'mechanical_crows', 'hypnosis', 'forethought']
     }]
   },
   provenance: [{

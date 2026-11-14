@@ -3,7 +3,7 @@ import {performance} from 'node:perf_hooks';
 import {availableParallelism} from 'node:os';
 import {validate} from '../../packages/contracts/index.js';
 import {botPolicyVersion,pairedJobs} from './match.js';
-export {pairedJobs,runMatch} from './match.js';
+export {pairedJobs,runMatch,rosterJobs} from './match.js';
 export async function runBatch(jobs,{workers=Math.min(4,availableParallelism()),captureReplays=false}={}) {
  if(!Number.isInteger(workers)||workers<1||workers>64||!Array.isArray(jobs)||!jobs.length)throw Error('INVALID_SCHEMA');
  const count=Math.min(workers,jobs.length),chunks=Array.from({length:count},()=>[]),pool=[];

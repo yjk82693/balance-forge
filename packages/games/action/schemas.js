@@ -1,6 +1,6 @@
 import { integer as int, text, array, object, ref } from '../../contracts/shapes.js';
 const hero = {
-  enum: ['bari', 'real_armor', 'daewi', 'sepia']
+  enum: ['bari', 'real_armor', 'daewi', 'sepia', 'nightcrow']
 };
 export const axes = {
   moveX: int(-1000, 1000),

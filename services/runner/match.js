@@ -36,8 +36,18 @@ export function pairedJobs({seeds=Array.from({length:100},(_,i)=>i+1),heroes=['b
  for(const seed of seeds)for(let swap=0;swap<2;swap++){
   const players=['p1','p2'],order=swap?[...heroes].reverse():heroes;
   const config=game.makeConfig(data,seed,players);
-  config.options={assignments:Object.fromEntries(players.map((id,i)=>[id,gameId==='hero_arena'?order[i]:'standard']))};
+  config.options={assignments:Object.fromEntries(players.map((id,i)=>[id,gameId==='hero_arena'?order[i]:(data.gameRules.decks.some(d=>d.id===order[i])?order[i]:'standard')]))};
   jobs.push({matchId:`m-${jobs.length+1}`,config,data});
+ }
+ return jobs;
+}
+
+export function rosterJobs({seeds=Array.from({length:10},(_,i)=>i+1),gameId='hero_arena',data=games[gameId]?.data}={}) {
+ const roster=gameId==='hero_arena'?data.characters.map(c=>c.id):data.gameRules.decks.map(d=>d.id);
+ const jobs=[];
+ for(let i=0;i<roster.length;i++)for(let j=i;j<roster.length;j++){
+  const pair=pairedJobs({seeds,heroes:[roster[i],roster[j]],gameId,data});
+  for(const job of pair){job.matchId=`m-${jobs.length+1}`;jobs.push(job);}
  }
  return jobs;
 }

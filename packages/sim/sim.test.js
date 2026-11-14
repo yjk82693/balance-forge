@@ -21,8 +21,8 @@ test('100 seeds × 1,000 active ticks × two runs: every tick hash matches', () 
     for (const c of data.characters) c.health = 1000000;
     const heroes = data.characters.map(c => c.id);
     const assignments = {
-      p1: heroes[seed % 4],
-      p2: heroes[(seed + 1) % 4]
+      p1: heroes[seed % heroes.length],
+      p2: heroes[(seed + 1) % heroes.length]
     };
     const config = game.makeConfig(data, seed, ['p1', 'p2'], 1800, assignments),
       first = [],

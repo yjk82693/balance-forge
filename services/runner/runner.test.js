@@ -19,3 +19,11 @@ test('runner marks a failed match invalid without recording a draw',async()=>{
  const result=runMatch(job);validate('MatchResult',result);assert.equal(result.valid,false);assert.equal(result.errorCode,'HASH_MISMATCH');assert.equal(result.outcome.status,'running');assert.ok(result.statistics.players.every(p=>p.draws===0));
  const batch=await runBatch([job],{workers:1});assert.equal(batch.metrics.invalidMatches,1);
 });
+test('five heroes yield 15 matchups including mirrors, all sharing one data hash',async()=>{
+ const {rosterJobs}=await import('./match.js');
+ const jobs=rosterJobs({seeds:[1]});assert.equal(jobs.length,30);
+ assert.equal(new Set(jobs.map(j=>j.config.dataHash)).size,1);
+ const batch=await runBatch(jobs,{workers:2});assert.equal(batch.metrics.invalidMatches,0);
+ const cards=await runBatch(pairedJobs({gameId:'hero_cards',heroes:['nightcrow','standard'],seeds:[3]}),{workers:2});
+ assert.ok(cards.results.every(r=>r.valid));
+});

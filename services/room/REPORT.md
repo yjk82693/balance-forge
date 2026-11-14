@@ -104,3 +104,11 @@ retained base patches, worker playtests for both games, join limits, disconnects
 Previously completed verification before this blocker: 28 engine/runner tests passed, including the full
 100-seed × 1,000-tick × two-run determinism matrix after movement/assignment/formatting changes.
 No commits were attempted, no dependencies added, and no external network calls made.
+
+## Match replay
+
+Completed H. GET /v1/replay/:matchId serves archived seed/config and the actual accepted InputFrame stream.
+Human and HTTP bot matches persist replays separately from unchanged MatchResult exports; match IDs are unique.
+No in-progress private replay is exposed. replayOnData reuses the seed/assignments/inputs with a new immutable data
+pin; illegal counterfactual inputs fail explicitly instead of being replaced. Two new replay tests and three
+runner tests passed without opening sockets, including original final-hash reproduction and patched-data repeats.

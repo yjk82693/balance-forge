@@ -35,6 +35,11 @@ export const data = deepFreeze({
     health: 480,
     speed: 150,
     moveIds: ['melee', 'projectile', 'guard']
+  }, {
+    id: 'nightcrow',
+    health: 480,
+    speed: 150,
+    moveIds: ['crow_dive', 'crow_swarm', 'wing_shield']
   }].map(c => ({
     ...c,
     nameKey: `hero.${c.id}`,
@@ -44,7 +49,12 @@ export const data = deepFreeze({
     operator: 'shield',
     amount: 100,
     durationTicks: 20
-  }]), move('projectile', 'projectile', 44, 1), move('heavy_melee', 'melee', 62, 2)],
+  }]), move('projectile', 'projectile', 44, 1), move('heavy_melee', 'melee', 62, 2), move('crow_dive', 'melee', 38,
+    0), move('crow_swarm', 'projectile', 44, 1), move('wing_shield', 'guard', 0, 0, [{
+    operator: 'shield',
+    amount: 100,
+    durationTicks: 20
+  }])],
   weightTiers: [{
     startupTicks: 3,
     recoveryTicks: 8,

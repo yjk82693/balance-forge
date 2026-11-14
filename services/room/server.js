@@ -149,7 +149,7 @@ export class RoomServer {
     const {data}=this.storage.get(gameId,gameId===room.gameId?room.selectedHash:undefined);
     const players=room.seats.map(s=>s.seat).sort();
     const config=game.makeConfig(data,options.seed??1,players);
-    config.options={assignments:Object.fromEntries(room.seats.map(s=>[s.seat,gameId==='hero_arena'?s.hero:'standard']))};
+    config.options={assignments:Object.fromEntries(room.seats.map(s=>[s.seat,gameId==='hero_arena'?s.hero:(data.gameRules.decks.some(d=>d.id===s.hero)?s.hero:'standard')]))};
     if(options.maxTicks!==undefined)config.maxTicks=options.maxTicks;
     const authority=new Authority(game.adapter,config,data);
     room.authority=authority;room.game=game;room.gameId=gameId;room.phase='playing';room.result=null;
