@@ -49,6 +49,8 @@ test('reference covers every HTTP route, retained versions and static HEAD with 
   const pair = examples.http.fullPair.response.body;
   assert.equal(pair.fair, false);
   assert.equal(pair.proposal.origin, 'fake');
+  assert.equal(pair.diagnosis.matchup, 'bari vs daewi');
+  assert.ok(pair.diagnosis.recommendations.length > 0);
   assert.deepEqual(pair.baseline.rows.map(row => row.dimension).filter(name => !name.startsWith('human: ')),
     ['bari vs daewi']);
   assert.equal(examples.http.mirrorInvalid.response.status, 400);

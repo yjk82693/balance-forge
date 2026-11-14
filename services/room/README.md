@@ -601,8 +601,12 @@ curl -sS -H 'content-type: application/json' \
 
 pairs and holdoutPairs default to 50; roster defaults to false. The response contains runId, gameId, elapsedMs,
 botPolicyVersion, seedSetId, holdoutSeedSetId, baseline Report, proposal with origin/changes, validation, patched
-Report/dataHash, verdict and humanMatches. The seatWins summary contains numeric baseline/holdout first-seat
-counts; holdout is null when no holdout ran. Optional dataHash selects a retained baseline data version.
+Report/dataHash, verdict and humanMatches. The verdict is `{verdict, reasons, targets}`: `targets` is
+`[{matchup, before:{rate,ci95,games}, after:{rate,ci95,games}, outcome:'improved'|'unchanged'|'worse'}]`, one entry
+per flagged matchup. A patch is accepted when at least one target improved beyond noise, none got worse and no new
+extreme matchup (above 65% with 200 games) appeared. A version record stores the same array in its `verdict`.
+The seatWins summary contains numeric baseline/holdout first-seat counts; holdout is null when no holdout ran.
+Optional dataHash selects a retained baseline data version.
 Baseline seeds 1..pairs never overlap holdout 1000001..1000000+holdoutPairs. Both streams include phase equal to
 baseline or holdout. Candidates are retained by hash without automatically replacing the current baseline.
 Production selects Gemini when GEMINI_API_KEY is set, otherwise fake; tests explicitly pass an empty adapter env.
@@ -616,6 +620,17 @@ matchup instead of the default; each seed still runs twice with swapped seats. `
 `roster`. Errors are HTTP 400 with their own code: `MIRROR_MATCHUP` (same hero twice: a mirror only measures the
 first-seat advantage), `HERO_NOT_PLAYABLE` (unknown id), `INVALID_SCHEMA` (not exactly two strings, or heroes with
 roster). The same field works on /v1/playtest/run. Captured: http.fullPair, http.mirrorInvalid.
+
+Diagnosis: `diagnose: true` (with a flagged matchup) also measures both heroes against every other hero before the
+patch is proposed: 3 + 3 other matchups for five heroes, `pairs` seeds each (seeds from 2000001, never overlapping
+the baseline or holdout seeds), streamed as `playtest.progress` with `phase: "diagnose"`. The body gets `diagnosis`:
+`{focusHero, matchup, heroes: [{hero, overall, opponents: [{opponent, rate, ci95, games}], strength: {role,
+overallRate, marginPts, opponentsOutsideBand, worstOpponent}}], classification, recommendations: [{hero, role, path,
+direction, sizePct, why, expected, scope}]}`. `classification` is `overall_strong` (the winner beats most other
+heroes: nerf it), `overall_weak` (the loser loses to most: buff it) or `counter_specific` (only this pairing is off:
+change the interaction). The adapter receives the diagnosis as context (aggregate numbers only); the patch it
+proposes still goes through validation and the holdout. Without the flag, on a fair stop, or if it cannot be built,
+`diagnosis` is null. Captured: http.fullPair.
 
 Fair matchups stop early: when the baseline has no outlier for the tested matchup (95% interval wholly outside 45-55%
 with at least 30 games; mirror rows do not count), the response has `fair: true`, `proposal: null`,

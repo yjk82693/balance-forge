@@ -9,13 +9,15 @@ const number = { type: 'number' };
 const rate = { type: 'number', minimum: 0, maximum: 1 };
 const result = object({ rate, ci95: { type: 'array', items: rate, minItems: 2, maxItems: 2 }, games: integer() });
 const change = object({ path: text(256), label: text(256), old: number, new: number }, ['path', 'old', 'new']);
+const target = object({ matchup: text(256), before: result, after: result,
+  outcome: { enum: ['improved', 'unchanged', 'worse'] } });
 const recordSchema = object({
   dataHash: digest, parentHash: nullable(digest), gameId: { enum: ['hero_arena', 'hero_cards'] },
   createdAt: text(64), origin: { enum: ['base', 'gemini', 'grok', 'fallback', 'fake', 'manual'] },
   changes: array(change, 64), rationale: { type: 'string', maxLength: 8192 },
   target: nullable(object({ matchup: text(256), before: result, after: result })),
   verdict: nullable(object({ verdict: { enum: ['accepted', 'rejected', 'inconclusive'] },
-    reasons: array({ type: 'string', maxLength: 8192 }, 100) })),
+    reasons: array({ type: 'string', maxLength: 8192 }, 100), targets: array(target, 64) }, ['verdict', 'reasons'])),
   approved: { type: 'boolean' }, note: { type: 'string', maxLength: 8192 }
 }, ['dataHash', 'parentHash', 'gameId', 'createdAt', 'origin', 'changes', 'rationale', 'target',
   'verdict', 'approved']);

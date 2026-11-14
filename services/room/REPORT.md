@@ -671,3 +671,20 @@ baseline in the analysis module: `fair: true`, no proposal, no holdout, no versi
 2-pair runs that are now fair, so they were adapted, not weakened: the roster test asserts the fair response, the
 versions test and the e2e dashboard use one lopsided pair (bari vs daewi, 30 to 40 games) so a patch is still
 proposed and recorded. The socket-gated e2e change could not be run here.
+
+## Per-target verdict in the room
+
+Version records accept `verdict.targets` (matchup, before and after with rate/ci95/games, outcome improved, unchanged or
+worse); older records without it stay valid. README documents the verdict shape. The gate itself is in the analysis
+module.
+
+## Diagnose in the live run
+
+POST /v1/playtest/full accepts `diagnose: true`: the analysis module diagnoses the flagged matchup (both heroes
+against every
+other hero) before it asks the adapter for a patch. The engine supplies `runDiagnose` (workers, `matchups` chosen by the
+analysis, seeds 2000001..2000000+pairs, never overlapping baseline or holdout) and streams progress with phase
+`diagnose`.
+Result files: playtests/<runId>-diagnose.json. The auto route needs no flag: `runAuto` diagnoses each round through its
+injected runBatch (phase `diagnose`, the round's scan seeds). New tests in full.test.js; README and examples.json
+updated.

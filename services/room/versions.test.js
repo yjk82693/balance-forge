@@ -157,3 +157,19 @@ test('a rejected version cannot be approved; an accepted or manual one can', asy
   assert.equal(refused.status, 400);
   assert.equal(server.storage.versionStore.get('hero_arena', changed.dataHash).approved, false);
 });
+test('a version record keeps the per-target outcomes of its verdict', async t => {
+  const { server } = await localServer(t);
+  const base = server.storage.get('hero_arena');
+  const changed = server.storage.patch('hero_arena', patch(base.dataHash, 72));
+  const record = server.storage.versionStore.get('hero_arena', changed.dataHash);
+  const side = rate => ({ rate, ci95: [rate - 0.05, Math.min(1, rate + 0.05)], games: 200 });
+  const targets = [{ matchup: 'bari vs sepia', before: side(0.88), after: side(0.7), outcome: 'improved' },
+    { matchup: 'bari vs daewi', before: side(0.99), after: side(0.99), outcome: 'unchanged' }];
+  const { validateVersion } = await import('./versions.js');
+  const withTargets = { ...record, verdict: { verdict: 'accepted', reasons: ['one improved'], targets } };
+  assert.doesNotThrow(() => validateVersion(withTargets));
+  assert.throws(() => validateVersion({ ...withTargets, verdict: { ...withTargets.verdict,
+    targets: [{ ...targets[0], outcome: 'better' }] } }), /INVALID_SCHEMA/);
+  const older = { ...record, verdict: { verdict: 'accepted', reasons: [] } }; // the shape before targets existed
+  assert.doesNotThrow(() => validateVersion(older));
+});
