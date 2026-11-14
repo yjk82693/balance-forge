@@ -50,11 +50,12 @@ test('schema extends normative bundle only with approved addendum fields and tra
     delete extended.$defs.Report.properties[key];
   }
   for (const key of ['target', 'deltaToTarget']) delete extended.$defs.Report.properties.rows.items.properties[key];
-  // Addendum v0.1.2: the patch allowlist also holds /characters/N/health and /characters/N/speed (exact pattern).
+  // Addenda v0.1.2 and v0.1.4: the patch allowlist also holds /characters/N/health, /characters/N/speed and the
+  // Hero Cards paths /gameRules/cards/N/cost and /gameRules/cards/N/power (exact pattern).
   const path = extended.$defs.PatchProposal.properties.replacements.items.properties.path;
   // (indexes without leading zeros: "01" and "1" would be two paths for one move)
   assert.equal(path.pattern, '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|' +
-    'characters/(0|[1-9][0-9]*)/(health|speed))$');
+    'characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power))$');
   path.pattern = '^/(tuning/damageScalePermille|moves/[0-9]+/power)$';
   assert.deepEqual(JSON.parse(spec.match(/```json\n([\s\S]*?)```/)[1]), extended);
   for (const message of fixture('ws_messages')) {
