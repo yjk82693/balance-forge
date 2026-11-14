@@ -2,7 +2,7 @@ import { fail } from './errors.ts';
 
 // Optional Report fields from contract v0.1.1 addendum item 5. Validated, never invented:
 // a field is present only when the caller supplies a measured/recorded value.
-export function withExtras(report, extras = {}) {
+export function withExtras(report, extras: any = {}) {
   const out = { ...report };
   const { elapsedMs, recorded, createdAt, humanMatches } = extras;
   if (elapsedMs !== undefined) {

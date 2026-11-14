@@ -14,7 +14,7 @@ const HEROES = DATA.characters.map((c) => c.id);
 
 /** Results for a table { 'a vs b': rate of the first hero }, 100 seeds per matchup, with fixed action use counts. */
 function world(table, { meleeUses = 10, shotUses = 40 } = {}) {
-  return Object.entries(table).flatMap(([dimension, rate]) => {
+  return Object.entries(table).flatMap(([dimension, rate]: [string, any]) => {
     const [a, b] = dimension.split(' vs ');
     return pairedResults({ heroes: [a, b], seeds: 100, winner: (s) => (s % 100 < rate * 100 ? 'a' : 'b') })
       .map((r, i) => ({ ...r, matchId: `${dimension}-${i}`, statistics: { ...r.statistics, players: r.statistics.players
@@ -24,7 +24,7 @@ function world(table, { meleeUses = 10, shotUses = 40 } = {}) {
   });
 }
 const FAIR = 0.5;
-const diagnose = (table, matchup, opts) => {
+const diagnose = (table, matchup, opts?) => {
   const out = buildDiagnosis(world(table, opts), { matchup, data: DATA });
   assert.equal(out.ok, true, JSON.stringify(out));
   return out.value;
@@ -225,7 +225,7 @@ test('the unique non-attack move is a lever before any shared attack', () => {
 });
 
 // --- hero stats (contract v0.1.2): health and speed are hero-only levers ---
-const STATS = structuredClone(SHARED);
+const STATS: any = structuredClone(SHARED);
 STATS.characters.forEach((c, i) => Object.assign(c, { health: 500 + i * 50, speed: 100 + i * 10 }));
 const statPaths = (d, hero) => d.recommendations.filter((r) => r.hero === hero).map((r) => r.path);
 const statIndex = (hero) => STATS.characters.findIndex((c) => c.id === hero);

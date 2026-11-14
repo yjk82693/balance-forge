@@ -151,7 +151,7 @@ function recommendation({ entry, role, lever, sizePct, scope, outside, total, wh
     why, expected: `brings ${outside} of ${total} matchups toward the band`, scope, alsoAffects: lever.alsoAffects };
 }
 
-function leverRecommendations(entry, role, ctx, uses, sizePct, scope, outside, total) {
+function leverRecommendations(entry, role, ctx, uses, sizePct, scope, outside, total?) {
   const verb = role === 'winner' ? 'lower' : 'raise';
   const where = scope === 'interaction' ? 'in this matchup' : 'across its matchups';
   const who = `${entry.hero} is ${role === 'winner' ? 'too strong' : 'too weak'} (${entry.strength.marginPts} points `
@@ -192,7 +192,7 @@ export function heroOverallRows(results) {
   });
 }
 
-export const buildDiagnosis = safely((results, options = {}) => {
+export const buildDiagnosis = safely((results, options: any = {}) => {
   assertMatchResults(results);
   const { matchup, data } = options;
   const intent = options.intent === undefined ? null : normalizeIntent(options.intent);
@@ -225,7 +225,7 @@ export const buildDiagnosis = safely((results, options = {}) => {
   } else if (most(strongCount)) classification = 'overall_strong';
   else if (most(weakCount)) classification = 'overall_weak';
 
-  const usesOf = (hero, onlyOpponent) => {
+  const usesOf = (hero, onlyOpponent?) => {
     const uses = {};
     for (const [opponent, cell] of byHero.get(hero)) {
       if (onlyOpponent && opponent !== onlyOpponent) continue;

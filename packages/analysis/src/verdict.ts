@@ -51,7 +51,7 @@ export function targetOutcome(b, a, minGames = MIN_GAMES) {
  * extreme on the same side in `before`. Flipping sides counts as new. Mirror rows count too.
  */
 export function newExtremeRows(before, after, minGames = MIN_GAMES) {
-  const beforeBy = new Map(before.rows.filter(isBot).map((r) => [r.dimension, r]));
+  const beforeBy = new Map<string, any>(before.rows.filter(isBot).map((r) => [r.dimension, r]));
   return after.rows.filter(isBot).filter((row) => {
     if (row.games < minGames || deviation(row) <= EXTREME) return false;
     const prev = beforeBy.get(row.dimension);
@@ -66,7 +66,7 @@ export function newExtremeRows(before, after, minGames = MIN_GAMES) {
  * options.targets: dimensions to judge; default = non-mirror rows flagged outlier in `before`. Mirror rows are
  * not default targets, but they still count in the "new extreme matchup" check below.
  */
-export function judgePatch(before, after, options = {}) {
+export function judgePatch(before, after, options: any = {}): any {
   assertReport(before, 'before');
   assertReport(after, 'after');
   const minGames = options.minGames ?? MIN_GAMES;
@@ -88,7 +88,7 @@ export function judgePatch(before, after, options = {}) {
     return out('inconclusive');
   }
 
-  const afterBy = new Map(after.rows.filter(isBot).map((r) => [r.dimension, r]));
+  const afterBy = new Map<string, any>(after.rows.filter(isBot).map((r) => [r.dimension, r]));
   const beforeBy = new Map(before.rows.filter(isBot).map((r) => [r.dimension, r]));
 
   const outliers = before.rows.filter((r) => isBot(r) && r.outlier);

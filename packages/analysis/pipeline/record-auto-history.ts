@@ -59,8 +59,8 @@ function followRecommendation(report, data, rec, rootData = data) {
  * matchups) its most-used attack loses 20% power; if it is losing it gains 20%.
  * `dataOf(hash)` gives the data a report was measured on; `usesOf(hero)` gives { actionId: uses } counted so far.
  */
-export function steppingAdapter(dataOf, usesOf = () => ({})) {
-  return { async proposeWithOrigin(report, context = {}) {
+export function steppingAdapter(dataOf, usesOf: (hero: string) => any = () => ({})) {
+  return { async proposeWithOrigin(report, context: any = {}) {
     const data = dataOf(report.dataHash);
     const followed = followRecommendation(report, data, context.diagnosis?.recommendations?.[0], context.rootData);
     if (followed) return followed;
@@ -94,13 +94,13 @@ function focusHeroOf(dimensions) {
 }
 
 /** The recorded file: a summary of the run and the version records (base first). */
-export function buildHistoryFile({ result, history, rounds, botPolicyVersion, simVersion, createdAt }) {
+export function buildHistoryFile({ result, history, rounds, botPolicyVersion, simVersion, createdAt }: any) {
   return { summary: { stoppedBecause: result.stoppedBecause, rounds, needs_designer: result.needs_designer ?? [],
     botPolicyVersion, simVersion, createdAt }, versions: history };
 }
 
 function parse(argv) {
-  const flags = { rounds: '3' };
+  const flags: any = { rounds: '3' };
   for (let i = 0; i < argv.length; i += 2) {
     if (!argv[i]?.startsWith('--') || argv[i + 1] === undefined) throw new Error(`bad argument: ${argv[i]}`);
     flags[argv[i].slice(2)] = argv[i + 1];
@@ -116,7 +116,7 @@ function parse(argv) {
 }
 
 /** Runs the history; resolves { ok: true, value: { records, stoppedBecause, ... } } or an error result. */
-export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => new Date().toISOString() } = {}) {
+export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => new Date().toISOString() }: any = {}) {
   try {
     const load = (rel) => import(engineRoot ? pathToFileURL(join(resolve(engineRoot), rel)).href
       : new URL(`../../../${rel}`, import.meta.url).href);
@@ -137,7 +137,7 @@ export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => ne
         }
       }
     };
-    const result = await runAuto({ gameId: arena.data.gameId, fromHash, data: structuredClone(arena.data), rounds,
+    const result: any = await runAuto({ gameId: arena.data.gameId, fromHash, data: structuredClone(arena.data), rounds,
       requireApproval: false, hashData: contracts.hash,
       adapter: steppingAdapter((hash) => versions.get(hash), (hero) => usage[hero] ?? {}),
       allMatchups: matchupsOf(arena.data), seedsFor, botPolicyVersion: match.botPolicyVersion, now,

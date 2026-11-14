@@ -16,7 +16,7 @@ import { isMirror } from '../src/verdict.ts';
 import { analyzePhase } from './pipeline.ts';
 import { runFull } from './full.ts';
 
-const seedsOf = (results) => [...new Set(results.map((r) => r.config.seed))].sort((a, b) => a - b);
+const seedsOf = (results: any[]) => [...new Set<number>(results.map((r) => r.config.seed))].sort((a, b) => a - b);
 
 /** An adapter that hands back the proposal of the original run, with its origin; it never asks a model. */
 const replayAdapter = (stored) => ({

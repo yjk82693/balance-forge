@@ -14,7 +14,7 @@ export function humanResultsOf(json) {
 }
 
 /** Appends "human: <matchup>" rows and sets humanMatches (valid human matches). Bot totals are untouched. */
-export function addHumanRows(report, humanResults, options = {}) {
+export function addHumanRows(report, humanResults, options: any = {}) {
   const valid = humanResults.filter(isCountable);
   if (valid.length === 0) return withExtras(report, { humanMatches: 0 });
   const human = analyze(valid, { allowMixed: true, ...options });

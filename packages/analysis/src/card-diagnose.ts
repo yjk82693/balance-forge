@@ -43,7 +43,8 @@ const rowOf = (results, matchup) => {
  * effect = win rate of the first-named deck with the change minus without it, same seeds, in points of 1.0.
  * towardTarget: the change moves the rate toward `target`. significant: the difference is beyond 1.96 standard errors.
  */
-export function buildCardDiagnosis({ matchup, target = 0.5, baselineRate, probes, baselineResults = [] }) {
+export function buildCardDiagnosis({ matchup, target = 0.5, baselineRate, probes, baselineResults = [] }: {
+  matchup: string; target?: number; baselineRate?: number; probes: any[]; baselineResults?: any[] }) {
   const base = probes.find((p) => p.variant === null);
   if (!base) fail('INVALID_INPUT', 'probes need one run of the unchanged data');
   const baseRow = rowOf(base.results, matchup);

@@ -13,7 +13,7 @@ test('summarize: swings by where they start and how they end, availability and t
   const closing = stubMatch([swing('daewi', 1500, 'interrupted', 10, 16), swing('real_armor', 1500, 'landed'),
     swing('daewi', 3000, 'whiffed', 20, 30), swing('real_armor', 1200, 'blocked')]);
   const apart = stubMatch([swing('daewi', 3000, 'whiffed', 5, 15)], { dist: [5000, 3200, 3100], winnerHero: 'daewi' });
-  const out = summarize([closing, apart], ['daewi', 'real_armor'], 1900);
+  const out: any = summarize([closing, apart], ['daewi', 'real_armor'], 1900);
   assert.equal(out.matches, 2);
   assert.equal(out.winRateFirst, 0.5);
   assert.deepEqual(out.neverWithinMeleeRange, { matches: 1, winsFirst: 1, meanTicks: 40 });

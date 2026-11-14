@@ -98,7 +98,7 @@ function cardContext(rootData, diagnosis) {
   return lines;
 }
 
-export function buildPrompt(report, context = {}) {
+export function buildPrompt(report, context: any = {}) {
   assertReport(report);
   const rows = report.rows
     .filter((r) => !r.dimension.startsWith(HUMAN_PREFIX))
@@ -175,7 +175,14 @@ function parseProposal(text) {
 }
 
 class LlmAdapter {
-  constructor({ env = {}, fetch: fetchFn = globalThis.fetch, timeoutMs = TIMEOUT_MS, retries = RETRIES, model } = {}) {
+  declare env: Record<string, string>;
+  declare fetch: typeof fetch;
+  declare timeoutMs: number;
+  declare retries: number;
+  declare model: string | undefined;
+  [member: string]: any; // keyName, origin, url, init and extractText come from the subclasses
+  constructor({ env = {}, fetch: fetchFn = globalThis.fetch, timeoutMs = TIMEOUT_MS, retries = RETRIES,
+    model }: any = {}) {
     this.env = env;
     this.fetch = fetchFn;
     this.timeoutMs = timeoutMs;
@@ -187,7 +194,7 @@ class LlmAdapter {
     if (!key) throw new Error(`${this.keyName} is not set`);
     return key;
   }
-  async proposePatch(report, context = {}) {
+  async proposePatch(report, context: any = {}) {
     const prompt = buildPrompt(report, context);
     const proposal = await requestWithRetry(this.fetch, this.url(), this.init(this.#key(), prompt), {
       timeoutMs: this.timeoutMs,
@@ -201,7 +208,7 @@ class LlmAdapter {
     });
     return proposal;
   }
-  async proposeWithOrigin(report, context = {}) {
+  async proposeWithOrigin(report, context: any = {}) {
     return { proposal: await this.proposePatch(report, context), origin: this.origin };
   }
 }
@@ -255,11 +262,13 @@ export class GrokPatchAdapter extends LlmAdapter {
 
 /** Primary adapter, then the fake on any failure; the result says origin "fallback" and why. */
 export class FallbackAdapter {
+  declare primary: any;
+  declare fallback: any;
   constructor(primary, fallback) {
     this.primary = primary;
     this.fallback = fallback;
   }
-  async proposeWithOrigin(report, context = {}) {
+  async proposeWithOrigin(report, context: any = {}) {
     try {
       return await this.primary.proposeWithOrigin(report, context);
     } catch (e) {
@@ -267,7 +276,7 @@ export class FallbackAdapter {
       return { proposal: got.proposal, origin: 'fallback', fallbackReason: String(e.message).slice(0, 160) };
     }
   }
-  async proposePatch(report, context = {}) {
+  async proposePatch(report, context: any = {}) {
     return (await this.proposeWithOrigin(report, context)).proposal;
   }
 }

@@ -52,7 +52,7 @@ const REQUIRED = { propose: ['baseline', 'out'], verify: ['holdout', 'out'], run
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
-  const flags = {};
+  const flags: any = {};
   for (let i = 0; i < rest.length; i += 2) {
     if (!rest[i].startsWith('--') || rest[i + 1] === undefined) fail('USAGE', `bad argument: ${rest[i]}. ${USAGE}`);
     flags[rest[i].slice(2)] = rest[i + 1];
@@ -71,7 +71,7 @@ const withHuman = (report, flags) => (flags.human ? addHumanRows(report, humanRe
   report);
 
 function extrasFrom(flags) {
-  const extras = {};
+  const extras: any = {};
   if (flags['metrics']) {
     const m = readJson(flags['metrics']);
     if (m === null || typeof m !== 'object' || Array.isArray(m)) {
@@ -106,13 +106,13 @@ async function run(argv, env, now) {
     fail('IO_ERROR', `could not create output folder: ${flags.out}`);
   }
   const f = (name) => join(flags.out, name);
-  const reportOptions = { botPolicyVersion: flags['bot-policy'], seedSetId: flags['seed-set'] };
+  const reportOptions: any = { botPolicyVersion: flags['bot-policy'], seedSetId: flags['seed-set'] };
   if (flags.intent) reportOptions.intent = normalizeIntent(readJson(flags.intent));
   for (const k of Object.keys(reportOptions)) if (reportOptions[k] === undefined) delete reportOptions[k];
-  const summary = {};
+  const summary: any = {};
 
   if (cmd === 'replay') {
-    const loaded = await loadArenaSimulator(flags['engine-root']);
+    const loaded: any = await loadArenaSimulator(flags['engine-root']);
     if (isError(loaded)) fail(loaded.error.code, loaded.error.message);
     const { simulate, hashData, baseData: engineData } = loaded.value;
     const results = resultsOf(flags.baseline);

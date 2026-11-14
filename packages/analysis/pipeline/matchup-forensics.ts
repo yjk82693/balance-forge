@@ -53,7 +53,7 @@ export function playOne(engine, heroes, seed, swap) {
     hp: Object.fromEntries(state.payload.entities.map((e) => [assignments[e.id], e.hp])) };
 }
 
-const tallyOf = (matches, hero, keep = () => true) => {
+const tallyOf = (matches, hero, keep: (swing: any) => boolean = () => true) => {
   const t = emptyTally();
   for (const m of matches) {
     for (const s of m.swings) if (s.hero === hero && keep(s)) {
@@ -123,7 +123,7 @@ export function forensicsSentence(summary) {
 }
 
 /** Replays `seeds` seeds of heroes[0] vs heroes[1], both seat orders. Resolves { ok, value } or an error result. */
-export async function forensics({ heroes, seeds = 100, engineRoot } = {}) {
+export async function forensics({ heroes, seeds = 100, engineRoot }: any = {}): Promise<any> {
   try {
     if (!Array.isArray(heroes) || heroes.length !== 2 || heroes[0] === heroes[1]) {
       return errorResult('INVALID_INPUT', 'heroes must be two different hero ids');
@@ -149,10 +149,10 @@ export async function forensics({ heroes, seeds = 100, engineRoot } = {}) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: any = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
-  const result = await forensics({ heroes: String(flags.heroes ?? '').split(','), seeds: Number(flags.seeds ?? 100),
-    engineRoot: flags['engine-root'] });
+  const result: any = await forensics({ heroes: String(flags.heroes ?? '').split(','),
+    seeds: Number(flags.seeds ?? 100), engineRoot: flags['engine-root'] });
   (result.ok ? console.log : console.error)(JSON.stringify(result.ok ? result.value : result, null, 1));
   process.exit(result.ok ? 0 : 1);
 }

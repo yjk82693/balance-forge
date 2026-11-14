@@ -55,7 +55,7 @@ export class JsonFileStorage {
       return fail(e instanceof SyntaxError ? 'INVALID_JSON' : 'IO_ERROR', `could not read report ${reportId}`);
     }
   }
-  async listReports(filter = {}) {
+  async listReports(filter: any = {}) {
     let names;
     try {
       names = readdirSync(this.#dir).filter((n) => n.endsWith('.json'));
@@ -78,7 +78,7 @@ export class JsonFileStorage {
 
 /** Not wired anywhere. A later, reviewed step may implement this against TigerData. */
 export class TigerDataStorage {
-  async saveReport() { throw new Error('TigerDataStorage is not implemented'); }
+  async saveReport(_report?: unknown) { throw new Error('TigerDataStorage is not implemented'); }
   async listReports() { throw new Error('TigerDataStorage is not implemented'); }
   async getReport() { throw new Error('TigerDataStorage is not implemented'); }
 }

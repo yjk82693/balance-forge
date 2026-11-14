@@ -12,7 +12,7 @@ import { validatePatch } from './validator.ts';
 import { fail, safely } from './errors.ts';
 
 /** Pure: returns patched GameData or throws AnalysisError (wrap with safely). */
-export function applyPatchToData(data, proposal, { hashData, rootData = data } = {}) {
+export function applyPatchToData(data, proposal, { hashData, rootData = data }: any = {}) {
   const check = validatePatch(proposal, { rootData });
   if (!check.ok) fail('INVALID_PATCH', check.errors.join('; '), check.errors);
   if (hashData && proposal.baseDataHash !== hashData(data)) {
@@ -67,7 +67,7 @@ const damageOf = (result, player) => result.statistics.players.find((p) => p.pla
  * side (largest damage margin, then shorter, then lower seed, then matchId). Deterministic.
  * options: dimensionOf, focalOf, dataHash (only consider matches pinned to this content version).
  */
-export const pickLopsidedMatch = safely((results, options = {}) => {
+export const pickLopsidedMatch = safely((results, options: any = {}) => {
   const pool = options.dataHash ? results.filter((r) => r.config.dataHash === options.dataHash) : results;
   const report = analyze(pool, { ...options, allowMixed: true });
   const played = report.rows.filter((r) => r.games > 0);

@@ -32,7 +32,7 @@ export function boundsFor(path) {
  * options.moveCount: if known, move indexes must be < moveCount.
  * options.rootData: the original game data; hero stats must stay within 40% of its values.
  */
-export function validatePatch(proposal, options = {}) {
+export function validatePatch(proposal, options: any = {}) {
   try {
     return validatePatchUnsafe(proposal, options ?? {});
   } catch {

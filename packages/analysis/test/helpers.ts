@@ -8,7 +8,7 @@ const HASH = (c) => c.repeat(64);
  * heroes = [a, b]; each seed is run twice with seats swapped. winner(seed, swap) -> 'a' | 'b' | 'draw'.
  */
 export function pairedResults({ dataHash = HASH('a'), heroes = ['bari', 'real_armor'], seeds = 100,
-  winner = () => 'a', invalidSeeds = [] } = {}) {
+  winner = (() => 'a') as (seed: number, swap: number) => string, invalidSeeds = [] as number[] }: any = {}) {
   const base = fixture('match_results.json')[0];
   const out = [];
   for (let seed = 1; seed <= seeds; seed++) {

@@ -60,7 +60,7 @@ export const buildEvidence = safely((countedResults, report) => {
   }
   const rows = [...blocks.keys()].sort().map((dimension) => {
     const { focal, other, games } = blocks.get(dimension);
-    const row = wanted.get(dimension);
+    const row: any = wanted.get(dimension);
     const totalDamage = focal.damage + other.damage;
     return { dimension, games, winRate: row.winRate, ci95: row.ci95, mirror: focal.hero === other.hero,
       focal: finishSide(focal, totalDamage), other: finishSide(other, totalDamage) };

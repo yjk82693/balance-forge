@@ -84,8 +84,8 @@ test('an all-even intent reproduces today\'s results exactly: rows, outliers and
       1e6));
   }
   const [b, a] = [fixture('report_baseline.json'), fixture('report_patched.json')];
-  const intentReports = [b, a].map((r) => ({ ...r, rows: r.rows.map((x) => ({ ...x, target: 0.5,
-    deltaToTarget: Math.round((x.winRate - 0.5) * 1e6) / 1e6 })) }));
+  const intentReports = ([b, a].map((r) => ({ ...r, rows: r.rows.map((x) => ({ ...x, target: 0.5,
+    deltaToTarget: Math.round((x.winRate - 0.5) * 1e6) / 1e6 })) }))) as [any, any];
   assert.deepEqual(judgePatch(...intentReports), judgePatch(b, a));
 });
 
@@ -93,7 +93,7 @@ test('the verdict measures toward the target and "new extreme" is 15 points from
   const row = (dimension, winRate, target, outlier = true) => ({ dimension, wins: Math.round(winRate * 200), games: 200,
     winRate, ci95: [winRate - 0.06, winRate + 0.06], uses: 0, opportunities: 0, outlier, target,
     deltaToTarget: Math.round((winRate - target) * 1e6) / 1e6 });
-  const reports = (beforeRows, afterRows) => {
+  const reports = (beforeRows, afterRows): [any, any] => {
     const [b, a] = [fixture('report_baseline.json'), fixture('report_patched.json')];
     return [{ ...b, rows: beforeRows }, { ...a, rows: afterRows }];
   };

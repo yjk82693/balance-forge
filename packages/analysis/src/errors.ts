@@ -7,7 +7,9 @@ export const ERROR_CODES = [
 ];
 
 export class AnalysisError extends Error {
-  constructor(code, message, details) {
+  declare code: string;
+  declare details: unknown;
+  constructor(code: string, message: string, details?: unknown) {
     super(message);
     this.name = 'AnalysisError';
     this.code = code;
@@ -15,11 +17,11 @@ export class AnalysisError extends Error {
   }
 }
 
-export const fail = (code, message, details) => {
+export const fail = (code: string, message: string, details?: unknown): never => {
   throw new AnalysisError(code, message, details);
 };
 
-export const errorResult = (code, message, details) => ({
+export const errorResult = (code: string, message: string, details?: unknown) => ({
   ok: false,
   error: { code, message, ...(details === undefined ? {} : { details }) },
 });
@@ -33,8 +35,8 @@ export const isError = (r) => r !== null && typeof r === 'object' && r.ok === fa
   typeof r.error?.code === 'string';
 
 /** Wrap a (sync or async) function: returns { ok: true, value } or an error result. Never throws. */
-export function safely(fn) {
-  return (...args) => {
+export function safely(fn: (...args: any[]) => any): (...args: any[]) => any {
+  return (...args: any[]) => {
     try {
       const out = fn(...args);
       if (out && typeof out.then === 'function') {
