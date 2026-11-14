@@ -1,5 +1,7 @@
 import { hash, compareIds, validate } from '../contracts/index.ts';
-export function xorshift32(value) {
+import type { ActionInput, GameAdapter, GameData, InputFrame, MatchConfig, Receipt, Recording, State, Statistics,
+  StepResult } from '../contracts/types.ts';
+export function xorshift32(value: number): number {
   if (!Number.isInteger(value) || value < 1 || value > 4294967295) throw Error('INVALID_SCHEMA');
   let x = value >>> 0;
   x ^= x << 13;
@@ -7,26 +9,26 @@ export function xorshift32(value) {
   x ^= x << 5;
   return x >>> 0;
 }
-export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-export function deepFreeze(value) {
+export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+export function deepFreeze<T>(value: T): T {
   if (value && typeof value === 'object') {
     for (const child of Object.values(value)) deepFreeze(child);
     Object.freeze(value);
   }
   return value;
 }
-const pinned = new WeakMap();
-export function pinData(data) {
+const pinned = new WeakMap<object, string>();
+export function pinData(data: GameData): string {
   const digest = hash(data);
   deepFreeze(data);
   pinned.set(data, digest);
   return digest;
 }
-export const dataHash = data => pinned.get(data) ?? hash(data);
-export function assertPinned(state, data) {
+export const dataHash = (data: GameData): string => pinned.get(data) ?? hash(data);
+export function assertPinned(state: State, data: GameData): void {
   if (state.payload.config.dataHash !== dataHash(data)) throw Error('HASH_MISMATCH');
 }
-export function emptyStatistics(players, actions) {
+export function emptyStatistics(players: string[], actions: string[]): Statistics {
   return {
     players: [...players].sort(compareIds).map(playerId => ({
       playerId,
@@ -42,7 +44,7 @@ export function emptyStatistics(players, actions) {
     durationTicks: 0
   };
 }
-export function statisticsDelta(before, after) {
+export function statisticsDelta(before: Statistics, after: Statistics): Statistics {
   return {
     durationTicks: after.durationTicks - before.durationTicks,
     players: after.players.map((p, i) => ({
@@ -60,7 +62,17 @@ export function statisticsDelta(before, after) {
 }
 // The only state owner for controllers and bots. Accepted frames, not arrivals, are replayed.
 export class Authority {
-  constructor(adapter, config, data) {
+  declare adapter: GameAdapter;
+  declare data: GameData;
+  declare config: MatchConfig;
+  declare state: State;
+  declare receipts: Map<string, Receipt>;
+  declare lastSeq: Map<string, number>;
+  declare pending: Map<string, ActionInput[]>;
+  declare frames: InputFrame[];
+  declare holdMoves: Set<string>;
+  declare held: Map<string, { moveX: number; moveY: number }>;
+  constructor(adapter: GameAdapter, config: MatchConfig, data: GameData) {
     this.adapter = adapter;
     this.data = data;
     this.config = structuredClone(config);
@@ -75,10 +87,10 @@ export class Authority {
     this.held = new Map();
   }
   // Drops a seat's held movement (disconnect, or any other reason the seat can no longer move).
-  release(playerId) {
+  release(playerId: string): void {
     this.held.delete(playerId);
   }
-  trackHold(action) {
+  trackHold(action: ActionInput): void {
     const holds = this.config.gameId === 'hero_arena' && action.actionId === 'move';
     if (!holds || !this.holdMoves.has(action.playerId)) return;
     const { moveX, moveY } = action.params;
@@ -88,7 +100,7 @@ export class Authority {
   // Server-generated move for every held seat that sent no move for this tick. It never carries an attack, is part of
   // the accepted frame (so replays reproduce it), and does not touch receipts or the seat's sequence numbers: it reuses
   // the seat's latest sequence number, or the one just below a queued attack, so state.lastSeq never moves backwards.
-  injectHeldMoves() {
+  injectHeldMoves(): void {
     const tick = this.state.tick + 1;
     for (const [playerId, vector] of [...this.held]) {
       const queued = this.pending.get(playerId) ?? [];
@@ -119,7 +131,7 @@ export class Authority {
       this.pending.set(playerId, [...queued, move]);
     }
   }
-  submit(action) {
+  submit(action: ActionInput): Receipt {
     validate('ActionInput', action);
     const key = JSON.stringify([action.playerId, action.seq]);
     if (this.receipts.has(key)) return structuredClone(this.receipts.get(key));
@@ -139,7 +151,7 @@ export class Authority {
     this.pending.set(action.playerId, [...queued, structuredClone(action)]);
     const receipt = {
       seq: action.seq,
-      status: 'accepted',
+      status: 'accepted' as const,
       acceptedTick: action.tick
     };
     this.receipts.set(key, receipt);
@@ -147,7 +159,7 @@ export class Authority {
     this.trackHold(action);
     return structuredClone(receipt);
   }
-  advance(systemInputs = []) {
+  advance(systemInputs: InputFrame['systemInputs'] = []): StepResult {
     if (this.held.size) this.injectHeldMoves();
     const frame = {
       tick: this.state.tick + 1,
@@ -162,9 +174,9 @@ export class Authority {
     return result;
   }
 }
-export function replay(adapter, config, data, frames, {
+export function replay(adapter: GameAdapter, config: MatchConfig, data: GameData, frames: InputFrame[], {
   onStep
-} = {}) {
+}: { onStep?: (step: { state: State; events: unknown[]; frame: InputFrame | null }) => void } = {}): State {
   let state = adapter.initial(config, data);
   if (onStep !== undefined && typeof onStep !== 'function') throw Error('INVALID_SCHEMA');
   onStep?.({
@@ -185,7 +197,8 @@ export function replay(adapter, config, data, frames, {
 }
 // Counterfactual playback changes only the immutable data pin, preserving seed, assignments and accepted inputs.
 // If the candidate makes a recorded action illegal, replay throws instead of silently replacing that input.
-export function replayOnData(adapter, recording, data, options) {
+export function replayOnData(adapter: GameAdapter, recording: Pick<Recording, 'config' | 'frames'>, data: GameData,
+  options?: Parameters<typeof replay>[4]): State {
   const config = {
     ...structuredClone(recording.config),
     dataHash: pinData(data)
