@@ -1,5 +1,4 @@
 import { createRoomServer } from './server.js';
-
 function startupMessage(error, host, port) {
   if (error?.code === 'EADDRINUSE') {
     return `Port ${port} is already in use. Stop the other server or set PORT to a free port.`;
@@ -10,7 +9,6 @@ function startupMessage(error, host, port) {
   const code = error?.code ?? (/^[A-Z_]+$/.test(error?.message ?? '') ? error.message : 'unexpected error');
   return `Room server could not start (${code}). Check its configuration and data directory.`;
 }
-
 function attachShutdown(runtime, server) {
   let closing = false;
   for (const signal of ['SIGINT', 'SIGTERM']) runtime.on(signal, async () => {
@@ -26,8 +24,12 @@ function attachShutdown(runtime, server) {
 }
 
 // Injecting runtime and the factory keeps startup failures testable without opening sockets or writing live data.
-export async function runCli({ runtime = process, createServer = createRoomServer } = {}) {
-  const port = Number(runtime.env.PORT ?? 3000), host = runtime.env.HOST ?? '0.0.0.0';
+export async function runCli({
+  runtime = process,
+  createServer = createRoomServer
+} = {}) {
+  const port = Number(runtime.env.PORT ?? 3000),
+    host = runtime.env.HOST ?? '0.0.0.0';
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     runtime.stderr.write('Invalid PORT: choose an integer from 0 to 65535.\n');
     runtime.exitCode = 1;
@@ -40,7 +42,9 @@ export async function runCli({ runtime = process, createServer = createRoomServe
     runtime.stdout.write(`Room server listening on http://localhost:${address.port} (LAN: use this computer's IP)\n`);
   } catch (error) {
     if (server) {
-      try { await server.close(); } catch { /* Preserve the original startup error. */ }
+      try {
+        await server.close();
+      } catch {/* Preserve the original startup error. */}
     }
     runtime.stderr.write(startupMessage(error, host, port) + '\n');
     runtime.exitCode = 1;

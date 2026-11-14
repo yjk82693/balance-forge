@@ -110,13 +110,24 @@ export class Authority {
     return result;
   }
 }
-export function replay(adapter, config, data, frames, { onStep } = {}) {
+export function replay(adapter, config, data, frames, {
+  onStep
+} = {}) {
   let state = adapter.initial(config, data);
-  if(onStep!==undefined&&typeof onStep!=='function')throw Error('INVALID_SCHEMA');
-  onStep?.({state:structuredClone(state),events:[],frame:null});
-  for(const frame of frames){
-    const result=adapter.step(state,frame,data);state=result.state;
-    onStep?.({state:structuredClone(state),events:structuredClone(result.events),frame:structuredClone(frame)});
+  if (onStep !== undefined && typeof onStep !== 'function') throw Error('INVALID_SCHEMA');
+  onStep?.({
+    state: structuredClone(state),
+    events: [],
+    frame: null
+  });
+  for (const frame of frames) {
+    const result = adapter.step(state, frame, data);
+    state = result.state;
+    onStep?.({
+      state: structuredClone(state),
+      events: structuredClone(result.events),
+      frame: structuredClone(frame)
+    });
   }
   return state;
 }

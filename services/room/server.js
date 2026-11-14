@@ -210,7 +210,8 @@ export class RoomServer {
     });
     ws.on('close', () => this.disconnect(session));
     try {
-      const roomId = url.searchParams.get('roomId'), joinCode = url.searchParams.get('joinCode');
+      const roomId = url.searchParams.get('roomId'),
+        joinCode = url.searchParams.get('joinCode');
       if (roomId || joinCode) {
         const room = roomId ? this.rooms.get(roomId) : this.codes.get(joinCode.toUpperCase());
         if (!room) throw Error('AUTH_EXPIRED');
@@ -230,7 +231,8 @@ export class RoomServer {
         this.status(room);
       } else this.send(session, 'room.status', {
         joinCode: '',
-        gameId: null, playableHeroes: [],
+        gameId: null,
+        playableHeroes: [],
         phase: 'lobby',
         seats: []
       });
@@ -277,10 +279,12 @@ export class RoomServer {
     }
   }
   playableHeroes(room) {
-    const {data}=this.storage.get(room.gameId,room.selectedHash);
-    if(room.gameId==='hero_arena')return data.characters.map(character=>character.id);
-    const decks=data.gameRules.decks.map(deck=>deck.id);
-    return decks.includes('standard')?games.hero_arena.data.characters.map(character=>character.id):decks;
+    const {
+      data
+    } = this.storage.get(room.gameId, room.selectedHash);
+    if (room.gameId === 'hero_arena') return data.characters.map(character => character.id);
+    const decks = data.gameRules.decks.map(deck => deck.id);
+    return decks.includes('standard') ? games.hero_arena.data.characters.map(character => character.id) : decks;
   }
   status(room, request) {
     for (const s of room.members) this.send(s, 'room.status', {
@@ -292,12 +296,16 @@ export class RoomServer {
         seat,
         name,
         hero,
-        session, bot
+        session,
+        bot
       }) => ({
         seat,
         name,
         hero,
-        connected: !!session || !!bot, ...(bot ? {bot:true} : {})
+        connected: !!session || !!bot,
+        ...(bot ? {
+          bot: true
+        } : {})
       })),
       ...(s.seat ? {
         you: s.seat,
@@ -385,13 +393,23 @@ export class RoomServer {
     const {
       data
     } = this.storage.get(gameId, gameId === room.gameId ? room.selectedHash : undefined);
-    let seats=room.seats.filter(seat=>seat.session);
-    if(options.bot&&seats.length===1){
-      const available=this.playableHeroes({gameId,selectedHash:gameId===room.gameId?room.selectedHash:undefined});
-      seats=[...seats,{seat:['p1','p2'].find(id=>id!==seats[0].seat),name:'Scripted bot',
-        hero:available.find(id=>id!==seats[0].hero)??available[0],session:null,bot:true,token:null,expiresAt:0}];
+    let seats = room.seats.filter(seat => seat.session);
+    if (options.bot && seats.length === 1) {
+      const available = this.playableHeroes({
+        gameId,
+        selectedHash: gameId === room.gameId ? room.selectedHash : undefined
+      });
+      seats = [...seats, {
+        seat: ['p1', 'p2'].find(id => id !== seats[0].seat),
+        name: 'Scripted bot',
+        hero: available.find(id => id !== seats[0].hero) ?? available[0],
+        session: null,
+        bot: true,
+        token: null,
+        expiresAt: 0
+      }];
     }
-    if(seats.length!==2)throw Error('ILLEGAL_ACTION');
+    if (seats.length !== 2) throw Error('ILLEGAL_ACTION');
     const players = seats.map(s => s.seat).sort();
     const config = game.makeConfig(data, options.seed ?? 1, players);
     config.options = {
@@ -400,7 +418,7 @@ export class RoomServer {
     };
     if (options.maxTicks !== undefined) config.maxTicks = options.maxTicks;
     const authority = new Authority(game.adapter, config, data);
-    room.seats=seats;
+    room.seats = seats;
     room.authority = authority;
     room.game = game;
     if (gameId !== room.gameId) room.selectedHash = undefined;
@@ -462,22 +480,23 @@ export class RoomServer {
   views(room, events = []) {
     for (const session of room.members) this.view(session, events);
   }
-  submitBots(room,systemInputs) {
-    if(systemInputs.length)return;
-    const authority=room.authority,state=authority.state;
-    for(const seat of room.seats){
-      if(!seat.bot)continue;
-      const inputs=authority.config.mode==='turn'?
-        (state.payload.activePlayer===seat.seat?[cardAction(room.game,state,state.tick)]:[]):
-        chooseActions(room.game.observe(state,seat.seat),state.tick*2,authority.config.players.indexOf(seat.seat));
-      for(const input of inputs)authority.submit(input);
+  submitBots(room, systemInputs) {
+    if (systemInputs.length) return;
+    const authority = room.authority,
+      state = authority.state;
+    for (const seat of room.seats) {
+      if (!seat.bot) continue;
+      const inputs = authority.config.mode === 'turn' ? state.payload.activePlayer === seat.seat ? [cardAction(
+        room.game, state, state.tick)] : [] : chooseActions(room.game.observe(state, seat.seat), state.tick * 2,
+        authority.config.players.indexOf(seat.seat));
+      for (const input of inputs) authority.submit(input);
     }
   }
   advance(room, systemInputs = []) {
     if (room.phase !== 'playing') return;
     try {
       const turn = room.authority.state.turnId;
-      this.submitBots(room,systemInputs);
+      this.submitBots(room, systemInputs);
       const result = room.authority.advance(systemInputs);
       if (room.authority.state.turnId !== turn) room.deadline = this.now() + this.turnTimeoutMs;
       this.views(room, result.events);
@@ -501,7 +520,9 @@ export class RoomServer {
       finalStateHash: room.game.hash(a.state),
       valid: !failure,
       errorCode: failure ?? '',
-      ...(room.seats.some(seat=>seat.bot)?{botSeats:room.seats.filter(seat=>seat.bot).map(seat=>seat.seat)}:{})
+      ...(room.seats.some(seat => seat.bot) ? {
+        botSeats: room.seats.filter(seat => seat.bot).map(seat => seat.seat)
+      } : {})
     };
     const recording = {
       matchId: room.matchId,
@@ -509,7 +530,9 @@ export class RoomServer {
       config: a.config,
       frames: a.frames,
       finalStateHash: result.finalStateHash,
-      ...(result.botSeats?{botSeats:result.botSeats}:{})
+      ...(result.botSeats ? {
+        botSeats: result.botSeats
+      } : {})
     };
     room.result = result;
     room.phase = 'ended';
@@ -583,8 +606,9 @@ export class RoomServer {
       this.expireSeats(room, now);
       if (room.phase !== 'playing') continue;
       if (room.authority.config.mode === 'turn') {
-        if(room.seats.some(seat=>seat.bot&&seat.seat===room.authority.state.payload.activePlayer)){
-          this.advance(room);continue;
+        if (room.seats.some(seat => seat.bot && seat.seat === room.authority.state.payload.activePlayer)) {
+          this.advance(room);
+          continue;
         }
         if (now >= room.deadline) this.advance(room, [{
           kind: 'system.timeout',
@@ -643,14 +667,18 @@ export class RoomServer {
       });
       return;
     }
-    const viewsRoute=path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})\/views$/);
-    if(request.method==='GET'&&viewsRoute){
-      const everyText=url.searchParams.get('every');
-      if(everyText!==null&&!/^[0-9]+$/.test(everyText))throw Error('INVALID_SCHEMA');
-      const result=replayViews(this.storage,viewsRoute[1],{
-        dataHash:url.searchParams.get('dataHash')??undefined,every:everyText===null?6:Number(everyText)
+    const viewsRoute = path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})\/views$/);
+    if (request.method === 'GET' && viewsRoute) {
+      const everyText = url.searchParams.get('every');
+      if (everyText !== null && !/^[0-9]+$/.test(everyText)) throw Error('INVALID_SCHEMA');
+      const result = replayViews(this.storage, viewsRoute[1], {
+        dataHash: url.searchParams.get('dataHash') ?? undefined,
+        every: everyText === null ? 6 : Number(everyText)
       });
-      json(response,result?200:404,result??{code:'INVALID_SCHEMA'});return;
+      json(response, result ? 200 : 404, result ?? {
+        code: 'INVALID_SCHEMA'
+      });
+      return;
     }
     const replayRoute = path.match(/^\/v1\/replay\/([A-Za-z0-9_-]{1,128})$/);
     if (request.method === 'GET' && replayRoute) {
@@ -677,14 +705,18 @@ export class RoomServer {
         return;
       }
     }
-    if(request.method==='POST'&&['/v1/playtest/run','/v1/playtest/full'].includes(path)){
-      const body=await readBody(request);
-      if(this.runningBatch)throw Error('RATE_LIMITED');
-      this.runningBatch=true;
-      const task=(path.endsWith('/full')?fullPlaytest:runPlaytest)(this,body);
+    if (request.method === 'POST' && ['/v1/playtest/run', '/v1/playtest/full'].includes(path)) {
+      const body = await readBody(request);
+      if (this.runningBatch) throw Error('RATE_LIMITED');
+      this.runningBatch = true;
+      const task = (path.endsWith('/full') ? fullPlaytest : runPlaytest)(this, body);
       this.tasks.add(task);
-      try {json(response,200,await task);}
-      finally {this.tasks.delete(task);this.runningBatch=false;}
+      try {
+        json(response, 200, await task);
+      } finally {
+        this.tasks.delete(task);
+        this.runningBatch = false;
+      }
       return;
     }
     const resultRoute = path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36}(?:-(?:baseline|holdout))?)\.json$/);

@@ -22,7 +22,7 @@ function addMatch(groups, result) {
     return;
   }
   row.games++;
-  if(result.outcome.winners.includes(result.config.players[0]))row.seatWins++;
+  if (result.outcome.winners.includes(result.config.players[0])) row.seatWins++;
   if (result.outcome.status === 'draw') row.draws++;
   for (const winner of result.outcome.winners) row.wins[result.config.options?.assignments[winner] ?? winner]++;
 }
@@ -55,7 +55,7 @@ export async function runBatch(jobs, {
     const progress = {
       matchesDone: rows.size,
       totalMatches: jobs.length,
-      seatWins: [...groups.values()].reduce((count,row)=>count+row.seatWins,0),
+      seatWins: [...groups.values()].reduce((count, row) => count + row.seatWins, 0),
       elapsedMs: Math.round(performance.now() - start),
       matchups: [...groups.entries()].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, row]) => structuredClone(
         row))
@@ -114,7 +114,8 @@ export async function runBatch(jobs, {
         kind: 'recorded',
         matchCount: results.length,
         validMatches: results.filter(r => r.valid).length,
-        seatWins: results.filter(result=>result.valid&&result.outcome.winners.includes(result.config.players[0])).length,
+        seatWins: results.filter(result => result.valid && result.outcome.winners.includes(result.config.players[
+          0])).length,
         invalidMatches: results.filter(r => !r.valid).length,
         workers: count,
         elapsedMs,

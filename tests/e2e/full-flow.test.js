@@ -197,7 +197,8 @@ async function setup(t) {
   server = createRoomServer({
     storageDir,
     staticDir,
-    workers: 2
+    workers: 2,
+    analysisEnv: {}
   });
   const address = await server.listen(0, '127.0.0.1');
   const origin = `http://127.0.0.1:${address.port}`;
@@ -358,12 +359,56 @@ async function analyzeAndPatch(context, display, humans, baseline, original, ana
     proposal: proposed.proposal
   };
 }
+async function fullDashboard(context, display, dataHash) {
+  const after = display.messages.length;
+  const body = await context.request('/v1/playtest/full', {
+    gameId: 'hero_arena',
+    pairs: 20,
+    holdoutPairs: 20
+  });
+  assert.equal(body.gameId, 'hero_arena');
+  assert.equal(body.proposal.origin, 'fake');
+  assert.equal(body.validation.ok, true);
+  assert.deepEqual(body.validation.errors, []);
+  validate('Report', body.baseline);
+  validate('Report', body.patched);
+  assert.equal(body.baseline.dataHash, dataHash);
+  assert.equal(body.patched.dataHash, body.patchedDataHash);
+  assert.notEqual(body.patchedDataHash, dataHash);
+  assert.ok(body.humanMatches >= 1);
+  assert.ok(body.baseline.humanMatches >= 1);
+  assert.ok(body.proposal.changes.length > 0);
+  assert.ok(body.proposal.changes.every(change => typeof change.old === 'number' && typeof change.new === 'number'));
+  assert.ok(['accepted', 'rejected', 'inconclusive'].includes(body.verdict.verdict));
+  const phaseResults = {};
+  for (const phase of ['baseline', 'holdout']) {
+    const results = await context.request(`/v1/playtest/results/${body.runId}-${phase}.json`);
+    phaseResults[phase] = results;
+    await display.waitFor('playtest.progress', message => message.payload.runId === body.runId &&
+      message.payload.phase === phase && message.payload.matchesDone === results.length, {
+      after
+    });
+    const updates = display.messages.slice(after).filter(message => message.type === 'playtest.progress' &&
+      message.payload.runId === body.runId && message.payload.phase === phase).map(message => message.payload);
+    assertProgress(updates, results);
+    const seatWins = results.filter(result => result.outcome.winners.includes(result.config.players[0])).length;
+    assert.equal(body.seatWins[phase], seatWins);
+    assert.equal(updates.at(-1).seatWins, seatWins);
+  }
+  const baselineSeeds = new Set(phaseResults.baseline.map(result => result.config.seed));
+  assert.ok(phaseResults.holdout.every(result => !baselineSeeds.has(result.config.seed)));
+}
 async function checkReplay(context, baseline, original, patched, proposal, analysis) {
   const result = baseline.results[0];
   const recording = await context.request(`/v1/replay/${result.matchId}`);
   assert.equal(recording.seed, result.config.seed);
   assert.deepEqual(recording.config, result.config);
   assert.equal(recording.frames.length, result.statistics.durationTicks);
+  const views = await context.request(`/v1/replay/${result.matchId}/views?every=6`);
+  assert.equal(views.finalStateHash, result.finalStateHash);
+  const patchedViews = await context.request(`/v1/replay/${result.matchId}/views?dataHash=${patched.dataHash}&every=6`);
+  assert.equal(patchedViews.dataHash, patched.dataHash);
+  assert.ok(patchedViews.views.length > 0);
   assert.equal(hash(replayOnData(arena.adapter, recording, original.data)), result.finalStateHash);
   const candidate = replayOnData(arena.adapter, recording, patched.data);
   assert.equal(hash(candidate), hash(replayOnData(arena.adapter, recording, patched.data)));
@@ -509,6 +554,7 @@ test('full live flow: phones, human record, worker progress, fake patch, holdout
   assert.deepEqual(humans.at(-1), human);
   const original = await context.request('/v1/data/hero_arena');
   const baseline = await playtest(context.request, display, 20, original.dataHash);
+  await fullDashboard(context, display, original.dataHash);
   const {
     patched,
     proposal

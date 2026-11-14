@@ -315,3 +315,10 @@ Room status includes gameId and playableHeroes before taking a seat via /ws?room
 Unassociated sockets report gameId:null and an empty roster until a room is identified. Join validation uses the
 actual room/content roster, while starter cards retain their existing hero-to-standard-deck compatibility.
 No prejoin seat/token authority is granted; tests verify the arena and cards metadata and spectator status.
+
+## Extended live flow
+
+The existing socket-gated E2E scenario now also calls /v1/playtest/full without dropping its earlier pipeline,
+patch, holdout or replay assertions. It checks the shared reports/changes/validation, human count, both phase
+streams, first-seat counts and disjoint phase seeds, plus original/candidate replay-view responses.
+Tests force analysisEnv={} so a developer's real Gemini key can never cause network calls in test runs.

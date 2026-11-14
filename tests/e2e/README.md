@@ -23,7 +23,8 @@ explicit failure in opt-in mode; the test never replaces them with a mock. It ne
 
 The test creates an ephemeral server on port 0 and three real ws clients: display, Bari phone and Real Armor
 phone. Both phones use chooseActions, then it verifies the single recorded human result, a 20-pair worker run,
-monotonic progress, fake-adapter proposal, immutable patch, disjoint holdout, human-inclusive report and verdict,
+monotonic progress, /v1/playtest/full with both phase streams and disjoint seeds, fake-adapter proposal, immutable
+patch, disjoint holdout, human-inclusive report and verdict,
 archived-input replay on patched data through the analysis helper, and a second-match phone reconnect under 10 s.
 
 The run endpoint selects seed prefixes. Baseline uses seeds 1..20 (40 matches); the patched request uses 1..40
@@ -36,3 +37,6 @@ Clients, server, workers and temporary files are cleaned up even on failure. Not
 human-results.json or other runtime files. The entire scenario has a 120 s timeout; individual waits are bounded.
 
 Known environment limits and actual test results are recorded under Round 5 in services/room/REPORT.md.
+
+Round 6 also requires packages/analysis/pipeline/full.js. The full-route call uses the offline adapter even if
+the developer shell has a Gemini key, and checks response reports, changes, seat wins, and phase seed separation.
