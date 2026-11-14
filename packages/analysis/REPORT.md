@@ -191,9 +191,46 @@ validation, patchedDataHash, patched, verdict, humanMatches`.
 
 ## Round 6 review
 
-Not done yet: `POST /v1/playtest/full` has not landed. I searched `../balance-forge-engine` (6745e53, `services/` and `packages/`)
-and found no route; only the web side (`apps/web/src/lib/api.ts`, `fullRun.ts`) already calls it. I will review the engine
-code read-only once it exists. Checked so far on the web side against my `runFull` body:
-- `runFromFull` reads every field I produce and tolerates `patched: null` (invalid patch), so that case does not crash it.
-- `ORIGINS` still lacks `fake`/`grok` and maps them to `manual` (already in `CHANGE_REQUEST.md`, web item 3).
-- The recorded file is a bare Report, which `runFromFull` accepts as a baseline-only run.
+Read-only review of `services/room/playtests.js` `fullPlaytest` and the route in `server.js` (engine 3d52381). I also ran
+`runFull` against the real engine runner (outside the server, same calls) with the fake adapter.
+
+What is right: seeds are disjoint (baseline 1..pairs, holdout from 1000001); `hash` as `hashData` matches the stored version
+hash (no `DATA_HASH_MISMATCH`); the adapter choice is `GEMINI_API_KEY` or fake; `humanResults` are copied; progress carries `phase`;
+a second request gets `RATE_LIMITED`; `runningBatch` is cleared in `finally`.
+
+Problems, most important first:
+1. **The live path cannot reach accepted or rejected with the current data.** Non-roster `pairs: 50` gives one matchup,
+   `bari vs real_armor`, 100 games, win rate 0.50, no outlier, so the verdict is `inconclusive` ("no target: no outlier in the
+   baseline report"). `pairs: 100` (200 games) gives the same. The data is already balanced for the scripted bots, so there
+   is nothing to fix. The demo story needs an unbalanced starting version (or recorded data) from the engine/integrator.
+2. **Roster mode is `inconclusive` for thin data.** `roster: true, pairs: 50` gives 100 games per matchup; the verdict gate
+   needs 200 per target, so every target says "only 100 games after patch (need 200)". It needs `pairs >= 100`, but see 3.
+3. **Roster mode is slow.** `roster: true, pairs: 50` is 1,500 matches per phase and took about 63 s here (2 workers) for
+   both phases; `pairs: 100` is about double. That is one HTTP request with no streaming of the response, so a client or proxy
+   timeout is likely. Progress over `/ws` is the only sign of life.
+4. **Mirror matchups become verdict targets.** In roster mode `bari vs bari` etc. are 100% (first-seat advantage), flagged as
+   outliers, and become targets that a hero-power patch cannot fix, so `accepted` is unlikely. This is my verdict rule
+   (`targets` = outlier rows). I did not change it tonight; suggested fix: leave mirror rows out of default targets, keep them
+   in the "new extreme" check. Tell me if you want it.
+5. **Errors lose their cause.** `if (!result.ok) throw Error(... 'INVALID_PATCH' ? 'PATCH_REJECTED' : 'TRANSPORT_UNAVAILABLE')`
+   turns `NO_RESULTS`, `DATA_HASH_MISMATCH`, `SIMULATION_FAILED` and `INVALID_INPUT` into one generic code, and the
+   `INVALID_PATCH` branch is dead (`runFull` returns a body with `validation.ok: false` instead). Pass `result.error.code`
+   and message through (or log them) so a failure is diagnosable.
+6. **Invalid patch response:** `patched` and `patchedDataHash` are `null`, and `seatWins.holdout` is `0` (number) while
+   `seatWins.baseline` is an object. Make the holdout value `null` or the same shape.
+7. **Minor:** `createdAt` is `new Date()` (fine as metadata, only not in simulation); the Gemini adapter falls back to the
+   fake one on failure, and `proposal.origin` says `fallback`, which the web shows as `manual` for `fake` (already in
+   `CHANGE_REQUEST.md`); the route reads `body.dataHash` only for `/run`, so `/full` always starts from the current version.
+
+## Polish 01:05
+
+Everything was already clean; only this report changed:
+- 93 of 93 tests pass, none skipped, none changed. No line over 120 characters, no TODO/FIXME/debugger, no console output
+  except the CLI's JSON line. `check:secrets` passes.
+- Performance: `runFull` on 20,000 synthetic matches (10,000 per phase, injected holdout) takes 76 ms; analysis cost is
+  negligible next to the engine. Real engine, `runFull` end to end with the fake adapter: `pairs: 50` non-roster (200
+  matches) 5.1 s; `pairs: 100` (400 matches) 9.9 s; roster `pairs: 50` (3,000 matches) about 63 s.
+- Round 6 review written above (7 findings; 1, 3 and 5 matter most for the demo).
+
+Still blocked (needs others): the review findings above; web mapping of `fake`/`grok` origins; Gemini and Grok untested
+against live APIs.
