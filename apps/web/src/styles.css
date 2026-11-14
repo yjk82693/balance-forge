@@ -2473,3 +2473,28 @@ button.intent-btn { cursor: pointer; }
   .present-bots { grid-template-columns: minmax(0, 1fr); }
   .present-card .intent-chips.big .intent-chip { font-size: 18px; min-height: 48px; padding: 0 16px; }
 }
+
+/* Phones: the 5x5 intent grid fits the width; hero portraits name the rows and columns. */
+@media (max-width: 700px) {
+  .intent-main { padding: 16px; }
+  .intent-grid { width: 100%; table-layout: fixed; border-spacing: 4px; }
+  .intent-head .caption, .intent-btn .caption { display: none; }
+  .intent-head.side > * { margin: 0; }
+  .intent-btn strong { font-size: 16px; }
+}
+@media (max-width: 700px) {
+  .intent-btn { width: 100%; height: 48px; min-width: 0; padding: 0; }
+  .intent-cell { min-width: 0; }
+}
+@media (max-width: 1099px) {
+  .dash2 { height: auto; overflow: visible; padding: 16px; gap: 16px; }
+  .strip { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; min-height: 0; }
+  .strip-busy, .strip-empty { grid-column: auto; }
+  .strip-big { font-size: 72px !important; }
+  .strip-mid, .strip-badge, .strip-names, .collapsible-title { font-size: 20px !important; }
+  .strip-side { flex-direction: row; flex-wrap: wrap; }
+  .d2-split { grid-template-columns: minmax(0, 1fr); }
+  .d2-main, .d2-left, .d2-right { overflow: visible; }
+  .d2-cols { grid-template-columns: minmax(0, 1fr); }
+  .intent-chip { min-height: 44px; }
+}

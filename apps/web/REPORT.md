@@ -472,3 +472,9 @@ A report row that carries `target`, `deltaToTarget` and `outlier` is shown exact
   reanalyze is absent (404/405/501) the chips say "Intent saved. Re-run to apply."; in sample mode nothing is sent.
 - Before/after screenshots: `screenshots/dashboard-before.png`, `dashboard-after.png`, `present-before-verdict.png`,
   `present-after-*.png`.
+
+## UI re-establishment: phones
+- `#/intent` no longer overflows at 390 px (page width 390; the grid shrinks to portraits and rates).
+- The new dashboard stacks on phones: strip, accordions, then the roster; no sideways scroll (`dashboard-phone-after.png`).
+- Lobby, arena, controller, cards, versions and launcher already use the shared tokens and showed no overflow in the
+  audit; they were left as they are.
