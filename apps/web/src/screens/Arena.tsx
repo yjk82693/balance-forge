@@ -4,6 +4,7 @@ import { gameById } from "../lib/games";
 import { heroName } from "../lib/heroes";
 import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardsCanvas } from "../components/CardsCanvas";
+import { SoundToggle } from "../components/SoundToggle";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -35,6 +36,7 @@ export function Arena({ gameId }: { gameId: string }) {
           {game?.eyebrow ?? "HERO ARENA"}
         </span>
         <span className="spacer" />
+        <SoundToggle />
         <MockStatus online={status === "online"} />
       </TopBar>
       <main className="arena-screen">

@@ -8,6 +8,8 @@ import { useManifest } from "../lib/assets";
 import { go } from "../lib/router";
 import { InputPipeline } from "../lib/input";
 import { useGamepad } from "../lib/gamepad";
+import { SoundToggle } from "../components/SoundToggle";
+import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -75,6 +77,23 @@ export function Controller({ initialCode }: { initialCode: string }) {
   useEffect(() => {
     if (error && joined && !seat) setJoined(null);
   }, [error, joined, seat]);
+
+  // Phone haptics and blips follow our own HP in the observation: a short pulse on a hit, a longer one on KO.
+  const myHp = isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === seat)?.hp : undefined;
+  const lastHp = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (myHp === undefined) return;
+    const prev = lastHp.current;
+    lastHp.current = myHp;
+    if (prev === undefined || myHp >= prev) return;
+    if (myHp <= 0) {
+      buzz([60, 40, 120]);
+      blip("ko");
+    } else {
+      buzz(25);
+      blip("hit");
+    }
+  }, [myHp]);
 
   if (!playing) {
     return (
@@ -180,6 +199,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
       </>
       )}
       <footer className="phone-foot">
+        <SoundToggle className="btn secondary touch" />
         <button className="btn secondary touch" onClick={() => go(`/join?r=${Date.now()}`)}>
           Leave
         </button>

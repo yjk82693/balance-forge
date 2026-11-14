@@ -3,6 +3,7 @@ import type { CardDef, CardsPayload } from "../lib/contract";
 import { CARDS_RULES, cardArtPath, cardEffect, cardName } from "../lib/cards";
 import { manifestUrl } from "../lib/assets";
 import type { ActionInput } from "../lib/contract";
+import { blip, buzz } from "../lib/sfx";
 
 interface Props {
   seat: string;
@@ -45,7 +46,8 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
 
   const emit = (actionId: string, params: Record<string, number>) => {
     if (!payload) return;
-    navigator.vibrate?.(10);
+    buzz(10);
+    blip(actionId === "end_turn" ? "turn" : "play");
     send({ playerId: seat, seq: ++seq.current, tick: tick + 1, turnId: payload.turnId, actionId, params });
   };
   const play = () => {
