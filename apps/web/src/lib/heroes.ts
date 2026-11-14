@@ -12,7 +12,7 @@ export const HEROES: HeroInfo[] = [
   { id: "real_armor", name: "Real Armor", cssVar: "--hero-real-armor" },
   { id: "daewi", name: "Daewi", cssVar: "--hero-daewi" },
   { id: "sepia", name: "Sepia", cssVar: "--hero-sepia" },
-  { id: "nightcrow", name: "Nightcrow", cssVar: "--hero-nightcrow", plannedIn: ["hero_arena"] },
+  { id: "nightcrow", name: "Nightcrow", cssVar: "--hero-nightcrow" },
 ];
 
 export function heroInfo(id: string | undefined): HeroInfo | undefined {

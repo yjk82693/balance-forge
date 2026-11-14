@@ -14,7 +14,8 @@ const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
 export interface ArenaAssets {
   floor: string;
   heroes: Record<string, string>;
-  arrow: string;
+  /** effect sprites by kind: spirit_arrow, crow_dive, ... */
+  effects: Record<string, string>;
   hpTrack: string;
   hpFill: string;
 }
@@ -54,7 +55,7 @@ export class ArenaScene extends Phaser.Scene {
     const a = this.registry.get("assets") as ArenaAssets;
     this.load.image("floor", a.floor);
     for (const [id, url] of Object.entries(a.heroes)) this.load.image(`hero:${id}`, url);
-    this.load.image("arrow", a.arrow);
+    for (const [kind, url] of Object.entries(a.effects)) this.load.image(`fx:${kind}`, url);
     this.load.image("hp-track", a.hpTrack);
     this.load.image("hp-fill", a.hpFill);
   }
@@ -104,7 +105,7 @@ export class ArenaScene extends Phaser.Scene {
       const p = this.toScreen(pr.x, pr.y, arena);
       let img = this.arrows.get(pr.id);
       if (!img) {
-        img = this.add.image(p.x, p.y - 40 * this.k, "arrow").setScale(0.3 * this.k).setDepth(5000);
+        img = this.add.image(p.x, p.y - 40 * this.k, this.textures.exists(`fx:${pr.kind}`) ? `fx:${pr.kind}` : "fx:spirit_arrow").setScale(0.3 * this.k).setDepth(5000);
         this.arrows.set(pr.id, img);
       }
       const owner = entities.find((e) => e.id === pr.owner);
