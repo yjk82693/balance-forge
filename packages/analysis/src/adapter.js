@@ -1,5 +1,6 @@
 // LLM adapter boundary. The model only ever returns a PatchProposal (data); nothing here executes it.
-// No network access in this package: the Gemini class is a placeholder that refuses to run.
+// Offline fake lives here; network adapters are in llm.js and are never called in tests.
+import { assertReport } from './input-check.js';
 
 /**
  * @typedef {{ proposePatch(report: object): Promise<object> }} PatchAdapter
@@ -12,15 +13,12 @@ export class FakePatchAdapter {
     this.#proposal = proposal;
   }
   async proposePatch(report) {
+    assertReport(report);
     // Keep the pin honest: the proposal must be based on the report's data.
     return { ...structuredClone(this.#proposal), baseDataHash: report.dataHash };
   }
-}
-
-/** Placeholder for the real Gemini integration. Wire-up belongs to a later, reviewed step. */
-export class GeminiPatchAdapter {
-  async proposePatch() {
-    throw new Error('GeminiPatchAdapter is not implemented: no network access in packages/analysis');
+  async proposeWithOrigin(report) {
+    return { proposal: await this.proposePatch(report), origin: 'fake' };
   }
 }
 

@@ -17,6 +17,14 @@ export function boundsFor(path) {
  * options.moveCount: if known, move indexes must be < moveCount.
  */
 export function validatePatch(proposal, options = {}) {
+  try {
+    return validatePatchUnsafe(proposal, options ?? {});
+  } catch {
+    return { ok: false, errors: ['proposal could not be checked'] };
+  }
+}
+
+function validatePatchUnsafe(proposal, options) {
   const errors = [];
   if (proposal === null || typeof proposal !== 'object' || Array.isArray(proposal)) {
     return { ok: false, errors: ['proposal must be an object'] };
@@ -47,7 +55,8 @@ export function validatePatch(proposal, options = {}) {
       if (seen.has(r.path)) errors.push(`${at}: duplicate path ${r.path}`);
       seen.add(r.path);
       if (!Number.isInteger(r.value)) return errors.push(`${at}: value must be an integer`);
-      if (r.value < bounds[0] || r.value > bounds[1]) errors.push(`${at}: value out of range ${bounds[0]}..${bounds[1]}`);
+      if (r.value < bounds[0] ||
+        r.value > bounds[1]) errors.push(`${at}: value out of range ${bounds[0]}..${bounds[1]}`);
       const m = MOVE_POWER_RE.exec(r.path);
       if (m && options.moveCount !== undefined && Number(m[1]) >= options.moveCount) {
         errors.push(`${at}: move index out of range`);

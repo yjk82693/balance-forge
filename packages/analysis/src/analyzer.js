@@ -1,4 +1,7 @@
 import { wilson95, round6 } from './wilson.js';
+import { heroMatchup, isCountable } from './group.js';
+import { fail } from './errors.js';
+import { assertMatchResults } from './input-check.js';
 
 export const BAND_LOW = 0.45;
 export const BAND_HIGH = 0.55;
@@ -20,25 +23,31 @@ export function tooFewGames(row) {
   return row.games < MIN_GAMES_FOR_OUTLIER;
 }
 
-const defaultDimension = (result) => result.config.players.join(' vs ');
+// Hero-aware when config.options.assignments exists (addendum 1), else players joined (v0.1).
+const defaultDimension = (result) => heroMatchup(result)?.dimension ?? result.config.players.join(' vs ');
+const defaultFocal = (result) => heroMatchup(result)?.focal ?? result.config.players[0];
 
 /**
  * MatchResult[] -> Report (contract v0.1).
- * The first player in config.players is the focal side of a row; win rate = focal wins / valid games
+ * The focal side of a row is the alphabetically first hero (addendum assignments) or players[0].
+ * Win rate = focal wins / valid games
  * (draws count as games, not wins). Invalid matches are counted apart and excluded from every rate.
- * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string (e.g. "bari vs real_armor").
+ * options: reportId, botPolicyVersion, seedSetId, dimensionOf(result) -> string, focalOf(result) -> playerId,
+ * allowMixed (skip the single-dataHash check; used for human matches, which may span content versions).
  */
 export function analyze(results, options = {}) {
+  assertMatchResults(results);
   const dimensionOf = options.dimensionOf ?? defaultDimension;
-  const valid = results.filter((r) => r.valid === true);
+  const focalOf = options.focalOf ?? defaultFocal;
+  const valid = results.filter(isCountable);
   const invalidMatches = results.length - valid.length;
 
   const first = valid[0]?.config ?? results[0]?.config;
-  if (!first) throw new Error('analyze: no results');
-  for (const r of valid) {
+  if (!first) fail('NO_RESULTS', 'no match results to analyze');
+  for (const r of options.allowMixed ? [] : valid) {
     const c = r.config;
     if (c.gameId !== first.gameId || c.simVersion !== first.simVersion || c.dataHash !== first.dataHash) {
-      throw new Error('analyze: mixed gameId/simVersion/dataHash; group results first');
+      fail('MIXED_DATAHASH', 'results mix gameId, simVersion or dataHash; group them by dataHash first');
     }
   }
 
@@ -48,7 +57,7 @@ export function analyze(results, options = {}) {
     const dim = dimensionOf(r);
     let g = groups.get(dim);
     if (!g) groups.set(dim, (g = { wins: 0, games: 0, uses: 0, opportunities: 0 }));
-    const focal = r.config.players[0];
+    const focal = focalOf(r);
     g.games += 1;
     if (r.outcome.status === 'draw') draws += 1;
     else if (r.outcome.status === 'win' && r.outcome.winners.includes(focal)) g.wins += 1;

@@ -19,7 +19,8 @@ test('hash mismatch and malformed hash rejected', () => {
 test('only allowlisted paths', () => {
   assert.equal(validatePatch(rep('/tuning/damageScalePermille', 900)).ok, true);
   assert.equal(validatePatch(rep('/moves/3/power', 10)).ok, true);
-  for (const p of ['/moves/1/startupTicks', '/gameRules/x', '/moves/01/power', '/moves/-1/power', '/moves//power', 'moves/1/power', '/moves/1/power/x'])
+  for (const p of ['/moves/1/startupTicks', '/gameRules/x', '/moves/01/power', '/moves/-1/power', '/moves//power',
+    'moves/1/power', '/moves/1/power/x'])
     assert.equal(validatePatch(rep(p, 10)).ok, false, p);
 });
 
@@ -34,7 +35,8 @@ test('value bounds and integer-only', () => {
 });
 
 test('count limits: 1..8, no duplicate paths', () => {
-  const mk = (n) => ({ ...base(), replacements: Array.from({ length: n }, (_, i) => ({ path: `/moves/${i}/power`, value: 5 })) });
+  const mk = (n) => ({ ...base(), replacements: Array.from({ length: n },
+    (_, i) => ({ path: `/moves/${i}/power`, value: 5 })) });
   assert.equal(validatePatch(mk(8)).ok, true);
   assert.equal(validatePatch(mk(9)).ok, false);
   assert.equal(validatePatch(mk(0)).ok, false);
