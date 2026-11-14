@@ -57,8 +57,8 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
     const step = await proposeStep(baseline, adapter);
     writeJson(f('report_baseline.json'), baseline);
     writeJson(f('patch.json'), step.proposal);
-    writeJson(f('pipeline-meta.json'), { patchOrigin: step.origin, patchValid: step.ok, patchErrors: step.errors, baseline: meta });
-    Object.assign(summary, { patchOrigin: step.origin, patchValid: step.ok, patchErrors: step.errors });
+    writeJson(f('pipeline-meta.json'), { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors, baseline: meta });
+    Object.assign(summary, { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors });
   }
   if (cmd === 'verify' || cmd === 'run') {
     const baseline = readJson(f('report_baseline.json'));

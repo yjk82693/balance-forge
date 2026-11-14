@@ -36,7 +36,7 @@ export async function proposeStep(report, adapter, options = {}) {
     ? await adapter.proposeWithOrigin(report)
     : { proposal: await adapter.proposePatch(report), origin: 'custom' };
   const check = validatePatch(got.proposal, { baseDataHash: report.dataHash, ...options });
-  return { proposal: got.proposal, origin: got.origin, ok: check.ok, errors: check.errors };
+  return { proposal: got.proposal, origin: got.origin, fallbackReason: got.fallbackReason, ok: check.ok, errors: check.errors };
 }
 
 /** After the caller applied the patch and ran holdout seeds. */

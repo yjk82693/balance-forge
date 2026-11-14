@@ -80,3 +80,15 @@ test('CLI writes the four files', async () => {
 test('CLI rejects unknown commands', async () => {
   await assert.rejects(main(['nope', '--out', tmpdir()]), /usage/);
 });
+
+test('CLI with gemini and no key falls back offline and records origin "fallback"', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bf-fb-'));
+  const b = join(dir, 'base.json'), h = join(dir, 'hold.json');
+  writeFileSync(b, JSON.stringify(baseline()));
+  writeFileSync(h, JSON.stringify(holdout()));
+  const s = await main(['run', '--baseline', b, '--holdout', h, '--out', dir, '--adapter', 'gemini'], {});
+  assert.equal(s.patchOrigin, 'fallback');
+  const v = JSON.parse(readFileSync(join(dir, 'verdict.json'), 'utf8'));
+  assert.equal(v.patchOrigin, 'fallback');
+  assert.match(JSON.parse(readFileSync(join(dir, 'pipeline-meta.json'), 'utf8')).fallbackReason, /GEMINI_API_KEY/);
+});

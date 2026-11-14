@@ -21,3 +21,6 @@ export function withExtras(report, extras = {}) {
   }
   return out;
 }
+
+/** Rows computed from human matches carry this dimension prefix (UI: badge + border). */
+export const HUMAN_PREFIX = 'human: ';
