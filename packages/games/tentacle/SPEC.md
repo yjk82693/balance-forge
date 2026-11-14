@@ -13,7 +13,8 @@ Solo run, one seat `p1` (Sepia), realtime, 60 Hz, integer math, seeded (xorshift
   `whipCooldownTicks`.
 
 ## state.view payload
-`TentacleObservationPayload`. `wave` 0 is the break before wave 1, 1..5 the waves, 6 the Man-Shark boss. While latched,
+`TentacleObservationPayload`. `wave` is 1..5 for the waves and 6 for the Man-Shark boss: the wave being fought, or the one
+about to start during a break (`breakTicks` > 0, no enemies; the run starts with a break before wave 1). While latched,
 `entities[0].latch = { post, untilTick }` and the scene draws the tentacle from Sepia to `posts[post]`. The boss has
 `kind: "boss"` in `entities` and the summary in `boss` (`hp`, `maxHp`, `phase` 0..2: pips of the HP bar).
 Projectiles are `from: drone | sentry | boss`.
