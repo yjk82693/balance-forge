@@ -260,7 +260,10 @@ export class RoomServer {
         const id=randomUUID();
         const jobs=pairedJobs({gameId:body.gameId,data,seeds:Array.from({length:body.pairs},(_,i)=>i+1)});
         jobs.forEach((job,i)=>{job.matchId=`bot-${id}-${i+1}`;});
-        const batch=await runBatch(jobs,{workers:this.workers,captureReplays:true});
+        const batch=await runBatch(jobs,{workers:this.workers,captureReplays:true,onProgress:progress=>{
+          for(const session of this.sessions)this.send(session,'playtest.progress',
+            {runId:id,gameId:body.gameId,dataHash,...progress});
+        }});
         batch.replays.forEach(recording=>this.storage.recordReplay(recording));
         const resultsPath=`/v1/playtest/results/${id}.json`;
         writeJson(join(this.storage.directory,'playtests',`${id}.json`),batch.results);

@@ -112,3 +112,17 @@ Human and HTTP bot matches persist replays separately from unchanged MatchResult
 No in-progress private replay is exposed. replayOnData reuses the seed/assignments/inputs with a new immutable data
 pin; illegal counterfactual inputs fail explicitly instead of being replaced. Two new replay tests and three
 runner tests passed without opening sockets, including original final-hash reproduction and patched-data repeats.
+
+## Fifth hero and deck
+
+Completed N. Nightcrow is arena content only: crow_dive, crow_swarm, wing_shield use existing archetypes/tiers/effects
+and ordinary damage/shield values; no character-specific branches or new guard bypass. Only spirit_arrow retains
+its existing intended arena exception. The nightcrow card deck has mechanical_crows summons and a generic peek
+card; revealed next-card identity is private to its owner and expires on the next draw. No boosted matchup rule.
+The expanded schemas remain closed and bounded; deck references and assignments are validated.
+All 28 selected game/sim/runner/replay tests passed, including the 100-seed matrix with all five heroes (48.33 s).
+
+Measured `node services/runner/benchmark.js`: 15 unordered matchups including mirrors × 10 seeds × 2 seat orders
+= 300 matches, 300 valid, 0 invalid, 2 workers. Recorded at 2026-11-14T03:39:53.643Z: 4,805.539334 ms,
+62.427956 matches/s including worker startup. Actual outputs: services/runner/recorded-roster-match-results.json
+and recorded-roster-metrics.json. Previous smaller-roster samples are historical, not current balance evidence.
