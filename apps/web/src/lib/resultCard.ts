@@ -54,6 +54,8 @@ export interface ResultFacts {
   /** one line of evidence for the outlier, from the run's `evidence`; null when the run has none */
   evidence: string | null;
   patch: PatchFact[];
+  /** one plain line when the proposal came from the fallback rule; never hidden */
+  fallbackNote: string | null;
   holdout: Rate | null;
   verdict: {
     kind: VerdictKind;
@@ -108,6 +110,13 @@ function sourceOf(run: PlaytestRun): Pick<ResultFacts, "source" | "sourceDetail"
   return { source, sourceDetail: detail.join(" · ") };
 }
 
+/** "Gemini unavailable: timeout, offline sample used" when the proposal is the fallback rule's; else null. */
+export function fallbackNote(run: PlaytestRun): string | null {
+  const p = run.proposal;
+  if (!p || p.origin !== "fallback") return null;
+  return `Gemini unavailable: ${p.fallbackReason || "no reason given"}, offline sample used`;
+}
+
 export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): ResultFacts {
   const stats = botRows(run.baseline.rows).map(rowStats);
   const target = stats.find((s) => s.row.dimension === pickTargetDimension(stats));
@@ -135,6 +144,7 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
           errors: run.proposal!.validation.errors,
         }))
       : [],
+    fallbackNote: fallbackNote(run),
     holdout: target && run.patched && !run.fair ? rateOf(target.row.dimension, run.patched.rows) : null,
     verdict: run.verdict && !run.fair
       ? {

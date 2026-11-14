@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { CompareReplay } from "../components/CompareReplay";
-import { FitStage } from "../components/FitStage";
-import { LivePanel } from "../components/LivePanel";
-import { MatchesTable, type MatchRow } from "../components/MatchesTable";
-import { ReportPanel } from "../components/ReportPanel";
-import { ResultCard } from "../components/ResultCard";
-import { ResultSkeleton } from "../components/ResultSkeleton";
-import { BotSkillPicker } from "../components/BotSkillPicker";
-import { MatchupPicker } from "../components/MatchupPicker";
-import { RunTable } from "../components/RunTable";
-import { TopBar } from "../components/TopBar";
-import { VersionToggle } from "../components/VersionToggle";
+import { DashboardView } from "../components/DashboardView";
+import { type MatchRow } from "../components/MatchesTable";
 import { rowStats } from "../components/WinRateChart";
 import { botRows } from "../lib/groups";
 import { useManifest } from "../lib/assets";
@@ -88,7 +78,6 @@ export function Dashboard() {
   // With a hero profile on the card the screen is full: the finished live panel and the matches table make room.
   const facts = useMemo(() => (run ? buildFacts(run, roster) : null), [run, roster]);
 
-  const hasProfile = !!facts?.diagnosis;
   const canPatch = !!run?.patched;
   const showPatched = canPatch && version === "patched";
   const replaySource = useReplaySource(run);
@@ -99,142 +88,45 @@ export function Dashboard() {
     ? [target.matchup.a, target.matchup.b || target.matchup.a]
     : ["bari", "real_armor"];
 
-  // The big result area is never empty: the skeleton while a run goes on, the card once there is one.
-  const resultArea = busy ? (
-    <ResultSkeleton live={live} elapsed={elapsed} />
-  ) : facts ? (
-    <ResultCard facts={facts} />
-  ) : (
-    <section className="panel diff">
-      <div className="panel-head">
-        <span className="eyebrow">Suggested patch</span>
-      </div>
-      <p className="small text-2">No patch yet. Let the bots play and a suggestion shows up here.</p>
-    </section>
-  );
-
+  const go = () => start(matchup, diagnose, policyFor(skill));
   return (
-    <FitStage>
-      <div className={`screen dash dash-compact${hasProfile ? " has-profile" : ""}`}>
-        <TopBar>
-          <span className="eyebrow" style={{ color: "var(--game-arena)" }}>
-            HERO ARENA
-          </span>
-          <span className="small text-2">
-            Balance report{run ? ` · ${showPatched ? "patched" : "broken"} data` : ""}
-          </span>
-          <span className="spacer" />
-          <a className="btn secondary" href="#/versions">
-            Versions
-          </a>
-          <a className="btn secondary" href="#/intent">
-            Design intent
-          </a>
-          <a className="btn secondary" href="#/skill">
-            Bot skill
-          </a>
-          <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
-          <MatchupPicker
-            value={matchup}
-            onChange={choose}
-            disabled={busy || mock}
-            title={mock ? "Sample data: the matchup is fixed." : undefined}
-          />
-          <BotSkillPicker
-            value={skill}
-            disabled={busy || mock}
-            onChange={(s) => {
-              saveSkill(s);
-              setSkill(s);
-            }}
-          />
-          <label
-            className="small toggle"
-            title={mock ? "Sample data: no diagnosis." : "Profile each hero and suggest a change."}
-          >
-            <input
-              type="checkbox"
-              checked={diagnose && !mock}
-              disabled={busy || mock}
-              onChange={(e) => {
-                saveDiagnose(e.target.checked);
-                setDiagnoseChoice(e.target.checked);
-              }}
-            />{" "}
-            Diagnose heroes
-          </label>
-          <button
-            className="btn primary"
-            onClick={() => start(matchup, diagnose, policyFor(skill))}
-            aria-busy={busy}
-            aria-disabled={busy}
-          >
-            {busy && <span className="spinner" aria-hidden="true" />}
-            {busy ? "Bots are playing…" : "Let the bots play"}
-          </button>
-          <button
-            className="btn secondary icon-btn"
-            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            aria-pressed={theme === "light"}
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            ◐
-          </button>
-        </TopBar>
-
-        <main className="dash-grid">
-          <div className="dash-left">
-            {resultArea}
-            <CompareReplay
-              seed={run?.replay?.seed ?? fixtureMatchConfig.seed}
-              storedMatchId={run?.replay?.matchId}
-              heroes={replayHeroes}
-              active={showPatched ? "patched" : "broken"}
-              source={replaySource}
-            />
-            {(!hasProfile || busy) && (
-              <LivePanel
-                busy={busy}
-                done={live.done}
-                total={live.total}
-                phase={live.phase}
-                elapsed={elapsed}
-                holdout={live.holdout}
-                diagnose={live.diagnose}
-              />
-            )}
-            {!hasProfile && (
-              <section className="panel matches-panel" aria-labelledby="matches-title">
-                <div className="panel-head">
-                  <span id="matches-title" className="eyebrow">
-                    Matches
-                  </span>
-                  <span className="meta">{mock ? "sample matches" : "from the last run"}</span>
-                </div>
-                {mock ? (
-                  <MatchesTable rows={rows} selected={selected} onSelect={setSelected} compact />
-                ) : (
-                  <RunTable run={run} played={played} />
-                )}
-              </section>
-            )}
-          </div>
-
-          <div className="dash-right">
-            <ReportPanel
-              run={run}
-              busy={busy}
-              live={live}
-              error={error}
-              roster={roster}
-              notice={notice}
-              elapsed={elapsed}
-              showPatched={showPatched}
-              onRun={() => start(matchup, diagnose, policyFor(skill))}
-            />
-          </div>
-        </main>
-      </div>
-    </FitStage>
+    <DashboardView
+      ctx={{
+        mock,
+        run,
+        facts,
+        roster,
+        busy,
+        live,
+        elapsed,
+        error,
+        notice,
+        matchup,
+        onMatchup: choose,
+        diagnose,
+        onDiagnose: (on) => {
+          saveDiagnose(on);
+          setDiagnoseChoice(on);
+        },
+        skill,
+        onSkill: (s) => {
+          saveSkill(s);
+          setSkill(s);
+        },
+        onRun: go,
+        theme,
+        onTheme: () => setTheme(theme === "dark" ? "light" : "dark"),
+        showPatched,
+        canPatch,
+        replay: {
+          seed: run?.replay?.seed ?? fixtureMatchConfig.seed,
+          matchId: run?.replay?.matchId,
+          heroes: replayHeroes,
+          source: replaySource,
+        },
+        matches: { rows, selected, onSelect: setSelected, played },
+      }}
+    />
   );
+
 }

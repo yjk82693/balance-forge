@@ -49,3 +49,6 @@ The Versions screen (`#/versions`) uses these; a 404/405 on the list makes it fa
 Already working: `game.select { gameId, dataHash }` ("Play this version" opens `#/lobby/hero_arena?hash=<dataHash>`) and
 `POST /v1/playtest/run { gameId, pairs, dataHash }` ("Run bots on this version").
 Recorded mode reads `services/runner/recorded-auto-history.json` = `{ summary: {stoppedBecause, rounds, needs_designer, botPolicyVersion, simVersion, createdAt}, versions: [records] }` if it exists (the old `services/room/data/versions` path is runtime output and never ships).
+
+## `proposal.fallbackReason` (optional string)
+The web reads `proposal.fallbackReason` when `proposal.origin` is `"fallback"` and shows it. Absent: "no reason given".

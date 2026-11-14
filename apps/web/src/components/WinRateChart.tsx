@@ -35,8 +35,8 @@ export interface RowStats {
 }
 
 /**
- * Wilson interval from wins/games; outlier = interval entirely outside the intended band (the target ±5 points, 45–55%
- * when the matchup is meant to be even), never for tiny n.
+ * Wilson interval from wins/games; outlier = interval entirely outside the intended band (the target ±5 points,
+ * 45–55% when the matchup is meant to be even), never for tiny n.
  */
 export function rowStats(row: ReportRow): RowStats {
   const [lo, hi] = wilson(row.wins, row.games);
@@ -127,7 +127,17 @@ function RowLabel({ s, dense }: { s: RowStats; dense: boolean }) {
   );
 }
 
-export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense?: boolean }) {
+export const CHART_FOOT =
+  "Dashed line = 50%. Shaded band = the intended result ±5 (45–55% where even). Whiskers = 95% CI (Wilson).";
+
+interface ChartProps {
+  rows: ReportRow[];
+  dense?: boolean;
+  /** the legend line; false when the screen shows it once itself */
+  foot?: boolean;
+}
+
+export function WinRateChart({ rows, dense = false, foot = true }: ChartProps) {
   const stats = rows.map(rowStats);
   return (
     <div className={`viz${dense ? " dense" : ""}`}>
@@ -160,9 +170,7 @@ export function WinRateChart({ rows, dense = false }: { rows: ReportRow[]; dense
           </span>
         </div>
       ))}
-      <p className="caption viz-foot">
-        Dashed line = 50%. Shaded band = the intended result ±5 (45–55% where even). Whiskers = 95% CI (Wilson).
-      </p>
+      {foot && <p className="caption viz-foot">{CHART_FOOT}</p>}
       <table className="sr-only">
         <caption>Win rate by matchup</caption>
         <thead>
