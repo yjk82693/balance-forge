@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameEvent, MatchConfig, MatchResult, Observation, RoomStatusPayload } from "../lib/contract";
 import type { Transport } from "./transport";
 
@@ -14,13 +14,26 @@ export interface RoomView {
   lastAckSeq: number;
 }
 
+/** One state.view as it arrived. */
+export interface ViewPacket {
+  observation: Observation;
+  events: GameEvent[] | undefined;
+}
+export type ViewListener = (v: ViewPacket) => void;
+
 const eventsOf = (payload: unknown): GameEvent[] | undefined => {
   const events = (payload as { events?: unknown })?.events;
   return Array.isArray(events) ? (events as GameEvent[]) : undefined;
 };
 
 /** Folds server envelopes into view state; used by display and controller screens alike. */
-export function useRoom(transport: Transport | null): RoomView {
+export function useRoom(transport: Transport | null): RoomView & { views: (fn: ViewListener) => () => void } {
+  // Every state.view is handed to listeners at once, so a burst of packets is not collapsed into one render.
+  const listeners = useRef(new Set<ViewListener>());
+  const views = useCallback((fn: ViewListener) => {
+    listeners.current.add(fn);
+    return () => void listeners.current.delete(fn);
+  }, []);
   const [v, setV] = useState<RoomView>({
     room: null,
     observation: null,
@@ -44,6 +57,10 @@ export function useRoom(transport: Transport | null): RoomView {
           }));
         case "state.view":
           if (!(env.payload as { observation?: unknown })?.observation) return;
+          for (const fn of listeners.current) {
+            const observation = (env.payload as { observation: Observation }).observation;
+            fn({ observation, events: eventsOf(env.payload) });
+          }
           return setV((s) => ({
             ...s,
             observation: (env.payload as { observation: Observation<unknown> }).observation,
@@ -61,5 +78,5 @@ export function useRoom(transport: Transport | null): RoomView {
       }
     });
   }, [transport]);
-  return v;
+  return { ...v, views };
 }

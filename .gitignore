@@ -6,3 +6,8 @@ dist/
 *.log
 .DS_Store
 recordings/
+
+# room server runtime output (demo runs)
+services/room/data/
+services/room/playtests/
+services/room/replays/

@@ -60,6 +60,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly kind: "network" | "server" | "shape",
+    /** the server's error code, when it sent one (e.g. RATE_LIMITED) */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -127,10 +129,14 @@ export async function runPlaytest(
   return (await runFullPlaytest(signal)) ?? runRealPlaytest(matches, signal);
 }
 
+/** Pairs per seat assignment for the live run: Bari vs Real Armor, 400 matches, over the 200-game verdict gate. */
+export const FULL_RUN_PAIRS = 100;
+
 /**
- * POST /v1/playtest/full {gameId, roster: true}: baseline run, proposal, validation, holdout run on the patched data
- * and a verdict, in one request (progress streams over /ws meanwhile). Returns null when the server has no such
- * endpoint (404/405), so the caller can fall back to the plain bot run.
+ * POST /v1/playtest/full {gameId, pairs}: baseline run (no roster: Bari vs Real Armor only, about 10 s), proposal,
+ * validation, holdout run on the patched data and a verdict, in one request (progress streams over /ws meanwhile).
+ * The all-matchups table is not part of this run; it comes from the recorded roster report. Returns null when the
+ * server has no such endpoint (404/405), so the caller can fall back to the plain bot run.
  */
 async function runFullPlaytest(signal?: AbortSignal): Promise<PlaytestRun | null> {
   let res: Response;
@@ -138,7 +144,7 @@ async function runFullPlaytest(signal?: AbortSignal): Promise<PlaytestRun | null
     res = await fetch("/v1/playtest/full", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId: "hero_arena", roster: true }),
+      body: JSON.stringify({ gameId: "hero_arena", pairs: FULL_RUN_PAIRS }),
       signal,
     });
   } catch (e) {
@@ -179,7 +185,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_SCHEMA: "The server didn't accept the request.",
 };
 
-async function readJson<T>(res: Response, what: string): Promise<T> {
+export async function readJson<T>(res: Response, what: string): Promise<T> {
   try {
     return (await res.json()) as T;
   } catch {
@@ -187,13 +193,21 @@ async function readJson<T>(res: Response, what: string): Promise<T> {
   }
 }
 
-async function failFrom(res: Response): Promise<never> {
-  const body = (await res.json().catch(() => ({}))) as { code?: string };
-  throw new ApiError(MESSAGES[body.code ?? ""] ?? `The server answered ${res.status}.`, "server");
+/** Turns an error reply into an ApiError that carries the server's code and message, so the dashboard can show both. */
+export async function failFrom(res: Response): Promise<never> {
+  const body = (await res.json().catch(() => null)) as { code?: unknown; message?: unknown } | null;
+  const code = typeof body?.code === "string" ? body.code : undefined;
+  const said = typeof body?.message === "string" ? body.message : undefined;
+  const text = said ?? MESSAGES[code ?? ""] ?? `The server answered ${res.status}.`;
+  throw new ApiError(code ? `${code}: ${text}` : text, "server", code);
 }
 
+/** Bot matches on one kept data version (POST /v1/playtest/run takes a dataHash). */
+export const runBotsOnVersion = (dataHash: string, matches = 400, signal?: AbortSignal) =>
+  runRealPlaytest(matches, signal, dataHash);
+
 /** POST /v1/playtest/run, then GET the returned resultsPath and build the report from the match results. */
-async function runRealPlaytest(matches: number, signal?: AbortSignal): Promise<PlaytestRun> {
+async function runRealPlaytest(matches: number, signal?: AbortSignal, dataHash?: string): Promise<PlaytestRun> {
   const get = async (path: string, init?: RequestInit) => {
     try {
       return await fetch(path, { ...init, signal });
@@ -205,7 +219,11 @@ async function runRealPlaytest(matches: number, signal?: AbortSignal): Promise<P
   const res = await get("/v1/playtest/run", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ gameId: "hero_arena", pairs: Math.max(1, Math.round(matches / 2)) }),
+    body: JSON.stringify({
+      gameId: "hero_arena",
+      pairs: Math.max(1, Math.round(matches / 2)),
+      ...(dataHash ? { dataHash } : {}),
+    }),
   });
   if (!res.ok) return failFrom(res);
   const info = await readJson<RunInfo>(res, "run reply");

@@ -3,6 +3,7 @@
 // Returns { ok: true, value: body } or an error result; body has the shared-interface fields except the transport
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
+import { buildEvidence } from '../src/evidence.js';
 import { withExtras } from '../src/extras.js';
 import { applyPatchToData } from '../src/replay.js';
 import { fail, safely } from '../src/errors.js';
@@ -18,7 +19,9 @@ function describeChange(baseData, { path, value }) {
   if (!move) return { path, label: 'Damage scale (permille)', old: baseData.tuning?.damageScalePermille, new: value };
   const index = Number(move[1]);
   const moveId = baseData.moves?.[index]?.id;
-  const hero = baseData.characters?.find((c) => Array.isArray(c.moves) && c.moves.includes(moveId))?.id;
+  // The engine lists a hero's moves in `moveIds`; `moves` is accepted too.
+  const ownsMove = (c) => [c.moveIds, c.moves].some((ids) => Array.isArray(ids) && ids.includes(moveId));
+  const hero = baseData.characters?.find(ownsMove)?.id;
   const name = moveId ? `${titleCase(moveId)} power` : `Move ${index} power`;
   return { path, label: hero ? `${titleCase(hero)} · ${name}` : name, old: baseData.moves?.[index]?.power,
     new: value };
@@ -48,6 +51,24 @@ function checkHoldoutResults(holdoutResults, holdoutSeeds, patchedDataHash) {
 const rejectedPatchVerdict = (errors) => ({ verdict: 'inconclusive',
   reasons: ['the patch did not pass validation, so no holdout run was made', ...errors.slice(0, 3)] });
 
+/** Patched data and its hash: from the injected `applyPatch` (the engine's own) or from our pure copy. */
+function patchData({ baseData, hashData, applyPatch }, proposal) {
+  if (typeof applyPatch !== 'function') {
+    const data = applyPatchToData(baseData, proposal, { hashData });
+    return { data, dataHash: hashData(data) };
+  }
+  let patched;
+  try {
+    patched = applyPatch(baseData, proposal);
+  } catch (e) {
+    return fail('INVALID_PATCH', `the engine rejected the patch: ${String(e?.message ?? e).slice(0, 120)}`);
+  }
+  if (!patched || typeof patched.dataHash !== 'string' || patched.data === null || typeof patched.data !== 'object') {
+    fail('INVALID_INPUT', 'applyPatch must return { data, dataHash }');
+  }
+  return patched;
+}
+
 async function runFullUnsafe(input) {
   const { baselineResults, humanResults = [], baseData, adapter, runHoldout, holdoutSeeds, hashData,
     botPolicyVersion, seedSetId, holdoutSeedSetId, elapsedMs, createdAt } = input ?? {};
@@ -61,12 +82,14 @@ async function runFullUnsafe(input) {
   const options = { ...(botPolicyVersion && { botPolicyVersion }), ...(seedSetId && { seedSetId }) };
   const base = analyzePhase(baselineResults, { reportId: 'r-baseline', ...options });
   const baseline = withExtras(addHumanRows(base.report, humanResults), { createdAt, elapsedMs });
+  const evidence = buildEvidence(base.counted, baseline);
   const step = await proposeStep(baseline, adapter);
   const body = {
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
+    evidence: evidence.ok ? evidence.value : null, // per outlier row; null only if it could not be built
     proposal: { ...step.proposal, origin: step.origin,
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },
     validation: { ok: step.ok, errors: step.errors },
@@ -74,8 +97,7 @@ async function runFullUnsafe(input) {
   };
   if (!step.ok) return { ...body, patchedDataHash: null, patched: null, verdict: rejectedPatchVerdict(step.errors) };
 
-  const patchedData = applyPatchToData(baseData, step.proposal, { hashData });
-  const patchedDataHash = hashData(patchedData);
+  const { data: patchedData, dataHash: patchedDataHash } = patchData(input, step.proposal);
   let holdoutResults;
   try {
     holdoutResults = await runHoldout(patchedData, [...holdoutSeeds]);

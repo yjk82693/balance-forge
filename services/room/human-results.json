@@ -1,1 +1,89 @@
-[]
+[
+  {
+    "matchId": "human-4dc47175-7c8d-4cdd-a20d-0fc5b5d9be36",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.1",
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "bari",
+          "p2": "real_armor"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 633,
+              "uses": 10
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 702,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 695,
+              "uses": 1
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 540,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 37,
+              "uses": 28
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 29,
+              "uses": 19
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 47,
+              "uses": 18
+            }
+          ]
+        }
+      ],
+      "durationTicks": 855
+    },
+    "finalStateHash": "f42187926b61a13f5bb358cf7922da334999056c20013580b3c0c4b1fc224b2b",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  }
+]

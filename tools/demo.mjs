@@ -107,6 +107,15 @@ async function printUrls(mode) {
 
 buildWebIfStale();
 
+// A server left running on the port would answer the health check and the demo would show its
+// old code instead of this checkout, so refuse to start rather than reuse it.
+try {
+  await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1000) });
+  console.error(`port ${port} is already in use by another server. Stop it first, or run with PORT=<other port>.`);
+  console.error(`  find it: lsof -nP -iTCP:${port} -sTCP:LISTEN`);
+  process.exit(1);
+} catch {}
+
 let live = null;
 if (!forceRecorded) {
   live = startLive();
@@ -133,9 +142,18 @@ if (!live) {
   await printUrls('recorded');
 }
 
-for (const signal of ['SIGINT', 'SIGTERM']) {
+// Stop the room server with us: ask politely, then force it after 3 s so no orphan keeps the port open.
+let stopping = false;
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => {
-    live?.kill(signal);
-    process.exit(0);
+    if (stopping) return;
+    stopping = true;
+    if (!live || live.exitCode !== null) process.exit(0);
+    live.once('exit', () => process.exit(0));
+    live.kill('SIGTERM');
+    setTimeout(() => {
+      live.kill('SIGKILL');
+      process.exit(0);
+    }, 3000);
   });
 }

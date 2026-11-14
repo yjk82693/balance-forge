@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { ArenaPayload, GameEvent, Observation } from "../lib/contract";
 import { HERO_HEX, heroName } from "../lib/heroes";
 import { blip, reducedMotion } from "../lib/sfx";
+import type { Pose, SnapshotBuffer } from "../lib/snapshotBuffer";
 
 export const ARENA_W = 1152;
 export const ARENA_H = 648;
@@ -41,6 +42,8 @@ interface HeroView {
   squash: number; // decays to 0: positive = squashed (hit), shown as wider/shorter
   phase: number;
   ko: boolean;
+  /** px at the previous frame, to tell how fast the sprite moved */
+  lastPx?: number;
 }
 interface HudView {
   fill: Phaser.GameObjects.Image;
@@ -72,8 +75,12 @@ export class ArenaScene extends Phaser.Scene {
   private latest: Observation | null = null;
   private handled = new WeakSet<GameEvent[]>();
   private ready = false;
+  /** when set, positions come from snapshot interpolation instead of easing toward the newest packet */
+  private feed: SnapshotBuffer | null = null;
+  private debugText: Phaser.GameObjects.Text | null = null;
+  private frames = 0;
   private onData = (_p: unknown, key: string, value: Observation | null) => {
-    if (key === "obs" && value) this.apply(value);
+    if (key === "obs" && value && !this.feed) this.apply(value);
   };
 
   constructor() {
@@ -95,13 +102,24 @@ export class ArenaScene extends Phaser.Scene {
     this.reduce = reducedMotion();
     this.add.image(0, 0, "floor").setOrigin(0, 0).setDisplaySize(this.scale.width, this.scale.height).setDepth(0);
     this.ready = true;
+    this.feed = (this.registry.get("feed") as SnapshotBuffer | undefined) ?? null;
+    if (this.feed && this.registry.get("debug")) {
+      this.debugText = this.add
+        .text(8, this.scale.height - 28, "", {
+          fontFamily: "monospace",
+          fontSize: "14px",
+          color: "#9CF",
+          backgroundColor: "#000A",
+        })
+        .setDepth(20000);
+    }
     this.registry.events.on("changedata", this.onData);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.registry.events.off("changedata", this.onData);
       this.time.timeScale = 1;
     });
     const initial = (this.registry.get("obs") as Observation | undefined) ?? this.latest;
-    if (initial) this.apply(initial);
+    if (initial && !this.feed) this.apply(initial);
   }
 
   private toScreen(x: number, y: number, arena: { w: number; h: number }) {
@@ -113,14 +131,14 @@ export class ArenaScene extends Phaser.Scene {
     if (!this.silent) blip(kind);
   }
 
-  private apply(obs: Observation) {
+  private apply(obs: Observation, eventsOf?: GameEvent[]) {
     this.latest = obs;
     if (!this.ready) return;
     const payload = obs.payload as ArenaPayload;
     const { arena, entities, projectiles } = payload;
     // state.view carries the step's events (hit, guard, KO, projectile spawn/expire). Use them when present, so
     // damage numbers are the real amounts; without them, fall back to watching HP change.
-    const events = this.registry.get("events") as GameEvent[] | undefined;
+    const events = this.feed ? eventsOf : (this.registry.get("events") as GameEvent[] | undefined);
     const fresh = Array.isArray(events) && !this.handled.has(events);
     const useEvents = Array.isArray(events);
     if (fresh) this.handled.add(events);
@@ -379,13 +397,55 @@ export class ArenaScene extends Phaser.Scene {
     h.hp.setText(`HP ${hpValue}`);
   }
 
+  /** Hand out the snapshots the render clock has reached, then return where everything stands right now. */
+  private stepFeed(): Pose | null {
+    const feed = this.feed;
+    if (!feed) return null;
+    const rt = feed.renderTick(performance.now());
+    for (const snap of feed.due(rt)) this.apply(snap.observation, snap.events);
+    return feed.sample(rt);
+  }
+
+  /** Put heroes and projectiles where the interpolated pose says (positions only; state still comes from apply). */
+  private placeFromPose(pose: Pose) {
+    const arena = (this.latest?.payload as ArenaPayload | undefined)?.arena;
+    if (!arena) return;
+    for (const [id, at] of pose.entities) {
+      const v = this.heroes.get(id);
+      if (!v) continue;
+      const p = this.toScreen(at.x, at.y, arena);
+      v.px = p.x;
+      v.py = p.y;
+    }
+    for (const [id, at] of pose.projectiles) {
+      const img = this.arrows.get(id);
+      if (!img) continue;
+      const p = this.toScreen(at.x, at.y, arena);
+      img.setPosition(p.x, p.y - 40 * this.k);
+    }
+  }
+
+  private showDebug() {
+    if (!this.debugText || !this.feed || ++this.frames % 6) return;
+    const st = this.feed.stats;
+    this.debugText.setText(
+      `buffer ${st.depth} · delay ${st.renderDelayTicks} · late ${st.late} · guessed ${st.extrapolated}`,
+    );
+  }
+
   update(_t: number, delta: number) {
     const dt = delta / 16.7;
     const now = this.time.now;
+    const pose = this.stepFeed();
+    this.showDebug();
+    if (pose) this.placeFromPose(pose);
     for (const v of this.heroes.values()) {
-      const dx = v.tx - v.px;
-      v.px += dx * 0.25;
-      v.py += (v.ty - v.py) * 0.25;
+      const dx = pose ? v.px - (v.lastPx ?? v.px) : v.tx - v.px;
+      if (pose) v.lastPx = v.px;
+      else {
+        v.px += dx * 0.25;
+        v.py += (v.ty - v.py) * 0.25;
+      }
       let sx = 1;
       let sy = 1;
       let bob = 0;

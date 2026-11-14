@@ -10,8 +10,9 @@ const runner = (name) => join(engineRoot, 'services/runner', name);
 
 test('recorded-roster-report.json is exactly what the CLI makes from the recorded roster run', async () => {
   const out = mkdtempSync(join(tmpdir(), 'bf-recorded-'));
+  const metrics = JSON.parse(readFileSync(runner('recorded-roster-metrics.json'), 'utf8'));
   const res = await main(['propose', '--baseline', runner('recorded-roster-match-results.json'), '--metrics',
-    runner('recorded-roster-metrics.json'), '--bot-policy', 'scripted-0.1.1', '--seed-set', 'explicit-paired-seeds',
+    runner('recorded-roster-metrics.json'), '--bot-policy', metrics.botPolicyVersion, '--seed-set', metrics.seedSetId,
     '--out', out]);
   assert.equal(res.ok, true, JSON.stringify(res));
   const made = JSON.parse(readFileSync(join(out, 'report_baseline.json'), 'utf8'));
