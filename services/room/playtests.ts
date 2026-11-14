@@ -10,7 +10,8 @@ import { array, integer, object, text } from '../../packages/contracts/shapes.ts
 import { writeJson } from './storage.ts';
 import { patchChanges } from './versions.ts';
 export class PipelineError extends Error {
-  constructor(error) {
+  declare code: string;
+  constructor(error: { code: string; message: string }) {
     super(error.message);
     this.code = error.code;
   }
@@ -128,7 +129,7 @@ export async function matchBatch(server, {
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.json`), batch.results);
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.metrics.json`), batch.metrics);
   server.sinks.emit('matches', { results: batch.results, dataHash, phase: phase ?? 'run', runId, at: Date.now(),
-    botPolicyVersion: batch.metrics.botPolicyVersion ?? botPolicyVersion });
+    botPolicyVersion: batch.metrics.botPolicyVersion ?? scriptedVersionOf(gameId) });
   return {
     ...batch,
     resultsPath: `/v1/playtest/results/${fileId}.json`,

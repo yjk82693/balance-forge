@@ -47,7 +47,8 @@ export function numericDiff(base, data, path = '') {
     numericDiff(base[key], data[key], `${path}/${key.replaceAll('~', '~0').replaceAll('/', '~1')}`));
 }
 export class VersionStore {
-  constructor(directory) {
+  declare directory: string;
+  constructor(directory: string) {
     this.directory = join(directory, 'data', 'versions');
   }
   path(gameId) {

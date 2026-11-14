@@ -12,6 +12,9 @@ import { object } from '../../packages/contracts/shapes.ts';
 import { runPlaytest, fullPlaytest, reanalyzePlaytest, PipelineError } from './playtests.ts';
 import { DesignStore, DesignError } from './design.ts';
 import { createSinks } from '../sinks/index.ts';
+import type { MatchResult } from '../../packages/contracts/types.ts';
+import type { Envelope, HttpRequest, HttpResponse, HttpServer, Room, RoomServerOptions, Session, WsServer }
+  from './types.ts';
 import { replayViews } from './replay-views.ts';
 import { games, cardAction } from '../runner/match.ts';
 import { chooseActionsGentle, deriveBotSeed, gentleBotPolicyVersion } from '../../packages/games/action/bot.ts';
@@ -63,6 +66,27 @@ async function readBody(request) {
   return result;
 }
 export class RoomServer {
+  declare now: () => number;
+  declare pendingRecords: Map<string, any>;
+  declare failures: string[];
+  declare storage: Storage;
+  declare sinks: any;
+  declare staticDir: string;
+  declare turnTimeoutMs: number;
+  declare workers: number;
+  declare analysisEnv: Record<string, string>;
+  declare design: DesignStore;
+  declare runAuto: ((...args: any[]) => any) | undefined;
+  declare rooms: Map<string, Room>;
+  declare codes: Map<string, Room>;
+  declare sessions: Set<Session>;
+  declare tasks: Set<Promise<unknown>>;
+  declare runningBatch: boolean;
+  declare closed: boolean;
+  declare http: HttpServer;
+  declare ws: WsServer;
+  declare scheduler: ReturnType<typeof createScheduler>;
+  declare seedCounter: number | undefined;
   constructor({
     storageDir = directory,
     staticDir = defaultStatic,
@@ -73,7 +97,7 @@ export class RoomServer {
     sinks = createSinks(process.env),
     runAuto,
     clock = () => performance.now()
-  } = {}) {
+  }: RoomServerOptions = {}) {
     if (!Number.isInteger(turnTimeoutMs) || turnTimeoutMs < 1) throw Error('INVALID_SCHEMA');
     if (typeof clock !== 'function') throw Error('INVALID_SCHEMA');
     this.now = clock;
@@ -152,14 +176,14 @@ export class RoomServer {
       }
     });
   }
-  createRoom(gameId = 'hero_arena') {
+  createRoom(gameId = 'hero_arena'): Room {
     if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
     if (this.rooms.size >= 100) throw Error('RATE_LIMITED');
-    let code;
+    let code: string;
     do {
       code = Array.from(randomBytes(4), x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
     } while (this.codes.has(code));
-    const room = {
+    const room: Room = {
       id: randomUUID(),
       code,
       gameId,
@@ -181,8 +205,8 @@ export class RoomServer {
     this.codes.set(code, room);
     return room;
   }
-  connect(ws, url) {
-    const session = {
+  connect(ws: WebSocket, url: URL): void {
+    const session: Session = {
       id: randomUUID(),
       ws,
       room: null,
@@ -257,11 +281,11 @@ export class RoomServer {
       });
     }
   }
-  attach(session, room) {
+  attach(session: Session, room: Room): void {
     session.room = room;
     room.members.add(session);
   }
-  send(session, type, payload, request, seq) {
+  send(session: Session, type: string, payload: unknown, request?: { requestId?: string } | null, seq?: number): void {
     if (session.ws.readyState !== WebSocket.OPEN) return;
     try {
       if (session.ws.bufferedAmount > 1048576) {
@@ -290,7 +314,7 @@ export class RoomServer {
       } catch {}
     }
   }
-  playableHeroes(room) {
+  playableHeroes(room: Pick<Room, 'gameId' | 'selectedHash'>): string[] {
     const {
       data
     } = this.storage.get(room.gameId, room.selectedHash);
@@ -298,7 +322,7 @@ export class RoomServer {
     const decks = data.gameRules.decks.map(deck => deck.id);
     return decks.includes('standard') ? games.hero_arena.data.characters.map(character => character.id) : decks;
   }
-  status(room, request) {
+  status(room: Room, request?: Envelope | null): void {
     for (const s of room.members) this.send(s, 'room.status', {
       joinCode: room.code,
       phase: room.phase,
@@ -325,11 +349,11 @@ export class RoomServer {
       } : {})
     }, request);
   }
-  host(session) {
+  host(session: Session): Room {
     if (!session.room || session.room.host !== session) throw Error('AUTH_EXPIRED');
     return session.room;
   }
-  receive(session, env) {
+  receive(session: Session, env: Envelope): any {
     if (env.type === 'input.submit') return this.input(session, env);
     validatePayload(env.type, env.payload);
     if (env.type === 'ping') {
@@ -412,12 +436,12 @@ export class RoomServer {
    * A new seed for every match that does not name one: a counter mixed with the clock, so two matches never start the
    * same way (the bot's draws follow the seed). The seed is recorded in the config, so replays stay exact.
    */
-  freshSeed() {
+  freshSeed(): number {
     this.seedCounter = (this.seedCounter ?? 0) + 1;
     const clock = xorshift32(Date.now() % 4294967291 + 1);
     return xorshift32(((clock ^ Math.imul(this.seedCounter, 0x9e3779b1)) >>> 0) || 1);
   }
-  start(room, options, request) {
+  start(room: Room, options: any, request?: Envelope): void {
     if (room.phase !== 'lobby') throw Error('ILLEGAL_ACTION');
     const gameId = options.gameId ?? room.gameId,
       game = games[gameId];
@@ -468,7 +492,7 @@ export class RoomServer {
     }, request);
     this.views(room);
   }
-  input(session, env) {
+  input(session: Session, env: Envelope): void {
     const room = session.room;
     if (!room?.authority || !session.seat || room.seats.find(s =>
       s.seat === session.seat)?.session !== session) throw Error('ILLEGAL_ACTION');
@@ -488,7 +512,7 @@ export class RoomServer {
     this.send(session, 'input.ack', receipt, env, env.payload.seq);
     if (authority.config.mode === 'turn' && !previous) this.advance(room);
   }
-  view(session, events = []) {
+  view(session: Session, events: any[] = []): void {
     const room = session.room,
       authority = room.authority,
       viewerId = session.seat ?? 'display';
@@ -509,10 +533,10 @@ export class RoomServer {
       actions: room.game.legalActions(observation)
     });
   }
-  views(room, events = []) {
+  views(room: Room, events: any[] = []): void {
     for (const session of room.members) this.view(session, events);
   }
-  submitBots(room, systemInputs) {
+  submitBots(room: Room, systemInputs: any[]): void {
     if (systemInputs.length) return;
     const authority = room.authority,
       state = authority.state;
@@ -524,7 +548,7 @@ export class RoomServer {
       for (const input of inputs) authority.submit(input);
     }
   }
-  advance(room, systemInputs = []) {
+  advance(room: Room, systemInputs: any[] = []): void {
     if (room.phase !== 'playing') return;
     try {
       const turn = room.authority.state.turnId;
@@ -537,7 +561,7 @@ export class RoomServer {
       this.finish(room, errorCode(error));
     }
   }
-  finish(room, failure) {
+  finish(room: Room, failure?: string): void {
     if (room.phase !== 'playing') return;
     const a = room.authority;
     const statistics = structuredClone(room.game.statistics(a.state));
@@ -565,7 +589,7 @@ export class RoomServer {
         // Hero Arena's room bot is the gentle policy; Hero Cards plays its first legal card (no policy version)
         ...(room.game.describe().mode === 'turn' ? {} : { botPolicyVersion: gentleBotPolicyVersion })
       } : {})
-    };
+    } as MatchResult;
     const recording = {
       matchId: room.matchId,
       seed: a.config.seed,
@@ -586,7 +610,7 @@ export class RoomServer {
     });
     this.flushRecord(result.matchId);
   }
-  flushRecord(matchId) {
+  flushRecord(matchId: string): void {
     const entry = this.pendingRecords.get(matchId);
     if (!entry) return;
     try {
@@ -608,14 +632,14 @@ export class RoomServer {
       });
     }
   }
-  expireSeats(room, now) {
+  expireSeats(room: Room, now: number): void {
     for (const seat of room.seats) if (!seat.session && seat.expiresAt && now >= seat.expiresAt) {
       seat.token = null;
       seat.expiresAt = 0;
     }
     if (room.phase === 'lobby') room.seats = room.seats.filter(s => s.session || s.expiresAt > now);
   }
-  resume(session, env) {
+  resume(session: Session, env: Envelope): void {
     const room = this.codes.get(env.payload.joinCode.toUpperCase()),
       now = this.now();
     if (!room || session.room && session.room !== room || session.seat) throw Error('AUTH_EXPIRED');
@@ -640,7 +664,7 @@ export class RoomServer {
       }, env);
     }
   }
-  pump() {
+  pump(): void {
     if (this.closed) return;
     const now = this.now();
     for (const [matchId, entry] of this.pendingRecords) if (now >= entry.retryAt) this.flushRecord(matchId);
@@ -668,7 +692,7 @@ export class RoomServer {
       }
     }
   }
-  disconnect(session) {
+  disconnect(session: Session): void {
     this.sessions.delete(session);
     const room = session.room;
     if (!room) return;
@@ -687,10 +711,10 @@ export class RoomServer {
     this.status(room);
   }
   // The version history plus the server-wide current version ("Make current" needs it).
-  versionList(gameId) {
+  versionList(gameId: string) {
     return { versions: this.storage.versionStore.list(gameId), currentHash: this.storage.get(gameId).dataHash };
   }
-  async handleHttp(request, response) {
+  async handleHttp(request: HttpRequest, response: HttpResponse): Promise<void> {
     let url;
     try {
       url = new URL(request.url, 'http://localhost');
@@ -757,7 +781,7 @@ export class RoomServer {
     if (request.method === 'GET' && path === '/v1/sinks') {
       // Names and counts only: never a connection string or an error text that could carry one.
       const status = Object.fromEntries(Object.entries(this.sinks.status).map(([name, item]) => [name,
-        { written: item.written, failed: item.failed }]));
+        { written: (item as any).written, failed: (item as any).failed }]));
       json(response, 200, { enabled: this.sinks.enabled, status });
       return;
     }
@@ -853,7 +877,7 @@ export class RoomServer {
     }
     await this.serveStatic(url, response, request.method === 'HEAD');
   }
-  async serveStatic(url, response, head) {
+  async serveStatic(url: URL, response: HttpResponse, head: boolean): Promise<void> {
     let pathname;
     try {
       pathname = decodeURIComponent(url.pathname);
@@ -895,7 +919,7 @@ export class RoomServer {
       });else throw error;
     }
   }
-  listen(port = 3000, host = '0.0.0.0') {
+  listen(port = 3000, host = '0.0.0.0'): Promise<ReturnType<HttpServer['address']>> {
     return new Promise((resolve, reject) => {
       const failed = error => {
         this.http.off('listening', ready);
@@ -910,7 +934,7 @@ export class RoomServer {
       this.http.listen(port, host);
     });
   }
-  async close() {
+  async close(): Promise<void> {
     this.closed = true;
     this.scheduler.stop();
     for (const room of this.rooms.values()) if (room.phase === 'playing') this.finish(room, 'TRANSPORT_UNAVAILABLE');
@@ -924,9 +948,9 @@ export class RoomServer {
     // would hold the process open until the shutdown deadline in startup.js forces an exit.
     this.http.closeAllConnections();
     await Promise.allSettled([...this.tasks]);
-    await new Promise(resolve => this.ws.close(resolve));
+    await new Promise<void>(resolve => this.ws.close(() => resolve()));
     await this.sinks.close().catch(() => {});
-    if (this.http.listening) await new Promise((resolve, reject) => this.http.close(error => error ? reject(
+    if (this.http.listening) await new Promise<void>((resolve, reject) => this.http.close(error => error ? reject(
       error) : resolve()));
   }
 }

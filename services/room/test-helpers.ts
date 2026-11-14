@@ -4,11 +4,14 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createRoomServer } from './server.ts';
+import type { RoomServer } from './server.ts';
+import type { RoomServerOptions } from './types.ts';
+import type { WebSocket as WsSocket } from 'ws';
 // Exercises the production WebSocket handlers without opening a network listener.
 export class LocalSocket extends EventEmitter {
   readyState = 1;
   bufferedAmount = 0;
-  messages = [];
+  messages: any[] = [];
   send(raw) {
     this.messages.push(JSON.parse(raw));
   }
@@ -19,10 +22,10 @@ export class LocalSocket extends EventEmitter {
   terminate() {
     this.close();
   }
-  take(type) {
+  take(type: string): any {
     return this.messages.filter(e => e.type === type).at(-1);
   }
-  request(type, payload, meta = {}) {
+  request(type: string, payload: unknown, meta: Record<string, unknown> = {}): any {
     const last = this.messages.at(-1);
     const env = {
       protocolVersion: '0.1',
@@ -39,7 +42,7 @@ export class LocalSocket extends EventEmitter {
     return env;
   }
 }
-export async function localServer(t, options = {}) {
+export async function localServer(t: any, options: RoomServerOptions = {}) {
   const root = await mkdtemp(join(tmpdir(), 'engine-local-'));
   const server = createRoomServer({
     storageDir: root,
@@ -56,7 +59,7 @@ export async function localServer(t, options = {}) {
   });
   const connect = (query = '') => {
     const ws = new LocalSocket();
-    server.connect(ws, new URL(`http://localhost/ws${query}`));
+    server.connect(ws as unknown as WsSocket, new URL(`http://localhost/ws${query}`));
     return ws;
   };
   const host = connect('?role=display'),
@@ -81,17 +84,16 @@ export async function localServer(t, options = {}) {
     connect
   };
 }
-export async function http(server, url, {
+export type HttpReply = { status: number; headers: Record<string, any>; text: string; json: () => any };
+export async function http(server: RoomServer, url: string, {
   method = 'GET',
   body,
   raw
-} = {}) {
+}: { method?: string; body?: unknown; raw?: string } = {}): Promise<HttpReply> {
   const bytes = raw ?? (body === undefined ? null : JSON.stringify(body));
   const request = Readable.from(bytes === null ? [] : [Buffer.from(bytes)]);
-  request.url = url;
-  request.method = method;
-  request.headers = {};
-  return new Promise(resolve => {
+  Object.assign(request, { url, method, headers: {} });
+  return new Promise<HttpReply>(resolve => {
     let status = 0,
       headers = {};
     const response = {

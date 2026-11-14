@@ -3,10 +3,10 @@ import { replayOnData } from '../../packages/sim/index.ts';
 import { games } from '../runner/match.ts';
 export const MAX_REPLAY_VIEWS = 601;
 export const MAX_REPLAY_BYTES = 1048576;
-export function replayViews(storage, matchId, {
+export function replayViews(storage, matchId: string, {
   dataHash,
   every = 6
-} = {}) {
+}: { dataHash?: string; every?: number } = {}) {
   if (!Number.isInteger(every) || every < 1 || every > 1800) throw Error('INVALID_SCHEMA');
   const recording = storage.getReplay(matchId);
   if (!recording) return null;

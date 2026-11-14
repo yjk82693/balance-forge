@@ -6,8 +6,16 @@ import { VersionStore, patchChanges, validateVersion, numericDiff } from './vers
 import { hash, validate, validateData, applyPatch } from '../../packages/contracts/index.ts';
 import { pinData } from '../../packages/sim/index.ts';
 import { games } from '../runner/match.ts';
+import type { GameData, MatchResult } from '../../packages/contracts/types.ts';
 export class Storage {
-  constructor(directory) {
+  declare directory: string;
+  declare versions: Map<string, GameData>;
+  declare current: Map<string, string>;
+  declare humanPath: string;
+  declare humans: MatchResult[];
+  declare versionStore: VersionStore;
+  declare sinks: any; // outside stores, set by the room server
+  constructor(directory: string) {
     this.directory = directory;
     this.versions = new Map();
     this.current = new Map();
@@ -53,7 +61,7 @@ export class Storage {
       }
     }
   }
-  addVersion(data) {
+  addVersion(data: GameData): string {
     validateData(data);
     const digest = pinData(data);
     const path = join(this.directory, 'data', data.gameId, `${digest}.json`);
@@ -65,7 +73,7 @@ export class Storage {
   saveIndex(current = this.current) {
     writeJson(join(this.directory, 'data', 'current.json'), Object.fromEntries(current));
   }
-  get(gameId, digest = this.current.get(gameId)) {
+  get(gameId: string, digest: string = this.current.get(gameId)) {
     if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
     if (!/^[0-9a-f]{64}$/.test(digest ?? '')) throw Error('HASH_MISMATCH');
     let data = this.versions.get(digest);
@@ -103,7 +111,7 @@ export class Storage {
       baseDataHash: base.dataHash
     };
   }
-  recordVersion(record) {
+  recordVersion(record: any) {
     validateVersion(record);
     const { data } = this.get(record.gameId, record.dataHash);
     if (record.parentHash === null) {
@@ -119,7 +127,7 @@ export class Storage {
     if (!known) this.sinks?.emit('version', added ?? record);
     return added;
   }
-  select(gameId, dataHash) {
+  select(gameId: string, dataHash: string): { gameId: string; dataHash: string } {
     this.get(gameId, dataHash);
     if (!this.versionStore.get(gameId, dataHash)) throw Error('HASH_MISMATCH');
     const nextCurrent = new Map(this.current);
@@ -147,7 +155,7 @@ export class Storage {
     const path = join(this.directory, 'replays', `${matchId}.json`);
     return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
   }
-  record(result, recording) {
+  record(result: MatchResult, recording?: any): void {
     validate('MatchResult', result);
     if (result.botSeats?.some(id => !result.config.players.includes(id))) throw Error('INVALID_SCHEMA');
     if (this.humans.some(r => r.matchId === result.matchId)) return;
