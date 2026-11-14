@@ -15,6 +15,7 @@ import { games, cardAction } from '../runner/match.js';
 import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.js';
 import { Storage } from './storage.js';
 import { createScheduler } from './scheduler.js';
+import { autoPlaytest } from './auto.js';
 import { parseEnvelope, validatePayload, assertDepth, errorCode } from './protocol.js';
 import { messages } from './errors.js';
 const directory = fileURLToPath(new URL('./', import.meta.url));
@@ -66,6 +67,7 @@ export class RoomServer {
     turnTimeoutMs = 15000,
     workers = 2,
     analysisEnv = process.env,
+    runAuto,
     clock = () => performance.now()
   } = {}) {
     if (!Number.isInteger(turnTimeoutMs) || turnTimeoutMs < 1) throw Error('INVALID_SCHEMA');
@@ -78,6 +80,8 @@ export class RoomServer {
     this.turnTimeoutMs = turnTimeoutMs;
     this.workers = workers;
     this.analysisEnv = analysisEnv;
+    if (runAuto !== undefined && typeof runAuto !== 'function') throw Error('INVALID_SCHEMA');
+    this.runAuto = runAuto;
     this.rooms = new Map();
     this.codes = new Map();
     this.sessions = new Set();
@@ -696,6 +700,32 @@ export class RoomServer {
       });
       return;
     }
+    const versionsRoute = path.match(/^\/v1\/versions\/(hero_arena|hero_cards)(?:\/([0-9a-f]{64})(\/approve)?)?$/);
+    if (versionsRoute) {
+      const [, gameId, dataHash, approve] = versionsRoute;
+      const versions = this.storage.versionStore;
+      if (request.method === 'GET' && !approve) {
+        const record = dataHash ? versions.get(gameId, dataHash) : null;
+        if (!dataHash) json(response, 200, versions.list(gameId));
+        else json(response, record ? 200 : 404, record ? { ...record, diff: record.changes } : {
+          code: 'HASH_MISMATCH'
+        });
+        return;
+      }
+      if (request.method === 'POST' && approve) {
+        validateSchema(object({}), await readBody(request));
+        const record = versions.approve(gameId, dataHash);
+        json(response, record ? 200 : 404, record ?? { code: 'HASH_MISMATCH' });
+        return;
+      }
+    }
+    const selectRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards)\/select$/);
+    if (request.method === 'POST' && selectRoute) {
+      const body = await readBody(request);
+      validateSchema(object({ dataHash: { type: 'string', pattern: '^[0-9a-f]{64}$' } }), body);
+      json(response, 200, this.storage.select(selectRoute[1], body.dataHash));
+      return;
+    }
     const dataRoute = path.match(/^\/v1\/data\/(hero_arena|hero_cards)(\/apply-patch)?$/);
     if (dataRoute) {
       if (request.method === 'GET' && !dataRoute[2]) {
@@ -713,11 +743,12 @@ export class RoomServer {
         return;
       }
     }
-    if (request.method === 'POST' && ['/v1/playtest/run', '/v1/playtest/full'].includes(path)) {
+    if (request.method === 'POST' && ['/v1/playtest/run', '/v1/playtest/full', '/v1/playtest/auto'].includes(path)) {
       const body = await readBody(request);
       if (this.runningBatch) throw Error('RATE_LIMITED');
       this.runningBatch = true;
-      const task = (path.endsWith('/full') ? fullPlaytest : runPlaytest)(this, body);
+      const execute = path.endsWith('/auto') ? autoPlaytest : path.endsWith('/full') ? fullPlaytest : runPlaytest;
+      const task = execute(this, body);
       this.tasks.add(task);
       try {
         json(response, 200, await task);

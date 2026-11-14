@@ -1,25 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { writeJson } from './files.js';
+export { writeJson } from './files.js';
+import { VersionStore, patchChanges, validateVersion } from './versions.js';
 import { hash, validate, validateData, applyPatch } from '../../packages/contracts/index.js';
 import { pinData } from '../../packages/sim/index.js';
 import { games } from '../runner/match.js';
-export function writeJson(path, value) {
-  mkdirSync(dirname(path), {
-    recursive: true
-  });
-  const temporary = `${path}.${randomUUID()}.tmp`;
-  try {
-    writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n');
-    renameSync(temporary, path);
-  } finally {
-    try {
-      rmSync(temporary, {
-        force: true
-      });
-    } catch {}
-  }
-}
 export class Storage {
   constructor(directory) {
     this.directory = directory;
@@ -42,6 +28,12 @@ export class Storage {
       } else this.current.set(gameId, hash(game.data));
     }
     this.saveIndex();
+    this.versionStore = new VersionStore(directory);
+    for (const game of Object.values(games)) this.versionStore.add({
+      dataHash: hash(game.data), parentHash: null, gameId: game.data.gameId,
+      createdAt: new Date().toISOString(), origin: 'base', changes: [], rationale: 'Original game data.',
+      target: null, verdict: null, approved: true
+    });
   }
   addVersion(data) {
     validateData(data);
@@ -82,14 +74,38 @@ export class Storage {
       throw Error('PATCH_REJECTED');
     }
     const digest = this.addVersion(candidate);
-    const nextCurrent = new Map(this.current);
-    nextCurrent.set(gameId, digest);
-    this.saveIndex(nextCurrent);
-    this.current = nextCurrent;
+    this.recordVersion({
+      dataHash: digest, parentHash: base.dataHash, gameId, createdAt: new Date().toISOString(),
+      origin: 'manual', changes: patchChanges(base.data, candidate, proposal), rationale: proposal.rationale,
+      target: null, verdict: null, approved: false
+    });
+    this.select(gameId, digest);
     return {
       dataHash: digest,
       baseDataHash: base.dataHash
     };
+  }
+  recordVersion(record) {
+    validateVersion(record);
+    const { data } = this.get(record.gameId, record.dataHash);
+    if (record.parentHash === null) {
+      if (record.dataHash !== hash(games[record.gameId].data)) throw Error('HASH_MISMATCH');
+    } else {
+      const parent = this.get(record.gameId, record.parentHash);
+      const changes = patchChanges(parent.data, data, { replacements: record.changes });
+      if (changes.some((change, index) => change.old !== record.changes[index].old ||
+          change.new !== record.changes[index].new)) throw Error('HASH_MISMATCH');
+    }
+    return this.versionStore.add(record);
+  }
+  select(gameId, dataHash) {
+    this.get(gameId, dataHash);
+    if (!this.versionStore.get(gameId, dataHash)) throw Error('HASH_MISMATCH');
+    const nextCurrent = new Map(this.current);
+    nextCurrent.set(gameId, dataHash);
+    this.saveIndex(nextCurrent);
+    this.current = nextCurrent;
+    return { gameId, dataHash };
   }
   recordReplay(recording) {
     if (!recording || !Array.isArray(recording.frames)) throw Error('INVALID_SCHEMA');

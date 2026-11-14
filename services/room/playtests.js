@@ -6,6 +6,7 @@ import { botPolicyVersion } from '../runner/match.js';
 import { hash, validateSchema } from '../../packages/contracts/index.js';
 import { integer, object } from '../../packages/contracts/shapes.js';
 import { writeJson } from './storage.js';
+import { patchChanges } from './versions.js';
 export class PipelineError extends Error {
   constructor(error) {
     super(error.message);
@@ -43,21 +44,23 @@ export async function matchBatch(server, {
   data,
   pairs,
   roster = false,
+  matchups,
   seeds,
   phase,
+  round,
+  batchId,
   runId = randomUUID()
 }) {
   seeds ??= Array.from({
     length: pairs
   }, (_, index) => index + 1);
   const dataHash = server.storage.addVersion(data);
-  const jobs = (roster ? rosterJobs : pairedJobs)({
-    gameId,
-    data,
-    seeds
-  });
+  const jobs = matchups ? matchups.flatMap(matchup => pairedJobs({
+    gameId, data, seeds, heroes: matchup.split(' vs ')
+  })) : (roster ? rosterJobs : pairedJobs)({ gameId, data, seeds });
+  batchId ??= runId;
   jobs.forEach((job, index) => {
-    job.matchId = `bot-${runId}-${phase ?? 'run'}-${index + 1}`;
+    job.matchId = `bot-${batchId}-${phase ?? 'run'}-${index + 1}`;
   });
   const batch = await runBatch(jobs, {
     workers: server.workers,
@@ -67,6 +70,7 @@ export async function matchBatch(server, {
         runId,
         gameId,
         dataHash,
+        ...(round === undefined ? {} : { round }),
         ...(phase ? {
           phase
         } : {}),
@@ -75,7 +79,7 @@ export async function matchBatch(server, {
     }
   });
   batch.replays.forEach(recording => server.storage.recordReplay(recording));
-  const fileId = phase ? `${runId}-${phase}` : runId;
+  const fileId = phase ? `${batchId}-${phase}` : batchId;
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.json`), batch.results);
   writeJson(join(server.storage.directory, 'playtests', `${fileId}.metrics.json`), batch.metrics);
   return {
@@ -165,6 +169,7 @@ export async function fullPlaytest(server, body) {
     }
   });
   if (!result.ok) throw new PipelineError(result.error);
+  recordFullVersion(server, data, result.value);
   return {
     ...result.value,
     runId,
@@ -175,4 +180,22 @@ export async function fullPlaytest(server, body) {
       holdout: holdout?.metrics.seatWins ?? null
     }
   };
+}
+
+function recordFullVersion(server, baseData, result) {
+  if (!result.patchedDataHash || !result.validation.ok) return;
+  const { data } = server.storage.get(baseData.gameId, result.patchedDataHash);
+  const row = result.baseline.rows.filter(row => !row.dimension.startsWith('human: '))
+    .filter(row => { const [a, b] = row.dimension.split(' vs '); return a !== b; })
+    .sort((a, b) => Math.abs(b.winRate - 0.5) - Math.abs(a.winRate - 0.5))[0];
+  const after = result.patched?.rows.find(item => item.dimension === row?.dimension);
+  const summary = row => ({ rate: row.winRate, ci95: row.ci95, games: row.games });
+  server.storage.recordVersion({
+    dataHash: result.patchedDataHash, parentHash: hash(baseData), gameId: baseData.gameId,
+    createdAt: new Date().toISOString(), origin: result.proposal.origin,
+    changes: result.proposal.changes ?? patchChanges(baseData, data, result.proposal),
+    rationale: result.proposal.rationale, target: row && after ? {
+      matchup: row.dimension, before: summary(row), after: summary(after)
+    } : null, verdict: result.verdict, approved: false
+  });
 }

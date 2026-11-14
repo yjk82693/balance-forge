@@ -578,3 +578,12 @@ Verification: services/room plus services/runner node:test suite: 51 passed, 0 f
 skips; 11,415.332167 ms. Focused scheduler/startup/readability suite: 11 passed, 0 failed. Source/documentation
 120-column checks and git diff --check pass. Existing Round 7 analysis-owned recording/replay follow-ups remain
 outside ownership. No tests weakened, dependencies, network calls, pushes or commits.
+
+## Round 8 versions
+
+Step 1: added an atomic JSON version ledger at data/versions/<gameId>.json within the configured storage
+root. Original data receives an approved base root; apply-patch and full runs retain parent hashes, numeric
+changes, rationale and available target/verdict summaries. Content hashes identify records; no-op/repeated
+content keeps the existing record rather than overwriting its provenance. Branches retain their shared parent.
+Version metadata is separate from immutable GameData files. Reused the existing atomic writer via files.js.
+Tests cover roots, branching, approval persistence/restart, retained base data and full-run parent/target data.
