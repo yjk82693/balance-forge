@@ -172,8 +172,8 @@
       "response": {
         "status": 201,
         "body": {
-          "roomId": "01d99464-d31e-41eb-9bfd-346c0a933f58",
-          "joinCode": "6KMJ",
+          "roomId": "5ccad4ac-29ad-4b65-8470-646a5ae31b8e",
+          "joinCode": "ZBZ6",
           "hostToken": "REDACTED_PRIVATE_HOST_TOKEN_00000000",
           "epoch": 1
         }
@@ -422,11 +422,11 @@
     },
     "replay": {
       "method": "GET",
-      "path": "/v1/replay/human-a0e5cd3a-e5e3-4c71-94cb-f0b3cd3d6144",
+      "path": "/v1/replay/human-973ed9ac-f285-44de-adc0-ffb05f437f54",
       "response": {
         "status": 200,
         "body": {
-          "matchId": "human-a0e5cd3a-e5e3-4c71-94cb-f0b3cd3d6144",
+          "matchId": "human-973ed9ac-f285-44de-adc0-ffb05f437f54",
           "seed": 1,
           "config": {
             "contractVersion": "0.1",
@@ -490,11 +490,11 @@
     },
     "views": {
       "method": "GET",
-      "path": "/v1/replay/human-a0e5cd3a-e5e3-4c71-94cb-f0b3cd3d6144/views?every=6",
+      "path": "/v1/replay/human-973ed9ac-f285-44de-adc0-ffb05f437f54/views?every=6",
       "response": {
         "status": 200,
         "body": {
-          "matchId": "human-a0e5cd3a-e5e3-4c71-94cb-f0b3cd3d6144",
+          "matchId": "human-973ed9ac-f285-44de-adc0-ffb05f437f54",
           "gameId": "hero_arena",
           "seed": 1,
           "sourceDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
@@ -707,8 +707,8 @@
               }
             ],
             "humanMatches": 1,
-            "elapsedMs": 142,
-            "createdAt": "2026-11-14T15:30:46.822Z"
+            "elapsedMs": 124,
+            "createdAt": "2026-11-14T15:43:57.192Z"
           },
           "evidence": {
             "missing": [
@@ -730,9 +730,9 @@
             ]
           },
           "humanMatches": 1,
-          "runId": "ae459fc7-a056-4dac-b8c6-4abfe065621b",
+          "runId": "8e81d074-d210-49df-8b02-f90740c074e9",
           "gameId": "hero_arena",
-          "elapsedMs": 165,
+          "elapsedMs": 144,
           "seatWins": {
             "baseline": 1,
             "holdout": null
@@ -798,8 +798,8 @@
               }
             ],
             "humanMatches": 1,
-            "elapsedMs": 768,
-            "createdAt": "2026-11-14T15:30:47.668Z"
+            "elapsedMs": 755,
+            "createdAt": "2026-11-14T15:43:58.016Z"
           },
           "evidence": {
             "missing": [
@@ -997,22 +997,38 @@
               {
                 "hero": "bari",
                 "role": "winner",
-                "path": "/moves/0/power",
+                "path": "/moves/1/power",
                 "direction": "down",
                 "sizePct": 30,
-                "why": "bari is too strong (43.3 points from 50% overall): lower melee, its most-used attack (62% of its attack uses across its matchups). Damage per move is not recorded yet, so the most-used attack stands in for the highest-damage move.",
+                "why": "bari is too strong (43.3 points from 50% overall): lower spirit_arrow, its own attack, no other hero has it (38% of its attack uses across its matchups). Damage per move is not recorded yet, so use counts stand in for the highest-damage move.",
                 "expected": "brings 4 of 4 matchups toward the band",
-                "scope": "overall"
+                "scope": "overall",
+                "alsoAffects": []
               },
               {
                 "hero": "bari",
                 "role": "winner",
-                "path": "/tuning/damageScalePermille",
+                "path": "/moves/0/power",
                 "direction": "down",
                 "sizePct": 30,
-                "why": "bari is off against nearly every opponent. This lever is global: it scales the damage of every hero, so use it only if no single move explains the gap.",
+                "why": "bari is too strong (43.3 points from 50% overall): lower melee, a attack shared with real_armor, sepia: this also changes them, so it ranks below the hero's own moves (62% of its attack uses across its matchups). Damage per move is not recorded yet, so use counts stand in for the highest-damage move.",
                 "expected": "brings 4 of 4 matchups toward the band",
-                "scope": "global"
+                "scope": "overall",
+                "alsoAffects": [
+                  "real_armor",
+                  "sepia"
+                ]
+              },
+              {
+                "hero": "daewi",
+                "role": "loser",
+                "path": "/moves/4/power",
+                "direction": "up",
+                "sizePct": 30,
+                "why": "daewi is too weak (-38.3 points from 50% overall): raise heavy_melee, its own attack, no other hero has it (49% of its attack uses across its matchups). Damage per move is not recorded yet, so use counts stand in for the highest-damage move.",
+                "expected": "brings 4 of 4 matchups toward the band",
+                "scope": "overall",
+                "alsoAffects": []
               },
               {
                 "hero": "daewi",
@@ -1020,19 +1036,13 @@
                 "path": "/moves/3/power",
                 "direction": "up",
                 "sizePct": 30,
-                "why": "daewi is too weak (-38.3 points from 50% overall): raise projectile, its most-used attack (51% of its attack uses across its matchups). Damage per move is not recorded yet, so the most-used attack stands in for the highest-damage move.",
+                "why": "daewi is too weak (-38.3 points from 50% overall): raise projectile, a attack shared with real_armor, sepia: this also changes them, so it ranks below the hero's own moves (51% of its attack uses across its matchups). Damage per move is not recorded yet, so use counts stand in for the highest-damage move.",
                 "expected": "brings 4 of 4 matchups toward the band",
-                "scope": "overall"
-              },
-              {
-                "hero": "daewi",
-                "role": "loser",
-                "path": "/tuning/damageScalePermille",
-                "direction": "up",
-                "sizePct": 30,
-                "why": "daewi is off against nearly every opponent. This lever is global: it scales the damage of every hero, so use it only if no single move explains the gap.",
-                "expected": "brings 4 of 4 matchups toward the band",
-                "scope": "global"
+                "scope": "overall",
+                "alsoAffects": [
+                  "real_armor",
+                  "sepia"
+                ]
               }
             ]
           },
@@ -1087,7 +1097,7 @@
                 "outlier": true
               }
             ],
-            "createdAt": "2026-11-14T15:30:47.668Z"
+            "createdAt": "2026-11-14T15:43:58.016Z"
           },
           "verdict": {
             "verdict": "inconclusive",
@@ -1118,9 +1128,9 @@
               }
             ]
           },
-          "runId": "41f28c13-af3f-4904-a8de-f294d601bef2",
+          "runId": "ad0a6503-00c5-48de-8dde-d329959ee921",
           "gameId": "hero_arena",
-          "elapsedMs": 9659,
+          "elapsedMs": 9043,
           "seatWins": {
             "baseline": 15,
             "holdout": 15
@@ -1422,7 +1432,7 @@
               "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "parentHash": null,
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:30:46.639Z",
+              "createdAt": "2026-11-14T15:43:57.033Z",
               "origin": "base",
               "changes": [],
               "rationale": "Original game data.",
@@ -1434,7 +1444,7 @@
               "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
               "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:30:56.482Z",
+              "createdAt": "2026-11-14T15:44:06.236Z",
               "origin": "fake",
               "changes": [
                 {
@@ -1509,7 +1519,7 @@
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
           "gameId": "hero_arena",
-          "createdAt": "2026-11-14T15:30:56.482Z",
+          "createdAt": "2026-11-14T15:44:06.236Z",
           "origin": "fake",
           "changes": [
             {
@@ -1590,7 +1600,7 @@
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
           "gameId": "hero_arena",
-          "createdAt": "2026-11-14T15:30:56.482Z",
+          "createdAt": "2026-11-14T15:44:06.236Z",
           "origin": "fake",
           "changes": [
             {
@@ -1678,8 +1688,8 @@
       "response": {
         "status": 200,
         "body": {
-          "resultsPath": "/v1/playtest/results/1bd869f2-3801-4885-aa94-c9e7fa091c37.json",
-          "elapsedMs": 153.45624999999927,
+          "resultsPath": "/v1/playtest/results/e88376c5-776f-4143-be14-586d9751b56b.json",
+          "elapsedMs": 143.53495900000053,
           "matchCount": 2,
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "recorded": true,
@@ -1689,12 +1699,12 @@
     },
     "results": {
       "method": "GET",
-      "path": "/v1/playtest/results/1bd869f2-3801-4885-aa94-c9e7fa091c37.json",
+      "path": "/v1/playtest/results/e88376c5-776f-4143-be14-586d9751b56b.json",
       "response": {
         "status": 200,
         "body": [
           {
-            "matchId": "bot-1bd869f2-3801-4885-aa94-c9e7fa091c37-run-1",
+            "matchId": "bot-e88376c5-776f-4143-be14-586d9751b56b-run-1",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -1778,7 +1788,7 @@
             "errorCode": ""
           },
           {
-            "matchId": "bot-1bd869f2-3801-4885-aa94-c9e7fa091c37-run-2",
+            "matchId": "bot-e88376c5-776f-4143-be14-586d9751b56b-run-2",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -1878,7 +1888,7 @@
               "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "parentHash": null,
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:30:46.639Z",
+              "createdAt": "2026-11-14T15:43:57.033Z",
               "origin": "base",
               "changes": [],
               "rationale": "Original game data.",
@@ -1890,7 +1900,7 @@
               "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
               "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "gameId": "hero_arena",
-              "createdAt": "2026-11-14T15:30:56.482Z",
+              "createdAt": "2026-11-14T15:44:06.236Z",
               "origin": "fake",
               "changes": [
                 {
@@ -1978,13 +1988,13 @@
       "room.join": {
         "protocolVersion": "0.1",
         "type": "room.join",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "19c63815-aeb5-40f9-975f-f434908089ff",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "7601975f-e81e-42e4-86ac-99d162ab566e",
         "requestId": "r2",
         "seq": 2,
         "epoch": 1,
         "payload": {
-          "joinCode": "YVAC",
+          "joinCode": "PYWK",
           "name": "Two",
           "hero": "real_armor"
         }
@@ -1992,8 +2002,8 @@
       "game.select": {
         "protocolVersion": "0.1",
         "type": "game.select",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r4",
         "seq": 4,
         "epoch": 1,
@@ -2005,8 +2015,8 @@
       "ping": {
         "protocolVersion": "0.1",
         "type": "ping",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r5",
         "seq": 5,
         "epoch": 1,
@@ -2015,8 +2025,8 @@
       "match.start": {
         "protocolVersion": "0.1",
         "type": "match.start",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r6",
         "seq": 6,
         "epoch": 1,
@@ -2029,20 +2039,20 @@
         "protocolVersion": "0.1",
         "type": "reconnect",
         "roomId": "",
-        "sessionId": "419c65be-31e1-4daf-adc3-1d0032615b0c",
+        "sessionId": "e30a00af-c4d5-4106-af7d-a3fb9f8bc0c9",
         "requestId": "r1",
         "seq": 1,
         "epoch": 1,
         "payload": {
-          "joinCode": "YVAC",
+          "joinCode": "PYWK",
           "seatToken": "REDACTED_PRIVATE_SEAT_TOKEN_00000000"
         }
       },
       "input.submit": {
         "protocolVersion": "0.1",
         "type": "input.submit",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r12",
         "seq": 12,
         "epoch": 2,
@@ -2061,10 +2071,10 @@
       "match.reset": {
         "protocolVersion": "0.1",
         "type": "match.reset",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
-        "requestId": "r113",
-        "seq": 113,
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
+        "requestId": "r109",
+        "seq": 109,
         "epoch": 2,
         "payload": {}
       },
@@ -2072,7 +2082,7 @@
         "protocolVersion": "0.1",
         "type": "room.create",
         "roomId": "",
-        "sessionId": "a060ca77-db22-45c2-b95c-cbc9f9438337",
+        "sessionId": "fd940a9b-4e95-4bad-8a6f-6d52094bac8f",
         "requestId": "r1",
         "seq": 1,
         "epoch": 1,
@@ -2085,13 +2095,13 @@
       "room.status": {
         "protocolVersion": "0.1",
         "type": "room.status",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "19c63815-aeb5-40f9-975f-f434908089ff",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "7601975f-e81e-42e4-86ac-99d162ab566e",
         "requestId": "r2",
         "seq": 2,
         "epoch": 1,
         "payload": {
-          "joinCode": "YVAC",
+          "joinCode": "PYWK",
           "phase": "lobby",
           "gameId": "hero_arena",
           "playableHeroes": [
@@ -2122,8 +2132,8 @@
       "pong": {
         "protocolVersion": "0.1",
         "type": "pong",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r5",
         "seq": 5,
         "epoch": 1,
@@ -2132,8 +2142,8 @@
       "match.started": {
         "protocolVersion": "0.1",
         "type": "match.started",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r6",
         "seq": 7,
         "epoch": 2,
@@ -2163,8 +2173,8 @@
       "input.ack": {
         "protocolVersion": "0.1",
         "type": "input.ack",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "r12",
         "seq": 0,
         "epoch": 2,
@@ -2177,8 +2187,8 @@
       "state.view": {
         "protocolVersion": "0.1",
         "type": "state.view",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "",
         "seq": 12,
         "epoch": 2,
@@ -2262,8 +2272,8 @@
       "actions.available": {
         "protocolVersion": "0.1",
         "type": "actions.available",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "",
         "seq": 13,
         "epoch": 2,
@@ -2378,14 +2388,14 @@
       "match.ended": {
         "protocolVersion": "0.1",
         "type": "match.ended",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "",
         "seq": 16,
         "epoch": 2,
         "payload": {
           "result": {
-            "matchId": "human-a0e5cd3a-e5e3-4c71-94cb-f0b3cd3d6144",
+            "matchId": "human-973ed9ac-f285-44de-adc0-ffb05f437f54",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -2471,34 +2481,34 @@
       "error": {
         "protocolVersion": "0.1",
         "type": "error",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
-        "requestId": "r114",
-        "seq": 113,
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
+        "requestId": "r110",
+        "seq": 109,
         "epoch": 3,
         "payload": {
           "code": "INVALID_SCHEMA",
           "message": "Invalid message shape or parameter. Check actions.available for the current action domain.",
-          "requestId": "r114",
+          "requestId": "r110",
           "retryable": false
         }
       },
       "playtest.progress": {
         "protocolVersion": "0.1",
         "type": "playtest.progress",
-        "roomId": "b4f94bc0-6a63-4bad-b55c-6983b4ed03f3",
-        "sessionId": "d61567b2-4fc2-4ff9-91fa-71b97a67b404",
+        "roomId": "e0197044-547a-48ea-be22-d91713039eb7",
+        "sessionId": "dd938f29-31cd-4a06-9c62-94ff277e61dd",
         "requestId": "",
-        "seq": 116,
+        "seq": 112,
         "epoch": 3,
         "payload": {
-          "runId": "1bd869f2-3801-4885-aa94-c9e7fa091c37",
+          "runId": "e88376c5-776f-4143-be14-586d9751b56b",
           "gameId": "hero_arena",
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "matchesDone": 2,
           "totalMatches": 2,
           "seatWins": 1,
-          "elapsedMs": 153,
+          "elapsedMs": 143,
           "matchups": [
             {
               "matchup": "bari vs real_armor",

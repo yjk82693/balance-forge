@@ -626,11 +626,13 @@ patch is proposed: 3 + 3 other matchups for five heroes, `pairs` seeds each (see
 the baseline or holdout seeds), streamed as `playtest.progress` with `phase: "diagnose"`. The body gets `diagnosis`:
 `{focusHero, matchup, heroes: [{hero, overall, opponents: [{opponent, rate, ci95, games}], strength: {role,
 overallRate, marginPts, opponentsOutsideBand, worstOpponent}}], classification, recommendations: [{hero, role, path,
-direction, sizePct, why, expected, scope}]}`. `classification` is `overall_strong` (the winner beats most other
-heroes: nerf it), `overall_weak` (the loser loses to most: buff it) or `counter_specific` (only this pairing is off:
-change the interaction). The adapter receives the diagnosis as context (aggregate numbers only); the patch it
-proposes still goes through validation and the holdout. Without the flag, on a fair stop, or if it cannot be built,
-`diagnosis` is null. Captured: http.fullPair.
+direction, sizePct, why, expected, scope, alsoAffects}]}`. `classification` is `overall_strong` (the winner beats
+most other heroes: nerf it), `overall_weak` (the loser loses to most: buff it) or `counter_specific` (only this
+pairing is off: change the interaction). The adapter receives the diagnosis as context (aggregate numbers only); the
+patch it proposes still goes through validation and the holdout. Without the flag, on a fair stop, or if it cannot
+be built, `diagnosis` is null. Moves are shared between heroes, so a hero's own moves are recommended first and a
+shared move carries `alsoAffects` (the other heroes it would change) and ranks lower; there is no global lever.
+Captured: http.fullPair.
 
 Fair matchups stop early: when the baseline has no outlier for the tested matchup (95% interval wholly outside 45-55%
 with at least 30 games; mirror rows do not count), the response has `fair: true`, `proposal: null`,
