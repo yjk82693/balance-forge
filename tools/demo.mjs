@@ -107,6 +107,15 @@ async function printUrls(mode) {
 
 buildWebIfStale();
 
+// A server left running on the port would answer the health check and the demo would show its
+// old code instead of this checkout, so refuse to start rather than reuse it.
+try {
+  await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1000) });
+  console.error(`port ${port} is already in use by another server. Stop it first, or run with PORT=<other port>.`);
+  console.error(`  find it: lsof -nP -iTCP:${port} -sTCP:LISTEN`);
+  process.exit(1);
+} catch {}
+
 let live = null;
 if (!forceRecorded) {
   live = startLive();
