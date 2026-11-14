@@ -8,7 +8,7 @@ import { rangeNote } from "../lib/statPaths";
 import { HeroProfile } from "./HeroProfile";
 import { summaryText, type Rate, type ResultFacts } from "../lib/resultCard";
 
-const rateLine = (r: Rate) => (
+export const rateLine = (r: Rate) => (
   <>
     <strong>{pct(r.rate)}%</strong>
     <span className="caption">
@@ -40,7 +40,7 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-function CopyButton({ facts }: { facts: ResultFacts }) {
+export function CopyButton({ facts }: { facts: ResultFacts }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
   const copy = async () => {
     setState((await copyText(summaryText(facts))) ? "done" : "failed");
@@ -73,7 +73,7 @@ function PatchLine({ p }: { p: ResultFacts["patch"][number] }) {
   );
 }
 
-function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
+export function PatchColumn({ patch, fallbackNote }: { patch: ResultFacts["patch"]; fallbackNote?: string | null }) {
   return (
     <div>
       <p className="caption">AI patch</p>
@@ -81,6 +81,12 @@ function PatchColumn({ patch }: { patch: ResultFacts["patch"] }) {
       {patch.map((p) => (
         <PatchLine key={p.path} p={p} />
       ))}
+      {fallbackNote && (
+        <p className="status warn fallback-note" role="status">
+          <span className="dot" />
+          {fallbackNote}
+        </p>
+      )}
       {patch[0]?.rationale && <p className="caption result-why">{patch[0].rationale}</p>}
     </div>
   );
@@ -115,7 +121,7 @@ function BeforeAfterBar({ target }: { target: VerdictTarget }) {
 }
 
 /** One row per target: the matchup, the small before to after bar, the numbers and an outcome chip. */
-function TargetRows({ targets }: { targets: VerdictTarget[] }) {
+export function TargetRows({ targets }: { targets: VerdictTarget[] }) {
   return (
     <ul className="target-rows" aria-label="Targets, before and after the patch">
       {targets.map((t) => (
@@ -132,7 +138,7 @@ function TargetRows({ targets }: { targets: VerdictTarget[] }) {
   );
 }
 
-function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verdict">) {
+export function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verdict">) {
   return (
     <div>
       <p className="caption">Holdout on the patched data</p>
@@ -160,6 +166,23 @@ interface CardProps {
   title?: string;
   /** extra lines under the header, e.g. what a version was compared with */
   children?: ReactNode;
+}
+
+/** Other matchups of the recorded roster report that stand out, labelled recorded. */
+export function OthersColumn({ others, note }: { others: NonNullable<ResultFacts["others"]>; note: string | null }) {
+  return (
+    <div>
+      <p className="caption">
+        Other findings <span className="badge recorded">recorded</span>
+      </p>
+      {others.map((o) => (
+        <p key={o.matchup} className="result-line">
+          {o.matchup} · {o.side} {rateLine(o)}
+        </p>
+      ))}
+      {others.length === 0 && <p className="small text-2">{note ?? "No recorded roster report."}</p>}
+    </div>
+  );
 }
 
 export function ResultCard({ facts, title = "Result", children }: CardProps) {
@@ -201,19 +224,7 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
         </div>
         {!fair && <PatchColumn patch={patch} />}
         {!fair && <HoldoutColumn holdout={holdout} verdict={verdict} />}
-        {others && (
-          <div>
-            <p className="caption">
-              Other findings <span className="badge recorded">recorded</span>
-            </p>
-            {others.map((o) => (
-              <p key={o.matchup} className="result-line">
-                {o.matchup} · {o.side} {rateLine(o)}
-              </p>
-            ))}
-            {others.length === 0 && <p className="small text-2">{othersNote ?? "No recorded roster report."}</p>}
-          </div>
-        )}
+        {others && <OthersColumn others={others} note={othersNote} />}
       </div>
       {!fair && verdict && verdict.targets.length > 0 && <TargetRows targets={verdict.targets} />}
       {facts.diagnosis && <HeroProfile diagnosis={facts.diagnosis} patchPaths={facts.patchPaths} />}

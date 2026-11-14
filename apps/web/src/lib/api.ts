@@ -25,6 +25,8 @@ export interface Proposal {
   /** optional: field-level old -> new values; without it the UI shows the new values only */
   changes?: Change[];
   origin: PatchOrigin;
+  /** why the model's answer was not used, when origin is "fallback" */
+  fallbackReason?: string;
   validation: { ok: boolean; errors: string[] };
 }
 

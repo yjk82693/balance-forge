@@ -213,6 +213,7 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
     patchPaths: v.changes.map((c) => c.path),
     outlier: t ? { ...asRate(t.matchup, t.before), isOutlier: true } : null,
     evidence: null,
+    fallbackNote: null,
     patch: v.changes.map((c) => ({
       field: c.label ?? describePath(c.path),
       path: c.path,
