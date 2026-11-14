@@ -129,10 +129,14 @@ export async function runPlaytest(
   return (await runFullPlaytest(signal)) ?? runRealPlaytest(matches, signal);
 }
 
+/** Pairs per seat assignment for the live run: Bari vs Real Armor, 400 matches, over the 200-game verdict gate. */
+export const FULL_RUN_PAIRS = 100;
+
 /**
- * POST /v1/playtest/full {gameId, roster: true}: baseline run, proposal, validation, holdout run on the patched data
- * and a verdict, in one request (progress streams over /ws meanwhile). Returns null when the server has no such
- * endpoint (404/405), so the caller can fall back to the plain bot run.
+ * POST /v1/playtest/full {gameId, pairs}: baseline run (no roster: Bari vs Real Armor only, about 10 s), proposal,
+ * validation, holdout run on the patched data and a verdict, in one request (progress streams over /ws meanwhile).
+ * The all-matchups table is not part of this run; it comes from the recorded roster report. Returns null when the
+ * server has no such endpoint (404/405), so the caller can fall back to the plain bot run.
  */
 async function runFullPlaytest(signal?: AbortSignal): Promise<PlaytestRun | null> {
   let res: Response;
@@ -140,7 +144,7 @@ async function runFullPlaytest(signal?: AbortSignal): Promise<PlaytestRun | null
     res = await fetch("/v1/playtest/full", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId: "hero_arena", roster: true }),
+      body: JSON.stringify({ gameId: "hero_arena", pairs: FULL_RUN_PAIRS }),
       signal,
     });
   } catch (e) {
