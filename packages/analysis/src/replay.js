@@ -21,9 +21,13 @@ export function applyPatchToData(data, proposal, { hashData, rootData = data } =
   const out = structuredClone(data);
   for (const { path, value } of proposal.replacements) {
     const stat = /^\/characters\/(\d+)\/(health|speed)$/.exec(path);
+    const card = /^\/gameRules\/cards\/(\d+)\/(cost|power)$/.exec(path);
     if (path === '/tuning/damageScalePermille') {
       if (!out.tuning) fail('PATCH_PATH_MISSING', 'data has no tuning section');
       out.tuning.damageScalePermille = value;
+    } else if (card) {
+      if (!out.gameRules?.cards?.[Number(card[1])]) fail('PATCH_PATH_MISSING', `data has no card ${card[1]}`);
+      out.gameRules.cards[Number(card[1])][card[2]] = value;
     } else if (stat) {
       if (!out.characters?.[Number(stat[1])]) fail('PATCH_PATH_MISSING', `data has no character ${stat[1]}`);
       out.characters[Number(stat[1])][stat[2]] = value;

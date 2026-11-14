@@ -1,10 +1,14 @@
 // PatchProposal validator. Data only: allowlisted paths, bounded integers, max 8, pinned base hash.
-// Contract v0.1.2 adds hero stats: /characters/N/health and /characters/N/speed, which must also stay within 40% of the
-// ROOT data value (options.rootData). Without rootData only the absolute bounds can be checked.
+// Contract v0.1.4 adds Hero Cards: /gameRules/cards/N/cost (1..3) and /gameRules/cards/N/power (1..10, not on a
+// peek card). Contract v0.1.2 adds hero stats: /characters/N/health and /characters/N/speed, which must also
+// stay within 40% of the ROOT data value (options.rootData). Without rootData only the absolute bounds can be
+// checked.
 export const MAX_REPLACEMENTS = 8;
 const HASH_RE = /^[0-9a-f]{64}$/;
 const MOVE_POWER_RE = /^\/moves\/(0|[1-9][0-9]*)\/power$/;
 const HERO_STAT_RE = /^\/characters\/(0|[1-9][0-9]*)\/(health|speed)$/;
+const CARD_RE = /^\/gameRules\/cards\/(0|[1-9][0-9]*)\/(cost|power)$/;
+const CARD_BOUNDS = { cost: [1, 3], power: [1, 10] }; // contract v0.1.4: Hero Cards cost and power
 const DAMAGE_PATH = '/tuning/damageScalePermille';
 const HERO_STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] };
 
@@ -17,6 +21,8 @@ export function boundsFor(path) {
   if (MOVE_POWER_RE.test(path)) return [0, 10000];
   const stat = HERO_STAT_RE.exec(path);
   if (stat) return HERO_STAT_BOUNDS[stat[2]];
+  const card = CARD_RE.exec(path);
+  if (card) return CARD_BOUNDS[card[2]];
   return null;
 }
 
@@ -70,6 +76,13 @@ function validatePatchUnsafe(proposal, options) {
       const m = MOVE_POWER_RE.exec(r.path);
       if (m && options.moveCount !== undefined && Number(m[1]) >= options.moveCount) {
         errors.push(`${at}: move index out of range`);
+      }
+      const card = CARD_RE.exec(r.path);
+      const cards = options.rootData?.gameRules?.cards;
+      if (card && cards) {
+        const root = cards[Number(card[1])];
+        if (!root) errors.push(`${at}: card index out of range`);
+        else if (card[2] === 'power' && root.kind === 'peek') errors.push(`${at}: this card has no power to change`);
       }
       const stat = HERO_STAT_RE.exec(r.path);
       if (stat && options.rootData) {

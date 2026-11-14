@@ -11,7 +11,7 @@ export const DEFAULT_GEMINI_MODEL = 'gemini-flash-lite-latest';
 export const RETRIES = 1;
 
 export const PATH_PATTERN = '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|'
-  + 'characters/(0|[1-9][0-9]*)/(health|speed))$';
+  + 'characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power))$';
 
 /** JSON Schema for PatchProposal (spec/contract-v0.1.md plus the v0.1.2 hero stat paths). */
 export const PATCH_JSON_SCHEMA = {
@@ -81,6 +81,23 @@ function heroStats(rootData) {
     speed: { original: c.speed, allowed: range(c.speed, boundsFor('/characters/0/speed')) } }));
 }
 
+/** Hero Cards: the card table (index, kind, cost, power) and the measured levers, aggregate numbers only. */
+function cardContext(rootData, diagnosis) {
+  const cards = rootData.gameRules.cards.map((c, index) => ({ index, id: c.id, kind: c.kind, cost: c.cost,
+    power: c.power, ...(c.kind === 'peek' ? { power_fixed: true } : {}) }));
+  const lines = ['Hero Cards: the matchup is deck against deck. Cards (index = the N in the paths): '
+    + JSON.stringify(cards) + '. Cost 1..3, power 1..10; a peek card has no power to change.'];
+  if (diagnosis?.kind === 'cards') {
+    lines.push('Measured levers: each was run on fresh seeds against the unchanged data. effect is the change in the '
+      + `win rate of ${diagnosis.focalDeck} (points of 1.0), "up"/"down" says which way the rate must move. Choose `
+      + 'from these levers (at most 3 changes), do not guess: ' + JSON.stringify({ matchup: diagnosis.matchup,
+        focalRate: diagnosis.focalRate, target: diagnosis.target, direction: diagnosis.direction,
+        levers: diagnosis.levers.map(({ path, cardId, field, from, to, effect, significant }) => ({ path, cardId, field,
+          from, to, effect, significant })) }));
+  }
+  return lines;
+}
+
 export function buildPrompt(report, context = {}) {
   assertReport(report);
   const rows = report.rows
@@ -96,7 +113,12 @@ export function buildPrompt(report, context = {}) {
       max: boundsFor('/characters/0/health')[1], hero_only: true },
     { path: '/characters/<N>/speed', min: boundsFor('/characters/0/speed')[0],
       max: boundsFor('/characters/0/speed')[1], hero_only: true },
+    { path: '/gameRules/cards/<N>/cost', min: boundsFor('/gameRules/cards/0/cost')[0],
+      max: boundsFor('/gameRules/cards/0/cost')[1], cards_only: true },
+    { path: '/gameRules/cards/<N>/power', min: boundsFor('/gameRules/cards/0/power')[0],
+      max: boundsFor('/gameRules/cards/0/power')[1], cards_only: true },
   ];
+  const isCards = Boolean(context.rootData?.gameRules?.cards);
   return [
     'You tune a multiplayer game. Below are aggregate bot-playtest results (win rate of the first-named side).',
     hasTargets ? 'Each row has a target (the designer\'s intended win rate of the first-named side) and deltaToTarget. '
@@ -104,13 +126,14 @@ export function buildPrompt(report, context = {}) {
       : 'Propose a small numeric patch that moves one-sided matchups toward 50%.',
     'Reply with JSON only: {"baseDataHash", "replacements": [{"path","value"}], "rationale"}.',
     `At most ${MAX_REPLACEMENTS} replacements, integer values only.`,
-    'Use only these paths: ' + JSON.stringify(allowed),
-    ...(context.rootData?.characters ? [
+    'Use only these paths: ' + JSON.stringify(allowed.filter((a) => Boolean(a.cards_only) === isCards)),
+    ...(isCards ? cardContext(context.rootData, context.diagnosis) : []),
+    ...(context.rootData?.characters?.length ? [
       'Hero stats may move at most 40% from the original value (health and speed belong to one hero only). Heroes: '
       + JSON.stringify(heroStats(context.rootData))] : []),
     `baseDataHash must be exactly: ${report.dataHash}`,
     'Rows: ' + JSON.stringify(rows),
-    ...(context.diagnosis ? [
+    ...(context.diagnosis && context.diagnosis.kind !== 'cards' ? [
       'Diagnosis of the flagged matchup (both heroes against the other heroes; win rate of each hero, direction "up"'
       + ' raises the number, "down" lowers it, sizePct is a suggested relative change). Prefer the first'
       + ' recommendation unless the rows contradict it:',

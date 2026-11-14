@@ -5,6 +5,8 @@
 import { addHumanRows } from '../src/human.js';
 import { buildDiagnosis, diagnosisMatchups, focusMatchupOf, heroOverallRows } from '../src/diagnose.js';
 import { buildEvidence } from '../src/evidence.js';
+import { buildCardDiagnosis, cardVariants } from '../src/card-diagnose.js';
+import { targetFor } from '../src/intent.js';
 import { heroMatchup } from '../src/group.js';
 import { isMirror } from '../src/verdict.js';
 import { HUMAN_PREFIX, withExtras } from '../src/extras.js';
@@ -14,11 +16,18 @@ import { assertMatchResults } from '../src/input-check.js';
 import { analyzePhase, proposeStep, verifyStep } from './pipeline.js';
 
 const MOVE_POWER = /^\/moves\/(\d+)\/power$/;
+const CARD_FIELD = /^\/gameRules\/cards\/(\d+)\/(cost|power)$/;
 const HERO_STAT = /^\/characters\/(\d+)\/(health|speed)$/;
 const titleCase = (id) => String(id).split('_').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
 
 /** Old value and a readable label for one replacement, read from the data the patch is based on. */
 function describeChange(baseData, { path, value }) {
+  const cardField = CARD_FIELD.exec(path);
+  if (cardField) {
+    const card = baseData.gameRules?.cards?.[Number(cardField[1])];
+    return { path, label: `${titleCase(card?.id ?? `Card ${cardField[1]}`)} · ${titleCase(cardField[2])}`,
+      old: card?.[cardField[2]], new: value };
+  }
   const stat = HERO_STAT.exec(path);
   if (stat) {
     const hero = baseData.characters?.[Number(stat[1])];
@@ -109,9 +118,49 @@ function fairBody(baseline, evidence, holdoutSeedSetId, extra = {}) {
  * Diagnosis for the focus matchup: the focus heroes against every other hero, run by the injected `runDiagnose`
  * (matchups, seeds) on fresh seeds. Returns { value } or { error }; a failed diagnosis never stops the run.
  */
+/**
+ * Hero Cards: the card levers of the focus deck matchup, each probed by the injected `runCardProbe(variants, seeds)`,
+ * which resolves [{ variant, results }] with variant null for the unchanged data (all on the same fresh seeds).
+ */
+async function cardDiagnoseStep(input, baseline) {
+  const { baselineResults, baseData, holdoutSeeds, diagnoseSeeds, runCardProbe } = input;
+  const matchup = focusMatchupOf(baseline);
+  if (!matchup || typeof runCardProbe !== 'function') return { value: null };
+  if (!Array.isArray(diagnoseSeeds) || diagnoseSeeds.length === 0 || !diagnoseSeeds.every(Number.isInteger)) {
+    fail('INVALID_INPUT', 'diagnoseSeeds must be a non-empty array of integers');
+  }
+  const taken = new Set([...baselineResults.map((r) => r.config.seed), ...holdoutSeeds]);
+  if (diagnoseSeeds.some((seed) => taken.has(seed))) {
+    fail('INVALID_INPUT', 'diagnose seeds must not overlap other seeds');
+  }
+  let probes;
+  try {
+    probes = await runCardProbe(cardVariants(baseData, matchup.split(' vs ')), [...diagnoseSeeds]);
+  } catch (e) {
+    return fail('SIMULATION_FAILED', `the card probe run failed: ${String(e?.message ?? e).slice(0, 120)}`);
+  }
+  for (const probe of probes) assertMatchResults(probe.results, 'card probe results');
+  const unchanged = probes.find((p) => p.variant === null);
+  if (unchanged?.results.some((r) => r.config.dataHash !== baseline.dataHash)) {
+    fail('DATA_HASH_MISMATCH', 'the unchanged probe is not pinned to the baseline data');
+  }
+  const row = baseline.rows.find((r) => r.dimension === matchup);
+  const own = baselineResults.filter((r) => heroMatchup(r)?.dimension === matchup);
+  const built = (() => {
+    try {
+      return { value: buildCardDiagnosis({ matchup, baselineRate: row?.winRate, baselineResults: own, probes,
+        target: row?.target ?? targetFor(matchup, input.intent) }) };
+    } catch (e) {
+      return { error: { code: e?.code ?? 'INTERNAL', message: String(e?.message ?? e).slice(0, 120) } };
+    }
+  })();
+  return built;
+}
+
 async function diagnoseStep(input, baseline) {
   const { baselineResults, baseData, holdoutSeeds, diagnoseSeeds, runDiagnose } = input;
   if (input.diagnosis) return { value: input.diagnosis };
+  if (baseData.gameRules?.cards?.length) return cardDiagnoseStep(input, baseline);
   if (typeof runDiagnose !== 'function') return { value: null };
   const matchup = focusMatchupOf(baseline);
   const heroIds = (baseData.characters ?? []).map((c) => c.id);

@@ -2,7 +2,7 @@ import { Worker } from 'node:worker_threads';
 import { performance } from 'node:perf_hooks';
 import { availableParallelism } from 'node:os';
 import { validate } from '../../packages/contracts/index.js';
-import { botPolicyVersion } from './match.js';
+import { scriptedVersionOf } from './match.js';
 import { learnedBot } from './learn/load.js';
 export { pairedJobs, runMatch, rosterJobs, botPolicies } from './match.js';
 function addMatch(groups, result) {
@@ -122,7 +122,8 @@ export async function runBatch(jobs, {
         elapsedMs,
         matchesPerSecond: results.length * 1000 / elapsedMs,
         includesWorkerStartup: true,
-        botPolicyVersion: jobs[0].botPolicy === 'learned' ? learnedBot().botPolicyVersion : botPolicyVersion,
+        botPolicyVersion: jobs[0].botPolicy === 'learned' ? learnedBot().botPolicyVersion :
+          scriptedVersionOf(jobs[0].config.gameId),
         botPolicy: jobs[0].botPolicy ?? 'scripted',
         seedSetId: 'explicit-paired-seeds',
         seeds: [...new Set(jobs.map(j => j.config.seed))]
