@@ -142,7 +142,9 @@ export async function fullPlaytest(server, body) {
   if (typeof pipeline.runFull !== 'function') throw Error('TRANSPORT_UNAVAILABLE');
   const runId = randomUUID(),
     pairs = body.pairs ?? 50,
-    holdoutPairs = body.holdoutPairs ?? 50;
+    // The holdout is as big as the baseline unless asked otherwise: the verdict needs 200 games per target, and a
+    // smaller holdout (the old default of 50 pairs against a 100-pair request) can only ever be inconclusive.
+    holdoutPairs = body.holdoutPairs ?? pairs;
   const seeds = Array.from({
     length: pairs
   }, (_, index) => index + 1);

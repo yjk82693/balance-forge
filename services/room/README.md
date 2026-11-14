@@ -599,7 +599,8 @@ curl -sS -H 'content-type: application/json' \
   -d '{"gameId":"hero_arena","roster":true,"pairs":50,"holdoutPairs":50}' "$BASE/v1/playtest/full"
 ```
 
-pairs and holdoutPairs default to 50; roster defaults to false. The response contains runId, gameId, elapsedMs,
+pairs defaults to 50 and holdoutPairs defaults to pairs (a 100-pair request gets 200 holdout games, which the verdict
+needs per target); roster defaults to false. The response contains runId, gameId, elapsedMs,
 botPolicyVersion, seedSetId, holdoutSeedSetId, baseline Report, proposal with origin/changes, validation, patched
 Report/dataHash, verdict and humanMatches. The verdict is `{verdict, reasons, targets}`: `targets` is
 `[{matchup, before:{rate,ci95,games}, after:{rate,ci95,games}, outcome:'improved'|'unchanged'|'worse'}]`, one entry

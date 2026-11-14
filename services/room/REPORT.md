@@ -716,3 +716,7 @@ Auto runs: the result has `needs_designer` (heroes the numbers could not fix, wi
 validated, never a version record) and the stop reason `needs_designer`. The run output is stored as
 playtests/<runId>-auto.json and served by GET /v1/playtest/results/<runId>-auto.json (the -diagnose files too). Up
 to three candidates per round.
+
+Holdout size: holdoutPairs now defaults to pairs (it was 50). A live run with pairs 100 had 200 baseline games but
+only 100 holdout games, and the verdict needs 200 per target, so it was inconclusive; the reason now reads
+"<matchup>: holdout has 100 games; 200 needed". Test in full.test.js.
