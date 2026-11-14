@@ -40,6 +40,10 @@ export interface ResultFacts {
   source: "live run" | "recorded" | "sample data";
   sourceDetail: string;
   outlier: (Rate & { isOutlier: boolean }) | null;
+  /** the matchup is fair: there is no patch, holdout or verdict, and the card says so */
+  fair: boolean;
+  /** how this run was made, when that needs saying (e.g. the server ignored the chosen matchup) */
+  note?: string;
   /** one line of evidence for the outlier, from the run's `evidence`; null when the run has none */
   evidence: string | null;
   patch: PatchFact[];
@@ -99,9 +103,11 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
   const lead = target ? rateOf(target.row.dimension, run.baseline.rows) : null;
   return {
     ...sourceOf(run),
+    fair: !!run.fair,
+    note: run.note,
     outlier: lead ? { ...lead, isOutlier: !!target?.outlier } : null,
     evidence: evidenceLine(run.evidence, target?.row.dimension),
-    patch: run.proposal
+    patch: run.proposal && !run.fair
       ? changes.slice(0, 3).map((c) => ({
           field: c.label ?? describePath(c.path),
           old: c.old,
@@ -112,8 +118,8 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
           errors: run.proposal!.validation.errors,
         }))
       : [],
-    holdout: target && run.patched ? rateOf(target.row.dimension, run.patched.rows) : null,
-    verdict: run.verdict
+    holdout: target && run.patched && !run.fair ? rateOf(target.row.dimension, run.patched.rows) : null,
+    verdict: run.verdict && !run.fair
       ? { kind: run.verdict.verdict, label: VERDICT_COPY[run.verdict.verdict].label, reasons: run.verdict.reasons }
       : null,
     ...findingsFrom(roster, target?.row.dimension),
@@ -156,11 +162,14 @@ const rateText = (r: Rate) => `${pct(r.rate)}% (95% CI ${pct(r.lo)}–${pct(r.hi
 export function summaryText(f: ResultFacts): string {
   const lines = ["Balance check: Hero Arena", `Source: ${f.source}${f.sourceDetail ? ` · ${f.sourceDetail}` : ""}`];
   if (f.source === "sample data") lines.push("These are sample numbers, not a real run.");
-  if (f.outlier) {
+  if (f.fair && f.outlier) {
+    lines.push(`Result: Fair, no patch needed. ${f.outlier.matchup}, first hero wins ${rateText(f.outlier)}`);
+  } else if (f.outlier) {
     const verb = f.outlier.isOutlier ? "Outlier" : "Most lopsided matchup (within the normal range)";
     lines.push(`${verb}: ${f.outlier.matchup}, first hero wins ${rateText(f.outlier)}`);
     if (f.evidence) lines.push(`Evidence: ${f.evidence}`);
   } else lines.push("Outlier: none, too few games per matchup.");
+  if (f.note) lines.push(`Note: ${f.note}`);
   for (const p of f.patch) {
     const change = `${p.field} ${p.old ?? "?"} -> ${p.next}`;
     lines.push(`Patch (${p.origin}): ${change}. ${p.rationale}`.trim());

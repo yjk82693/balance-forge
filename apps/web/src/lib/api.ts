@@ -44,6 +44,10 @@ export interface PlaytestRun {
   runId?: string;
   /** GET /v1/replay/:matchId for one finished bot match: the stored seed and accepted inputs, not views */
   replay?: ReplayInfo;
+  /** the server said the matchup is fair (`fair: true`): no patch, no holdout, no verdict */
+  fair?: boolean;
+  /** something to tell the viewer about how this run was made (e.g. the server ignored the chosen matchup) */
+  note?: string;
   /** client-side flag: data came from fixtures (?mock=1), not from a run */
   sample?: boolean;
 }
@@ -134,6 +138,7 @@ export async function runPlaytest(
   matches = 1000,
   signal?: AbortSignal,
   onProgress?: (p: ProgressMsg) => void,
+  heroes?: [string, string],
 ): Promise<PlaytestRun> {
   if (isMockMode()) {
     // Baseline run, then the holdout run on the patched data, like the real /full endpoint.
@@ -156,7 +161,7 @@ export async function runPlaytest(
         : undefined,
     };
   }
-  return (await runFullPlaytest(signal)) ?? runRealPlaytest(matches, signal);
+  return (await runFullPlaytest(signal, heroes)) ?? runRealPlaytest(matches, signal);
 }
 
 /** Pairs per seat assignment for the live run: Bari vs Real Armor, 400 matches, over the 200-game verdict gate. */
@@ -168,24 +173,33 @@ export const FULL_RUN_PAIRS = 100;
  * The all-matchups table is not part of this run; it comes from the recorded roster report. Returns null when the
  * server has no such endpoint (404/405), so the caller can fall back to the plain bot run.
  */
-async function runFullPlaytest(signal?: AbortSignal): Promise<PlaytestRun | null> {
-  let res: Response;
-  try {
-    res = await fetch("/v1/playtest/full", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ gameId: "hero_arena", pairs: FULL_RUN_PAIRS }),
-      signal,
-    });
-  } catch (e) {
-    if ((e as Error).name === "AbortError") throw e;
-    throw new ApiError("Couldn't reach the server.", "network");
-  }
+async function runFullPlaytest(signal?: AbortSignal, heroes?: [string, string]): Promise<PlaytestRun | null> {
+  const post = async (withHeroes: boolean) => {
+    try {
+      return await fetch("/v1/playtest/full", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId: "hero_arena",
+          ...(withHeroes && heroes ? { heroes } : {}),
+          pairs: FULL_RUN_PAIRS,
+        }),
+        signal,
+      });
+    } catch (e) {
+      if ((e as Error).name === "AbortError") throw e;
+      throw new ApiError("Couldn't reach the server.", "network");
+    }
+  };
+  let res = await post(true);
+  // A server that does not know `heroes` yet answers 400: ask again without it, and say the matchup was not honoured.
+  const ignoredHeroes = res.status === 400 && !!heroes;
+  if (ignoredHeroes) res = await post(false);
   if (res.status === 404 || res.status === 405) return null;
   if (!res.ok) return failFrom(res);
   const run = runFromFull(await readJson<unknown>(res, "run reply"));
   if (!run) throw new ApiError("The server's reply had no report.", "shape");
-  return run;
+  return ignoredHeroes ? { ...run, note: "This server can't pick a matchup yet, so it ran its default one." } : run;
 }
 
 function playMockPhase(
