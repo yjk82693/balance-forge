@@ -2501,3 +2501,13 @@ button.intent-btn { cursor: pointer; }
 .viz-action { grid-column: 1 / -1; padding: 0 0 8px; }
 .viz-action .intent-chips { margin-top: 0; }
 .viz-action .intent-chip { min-height: 40px; padding: 0 12px; }
+.sink-chip { white-space: nowrap; }
+.sink-chip.warn { background: var(--warning-tint); color: var(--warning); }
+.trend { margin: 24px 0 0; }
+.trend svg { width: 100%; max-width: 640px; height: auto; display: block; }
+.trend-band { fill: var(--success-tint); }
+.trend-mid { stroke: var(--line-strong); stroke-dasharray: 4 4; }
+.trend-line { fill: none; stroke: var(--accent); stroke-width: 3; }
+.trend-dot { fill: var(--accent); }
+.trend-label { fill: var(--text-1); font-size: 14px; }
+.trend-axis { fill: var(--text-2); font-size: 12px; }

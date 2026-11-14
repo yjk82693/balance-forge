@@ -26,6 +26,8 @@ import { ResultSkeleton } from "./ResultSkeleton";
 import { RunMenu } from "./RunMenu";
 import { RunTable } from "./RunTable";
 import { TopBar } from "./TopBar";
+import { SinkChip } from "./SinkChip";
+import { TrendSection } from "./TrendChart";
 import { VersionToggle } from "./VersionToggle";
 import { CHART_FOOT, WinRateChart, rowStats } from "./WinRateChart";
 
@@ -96,7 +98,7 @@ interface Section {
 const none = (text: string) => <p className="text-2">{text}</p>;
 
 /** The accordion sections of the result. The all-matchups chart is not one of them: it is always on screen. */
-function sectionsFor(ctx: DashCtx, report: Report | null): Section[] {
+function sectionsFor(ctx: DashCtx, report: Report | null, trend: ReactNode): Section[] {
   const { facts, run } = ctx;
   const changes = facts?.patch.length ?? 0;
   const targets = facts?.verdict?.targets ?? [];
@@ -110,6 +112,7 @@ function sectionsFor(ctx: DashCtx, report: Report | null): Section[] {
         )}
         {facts && !facts.fair && <HoldoutColumn holdout={facts.holdout} verdict={facts.verdict} />}
       </div>
+      {trend}
       <div className="d2-toggle">
         <VersionToggle disabled={!ctx.canPatch} hint="This run has no patched data to switch to." />
       </div>
@@ -221,7 +224,8 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
   const humans = report ? humanRows(report.rows) : [];
   const stats = bots.map(rowStats);
   const shown = stats.find((s) => s.row.dimension === pickTargetDimension(stats));
-  const sections = useMemo(() => sectionsFor(ctx, report), [ctx, report]);
+  const trend = shown && shown.matchup.b ? <TrendSection a={shown.matchup.a} b={shown.matchup.b} /> : null;
+  const sections = useMemo(() => sectionsFor(ctx, report, trend), [ctx, report, trend]);
   // The pickers and the headline name the same pair. In sample mode the picker is locked to the sample's pair; with a
   // live run, a different pick is said out loud instead of silently showing the old result.
   const measured: Matchup | null = shown && shown.matchup.b ? [shown.matchup.a, shown.matchup.b] : null;
@@ -266,6 +270,7 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
             disabled={ctx.busy || ctx.mock}
             title={ctx.mock ? "Sample data: the matchup is fixed." : undefined}
           />
+          <SinkChip />
           <RunMenu>
             <label className="toggle">
               <input
