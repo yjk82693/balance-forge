@@ -741,3 +741,9 @@ records its seeds, generations, data hash and parameter hash. Nightcrow was held
 - Proposer ablation (indicative: one seed, one hero, Daewi, 2,880 matches each): CEM rises faster per generation, but
   both CEM (78%) and blind mutation (82%) end at the same held-out level. The LLM coach row is not run: it needs the
   Gemini key, which stays on the demo server, and there is no route that drives it.
+
+## simVersion arena-0.1.2 and the final regeneration
+The held-move rule (the server re-sends the last move, a move may repeat the seat's latest seq) changes what a match
+can do, so simVersion moves from arena-0.1.1 to arena-0.1.2, once. Regenerated with it: the recorded roster results,
+metrics and report (15 matchups, 100 seed pairs each) and examples.json. The learned-bot files keep the simVersion
+they were trained under (arena-0.1.1) as their provenance; the human results keep theirs too.
