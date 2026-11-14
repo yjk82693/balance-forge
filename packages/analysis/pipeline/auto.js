@@ -87,7 +87,8 @@ function evidenceText(hero, entry, tried, rows) {
 function leverOutcome(variant, outcome) {
   const rec = variant?.recommendations?.[0] ?? null;
   const base = { path: rec?.path ?? null, label: rec?.path ?? null, old: null, new: null, direction: rec?.direction,
-    sizePct: rec?.sizePct };
+    sizePct: rec?.sizePct, ...(outcome.origin ? { origin: outcome.origin } : {}),
+    ...(outcome.fallbackReason ? { fallbackReason: outcome.fallbackReason } : {}) };
   if (outcome.skipped) return { ...base, outcome: 'skipped', reason: outcome.reason };
   const { verdict, reasons, targets } = outcome.record.verdict;
   const change = outcome.record.changes[0];
@@ -138,6 +139,7 @@ class Run {
     this.input = input;
     this.records = [];
     this.diagnoses = [];
+    this.candidates = []; // per candidate: where its patch came from (and why a model answer was not used)
     this.needsDesigner = []; // heroes the numbers could not fix: { hero, round, matchups, levers, evidence, ... }
     this.escalated = new Set();
     this.diagnosisCache = new Map();
@@ -242,6 +244,10 @@ class Run {
       const outcome = await this.candidate(round_, variant, index, variants.length);
       if (outcome.failed) return outcome.stop; // an error of the run itself
       tried.push(leverOutcome(variant, outcome));
+      this.candidates.push({ round, candidate: index + 1, origin: outcome.origin ?? null,
+        ...(outcome.fallbackReason ? { fallbackReason: outcome.fallbackReason } : {}),
+        outcome: outcome.skipped ? 'skipped' : outcome.record.verdict.verdict,
+        ...(outcome.skipped ? { reason: outcome.reason } : { dataHash: outcome.record.dataHash }) });
       if (outcome.skipped) continue;
       if (outcomes.some((o) => o.record?.dataHash === outcome.record.dataHash)) {
         tried[tried.length - 1] = { ...tried[tried.length - 1], outcome: 'skipped', reason: 'the same version again' };
@@ -277,8 +283,9 @@ class Run {
     const rows = tried.find((t) => t.targets)?.targets ?? [];
     const replay = await this.explain(hero, rows.length ? worstOf(rows) : targets[0]);
     this.needsDesigner.push({ hero, round, matchups: targets,
-      tried: tried.map(({ label, path, old, new: value, outcome, reason }) => ({ label, path, old, new: value,
-        outcome, ...(reason ? { reason } : {}) })),
+      tried: tried.map(({ label, path, old, new: value, outcome, reason, origin, fallbackReason }) => ({ label, path,
+        old, new: value, outcome, ...(reason ? { reason } : {}), ...(origin ? { origin } : {}),
+        ...(fallbackReason ? { fallbackReason } : {}) })),
       evidence: [evidenceText(hero, entry, tried, rows), replay].filter(Boolean).join(' '),
       rawEvidence: outcomes.find((o) => o.evidence)?.evidence ?? null });
   }
@@ -303,10 +310,15 @@ class Run {
     runHoldout: (patchedData, seeds) => this.batch(round, 'holdout', patched.dataHash, targets, seeds) });
     if (!full.ok) return { failed: true, stop: { stop: 'error', error: full.error } };
     const body = full.value;
-    if (!body.validation.ok) return { skipped: true, reason: `invalid patch: ${body.validation.errors[0] ?? ''}` };
+    const from = { origin: body.proposal.origin, fallbackReason: body.proposal.fallbackReason };
+    if (!body.validation.ok) {
+      return { skipped: true, ...from, reason: `invalid patch: ${body.validation.errors[0] ?? ''}` };
+    }
     // A patch that changes nothing would make a record that is its own parent; it is simply not accepted.
-    if (body.patchedDataHash === head.hash) return { skipped: true, reason: 'the patch changes nothing' };
-    if (this.seen.has(body.patchedDataHash)) return { skipped: true, reason: 'this version was already tried' };
+    if (body.patchedDataHash === head.hash) return { skipped: true, ...from, reason: 'the patch changes nothing' };
+    if (this.seen.has(body.patchedDataHash)) {
+      return { skipped: true, ...from, reason: 'this version was already tried' };
+    }
     const accepted = body.verdict.verdict === 'accepted';
     const record = { dataHash: body.patchedDataHash, parentHash: head.hash, gameId: input.gameId,
       createdAt: input.now(), origin: body.proposal.origin, changes: body.proposal.changes,
@@ -314,7 +326,7 @@ class Run {
         body.patched), verdict: body.verdict, approved: false,
       ...(count > 1 ? { note: `candidate ${index + 1} of ${count}` } : {}) };
     return { record, accepted, gain: improvement(body.verdict.targets), data: patched.data, flagged,
-      evidence: body.evidence };
+      evidence: body.evidence, ...from };
   }
 
   /** Emits every candidate as a sibling record and continues from the accepted one that improved most. */
@@ -373,16 +385,16 @@ async function execute(input, run) {
   }
   if (reason === 'awaiting_approval' || reason === 'error') {
     return { records: run.records, stoppedBecause: reason, finalCheck: null, headHash: head.hash,
-      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
   }
   const check = await run.finalCheck(head);
   if (check.regression.length) {
     const headHash = run.rejectAccepted(head.hash, check.regression);
     return { records: run.records, stoppedBecause: 'regression', finalCheck: check.report, headHash,
-      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
   }
   return { records: run.records, stoppedBecause: reason, finalCheck: check.report, headHash: head.hash,
-    diagnoses: run.diagnoses, needs_designer: run.needsDesigner, ...extra };
+    diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
 }
 
 export async function runAuto(input = {}) {
@@ -399,6 +411,6 @@ export async function runAuto(input = {}) {
   } catch (e) {
     const error = e instanceof AnalysisError ? { code: e.code, message: e.message } : toErrorResult(e).error;
     return { records: run.records, stoppedBecause: 'error', finalCheck: null, headHash: settings.fromHash,
-      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, error };
+      diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, error };
   }
 }

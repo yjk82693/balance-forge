@@ -174,7 +174,9 @@ async function runFullUnsafe(input) {
     diagnosis: diagnosed.value ?? null,
     ...(diagnosed.error ? { diagnosisError: diagnosed.error } : {}),
     fair: false,
+    // A fallback says why the model's answer was not used (never a body or a key), so it shows in the response.
     proposal: { ...step.proposal, origin: step.origin,
+      ...(step.fallbackReason ? { fallbackReason: step.fallbackReason } : {}),
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },
     validation: { ok: step.ok, errors: step.errors },
     humanMatches: baseline.humanMatches ?? 0,

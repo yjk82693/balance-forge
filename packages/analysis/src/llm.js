@@ -5,6 +5,9 @@ import { HUMAN_PREFIX } from './extras.js';
 import { assertReport } from './input-check.js';
 
 export const TIMEOUT_MS = 8000;
+// gemini-2.5-flash is no longer available to new keys; the flash-lite alias answered in about a second. Override with
+// the GEMINI_MODEL environment variable.
+export const DEFAULT_GEMINI_MODEL = 'gemini-flash-lite-latest';
 export const RETRIES = 1;
 
 export const PATH_PATTERN = '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|'
@@ -184,7 +187,7 @@ export class GeminiPatchAdapter extends LlmAdapter {
   origin = 'gemini';
   keyName = 'GEMINI_API_KEY';
   url() {
-    const model = this.model ?? this.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
+    const model = this.model ?? this.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
     return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   }
   init(key, prompt) {
