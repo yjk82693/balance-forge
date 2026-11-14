@@ -28,7 +28,7 @@ export function replayViews(storage, matchId: string, {
       state,
       events
     }) => {
-      pendingEvents.push(...events.filter(event => event.audience.length === 0));
+      pendingEvents.push(...(events as any[]).filter(event => event.audience.length === 0));
       if (state.tick % every !== 0 && state.tick !== frames.length) return;
       const observation = game.observe(state, 'display');
       const view = {

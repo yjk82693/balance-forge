@@ -16,7 +16,7 @@ function phone(query = '') {
     if (JSON.parse(raw).type === 'state.view') sizes.push(Buffer.byteLength(raw));
     send(raw);
   };
-  server.connect(socket, new URL(`http://localhost/ws${query}`));
+  server.connect(socket as any, new URL(`http://localhost/ws${query}`));
   return socket;
 }
 try {

@@ -14,7 +14,24 @@ import { replayOnData } from '../../packages/sim/index.ts';
 const enabled = process.env.RUN_SOCKET_TESTS === '1';
 const transientInputErrors = new Set(['LATE_INPUT', 'RATE_LIMITED']);
 class Peer {
-  constructor(url) {
+  declare socket: WebSocket;
+  declare messages: any[];
+  declare waiters: Set<any>;
+  declare meta: { roomId: string; sessionId: string; epoch: number };
+  declare requestSeq: number;
+  declare requests: Map<string, any>;
+  declare lastAck: number;
+  declare seat: string | null;
+  declare phase: string;
+  declare botEnabled: boolean;
+  declare botVariant: number;
+  declare lastBotTick: number;
+  declare accepted: number;
+  declare submitted: number;
+  declare failure: Error | null;
+  declare closing: boolean;
+  [key: string]: any;
+  constructor(url: string) {
     assert.equal(new URL(url).hostname, '127.0.0.1');
     this.socket = new WebSocket(url);
     this.messages = [];
@@ -77,7 +94,7 @@ class Peer {
     if (envelope.type === 'state.view') this.drive(envelope);
     for (const notify of [...this.waiters]) notify();
   }
-  send(type, payload) {
+  send(type: string, payload: unknown): string {
     assert.equal(this.socket.readyState, WebSocket.OPEN);
     const requestId = `e2e-${++this.requestSeq}`;
     this.requests.set(requestId, {
@@ -99,13 +116,13 @@ class Peer {
   latest(type) {
     return this.messages.findLast(message => message.type === type);
   }
-  waitFor(type, predicate = () => true, {
+  waitFor(type: string, predicate: (message: any) => boolean = () => true, {
     after = 0,
     timeout = 10000
-  } = {}) {
-    return new Promise((resolve, reject) => {
+  } = {}): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
       let timer;
-      const finish = (error, value) => {
+      const finish = (error: Error | null, value?: any) => {
         clearTimeout(timer);
         this.waiters.delete(check);
         if (error) reject(error);else resolve(value);
@@ -141,7 +158,7 @@ class Peer {
     this.closing = true;
     this.botEnabled = false;
     if (this.socket.readyState === WebSocket.CLOSED) return;
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.socket.terminate();
         reject(Error('Socket close timed out.'));
@@ -177,7 +194,7 @@ async function analysisModules() {
     assert.fail(`Analysis pipeline is unavailable; merge packages/analysis before test:e2e. ${error.message}`);
   }
 }
-async function setup(t, { runAuto } = {}) {
+async function setup(t: any, { runAuto }: { runAuto?: (...args: any[]) => any } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'balance-full-flow-'));
   const peers = [];
   let server;

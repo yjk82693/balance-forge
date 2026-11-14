@@ -8,6 +8,8 @@ import { learnedBot } from '../runner/learn/load.ts';
 import { applyPatch, hash, validateSchema } from '../../packages/contracts/index.ts';
 import { array, integer, object, text } from '../../packages/contracts/shapes.ts';
 import { writeJson } from './storage.ts';
+import type { GameData } from '../../packages/contracts/types.ts';
+import type { RoomServer } from './server.ts';
 import { patchChanges } from './versions.ts';
 export class PipelineError extends Error {
   declare code: string;
@@ -80,7 +82,12 @@ export function checkHeroes(gameId, data, body) {
   });
   return [...heroes];
 }
-export async function matchBatch(server, {
+export type MatchBatchOptions = {
+  gameId: string; data: GameData; pairs?: number; roster?: boolean; heroes?: string[]; botPolicy?: string;
+  matchups?: string[]; seeds?: number[]; phase?: string; round?: number; batchId?: string; probe?: boolean;
+  runId?: string; [progress: string]: any; // auto adds its progress fields
+};
+export async function matchBatch(server: RoomServer, {
   gameId,
   data,
   pairs,
@@ -94,7 +101,7 @@ export async function matchBatch(server, {
   batchId,
   probe = false, // a card probe: many small runs, so no replays, files, progress events or outside copies
   runId = randomUUID()
-}) {
+}: MatchBatchOptions): Promise<any> {
   seeds ??= Array.from({
     length: pairs
   }, (_, index) => index + 1);

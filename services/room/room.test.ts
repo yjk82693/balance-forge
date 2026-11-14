@@ -14,7 +14,14 @@ import { hash, validate } from '../../packages/contracts/index.ts';
 import { Storage } from './storage.ts';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 class Client {
-  constructor(url) {
+  declare queue: any[];
+  declare waiters: any[];
+  declare meta: { roomId: string; sessionId: string; epoch: number };
+  declare seq: number;
+  declare observers: Array<(envelope: any) => void>;
+  declare ws: WebSocket;
+  [key: string]: any;
+  constructor(url: string) {
     this.queue = [];
     this.waiters = [];
     this.meta = {

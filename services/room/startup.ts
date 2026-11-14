@@ -31,9 +31,9 @@ function attachShutdown(runtime, server) {
 
 // Injecting runtime and the factory keeps startup failures testable without opening sockets or writing live data.
 export async function runCli({
-  runtime = process,
-  createServer = createRoomServer
-} = {}) {
+  runtime = process as any,
+  createServer = createRoomServer as (...args: any[]) => any
+}: { runtime?: any; createServer?: (...args: any[]) => any } = {}) {
   const rawPort = runtime.env.PORT ?? '3000',
     port = Number(rawPort),
     host = runtime.env.HOST ?? '0.0.0.0';

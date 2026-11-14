@@ -19,7 +19,7 @@ export async function collectExamples() {
   } = await localServer({
     after: fn => cleanup.push(fn)
   });
-  const examples = {
+  const examples: any = {
     note: 'Protocol examples from a two-tick local handler run; not demo balance results. Tokens are redacted.',
     http: {},
     websocket: {
@@ -27,7 +27,7 @@ export async function collectExamples() {
       server: {}
     }
   };
-  const capture = async (name, path, options) => {
+  const capture = async (name: string, path: string, options?: { method?: string; body?: unknown; raw?: string }) => {
     const response = await http(server, path, options);
     const json = response.headers['content-type']?.includes('application/json');
     examples.http[name] = {
@@ -43,7 +43,7 @@ export async function collectExamples() {
     };
     return json ? response.json() : response.text;
   };
-  const request = (socket, type, payload) => {
+  const request = (socket: any, type: string, payload: unknown) => {
     const envelope = socket.request(type, payload);
     examples.websocket.client[type] = envelope;
     return envelope;
