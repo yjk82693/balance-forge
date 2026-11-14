@@ -16,6 +16,7 @@ import { currentDiagnose, currentMatchup } from "../lib/matchup";
 import { buildFacts, needsMoreGames } from "../lib/resultCard";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
+import { shouldStartOnMount } from "../lib/presentStart";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
@@ -47,7 +48,10 @@ export function Present({ auto }: { auto: boolean }) {
   useManifest();
   useHeroStats();
   const mock = isMockMode();
-  const { run, busy, live, error, notice, elapsed, start, replace } = useRunner();
+  const { run: lastRun, busy, live, error, notice, elapsed, start, replace } = useRunner();
+  // Opening the screen starts nothing: it shows the last stored live result, else the recorded one.
+  const [recorded, setRecorded] = useState<PlaytestRun | null>(null);
+  const run = lastRun ?? recorded;
   const started = useRef(false);
   const roster = useRef<PlaytestRun | null>(null);
   // Same matchup as the dashboard: a pick made there, else the match just played, else the roster's largest outlier.
@@ -56,10 +60,17 @@ export function Present({ auto }: { auto: boolean }) {
     if (started.current) return;
     started.current = true;
     loadRecordedRun()
-      .then((r) => (roster.current = r))
+      .then((r) => {
+        roster.current = r;
+        setRecorded(r);
+      })
       .catch(() => null)
-      .finally(() => void start(matchup(), currentDiagnose(matchup(), roster.current), policyFor(loadSkill())));
-  }, [start, matchup]);
+      .finally(() => {
+        if (shouldStartOnMount({ auto, mock })) {
+          void start(matchup(), currentDiagnose(matchup(), roster.current), policyFor(loadSkill()));
+        }
+      });
+  }, [start, matchup, auto, mock]);
 
   const finished = !!run && !busy;
   const ready = useCallback((id: SceneId) => id !== "bots" || finished || !!error, [finished, error]);
@@ -77,7 +88,7 @@ export function Present({ auto }: { auto: boolean }) {
     [wantsIntent, hasProfile, hasHistory],
   );
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
-  const source = sourceLabel(run, !!notice, mock);
+  const source = sourceLabel(run, !!notice || (!lastRun && !!recorded), mock);
 
   return (
     <FitStage>
@@ -112,11 +123,12 @@ export function Present({ auto }: { auto: boolean }) {
             notice={notice}
             history={history}
             onRun={replace}
+            onStart={restart}
           />
         </main>
         {!auto && (
           <footer className="present-keys caption">
-            Space / → next · ← back · P pause · R restart
+            Space / → next · ← back · P pause · R run live
           </footer>
         )}
       </div>
@@ -134,9 +146,11 @@ interface BodyProps {
   notice: string | null;
   history: HistoryState | null;
   onRun: (next: PlaytestRun) => void;
+  /** start a new live run (R, or the button on the bots scene) */
+  onStart: () => void;
 }
 
-function SceneBody({ id, run, busy, live, elapsed, error, notice, history, onRun }: BodyProps) {
+function SceneBody({ id, run, busy, live, elapsed, error, notice, history, onRun, onStart }: BodyProps) {
   switch (id) {
     case "intent":
       return <IntentScene />;
@@ -147,7 +161,17 @@ function SceneBody({ id, run, busy, live, elapsed, error, notice, history, onRun
     case "match":
       return <MatchScene />;
     case "bots":
-      return <BotsScene run={run} busy={busy} live={live} elapsed={elapsed} error={error} notice={notice} />;
+      return (
+        <BotsScene
+          run={run}
+          busy={busy}
+          live={live}
+          elapsed={elapsed}
+          error={error}
+          notice={notice}
+          onStart={onStart}
+        />
+      );
     case "patch":
       return <PatchScene run={run} busy={busy} error={error} />;
     case "replay":
@@ -300,7 +324,17 @@ function BigRate({ run }: { run: PlaytestRun }) {
   );
 }
 
-function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, "id" | "history" | "onRun">) {
+function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: Omit<BodyProps, "id" | "history" | "onRun">) {
+  if (!busy && !run && !error) {
+    return (
+      <section className="present-card">
+        <p className="h2">No stored result to show.</p>
+        <button type="button" className="btn primary present-run-live" onClick={onStart}>
+          Run live
+        </button>
+      </section>
+    );
+  }
   if (busy || !run) {
     const rows = live.rows;
     return (
@@ -322,6 +356,9 @@ function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, 
         <p className="eyebrow">All matchups</p>
         <WinRateChart rows={run.baseline.rows} dense foot={false} />
         {notice && <p className="present-sub">{notice}</p>}
+        <button type="button" className="btn secondary present-run-live" onClick={onStart}>
+          Run live
+        </button>
       </section>
     </div>
   );

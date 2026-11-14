@@ -500,3 +500,10 @@ A report row that carries `target`, `deltaToTarget` and `outlier` is shown exact
   only. Today: Daewi generalizes better than its start, Bari and Real Armor show no clear difference, Sepia's learned
   bot generalizes worse than its start (72% against 86%); it says so in amber.
 - Nightcrow has no trained bot (held out). The comparison panel still needs the live server; not run here.
+
+## Present never starts a run by itself
+
+Opening `#/present` now shows the last stored live result, else the recorded one. A new run starts only on R, on the
+"Run live" button of the bots scene, or when `?auto=1` is set. `?mock=1` (no server) still plays its sample run. The rule
+lives in `src/lib/presentStart.ts` and is tested in `apps/web/test/present-start.test.mjs`. Checked in a browser: no
+`/v1/playtest` request on a plain open, two with `?auto=1`.
