@@ -61,3 +61,17 @@ test('a failing store is counted and never throws', async () => {
   assert.equal(sinks.status.mongodb.failed, 1);
   assert.match(sinks.status.mongodb.lastError, /ECONNREFUSED/);
 });
+
+test('logged errors never contain a connection string or host', async () => {
+  const lines = [];
+  const load = async () => ({ MongoClient: class {
+    async connect() { throw Error('connect failed for mongodb+srv://user:pw@cluster0.abc.mongodb.net/x'); }
+    async close() {}
+  } });
+  const sinks = createSinks({ MONGODB_URI: 'mongodb://x' }, load, m => lines.push(m));
+  sinks.emit('report', {});
+  await sinks.flush();
+  assert.equal(lines.length, 1);
+  assert.doesNotMatch(lines[0], /mongodb\+srv|cluster0|pw@/);
+  assert.match(lines[0], /<uri>/);
+});

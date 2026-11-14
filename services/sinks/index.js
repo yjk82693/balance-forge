@@ -3,7 +3,16 @@
 // Both are off unless their connection string is set, and neither can slow or break a run:
 // writes are queued, each has a time limit, and failures are counted, never thrown.
 
-const LIMIT_MS = 2000;
+// Cloud stores can take a few seconds for the first TLS connection from venue Wi-Fi.
+// Writes never block a run, so a generous limit costs nothing.
+const LIMIT_MS = 8000;
+
+// Error text can contain a host or a connection string; keep only the code and a short,
+// redacted message for the server log.
+export function redact(error) {
+  const text = String(error?.code ?? '') + ' ' + String(error?.message ?? error ?? '');
+  return text.replace(/[a-z+]+:\/\/\S+/gi, '<uri>').replace(/@[\w.-]+/g, '@<host>').trim().slice(0, 160);
+}
 
 const withLimit = (promise, ms = LIMIT_MS) =>
   Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(Error('TIMEOUT')), ms).unref())]);
@@ -94,7 +103,7 @@ function tigerSink(url, load) {
 }
 
 /** Sinks from env (MONGODB_URI, TIGER_DATABASE_URL). `load` is injectable for tests. */
-export function createSinks(env = process.env, load = name => import(name)) {
+export function createSinks(env = process.env, load = name => import(name), log = m => console.warn(m)) {
   const sinks = [];
   if (env.MONGODB_URI) sinks.push(mongoSink(env.MONGODB_URI, load));
   if (env.TIGER_DATABASE_URL) sinks.push(tigerSink(env.TIGER_DATABASE_URL, load));
@@ -110,13 +119,20 @@ export function createSinks(env = process.env, load = name => import(name)) {
           .then(() => { status[sink.name].written += 1; })
           .catch(error => {
             status[sink.name].failed += 1;
-            status[sink.name].lastError = String(error?.code ?? error?.message ?? error).slice(0, 120);
+            status[sink.name].lastError = redact(error);
+            log(`sink ${sink.name} ${kind} failed: ${status[sink.name].lastError}`);
           });
       }
     },
     async trend(matchup) {
       const tiger = sinks.find(s => s.name === 'tiger');
-      return tiger ? withLimit(tiger.trend(matchup)) : null;
+      if (!tiger) return null;
+      try {
+        return await withLimit(tiger.trend(matchup));
+      } catch (error) {
+        log(`sink tiger trend failed: ${redact(error)}`);
+        throw error;
+      }
     },
     flush: () => queue,
     async close() {
