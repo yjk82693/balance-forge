@@ -1,0 +1,1024 @@
+{
+  "assets": [
+    {
+      "path": "assets/common/heroes/bari/full_body.png",
+      "width": 512,
+      "height": 512,
+      "role": "full_body",
+      "pivot": {
+        "x": 256,
+        "y": 498,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/common/heroes/bari/portrait.png",
+      "width": 256,
+      "height": 256,
+      "role": "portrait"
+    },
+    {
+      "path": "assets/common/heroes/daewi/full_body.png",
+      "width": 512,
+      "height": 512,
+      "role": "full_body",
+      "pivot": {
+        "x": 256,
+        "y": 498,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/common/heroes/daewi/portrait.png",
+      "width": 256,
+      "height": 256,
+      "role": "portrait"
+    },
+    {
+      "path": "assets/common/heroes/nightcrow/full_body.png",
+      "width": 512,
+      "height": 512,
+      "role": "full_body",
+      "pivot": {
+        "x": 256,
+        "y": 498,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/common/heroes/nightcrow/portrait.png",
+      "width": 256,
+      "height": 256,
+      "role": "portrait"
+    },
+    {
+      "path": "assets/common/heroes/real_armor/full_body.png",
+      "width": 512,
+      "height": 512,
+      "role": "full_body",
+      "pivot": {
+        "x": 256,
+        "y": 498,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/common/heroes/real_armor/portrait.png",
+      "width": 256,
+      "height": 256,
+      "role": "portrait"
+    },
+    {
+      "path": "assets/common/heroes/sepia/full_body.png",
+      "width": 512,
+      "height": 512,
+      "role": "full_body",
+      "pivot": {
+        "x": 256,
+        "y": 498,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/common/heroes/sepia/portrait.png",
+      "width": 256,
+      "height": 256,
+      "role": "portrait"
+    },
+    {
+      "path": "assets/hero_arena/backgrounds/arena_floor.png",
+      "width": 1920,
+      "height": 1080,
+      "role": "backgrounds"
+    },
+    {
+      "path": "assets/hero_arena/effects/blade_slash.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/blaster_burst.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/crow_dive.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/hit_spark.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/hypnosis_ripple.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/shield_bubble.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/spirit_arrow.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/effects/tentacle_lash.png",
+      "width": 256,
+      "height": 256,
+      "role": "effects",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/ability_cooldown_fill.png",
+      "width": 176,
+      "height": 14,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/ability_cooldown_track.png",
+      "width": 196,
+      "height": 30,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 14,
+        "bottom": 10
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/button_active.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/button_disabled.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/button_normal.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/dialog_panel.png",
+      "width": 544,
+      "height": 308,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 107,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/hud_slot.png",
+      "width": 176,
+      "height": 78,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 29,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/icon_ability.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/icon_armor.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/icon_health.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/icon_pause.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/icon_victory.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/player_health_fill.png",
+      "width": 320,
+      "height": 18,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/player_health_track.png",
+      "width": 340,
+      "height": 38,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 16,
+        "bottom": 12
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/round_banner.png",
+      "width": 414,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/scoreboard_panel.png",
+      "width": 442,
+      "height": 194,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 68,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_arena/ui/skill_guard.png",
+      "width": 256,
+      "height": 256,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/skill_melee.png",
+      "width": 256,
+      "height": 256,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/skill_projectile.png",
+      "width": 256,
+      "height": 256,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_arena/ui/title_banner.png",
+      "width": 560,
+      "height": 110,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 40,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/backgrounds/table.png",
+      "width": 1920,
+      "height": 1080,
+      "role": "backgrounds"
+    },
+    {
+      "path": "assets/hero_cards/cards/bari_attack.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/bari_guard.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/bari_signature.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/daewi_attack.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/daewi_guard.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/daewi_signature.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/nightcrow_attack.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/nightcrow_guard.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/nightcrow_signature.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/real_armor_attack.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/real_armor_guard.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/real_armor_signature.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/sepia_attack.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/sepia_guard.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/cards/sepia_signature.png",
+      "width": 512,
+      "height": 384,
+      "role": "cards"
+    },
+    {
+      "path": "assets/hero_cards/summons/crow_flock.png",
+      "width": 512,
+      "height": 512,
+      "role": "summons",
+      "pivot": {
+        "x": 256,
+        "y": 512,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_cards/summons/ink_screen.png",
+      "width": 512,
+      "height": 512,
+      "role": "summons",
+      "pivot": {
+        "x": 256,
+        "y": 512,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_cards/summons/spirit_wisp.png",
+      "width": 512,
+      "height": 512,
+      "role": "summons",
+      "pivot": {
+        "x": 256,
+        "y": 512,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_cards/summons/training_dummy.png",
+      "width": 512,
+      "height": 512,
+      "role": "summons",
+      "pivot": {
+        "x": 256,
+        "y": 512,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_cards/summons/turret_drone.png",
+      "width": 512,
+      "height": 512,
+      "role": "summons",
+      "pivot": {
+        "x": 256,
+        "y": 512,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/button_active.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/button_disabled.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/button_normal.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/card_back.png",
+      "width": 320,
+      "height": 456,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_cards/ui/card_common.png",
+      "width": 320,
+      "height": 456,
+      "role": "ui",
+      "nine_slice": {
+        "left": 35,
+        "right": 35,
+        "top": 289,
+        "bottom": 37
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/card_legendary.png",
+      "width": 320,
+      "height": 456,
+      "role": "ui",
+      "nine_slice": {
+        "left": 35,
+        "right": 35,
+        "top": 289,
+        "bottom": 37
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/card_rare.png",
+      "width": 320,
+      "height": 456,
+      "role": "ui",
+      "nine_slice": {
+        "left": 35,
+        "right": 35,
+        "top": 289,
+        "bottom": 37
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/deck_counter.png",
+      "width": 164,
+      "height": 83,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 31,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/dialog_panel.png",
+      "width": 544,
+      "height": 308,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 107,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/frame_bari.png",
+      "width": 512,
+      "height": 768,
+      "role": "ui",
+      "nine_slice": {
+        "left": 56,
+        "right": 56,
+        "top": 486,
+        "bottom": 62
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/frame_daewi.png",
+      "width": 512,
+      "height": 768,
+      "role": "ui",
+      "nine_slice": {
+        "left": 56,
+        "right": 56,
+        "top": 486,
+        "bottom": 62
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/frame_nightcrow.png",
+      "width": 512,
+      "height": 768,
+      "role": "ui",
+      "nine_slice": {
+        "left": 56,
+        "right": 56,
+        "top": 486,
+        "bottom": 62
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/frame_real_armor.png",
+      "width": 512,
+      "height": 768,
+      "role": "ui",
+      "nine_slice": {
+        "left": 56,
+        "right": 56,
+        "top": 486,
+        "bottom": 62
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/frame_sepia.png",
+      "width": 512,
+      "height": 768,
+      "role": "ui",
+      "nine_slice": {
+        "left": 56,
+        "right": 56,
+        "top": 486,
+        "bottom": 62
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/hand_tray.png",
+      "width": 640,
+      "height": 146,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 52,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/hud_slot.png",
+      "width": 176,
+      "height": 78,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 29,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/icon_attack.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_cards/ui/icon_defense.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_cards/ui/icon_health.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_cards/ui/icon_mana.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_cards/ui/icon_pause.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/hero_cards/ui/title_banner.png",
+      "width": 560,
+      "height": 110,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 40,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/hero_cards/ui/turn_banner.png",
+      "width": 416,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/backgrounds/rooftop.png",
+      "width": 1920,
+      "height": 1080,
+      "role": "backgrounds"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/enemies/drone.png",
+      "width": 256,
+      "height": 256,
+      "role": "enemies",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/enemies/sentry.png",
+      "width": 256,
+      "height": 256,
+      "role": "enemies",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/enemies/walker.png",
+      "width": 256,
+      "height": 256,
+      "role": "enemies",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/sprites/anchor_post.png",
+      "width": 256,
+      "height": 256,
+      "role": "sprites",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/sprites/anchor_post_target.png",
+      "width": 256,
+      "height": 256,
+      "role": "sprites",
+      "pivot": {
+        "x": 128,
+        "y": 256,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/sprites/tentacle_segment.png",
+      "width": 256,
+      "height": 64,
+      "role": "sprites",
+      "pivot": {
+        "x": 128,
+        "y": 64,
+        "origin": "top_left"
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/button_active.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/button_disabled.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/button_normal.png",
+      "width": 320,
+      "height": 86,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 32,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/coin_counter.png",
+      "width": 176,
+      "height": 76,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 28,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/dialog_panel.png",
+      "width": 544,
+      "height": 308,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 107,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/distance_panel.png",
+      "width": 250,
+      "height": 84,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 31,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/hud_slot.png",
+      "width": 176,
+      "height": 78,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 29,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/icon_coin.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/icon_pause.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/icon_tentacle.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/icon_warning.png",
+      "width": 128,
+      "height": 128,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_health_fill.png",
+      "width": 620,
+      "height": 28,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_health_track.png",
+      "width": 640,
+      "height": 48,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 19,
+        "bottom": 16
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_nameplate.png",
+      "width": 440,
+      "height": 84,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 31,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_phase_pip_active.png",
+      "width": 42,
+      "height": 42,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_phase_pip_empty.png",
+      "width": 42,
+      "height": 42,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_portrait.png",
+      "width": 256,
+      "height": 256,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/man_shark_warning_banner.png",
+      "width": 460,
+      "height": 94,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 34,
+        "bottom": 24
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/player_health_fill.png",
+      "width": 260,
+      "height": 18,
+      "role": "ui"
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/player_health_track.png",
+      "width": 280,
+      "height": 38,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 16,
+        "bottom": 12
+      }
+    },
+    {
+      "path": "assets/sepia_tentacle_run/ui/title_banner.png",
+      "width": 560,
+      "height": 110,
+      "role": "ui",
+      "nine_slice": {
+        "left": 36,
+        "right": 36,
+        "top": 40,
+        "bottom": 24
+      }
+    }
+  ]
+}

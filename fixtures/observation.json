@@ -1,0 +1,37 @@
+{
+  "tick": 240,
+  "viewerId": "display",
+  "payload": {
+    "arena": {
+      "w": 16000,
+      "h": 9000
+    },
+    "entities": [
+      {
+        "id": "p1",
+        "hero": "bari",
+        "x": 4200,
+        "y": 4500,
+        "hp": 82,
+        "facing": 0
+      },
+      {
+        "id": "p2",
+        "hero": "real_armor",
+        "x": 11800,
+        "y": 4500,
+        "hp": 64,
+        "facing": 180
+      }
+    ],
+    "projectiles": [
+      {
+        "id": "pr1",
+        "owner": "p1",
+        "kind": "spirit_arrow",
+        "x": 7000,
+        "y": 4500
+      }
+    ]
+  }
+}

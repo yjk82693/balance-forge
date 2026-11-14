@@ -1,0 +1,14 @@
+{
+  "contractVersion": "0.1",
+  "schemaVersion": 1,
+  "gameId": "hero_arena",
+  "simVersion": "arena-0.1.0",
+  "dataHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "seed": 12345,
+  "players": [
+    "p1",
+    "p2"
+  ],
+  "mode": "realtime",
+  "maxTicks": 1800
+}

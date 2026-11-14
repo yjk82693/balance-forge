@@ -1,0 +1,52 @@
+{
+  "reportId": "r-baseline",
+  "gameId": "hero_arena",
+  "simVersion": "arena-0.1.0",
+  "dataHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "botPolicyVersion": "scripted-0.1",
+  "seedSetId": "pairs-100",
+  "validMatches": 200,
+  "invalidMatches": 0,
+  "draws": 6,
+  "rows": [
+    {
+      "dimension": "bari vs real_armor",
+      "wins": 158,
+      "games": 200,
+      "winRate": 0.79,
+      "ci95": [
+        0.729,
+        0.841
+      ],
+      "uses": 0,
+      "opportunities": 0,
+      "outlier": true
+    },
+    {
+      "dimension": "bari vs daewi",
+      "wins": 104,
+      "games": 200,
+      "winRate": 0.52,
+      "ci95": [
+        0.451,
+        0.588
+      ],
+      "uses": 0,
+      "opportunities": 0,
+      "outlier": false
+    },
+    {
+      "dimension": "real_armor vs sepia",
+      "wins": 93,
+      "games": 200,
+      "winRate": 0.465,
+      "ci95": [
+        0.397,
+        0.534
+      ],
+      "uses": 0,
+      "opportunities": 0,
+      "outlier": false
+    }
+  ]
+}

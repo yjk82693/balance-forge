@@ -1,0 +1,198 @@
+[
+  {
+    "protocolVersion": "0.1",
+    "type": "room.status",
+    "roomId": "ROOM42",
+    "sessionId": "display-1",
+    "requestId": "q1",
+    "seq": 1,
+    "epoch": 1,
+    "payload": {
+      "joinCode": "7K2Q",
+      "phase": "lobby",
+      "seats": [
+        {
+          "seat": "p1",
+          "name": "Judge A",
+          "connected": true
+        },
+        {
+          "seat": "p2",
+          "name": "Judge B",
+          "connected": false
+        }
+      ]
+    }
+  },
+  {
+    "protocolVersion": "0.1",
+    "type": "input.submit",
+    "roomId": "ROOM42",
+    "sessionId": "ctrl-p1",
+    "requestId": "q2",
+    "seq": 17,
+    "epoch": 1,
+    "payload": {
+      "playerId": "p1",
+      "seq": 17,
+      "tick": 241,
+      "turnId": 0,
+      "actionId": "projectile",
+      "params": {
+        "aimX": 1000,
+        "aimY": 0
+      }
+    }
+  },
+  {
+    "protocolVersion": "0.1",
+    "type": "input.ack",
+    "roomId": "ROOM42",
+    "sessionId": "ctrl-p1",
+    "requestId": "q2",
+    "seq": 17,
+    "epoch": 1,
+    "payload": {
+      "status": "accepted",
+      "acceptedTick": 241
+    }
+  },
+  {
+    "protocolVersion": "0.1",
+    "type": "state.view",
+    "roomId": "ROOM42",
+    "sessionId": "display-1",
+    "requestId": "",
+    "seq": 240,
+    "epoch": 1,
+    "payload": {
+      "observation": {
+        "tick": 240,
+        "viewerId": "display",
+        "payload": {
+          "arena": {
+            "w": 16000,
+            "h": 9000
+          },
+          "entities": [
+            {
+              "id": "p1",
+              "hero": "bari",
+              "x": 4200,
+              "y": 4500,
+              "hp": 82,
+              "facing": 0
+            },
+            {
+              "id": "p2",
+              "hero": "real_armor",
+              "x": 11800,
+              "y": 4500,
+              "hp": 64,
+              "facing": 180
+            }
+          ],
+          "projectiles": [
+            {
+              "id": "pr1",
+              "owner": "p1",
+              "kind": "spirit_arrow",
+              "x": 7000,
+              "y": 4500
+            }
+          ]
+        }
+      },
+      "viewHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "protocolVersion": "0.1",
+    "type": "match.ended",
+    "roomId": "ROOM42",
+    "sessionId": "display-1",
+    "requestId": "",
+    "seq": 1801,
+    "epoch": 1,
+    "payload": {
+      "result": {
+        "matchId": "m-000001",
+        "config": {
+          "contractVersion": "0.1",
+          "schemaVersion": 1,
+          "gameId": "hero_arena",
+          "simVersion": "arena-0.1.0",
+          "dataHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "seed": 12345,
+          "players": [
+            "p1",
+            "p2"
+          ],
+          "mode": "realtime",
+          "maxTicks": 1800
+        },
+        "outcome": {
+          "status": "win",
+          "winners": [
+            "p1"
+          ],
+          "reason": "hp_zero"
+        },
+        "statistics": {
+          "players": [
+            {
+              "playerId": "p1",
+              "wins": 1,
+              "draws": 0,
+              "damage": 540,
+              "actions": [
+                {
+                  "actionId": "melee",
+                  "opportunities": 120,
+                  "uses": 30
+                },
+                {
+                  "actionId": "projectile",
+                  "opportunities": 120,
+                  "uses": 55
+                },
+                {
+                  "actionId": "guard",
+                  "opportunities": 120,
+                  "uses": 12
+                }
+              ]
+            },
+            {
+              "playerId": "p2",
+              "wins": 0,
+              "draws": 0,
+              "damage": 410,
+              "actions": [
+                {
+                  "actionId": "melee",
+                  "opportunities": 118,
+                  "uses": 40
+                },
+                {
+                  "actionId": "projectile",
+                  "opportunities": 118,
+                  "uses": 20
+                },
+                {
+                  "actionId": "guard",
+                  "opportunities": 118,
+                  "uses": 33
+                }
+              ]
+            }
+          ],
+          "durationTicks": 1420
+        },
+        "finalStateHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "valid": true,
+        "errorCode": ""
+      }
+    }
+  }
+]

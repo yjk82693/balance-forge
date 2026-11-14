@@ -1,0 +1,10 @@
+{
+  "baseDataHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "replacements": [
+    {
+      "path": "/moves/1/power",
+      "value": 72
+    }
+  ],
+  "rationale": "Bari spirit arrow ignores Real Armor guard; lowering its power moves the 79% matchup toward 50%."
+}
