@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { CardsEntity, CardsPayload, Observation } from "../lib/contract";
-import { CARDS_RULES } from "../lib/cards";
+import { CARDS_RULES, summonArtName } from "../lib/cards";
+import { heroName } from "../lib/heroes";
 
 export const TABLE_W = 1152;
 export const TABLE_H = 648;
@@ -18,12 +19,18 @@ export interface CardsAssets {
   iconHealth: string;
   iconDefense: string;
   iconMana: string;
-  summon: string;
+  /** summon pictures by name (turret_drone, crow_flock, ...) */
+  summons: Record<string, string>;
+  /** the hero card frame and the small portrait, by hero id */
+  frames: Record<string, string>;
+  portraits: Record<string, string>;
 }
 
 export interface CardsMeta {
   /** seat -> display name */
   names: Record<string, string>;
+  /** seat -> hero id, for the hero card on each side */
+  heroes?: Record<string, string>;
 }
 
 /**
@@ -51,7 +58,9 @@ export class CardsScene extends Phaser.Scene {
     this.load.image("icon-health", a.iconHealth);
     this.load.image("icon-defense", a.iconDefense);
     this.load.image("icon-mana", a.iconMana);
-    this.load.image("summon", a.summon);
+    for (const [name, url] of Object.entries(a.summons)) this.load.image(`summon:${name}`, url);
+    for (const [hero, url] of Object.entries(a.frames)) this.load.image(`frame:${hero}`, url);
+    for (const [hero, url] of Object.entries(a.portraits)) this.load.image(`portrait:${hero}`, url);
   }
 
   create() {
@@ -91,6 +100,24 @@ export class CardsScene extends Phaser.Scene {
     const img = this.add.nineslice(TABLE_W / 2, TABLE_H / 2, "turn-banner", undefined, 400, 60, 36, 36, 32, 24);
     this.layer.add(img);
     this.text(TABLE_W / 2, TABLE_H / 2 - 2, label, 17).setOrigin(0.5).setDepth(2);
+  }
+
+  /** The hero on its side from the first view: its card frame, portrait, name and HP. */
+  private heroCard(e: CardsEntity, isLeft: boolean, meta: CardsMeta, max: number) {
+    const hero = meta.heroes?.[e.id];
+    if (!hero || !this.textures.exists(`frame:${hero}`)) return;
+    const w = 112;
+    const h = (768 / 512) * w;
+    const x = isLeft ? 250 : 790;
+    const y = 238;
+    this.layer.add(this.add.image(x, y, `frame:${hero}`).setOrigin(0, 0).setDisplaySize(w, h));
+    if (this.textures.exists(`portrait:${hero}`)) {
+      const side = w * 0.86;
+      this.layer.add(this.add.image(x + w / 2, y + h * 0.14 + (h * 0.47 - side) / 2, `portrait:${hero}`)
+        .setOrigin(0.5, 0).setDisplaySize(side, side));
+    }
+    this.text(x + w / 2, y + h * 0.66, heroName(hero), 15).setOrigin(0.5, 0);
+    this.text(x + w / 2, y + h * 0.78, `HP ${e.hp}/${max}`, 14, "#F2B84B").setOrigin(0.5, 0);
   }
 
   private side(e: CardsEntity, isLeft: boolean, p: CardsPayload, meta: CardsMeta) {
@@ -147,6 +174,8 @@ export class CardsScene extends Phaser.Scene {
     }
     this.text(cx, 470 + ch + 6, `${n} in hand`, 13, "#A3AFBD", "500").setOrigin(0.5, 0);
 
+    this.heroCard(e, isLeft, meta, max);
+
     // two summon slots, on the table art's own frames
     const spots = isLeft ? GameSlots.left : GameSlots.right;
     for (let slot = 0; slot < CARDS_RULES.summonSlots; slot++) {
@@ -154,7 +183,8 @@ export class CardsScene extends Phaser.Scene {
       const u = e.units[slot];
       if (u) {
         const asleep = u.sleepUntil > p.turnId;
-        const img = this.add.image(cx2, cy - 8, "summon").setDisplaySize(112, 112).setAlpha(asleep ? 0.45 : 1);
+        const art = `summon:${summonArtName(u.kind)}`;
+        const img = this.add.image(cx2, cy - 8, art).setDisplaySize(112, 112).setAlpha(asleep ? 0.45 : 1);
         this.layer.add(img);
         this.text(cx2, cy + 50, asleep ? `${u.power} · asleep` : `${u.power} / turn`, 14).setOrigin(0.5, 0);
       } else {

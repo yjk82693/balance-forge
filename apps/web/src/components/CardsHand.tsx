@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { CardDef, CardsPayload } from "../lib/contract";
-import { CARDS_RULES, cardArtPath, cardEffect, cardName } from "../lib/cards";
+import { CARDS_RULES, cardArtPath, cardEffect, cardName, summonArtName, summonArtPath } from "../lib/cards";
 import { manifestUrl, preferWebp } from "../lib/assets";
 import type { ActionInput } from "../lib/contract";
 import { blip, buzz } from "../lib/sfx";
@@ -15,8 +15,15 @@ interface Props {
   send: (input: ActionInput) => void;
 }
 
-function unitLabel(u: { power: number; sleepUntil: number }, turnId: number): string {
-  return `Unit · ${u.power} per turn${u.sleepUntil > turnId ? " · asleep" : ""}`;
+function unitLabel(u: { kind?: string; power: number; sleepUntil: number }, turnId: number): string {
+  const name = u.kind ? cardName(u.kind) : "Unit";
+  return `${name} · ${u.power} per turn${u.sleepUntil > turnId ? " · asleep" : ""}`;
+}
+
+/** The picture of a summoned unit, small, from the card that made it. */
+function SummonThumb({ kind }: { kind?: string }) {
+  const src = manifestUrl(summonArtPath(summonArtName(kind)));
+  return src ? <img className="slot-art" src={src} width={28} height={28} alt="" /> : null;
 }
 
 function Orbs({ n }: { n: number }) {
@@ -79,7 +86,12 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
             <Orbs n={me.energy} />
             <span className="small">HP {me.hp}/{me.maxHp ?? CARDS_RULES.health}</span>
             <span className="small">Ward {me.ward}</span>
-            {foe && <span className="caption">{names[foe.id] ?? foe.id}: HP {foe.hp}</span>}
+            {foe && (
+              <span className="caption">
+                {names[foe.id] ?? foe.id}: HP {foe.hp}
+                {foe.units.length > 0 && ` · ${foe.units.length} summon${foe.units.length === 1 ? "" : "s"}`}
+              </span>
+            )}
           </div>
         )}
         {me && (
@@ -88,6 +100,7 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
               const u = me.units[i];
               return (
                 <span key={i} className={`slot${u ? " full" : ""}`}>
+                  {u && <SummonThumb kind={u.kind} />}
                   {u ? unitLabel(u, payload!.turnId) : "Open summon slot"}
                 </span>
               );

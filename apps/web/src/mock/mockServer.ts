@@ -218,6 +218,7 @@ export class MockServer {
         {
           observation: { tick: cards.tick, viewerId: viewer, payload: cards.view(viewer) },
           viewHash: fixtureStateView.payload.viewHash,
+          events: cards.events,
         },
       );
     }
