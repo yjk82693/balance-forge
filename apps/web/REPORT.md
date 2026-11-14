@@ -598,3 +598,9 @@ base that works from any static host. In it:
 `learned/human-style.json` is shown on the skill screen under an "Exploratory" label with the file's own numbers (9 usable
 matches, held-out accuracy against its baseline, cross-validation against its baseline), its readiness note and its
 caveats. It is offered as a bot for runs only when `readiness.ready === true` (`lib/humanStyle.ts`, `availableSkills`).
+
+## Stricter type checking
+
+`apps/web/tsconfig.json` was already `"strict": true` (0 errors). Added `noImplicitOverride` (4 `override` modifiers: the Phaser
+scene `update`, the error boundary), `noImplicitReturns` and `noFallthroughCasesInSwitch` (0 errors each). Measured and left
+off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors) and `exactOptionalPropertyTypes` (81).

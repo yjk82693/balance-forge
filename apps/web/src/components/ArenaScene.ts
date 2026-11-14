@@ -501,7 +501,7 @@ export class ArenaScene extends Phaser.Scene {
     );
   }
 
-  update(_t: number, delta: number) {
+  override update(_t: number, delta: number) {
     const dt = delta / 16.7;
     const now = this.time.now;
     const frozen = this.feel.step(delta); // hit-stop: the world holds still for a few frames
