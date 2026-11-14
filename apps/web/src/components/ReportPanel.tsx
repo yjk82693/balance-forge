@@ -120,15 +120,16 @@ function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report
   const baseStats = botRows(run.baseline.rows).map(rowStats);
   const targetDim = pickTargetDimension(baseStats);
   const sorted = outliersFirst(stats);
-  const shown = stats.find((s) => s.row.dimension === targetDim) ?? sorted[0];
-  const base = baseStats.find((s) => s.row.dimension === targetDim) ?? baseStats[0];
+  const shown = stats.find((s) => s.row.dimension === targetDim);
+  const base = baseStats.find((s) => s.row.dimension === targetDim);
   const elapsed = report.elapsedMs != null ? ` · ${fmtSeconds(report.elapsedMs)}` : "";
   const verdict = run.verdict ? VERDICT_COPY[run.verdict.verdict] : null;
   return (
     <>
       <h1 className="h2">{headlineFor(shown)}</h1>
       <p className="kpi">
-        {pct(shown.rate)}% · {n(report.validMatches)} games{elapsed}
+        {shown ? `${pct(shown.rate)}% · ` : ""}
+        {n(report.validMatches)} games{elapsed}
       </p>
       <p className="report-meta">
         <RecordedBadges report={report} sample={run.sample} />
@@ -156,7 +157,7 @@ function FinishedReport({ run, report, showPatched }: { run: PlaytestRun; report
           {run.verdict.reasons[0] && <span className="caption">{run.verdict.reasons[0]}</span>}
         </p>
       )}
-      {showPatched && (
+      {showPatched && shown && base && (
         <p className="caption">
           {heroName(shown.matchup.a)} {pct(base.rate)}% → {pct(shown.rate)}% · 95% CI {pct(shown.lo)}–
           {pct(shown.hi)}%

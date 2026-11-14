@@ -182,3 +182,18 @@ of the response mapping.
   headline, the target matchup or the replay heroes, and never raise an outlier alarm. Small samples show "Too few games
   yet". They are left out of the live bars.
 - `?mock=1` includes one such row so the group can be seen.
+
+## Step 4: recorded mode reads the stored roster run
+- `lib/recorded.ts` looks for stored runs with a glob over `services/runner/recorded-*.json` (read-only; a file that is not
+  there yet is simply absent, the build does not break). Order: 1) `recorded-roster-report.json`, read as a finished
+  report or a whole `/full` response (real intervals come from its own counts, the chart recomputes Wilson from
+  wins/games); 2) `recorded-roster-match-results.json` + `recorded-roster-metrics.json`, which exist today: the 15-matchup
+  roster run (300 matches, 4 s) is turned into a report in the browser; 3) the older Bari vs Real Armor run.
+- `recorded-roster-report.json` does **not** exist yet, so source 1 was only exercised through the mapping test, not from
+  the file. Source 2 was run in the browser (live run failed with the dev server's 404, the stored run played through the
+  live view and the page said so).
+- Mirror matchups from match results now carry `seatWins` (games won by the first seat), so they show instead of being
+  dropped.
+- Found while checking: with 20 games per matchup every row is "too few games", and the headline used to show a 100%
+  rate for the first row. A row with fewer than 30 games can no longer be the target; the headline then reads "Too few
+  games per matchup yet" and the big number is just the game count.
