@@ -84,7 +84,8 @@ All on one laptop. Win rates are for the first-named hero, with 200 games per ma
 | Play style matters | Bari vs Real Armor across three bot policies: 54.0% / 79.5% / 90.0% |
 | Self-play trained bots (CEM, Nightcrow held out) | Daewi vs held-out Nightcrow 11% → 80%. Sepia generalized worse than its start (86% → 72%). Trained vs trained makes the imbalance worse (Bari vs Real Armor 97%) |
 | Search vs blind mutation (Daewi, same budget) | faster fitness curve with CEM, same held-out level (78% vs 82%, intervals overlap); indicative only |
-| Tests | about 400 pass, 0 fail, including real WebSocket tests and end-to-end flows |
+| Hero Cards loop (offline proposer) | Nightcrow deck 36.0% (n=200) → Pulse cost 1→2 → holdout **55.5%**, accepted, about 20 s. The card designed as the flaw (Hypnosis) was *not* dominant: played 24% of the time, 65% wins when played vs 62% for its deck |
+| Tests | 412 pass, 0 fail, including real WebSocket tests and end-to-end flows |
 
 ## What is real and what is not
 - **Real:** the simulation, bots, statistics, intent-based judging, diagnosis, the Gemini call, validation, versions, phone play and recorded human matches.
@@ -93,8 +94,11 @@ All on one laptop. Win rates are for the first-named hero, with 200 games per ma
 - **Intentional:** the sample games ship with deliberate flaws for the platform to find.
 - **Not done yet:** human-style bots learned from recorded matches; a third sample game.
 
+## Code
+TypeScript throughout. Node 26 runs the engine, analysis and server `.ts` files directly (type stripping, no build step); the web app is built with Vite. Strict typing is being added module by module (`npm run typecheck:server`).
+
 ## Layout
-- `spec/`: shared game contract v0.1 and addenda v0.1.1–v0.1.3 (assignments, hero-stat patches, designer intent)
+- `spec/`: shared game contract v0.1 and addenda v0.1.1–v0.1.4 (assignments, hero-stat patches, designer intent, card patches)
 - `fixtures/`: example data every package tests against
 - `packages/contracts`, `packages/sim`, `packages/games`: contract types, deterministic core, sample games, bot policies
 - `services/runner`: the bot runner, recorded runs and trained bot parameters (`learned/`)
