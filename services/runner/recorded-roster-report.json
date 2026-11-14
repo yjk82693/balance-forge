@@ -3,209 +3,209 @@
   "gameId": "hero_arena",
   "simVersion": "arena-0.1.1",
   "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
-  "botPolicyVersion": "scripted-0.2.0",
+  "botPolicyVersion": "scripted-0.2.1",
   "seedSetId": "explicit-paired-seeds",
   "validMatches": 3000,
   "invalidMatches": 0,
-  "draws": 0,
+  "draws": 424,
   "rows": [
     {
       "dimension": "bari vs bari",
-      "wins": 200,
+      "wins": 72,
       "games": 200,
-      "winRate": 1,
+      "winRate": 0.36,
       "ci95": [
-        0.981154,
-        1
+        0.296691,
+        0.428586
       ],
-      "uses": 3200,
-      "opportunities": 5800,
+      "uses": 3892,
+      "opportunities": 7024,
       "outlier": true
     },
     {
       "dimension": "bari vs daewi",
-      "wins": 200,
+      "wins": 198,
       "games": 200,
-      "winRate": 1,
+      "winRate": 0.99,
       "ci95": [
-        0.981154,
-        1
+        0.964278,
+        0.997253
       ],
-      "uses": 3100,
-      "opportunities": 5700,
+      "uses": 4614,
+      "opportunities": 8335,
       "outlier": true
     },
     {
       "dimension": "bari vs nightcrow",
-      "wins": 200,
+      "wins": 176,
       "games": 200,
-      "winRate": 1,
+      "winRate": 0.88,
       "ci95": [
-        0.981154,
-        1
+        0.827656,
+        0.918021
       ],
-      "uses": 2500,
-      "opportunities": 4600,
+      "uses": 4593,
+      "opportunities": 8274,
       "outlier": true
     },
     {
       "dimension": "bari vs real_armor",
-      "wins": 200,
+      "wins": 159,
       "games": 200,
-      "winRate": 1,
+      "winRate": 0.795,
       "ci95": [
-        0.981154,
-        1
+        0.733742,
+        0.845139
       ],
-      "uses": 4000,
-      "opportunities": 7200,
+      "uses": 5614,
+      "opportunities": 10042,
       "outlier": true
     },
     {
       "dimension": "bari vs sepia",
-      "wins": 200,
+      "wins": 176,
       "games": 200,
-      "winRate": 1,
+      "winRate": 0.88,
       "ci95": [
-        0.981154,
-        1
+        0.827656,
+        0.918021
       ],
-      "uses": 2500,
-      "opportunities": 4600,
+      "uses": 4593,
+      "opportunities": 8274,
       "outlier": true
     },
     {
       "dimension": "daewi vs daewi",
-      "wins": 200,
+      "wins": 64,
       "games": 200,
-      "winRate": 1,
+      "winRate": 0.32,
       "ci95": [
-        0.981154,
-        1
+        0.259264,
+        0.38752
       ],
-      "uses": 2600,
-      "opportunities": 5200,
+      "uses": 4512,
+      "opportunities": 9066,
       "outlier": true
     },
     {
       "dimension": "daewi vs nightcrow",
-      "wins": 0,
+      "wins": 33,
       "games": 200,
-      "winRate": 0,
+      "winRate": 0.165,
       "ci95": [
-        0,
-        0.018846
+        0.119968,
+        0.222659
       ],
-      "uses": 3000,
-      "opportunities": 5700,
+      "uses": 4727,
+      "opportunities": 9237,
       "outlier": true
     },
     {
       "dimension": "daewi vs real_armor",
-      "wins": 0,
+      "wins": 5,
       "games": 200,
-      "winRate": 0,
+      "winRate": 0.025,
       "ci95": [
-        0,
-        0.018846
+        0.010725,
+        0.057179
       ],
-      "uses": 3100,
-      "opportunities": 6000,
+      "uses": 5069,
+      "opportunities": 9822,
       "outlier": true
     },
     {
       "dimension": "daewi vs sepia",
-      "wins": 0,
+      "wins": 33,
       "games": 200,
-      "winRate": 0,
+      "winRate": 0.165,
       "ci95": [
-        0,
-        0.018846
+        0.119968,
+        0.222659
       ],
-      "uses": 3000,
-      "opportunities": 5700,
+      "uses": 4727,
+      "opportunities": 9237,
       "outlier": true
     },
     {
       "dimension": "nightcrow vs nightcrow",
-      "wins": 0,
+      "wins": 64,
       "games": 200,
-      "winRate": 0,
+      "winRate": 0.32,
       "ci95": [
-        0,
-        0.018846
+        0.259264,
+        0.38752
       ],
-      "uses": 3200,
-      "opportunities": 5800,
+      "uses": 9304,
+      "opportunities": 16512,
       "outlier": true
     },
     {
       "dimension": "nightcrow vs real_armor",
-      "wins": 100,
+      "wins": 61,
       "games": 200,
-      "winRate": 0.5,
+      "winRate": 0.305,
       "ci95": [
-        0.43136,
-        0.56864
+        0.245363,
+        0.371987
       ],
-      "uses": 4600,
-      "opportunities": 8300,
-      "outlier": false
+      "uses": 10045,
+      "opportunities": 17816,
+      "outlier": true
     },
     {
       "dimension": "nightcrow vs sepia",
-      "wins": 100,
+      "wins": 63,
       "games": 200,
-      "winRate": 0.5,
+      "winRate": 0.315,
       "ci95": [
-        0.43136,
-        0.56864
+        0.254622,
+        0.382351
       ],
-      "uses": 3300,
-      "opportunities": 6000,
-      "outlier": false
+      "uses": 9299,
+      "opportunities": 16503,
+      "outlier": true
     },
     {
       "dimension": "real_armor vs real_armor",
-      "wins": 0,
+      "wins": 58,
       "games": 200,
-      "winRate": 0,
+      "winRate": 0.29,
       "ci95": [
-        0,
-        0.018846
+        0.231539,
+        0.356376
       ],
-      "uses": 5200,
-      "opportunities": 9200,
+      "uses": 12180,
+      "opportunities": 21576,
       "outlier": true
     },
     {
       "dimension": "real_armor vs sepia",
-      "wins": 100,
+      "wins": 110,
       "games": 200,
-      "winRate": 0.5,
+      "winRate": 0.55,
       "ci95": [
-        0.43136,
-        0.56864
+        0.480755,
+        0.617361
       ],
-      "uses": 4600,
-      "opportunities": 8300,
+      "uses": 10037,
+      "opportunities": 17803,
       "outlier": false
     },
     {
       "dimension": "sepia vs sepia",
-      "wins": 0,
+      "wins": 64,
       "games": 200,
-      "winRate": 0,
+      "winRate": 0.32,
       "ci95": [
-        0,
-        0.018846
+        0.259264,
+        0.38752
       ],
-      "uses": 3200,
-      "opportunities": 5800,
+      "uses": 9304,
+      "opportunities": 16512,
       "outlier": true
     }
   ],
-  "elapsedMs": 62158,
+  "elapsedMs": 119027,
   "recorded": true,
-  "createdAt": "2026-11-14T13:50:50.672Z"
+  "createdAt": "2026-11-14T13:56:30.766Z"
 }

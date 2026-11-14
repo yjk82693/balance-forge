@@ -1,6 +1,6 @@
 import { data, legalActions } from './index.js';
-export const botPolicyVersion = 'scripted-0.2.1';
 import { xorshift32 } from '../../sim/index.js';
+export const botPolicyVersion = 'scripted-0.2.1';
 
 // Stable public boundary: callers derive once per match and pass the result as variant on every tick.
 export function deriveBotSeed(matchSeed, seatIndex) {
