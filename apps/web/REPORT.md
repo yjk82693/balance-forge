@@ -543,3 +543,11 @@ string (`ui-<base36 time>`). This is what the "Intended?" chips and the intent p
 
 The PUT body is built in `src/lib/intentBody.ts` and `apps/web/test/intent-body.test.mjs` runs it through the engine's own
 `normalizeIntent`, so a number version (or any other shape the engine refuses) fails the test.
+
+## Lobby toggle changes the room's data
+
+"Patched" in the lobby now sends `game.select {gameId, dataHash}` with the server's current version when it is not the root,
+else the newest accepted one; "Broken" selects the root version (and the room is put on it once when the lobby opens).
+The version is named beside the toggle ("version 9b0f5d2 · Bari · Health 540 → 486, ..."); with no accepted version
+"Patched" is disabled with a hint. The dashboard toggle is a view switch and is labelled "View". Logic and test:
+`src/lib/roomVersion.ts`, `apps/web/test/room-version.test.mjs`.

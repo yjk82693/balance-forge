@@ -5,23 +5,34 @@ const OPTIONS: { id: DemoVersion; label: string }[] = [
   { id: "patched", label: "Patched" },
 ];
 
-/** One control for the rematch scene: flips every screen between the broken and patched data. */
+/**
+ * A view switch of the dashboard: shows the run's broken (before) or patched (after) result. It does not change the
+ * data a room plays on; that is the lobby's own toggle (LobbyVersion).
+ */
 export function VersionToggle({ disabled = false, hint }: { disabled?: boolean; hint?: string }) {
   const v = useDemoVersion();
   return (
-    <div className="seg" role="radiogroup" aria-label="Game data version" title={disabled ? hint : undefined}>
-      {OPTIONS.map((o) => (
-        <button
-          key={o.id}
-          role="radio"
-          aria-checked={v === o.id}
-          aria-disabled={disabled}
-          className={`seg-btn${v === o.id ? " on" : ""}`}
-          onClick={() => !disabled && setDemoVersion(o.id)}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="view-switch">
+      <span className="caption">View</span>
+      <div
+        className="seg"
+        role="radiogroup"
+        aria-label="Result view (not the game data)"
+        title={disabled ? hint : undefined}
+      >
+        {OPTIONS.map((o) => (
+          <button
+            key={o.id}
+            role="radio"
+            aria-checked={v === o.id}
+            aria-disabled={disabled}
+            className={`seg-btn${v === o.id ? " on" : ""}`}
+            onClick={() => !disabled && setDemoVersion(o.id)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

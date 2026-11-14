@@ -297,9 +297,9 @@ const JSON_POST = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
-/** GET /v1/versions/hero_arena: the history and the current hash; null when the server has no history endpoint. */
-export async function fetchVersions(signal?: AbortSignal): Promise<VersionList | null> {
-  const raw = await call<unknown>("/v1/versions/hero_arena", undefined, signal);
+/** GET /v1/versions/<game>: the history and the current hash; null when the server has no history endpoint. */
+export async function fetchVersions(signal?: AbortSignal, gameId = "hero_arena"): Promise<VersionList | null> {
+  const raw = await call<unknown>(`/v1/versions/${gameId}`, undefined, signal);
   return raw === null ? null : parseVersionList(raw);
 }
 

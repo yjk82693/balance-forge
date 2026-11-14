@@ -2538,3 +2538,7 @@ button.intent-btn { cursor: pointer; }
 @media (max-width: 1099px) {
   .card-grid { display: block; overflow-x: auto; }
 }
+
+/* Lobby: the room's data toggle with the version named beside it; the dashboard's toggle says "View". */
+.lobby-version, .view-switch { display: inline-flex; align-items: center; gap: var(--space-3); }
+.lobby-version-line { max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
