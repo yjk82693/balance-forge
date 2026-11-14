@@ -86,3 +86,26 @@ test('stand-in: guard and move are never the lever, and power stays inside 1..10
   assert.equal(proposal.replacements[0].path, '/moves/1/power');
   assert.equal(proposal.replacements[0].value, 10000);
 });
+
+test('stand-in follows the first recommendation of the diagnosis: path, direction and size', async () => {
+  const adapter = steppingAdapter(() => standInData());
+  const rec = (extra) => ({ diagnosis: { recommendations: [{ hero: 'daewi', role: 'loser', path: '/moves/3/power',
+    direction: 'up', sizePct: 25, why: 'daewi is too weak', expected: 'x', ...extra }] } });
+  const row = [standInRow('bari vs daewi', 0.9)];
+  const up = await adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row }, rec({}));
+  assert.deepEqual(up.proposal.replacements, [{ path: '/moves/3/power', value: 125 }]); // smash 100 -> +25%
+  assert.equal(up.origin, 'fake');
+  assert.match(up.proposal.rationale, /first recommendation \(up 25%\): daewi is too weak/);
+  const down = await adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
+    rec({ role: 'winner', hero: 'bari', path: '/moves/1/power', direction: 'down', sizePct: 30 }));
+  assert.deepEqual(down.proposal.replacements, [{ path: '/moves/1/power', value: 64 }]); // arrow 92 -> -30%
+  const data = standInData();
+  data.tuning = { damageScalePermille: 1000 };
+  const global = await steppingAdapter(() => data).proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
+    rec({ path: '/tuning/damageScalePermille', direction: 'down', sizePct: 30, scope: 'global' }));
+  assert.deepEqual(global.proposal.replacements, [{ path: '/tuning/damageScalePermille', value: 700 }]);
+  // a recommendation it cannot apply falls back to the plain stand-in rule
+  const bad = await adapter.proposeWithOrigin({ dataHash: 'a'.repeat(64), rows: row },
+    rec({ path: '/moves/99/power' }));
+  assert.match(bad.proposal.rationale, /^Offline stand-in: (lower|raise) /);
+});
