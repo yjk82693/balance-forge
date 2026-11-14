@@ -1,0 +1,308 @@
+import {createServer} from 'node:http';
+import {randomBytes, randomUUID} from 'node:crypto';
+import {performance} from 'node:perf_hooks';
+import {fileURLToPath} from 'node:url';
+import {resolve, relative, extname, sep} from 'node:path';
+import {readFile, realpath, stat} from 'node:fs/promises';
+import {join} from 'node:path';
+import {WebSocketServer, WebSocket} from 'ws';
+import {Authority} from '../../packages/sim/index.js';
+import {hash, validate, validateSchema} from '../../packages/contracts/index.js';
+import {integer, object} from '../../packages/contracts/shapes.js';
+import {runBatch, pairedJobs} from '../runner/index.js';
+import {games} from '../runner/match.js';
+import {Storage, writeJson} from './storage.js';
+import {parseEnvelope, validatePayload, assertDepth, errorCode} from './protocol.js';
+const directory=fileURLToPath(new URL('./',import.meta.url));
+const defaultStatic=fileURLToPath(new URL('../../apps/web/dist',import.meta.url));
+const STEP_MS=1000/60;
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
+  '.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png',
+  '.svg':'image/svg+xml','.webp':'image/webp','.woff2':'font/woff2','.ico':'image/x-icon'};
+const httpStatus=code=>code==='RATE_LIMITED'?429:code==='AUTH_EXPIRED'?403:code==='TRANSPORT_UNAVAILABLE'?503:400;
+function json(response,status,value) {
+  response.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});
+  response.end(JSON.stringify(value));
+}
+async function readBody(request) {
+  if(Number(request.headers['content-length']??0)>65536)throw Error('INVALID_SCHEMA');
+  const parts=[];let length=0;
+  for await(const chunk of request){length+=chunk.length;if(length>65536)throw Error('INVALID_SCHEMA');parts.push(chunk);}
+  let result;try {result=JSON.parse(Buffer.concat(parts).toString('utf8'));}catch {throw Error('INVALID_SCHEMA');}
+  assertDepth(result);return result;
+}
+export class RoomServer {
+  constructor({storageDir=directory,staticDir=defaultStatic,turnTimeoutMs=15000,workers=2}={}) {
+    if(!Number.isInteger(turnTimeoutMs)||turnTimeoutMs<1)throw Error('INVALID_SCHEMA');
+    this.storage=new Storage(storageDir);this.staticDir=resolve(staticDir);this.turnTimeoutMs=turnTimeoutMs;
+    this.workers=workers;this.rooms=new Map();this.codes=new Map();this.sessions=new Set();this.tasks=new Set();
+    this.runningBatch=false;this.closed=false;
+    this.http=createServer((req,res)=>this.handleHttp(req,res).catch(error=>{
+      if(!res.headersSent)json(res,httpStatus(errorCode(error)),{code:errorCode(error)});else res.destroy();
+    }));
+    this.ws=new WebSocketServer({noServer:true,maxPayload:65536,perMessageDeflate:false});
+    this.http.on('upgrade',(request,socket,head)=>{
+      const url=new URL(request.url,'http://localhost');
+      if(url.pathname!=='/ws'){socket.destroy();return;}
+      this.ws.handleUpgrade(request,socket,head,ws=>this.connect(ws,url));
+    });
+    this.timer=setInterval(()=>this.pump(),8);
+    this.timer.unref();
+  }
+  createRoom(gameId='hero_arena') {
+    if(!Object.hasOwn(games,gameId))throw Error('INVALID_SCHEMA');
+    if(this.rooms.size>=100)throw Error('RATE_LIMITED');
+    let code;do {code=Array.from(randomBytes(4),x=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x%32]).join('');}
+    while(this.codes.has(code));
+    const room={id:randomUUID(),code,gameId,phase:'lobby',epoch:1,host:null,hostToken:randomUUID(),
+      seats:[],members:new Set(),authority:null,game:null,matchId:null,result:null,accumulator:0,lastTime:0,deadline:0};
+    this.rooms.set(room.id,room);this.codes.set(code,room);return room;
+  }
+  connect(ws,url) {
+    const session={id:randomUUID(),ws,room:null,seat:null,count:0,window:performance.now(),seq:0};
+    this.sessions.add(session);
+    ws.on('error',()=>{});
+    ws.on('message',(raw,isBinary)=>{
+      let env;
+      try {
+        if(isBinary)throw Error('INVALID_SCHEMA');env=parseEnvelope(raw.toString('utf8'));
+        if(env.sessionId&&env.sessionId!==session.id)throw Error('AUTH_EXPIRED');
+        if(session.room&&env.type!=='room.join'&&env.type!=='room.create') {
+          if(env.roomId!==session.room.id)throw Error('AUTH_EXPIRED');
+          if(env.epoch!==session.room.epoch)throw Error('STALE_TURN');
+        }
+        this.receive(session,env);
+      }catch(error){this.send(session,'error',{code:errorCode(error),requestId:env?.requestId??'',retryable:false},env);}
+    });
+    ws.on('close',()=>this.disconnect(session));
+    try {
+      const roomId=url.searchParams.get('roomId');
+      if(roomId){
+        const room=this.rooms.get(roomId);if(!room)throw Error('AUTH_EXPIRED');
+        const token=url.searchParams.get('hostToken');
+        if(token&&token!==room.hostToken)throw Error('AUTH_EXPIRED');
+        if(token){if(room.host)throw Error('ILLEGAL_ACTION');room.host=session;}
+        this.attach(session,room);this.status(room);if(room.authority)this.view(session);
+      }else if(url.searchParams.get('role')==='display'){
+        const room=this.createRoom(url.searchParams.get('gameId')??'hero_arena');room.host=session;
+        this.attach(session,room);this.status(room);
+      }else this.send(session,'room.status',{joinCode:'',phase:'lobby',seats:[]});
+    }catch(error){this.send(session,'error',{code:errorCode(error),requestId:'',retryable:false});}
+  }
+  attach(session,room){session.room=room;room.members.add(session);}
+  send(session,type,payload,request,seq) {
+    if(session.ws.readyState!==WebSocket.OPEN)return;
+    if(session.ws.bufferedAmount>1048576){session.ws.close(1013,'Slow consumer');return;}
+    session.ws.send(JSON.stringify({protocolVersion:'0.1',type,roomId:session.room?.id??'',sessionId:session.id,
+      requestId:request?.requestId??'',seq:seq??session.seq++,epoch:session.room?.epoch??1,payload}));
+  }
+  status(room,request) {
+    for(const s of room.members)this.send(s,'room.status',{
+      joinCode:room.code,phase:room.phase,gameId:room.gameId,
+      seats:room.seats.map(({seat,name,hero,session})=>({seat,name,hero,connected:!!session})),
+      ...(s.seat?{you:s.seat}:{})
+    },request);
+  }
+  host(session) {
+    if(!session.room||session.room.host!==session)throw Error('AUTH_EXPIRED');
+    return session.room;
+  }
+  receive(session,env) {
+    if(env.type==='input.submit')return this.input(session,env);
+    validatePayload(env.type,env.payload);
+    if(env.type==='ping'){this.send(session,'pong',{},env);return;}
+    if(env.type==='room.create') {
+      if(session.room)throw Error('ILLEGAL_ACTION');
+      const room=this.createRoom(env.payload.gameId);room.host=session;this.attach(session,room);this.status(room,env);return;
+    }
+    if(env.type==='room.join') {
+      const room=this.codes.get(env.payload.joinCode.toUpperCase());
+      if(!room)throw Error('AUTH_EXPIRED');
+      if(session.room&&session.room!==room)throw Error('ILLEGAL_ACTION');
+      if(room.phase!=='lobby')throw Error('ILLEGAL_ACTION');
+      if(!games.hero_arena.data.characters.some(c=>c.id===env.payload.hero))throw Error('INVALID_SCHEMA');
+      if(session.seat) {
+        const seat=room.seats.find(s=>s.seat===session.seat);seat.name=env.payload.name;seat.hero=env.payload.hero;
+      }else {
+        if(room.seats.length>=games[room.gameId].describe().maxPlayers)throw Error('ROOM_FULL');
+        const seat=['p1','p2','p3','p4'].find(id=>!room.seats.some(s=>s.seat===id));
+        room.seats.push({seat,name:env.payload.name,hero:env.payload.hero,session});session.seat=seat;
+      }
+      this.attach(session,room);this.status(room,env);return;
+    }
+    const room=this.host(session);
+    if(env.type==='game.select') {
+      if(room.phase!=='lobby')throw Error('ILLEGAL_ACTION');
+      this.storage.get(env.payload.gameId,env.payload.dataHash);
+      room.gameId=env.payload.gameId;room.selectedHash=env.payload.dataHash;this.status(room,env);return;
+    }
+    if(env.type==='match.start')return this.start(room,env.payload,env);
+    if(env.type==='match.reset') {
+      if(room.phase==='playing')this.finish(room,'ILLEGAL_ACTION');
+      room.phase='lobby';room.authority=null;room.game=null;room.result=null;room.matchId=null;room.epoch++;
+      room.seats=room.seats.filter(s=>s.session);room.accumulator=0;this.status(room,env);
+    }
+  }
+  start(room,options,request) {
+    if(room.phase!=='lobby'||room.seats.filter(s=>s.session).length!==2)throw Error('ILLEGAL_ACTION');
+    const gameId=options.gameId??room.gameId,game=games[gameId];
+    const {data}=this.storage.get(gameId,gameId===room.gameId?room.selectedHash:undefined);
+    const players=room.seats.map(s=>s.seat).sort();
+    const config=game.makeConfig(data,options.seed??1,players);
+    config.options={assignments:Object.fromEntries(room.seats.map(s=>[s.seat,gameId==='hero_arena'?s.hero:'standard']))};
+    if(options.maxTicks!==undefined)config.maxTicks=options.maxTicks;
+    const authority=new Authority(game.adapter,config,data);
+    room.authority=authority;room.game=game;room.gameId=gameId;room.phase='playing';room.result=null;
+    room.matchId=`human-${randomUUID()}`;room.epoch++;room.lastTime=performance.now();room.accumulator=0;
+    room.deadline=room.lastTime+this.turnTimeoutMs;
+    this.status(room,request);
+    for(const s of room.members)this.send(s,'match.started',{config},request);
+    this.views(room);
+  }
+  input(session,env) {
+    const room=session.room;
+    if(!room?.authority||!session.seat)throw Error('ILLEGAL_ACTION');
+    validate('ActionInput',env.payload);
+    if(env.payload.playerId!==session.seat)throw Error('ILLEGAL_ACTION');
+    const now=performance.now();
+    if(now-session.window>=1000){session.window=now;session.count=0;}
+    if(++session.count>120)throw Error('RATE_LIMITED');
+    const authority=room.authority,key=JSON.stringify([session.seat,env.payload.seq]);
+    if(room.phase!=='playing'&&!authority.receipts.has(key))throw Error('ILLEGAL_ACTION');
+    const previous=authority.receipts.has(key),receipt=authority.submit(env.payload);
+    this.send(session,'input.ack',receipt,env,env.payload.seq);
+    if(authority.config.mode==='turn'&&!previous)this.advance(room);
+  }
+  view(session) {
+    const room=session.room,authority=room.authority,viewerId=session.seat??'display';
+    if(!authority)return;
+    const observation=room.game.observe(authority.state,viewerId);
+    this.send(session,'state.view',{observation,tick:observation.tick,turnId:authority.state.turnId,
+      epoch:room.epoch,viewHash:hash(observation)});
+    this.send(session,'actions.available',{playerId:viewerId,tick:observation.tick,turnId:authority.state.turnId,
+      actions:room.game.legalActions(observation)});
+  }
+  views(room){for(const session of room.members)this.view(session);}
+  advance(room,systemInputs=[]) {
+    if(room.phase!=='playing')return;
+    try {
+      const turn=room.authority.state.turnId;
+      room.authority.advance(systemInputs);
+      if(room.authority.state.turnId!==turn)room.deadline=performance.now()+this.turnTimeoutMs;
+      this.views(room);
+      if(room.game.outcome(room.authority.state).status!=='running')this.finish(room);
+    }catch(error){this.finish(room,errorCode(error));}
+  }
+  finish(room,failure) {
+    if(room.phase!=='playing')return;
+    const a=room.authority;
+    const result={matchId:room.matchId,config:a.config,
+      outcome:failure?{status:'running',winners:[],reason:'invalid_match'}:room.game.outcome(a.state),
+      statistics:room.game.statistics(a.state),finalStateHash:room.game.hash(a.state),valid:!failure,errorCode:failure??''};
+    this.storage.record(result);room.result=result;room.phase='ended';
+    for(const s of room.members)this.send(s,'match.ended',{result});
+    this.status(room);
+  }
+  pump() {
+    if(this.closed)return;
+    const now=performance.now();
+    for(const room of this.rooms.values()) {
+      if(room.phase!=='playing')continue;
+      if(room.authority.config.mode==='turn') {
+        if(now>=room.deadline)this.advance(room,[{kind:'system.timeout',
+          playerId:room.authority.state.payload.activePlayer,turnId:room.authority.state.turnId}]);
+      }else {
+        room.accumulator+=now-room.lastTime;room.lastTime=now;
+        let steps=0;
+        while(room.accumulator>=STEP_MS&&room.phase==='playing'&&steps++<120){
+          room.accumulator-=STEP_MS;this.advance(room);
+        }
+      }
+    }
+  }
+  disconnect(session) {
+    this.sessions.delete(session);const room=session.room;if(!room)return;
+    room.members.delete(session);
+    const seat=room.seats.find(s=>s.session===session);if(seat)seat.session=null;
+    if(room.phase==='lobby')room.seats=room.seats.filter(s=>s.session);
+    if(room.host===session)room.host=null;
+    this.status(room);
+  }
+  async handleHttp(request,response) {
+    const url=new URL(request.url,'http://localhost'),path=url.pathname;
+    if(request.method==='GET'&&path==='/v1/games') {
+      json(response,200,Object.values(games).map(g=>g.describe()));return;
+    }
+    if(request.method==='POST'&&path==='/v1/rooms') {
+      const body=await readBody(request);validatePayload('room.create',body);
+      const room=this.createRoom(body.gameId);
+      json(response,201,{roomId:room.id,joinCode:room.code,hostToken:room.hostToken,epoch:room.epoch});return;
+    }
+    const dataRoute=path.match(/^\/v1\/data\/(hero_arena|hero_cards)(\/apply-patch)?$/);
+    if(dataRoute) {
+      if(request.method==='GET'&&!dataRoute[2]){json(response,200,this.storage.get(dataRoute[1],url.searchParams.get('dataHash')??undefined));return;}
+      if(request.method==='POST'&&dataRoute[2]) {
+        const body=await readBody(request);validateSchema(object({proposal:{$ref:'#/$defs/PatchProposal'}}),body);
+        json(response,200,this.storage.patch(dataRoute[1],body.proposal));return;
+      }
+    }
+    if(request.method==='POST'&&path==='/v1/playtest/run') {
+      const body=await readBody(request);
+      validateSchema(object({gameId:{enum:['hero_arena','hero_cards']},pairs:integer(1,1000)}),body);
+      if(this.runningBatch)throw Error('RATE_LIMITED');this.runningBatch=true;
+      const task=(async()=>{
+        const {data,dataHash}=this.storage.get(body.gameId);
+        const batch=await runBatch(pairedJobs({gameId:body.gameId,data,seeds:Array.from({length:body.pairs},(_,i)=>i+1)}),{workers:this.workers});
+        const id=randomUUID(),resultsPath=`/v1/playtest/results/${id}.json`;
+        writeJson(join(this.storage.directory,'playtests',`${id}.json`),batch.results);
+        writeJson(join(this.storage.directory,'playtests',`${id}.metrics.json`),batch.metrics);
+        json(response,200,{resultsPath,elapsedMs:batch.metrics.elapsedMs,matchCount:batch.results.length,
+          dataHash,recorded:true});
+      })();
+      this.tasks.add(task);
+      try {await task;}finally {this.tasks.delete(task);this.runningBatch=false;}
+      return;
+    }
+    const resultRoute=path.match(/^\/v1\/playtest\/results\/([0-9a-f-]{36})\.json$/);
+    if(request.method==='GET'&&resultRoute) {
+      try {const data=await readFile(join(this.storage.directory,'playtests',`${resultRoute[1]}.json`));
+        response.writeHead(200,{'content-type':'application/json; charset=utf-8'});response.end(data);
+      }catch(error){if(error.code==='ENOENT')json(response,404,{code:'INVALID_SCHEMA'});else throw error;}
+      return;
+    }
+    if(path.startsWith('/v1/')){json(response,404,{code:'INVALID_SCHEMA'});return;}
+    if(!['GET','HEAD'].includes(request.method)){json(response,405,{code:'INVALID_SCHEMA'});return;}
+    await this.serveStatic(url,response,request.method==='HEAD');
+  }
+  async serveStatic(url,response,head) {
+    let pathname;try {pathname=decodeURIComponent(url.pathname);}catch {throw Error('INVALID_SCHEMA');}
+    if(pathname.includes('\0')||pathname.includes('\\'))throw Error('INVALID_SCHEMA');
+    let root;try {root=await realpath(this.staticDir);}catch {json(response,503,{code:'TRANSPORT_UNAVAILABLE'});return;}
+    let target=resolve(root,`.${pathname}`);
+    const inside=path=>{const rel=relative(root,path);return rel===''||(!rel.startsWith(`..${sep}`)&&rel!=='..'&&!rel.startsWith(sep));};
+    if(!inside(target))throw Error('AUTH_EXPIRED');
+    try {
+      try {if((await stat(target)).isDirectory())target=join(target,'index.html');}
+      catch(error){if(error.code==='ENOENT'&&!extname(pathname))target=join(root,'index.html');else throw error;}
+      target=await realpath(target);if(!inside(target))throw Error('AUTH_EXPIRED');
+      const bytes=await readFile(target);response.writeHead(200,{'content-type':types[extname(target)]??'application/octet-stream'});
+      response.end(head?undefined:bytes);
+    }catch(error){if(error.code==='ENOENT')json(response,404,{code:'INVALID_SCHEMA'});else throw error;}
+  }
+  listen(port=3000,host='0.0.0.0') {
+    return new Promise((resolve,reject)=>{
+      const failed=error=>{this.http.off('listening',ready);reject(error);};
+      const ready=()=>{this.http.off('error',failed);resolve(this.http.address());};
+      this.http.once('error',failed);this.http.once('listening',ready);this.http.listen(port,host);
+    });
+  }
+  async close() {
+    this.closed=true;clearInterval(this.timer);
+    for(const room of this.rooms.values())if(room.phase==='playing')this.finish(room,'TRANSPORT_UNAVAILABLE');
+    for(const session of this.sessions)session.ws.terminate();
+    await Promise.allSettled([...this.tasks]);
+    await new Promise(resolve=>this.ws.close(resolve));
+    if(this.http.listening)await new Promise((resolve,reject)=>this.http.close(error=>error?reject(error):resolve()));
+  }
+}
+export const createRoomServer=options=>new RoomServer(options);

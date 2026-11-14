@@ -16,3 +16,9 @@ Movement consumes no cooldown and is excluded from attack uses/opportunities. Bo
 Frames and Authority allow at most one move and one attack per seat, with distinct monotonic sequences.
 Tests cover movement through startup/recovery/cooldown, stun rejection, duplicate categories, receipts, and replay.
 Full determinism matrix will run after the requested formatting pass, before server implementation.
+
+## Readability and determinism
+
+Formatted all packages/games and packages/sim files using already installed tooling; no dependencies added.
+Verified zero lines over 120 characters. All 28 engine/runner tests passed after the movement and assignment changes.
+The 100 seeds × 1,000 ticks × two independent runs matrix passed every input and state hash comparison in 50.19 s.
