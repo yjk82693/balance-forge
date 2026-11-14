@@ -1,6 +1,8 @@
 // Report storage boundary. JSON-file implementation works offline; TigerData is a placeholder only.
 import { mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fail, safely } from './errors.js';
+import { assertReport } from './input-check.js';
 
 /**
  * @typedef {Object} ReportStorage
@@ -27,23 +29,29 @@ export class JsonFileStorage {
     this.#dir = dir;
   }
   #path(id) {
-    if (!ID_RE.test(id) || id.includes('..')) throw new RangeError(`invalid reportId: ${id}`);
+    if (typeof id !== 'string' || !ID_RE.test(id) || id.includes('..')) fail('INVALID_INPUT', 'invalid reportId (letters, digits, . _ - only)');
     return join(this.#dir, `${id}.json`);
   }
   async saveReport(report) {
+    assertReport(report);
     const path = this.#path(report.reportId);
-    mkdirSync(this.#dir, { recursive: true });
-    const tmp = `${path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(report, null, 2) + '\n');
-    renameSync(tmp, path); // same reportId overwrites: reports are immutable by convention, callers choose new ids
+    try {
+      mkdirSync(this.#dir, { recursive: true });
+      const tmp = `${path}.tmp`;
+      writeFileSync(tmp, JSON.stringify(report, null, 2) + '\n');
+      renameSync(tmp, path);
+    } catch {
+      fail('IO_ERROR', 'could not write the report file');
+    } // same reportId overwrites: reports are immutable by convention, callers choose new ids
     return { reportId: report.reportId };
   }
   async getReport(reportId) {
+    const path = this.#path(reportId);
     try {
-      return JSON.parse(readFileSync(this.#path(reportId), 'utf8'));
+      return JSON.parse(readFileSync(path, 'utf8'));
     } catch (e) {
       if (e.code === 'ENOENT') return null;
-      throw e;
+      return fail(e instanceof SyntaxError ? 'INVALID_JSON' : 'IO_ERROR', `could not read report ${reportId}`);
     }
   }
   async listReports(filter = {}) {
@@ -52,9 +60,15 @@ export class JsonFileStorage {
       names = readdirSync(this.#dir).filter((n) => n.endsWith('.json'));
     } catch (e) {
       if (e.code === 'ENOENT') return [];
-      throw e;
+      return fail('IO_ERROR', 'could not list the report folder');
     }
-    const out = names.map((n) => summarize(JSON.parse(readFileSync(join(this.#dir, n), 'utf8'))));
+    const out = names.map((n) => {
+      try {
+        return summarize(JSON.parse(readFileSync(join(this.#dir, n), 'utf8')));
+      } catch {
+        return fail('INVALID_JSON', `report file ${n} is not valid JSON`);
+      }
+    });
     return out
       .filter((s) => filter.gameId === undefined || s.gameId === filter.gameId)
       .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || a.reportId.localeCompare(b.reportId));
@@ -66,4 +80,13 @@ export class TigerDataStorage {
   async saveReport() { throw new Error('TigerDataStorage is not implemented'); }
   async listReports() { throw new Error('TigerDataStorage is not implemented'); }
   async getReport() { throw new Error('TigerDataStorage is not implemented'); }
+}
+
+/** Result-returning view of any ReportStorage: every method gives { ok, value } or an error result. */
+export function safeStorage(storage) {
+  return {
+    saveReport: safely((r) => storage.saveReport(r)),
+    listReports: safely((f) => storage.listReports(f)),
+    getReport: safely((id) => storage.getReport(id)),
+  };
 }

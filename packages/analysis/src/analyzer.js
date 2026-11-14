@@ -1,5 +1,7 @@
 import { wilson95, round6 } from './wilson.js';
 import { heroMatchup } from './group.js';
+import { fail } from './errors.js';
+import { assertMatchResults } from './input-check.js';
 
 export const BAND_LOW = 0.45;
 export const BAND_HIGH = 0.55;
@@ -33,17 +35,18 @@ const defaultFocal = (result) => heroMatchup(result)?.focal ?? result.config.pla
  * allowMixed (skip the single-dataHash check; used for human matches, which may span content versions).
  */
 export function analyze(results, options = {}) {
+  assertMatchResults(results);
   const dimensionOf = options.dimensionOf ?? defaultDimension;
   const focalOf = options.focalOf ?? defaultFocal;
   const valid = results.filter((r) => r.valid === true);
   const invalidMatches = results.length - valid.length;
 
   const first = valid[0]?.config ?? results[0]?.config;
-  if (!first) throw new Error('analyze: no results');
+  if (!first) fail('NO_RESULTS', 'no match results to analyze');
   for (const r of options.allowMixed ? [] : valid) {
     const c = r.config;
     if (c.gameId !== first.gameId || c.simVersion !== first.simVersion || c.dataHash !== first.dataHash) {
-      throw new Error('analyze: mixed gameId/simVersion/dataHash; group results first');
+      fail('MIXED_DATAHASH', 'results mix gameId, simVersion or dataHash; group them by dataHash first');
     }
   }
 

@@ -2,11 +2,13 @@
 // MatchResult[] (or {results: MatchResult[]}) - the same shape as the match.ended payload.
 import { analyze } from './analyzer.js';
 import { HUMAN_PREFIX, withExtras } from './extras.js';
+import { assertMatchResults } from './input-check.js';
+import { fail, safely } from './errors.js';
 
 export function humanResultsOf(json) {
   const list = Array.isArray(json) ? json : json?.results;
-  if (!Array.isArray(list)) throw new TypeError('human results must be MatchResult[] or {results: MatchResult[]}');
-  return list;
+  if (!Array.isArray(list)) fail('INVALID_INPUT', 'human results must be MatchResult[] or {results: MatchResult[]}');
+  return assertMatchResults(list, 'human results');
 }
 
 /** Appends "human: <matchup>" rows and sets humanMatches (valid human matches). Bot totals are untouched. */
@@ -25,7 +27,6 @@ export const humanRows = (report) => report.rows.filter((r) => r.dimension.start
 import { wilson95, round6 } from './wilson.js';
 import { isOutlier, MIN_GAMES_FOR_OUTLIER } from './analyzer.js';
 import { heroMatchup } from './group.js';
-import { fail, safely } from './errors.js';
 
 /** "real_armor" -> "Real Armor". Unknown ids (e.g. seat ids "p1") pass through readable. */
 export const heroDisplayName = (id) =>
@@ -46,7 +47,7 @@ export function smallSampleNote(n) {
  * Returns { ok, value: { humanMatches, invalidMatches, groups } } or an error result.
  */
 export const buildHumanGroup = safely((humanResults) => {
-  if (!Array.isArray(humanResults)) fail('INVALID_INPUT', 'human results must be an array of MatchResult');
+  assertMatchResults(humanResults, 'human results');
   const valid = humanResults.filter((r) => r?.valid === true);
   const tally = new Map();
   for (const r of valid) {

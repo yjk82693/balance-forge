@@ -26,7 +26,7 @@ test('save, get and list round-trip; missing dir lists empty', async () => {
 test('report ids cannot escape the directory', async () => {
   const s = store();
   for (const id of ['../x', 'a/b', '..', '', '.hidden', 'a\\b'])
-    await assert.rejects(s.saveReport({ ...fixture('report_baseline.json'), reportId: id }), RangeError, id);
+    await assert.rejects(s.saveReport({ ...fixture('report_baseline.json'), reportId: id }), { code: 'INVALID_INPUT' }, id);
 });
 
 test('TigerData placeholder is not wired', async () => {

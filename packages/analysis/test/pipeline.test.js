@@ -78,7 +78,9 @@ test('CLI writes the four files', async () => {
 });
 
 test('CLI rejects unknown commands', async () => {
-  await assert.rejects(main(['nope', '--out', tmpdir()]), /usage/);
+  const r = await main(['nope', '--out', tmpdir()]);
+  assert.equal(r.ok, false);
+  assert.equal(r.error.code, 'USAGE');
 });
 
 test('CLI with gemini and no key falls back offline and records origin "fallback"', async () => {

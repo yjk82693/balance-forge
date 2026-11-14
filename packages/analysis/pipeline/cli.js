@@ -15,18 +15,41 @@ import { createAdapter } from '../src/adapters.js';
 import { withExtras } from '../src/extras.js';
 import { addHumanRows, humanResultsOf, buildHumanGroup } from '../src/human.js';
 import { buildBeforeAfter, matchupResolver, pickLopsidedMatch, resolveDataVariants } from '../src/replay.js';
-import { fail, isError } from '../src/errors.js';
+import { fail, isError, toErrorResult } from '../src/errors.js';
+import { assertMatchResults } from '../src/input-check.js';
 import { loadArenaSimulator } from './arena-simulator.js';
 import { buildMatchupTable } from '../src/matchups.js';
+import { validatePatch } from '../src/validator.js';
 
-const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
-const writeJson = (p, v) => writeFileSync(p, JSON.stringify(v, null, 2) + '\n');
+// File errors become coded results; messages name the file, never its contents.
+function readJson(p) {
+  let text;
+  try {
+    text = readFileSync(p, 'utf8');
+  } catch (e) {
+    return fail('IO_ERROR', e?.code === 'ENOENT' ? `file not found: ${p}` : `could not read file: ${p}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fail('INVALID_JSON', `file is not valid JSON: ${p}`);
+  }
+}
+function writeJson(p, v) {
+  try {
+    writeFileSync(p, JSON.stringify(v, null, 2) + '\n');
+  } catch {
+    fail('IO_ERROR', `could not write file: ${p}`);
+  }
+}
+const USAGE = 'usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--patch f] [--adapter fake|gemini|grok] [--metrics f] [--human f] [--roster a,b,c]';
+const REQUIRED = { propose: ['baseline', 'out'], verify: ['holdout', 'out'], run: ['baseline', 'holdout', 'out'], replay: ['baseline', 'patch', 'out'] };
 
 function parseArgs(argv) {
   const [cmd, ...rest] = argv;
   const flags = {};
   for (let i = 0; i < rest.length; i += 2) {
-    if (!rest[i].startsWith('--') || rest[i + 1] === undefined) throw new Error(`bad argument: ${rest[i]}`);
+    if (!rest[i].startsWith('--') || rest[i + 1] === undefined) fail('USAGE', `bad argument: ${rest[i]}. ${USAGE}`);
     flags[rest[i].slice(2)] = rest[i + 1];
   }
   return { cmd, flags };
@@ -34,7 +57,9 @@ function parseArgs(argv) {
 
 function resultsOf(path) {
   const v = readJson(path);
-  return Array.isArray(v) ? v : v.results;
+  const list = Array.isArray(v) ? v : v?.results;
+  if (!Array.isArray(list)) fail('INVALID_INPUT', `${path} must hold a MatchResult[] (or {results: [...]})`);
+  return assertMatchResults(list, path);
 }
 
 const withHuman = (report, flags) => (flags.human ? addHumanRows(report, humanResultsOf(readJson(flags.human))) : report);
@@ -49,12 +74,27 @@ function extrasFrom(flags) {
   return extras;
 }
 
+/**
+ * Never rejects: resolves { ok: true, ...summary } or { ok: false, error: { code, message } }.
+ */
 export async function main(argv, env = process.env, now = () => new Date().toISOString()) {
-  const { cmd, flags } = parseArgs(argv);
-  if (!flags.out || !['propose', 'verify', 'run', 'replay'].includes(cmd)) {
-    throw new Error('usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--adapter fake|gemini|grok] [--metrics f] [--roster a,b,c]');
+  try {
+    return { ok: true, ...(await run(argv, env, now)) };
+  } catch (e) {
+    return toErrorResult(e);
   }
-  mkdirSync(flags.out, { recursive: true });
+}
+
+async function run(argv, env, now) {
+  const { cmd, flags } = parseArgs(Array.isArray(argv) ? argv : []);
+  if (!REQUIRED[cmd]) fail('USAGE', USAGE);
+  const missing = REQUIRED[cmd].filter((k) => !flags[k]);
+  if (missing.length) fail('USAGE', `missing --${missing.join(', --')}. ${USAGE}`);
+  try {
+    mkdirSync(flags.out, { recursive: true });
+  } catch {
+    fail('IO_ERROR', `could not create output folder: ${flags.out}`);
+  }
   const f = (name) => join(flags.out, name);
   const reportOptions = { botPolicyVersion: flags['bot-policy'], seedSetId: flags['seed-set'] };
   for (const k of Object.keys(reportOptions)) if (reportOptions[k] === undefined) delete reportOptions[k];
@@ -66,6 +106,8 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
     const { simulate, hashData, baseData: engineData } = loaded.value;
     const results = resultsOf(flags.baseline);
     const proposal = readJson(flags.patch);
+    const patchCheck = validatePatch(proposal);
+    if (!patchCheck.ok) fail('INVALID_PATCH', `the patch file is not a valid PatchProposal: ${patchCheck.errors[0]}`, patchCheck.errors);
     const baseData = flags['base-data'] ? readJson(flags['base-data']) : engineData;
     const variants = resolveDataVariants(results, baseData, hashData);
     const seatsByHash = new Map([...variants].map(([h, d]) => [h, d.gameRules?.seats ?? []]));
@@ -86,7 +128,12 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
   if (cmd === 'propose' || cmd === 'run') {
     const { report, meta, counted } = analyzePhase(resultsOf(flags.baseline), { reportId: 'r-baseline', ...reportOptions });
     const baseline = withExtras(withHuman(report, flags), { createdAt: now(), ...extrasFrom(flags) });
-    const adapter = createAdapter(flags.adapter ?? 'fake', env);
+    let adapter;
+    try {
+      adapter = createAdapter(flags.adapter ?? 'fake', env);
+    } catch {
+      fail('USAGE', `unknown adapter: ${flags.adapter}. Use fake, gemini or grok`);
+    }
     const step = await proposeStep(baseline, adapter);
     writeJson(f('report_baseline.json'), baseline);
     if (flags.human) {
@@ -94,7 +141,7 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
       if (isError(hg)) fail(hg.error.code, hg.error.message);
       writeJson(f('human_group.json'), hg.value);
     }
-    writeJson(f('patch.json'), step.proposal);
+    if (step.ok) writeJson(f('patch.json'), step.proposal);
     const table = buildMatchupTable(counted, flags.roster ? { roster: flags.roster.split(',') } : {});
     if (table.ok) writeJson(f('matchup_table.json'), table.value);
     writeJson(f('pipeline-meta.json'), { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors, baseline: meta });
@@ -113,8 +160,12 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  main(process.argv.slice(2)).then(
-    (s) => console.log(JSON.stringify(s)),
-    (e) => { console.error(`error: ${e.message}`); process.exitCode = 1; },
-  );
+  const report = (r) => {
+    if (r.ok) console.log(JSON.stringify(r));
+    else { console.error(JSON.stringify(r)); process.exitCode = 1; }
+  };
+  // Last line of defence: anything unexpected still ends as a clear error result.
+  process.on('uncaughtException', (e) => { report(toErrorResult(e)); process.exit(1); });
+  process.on('unhandledRejection', (e) => { report(toErrorResult(e)); process.exit(1); });
+  main(process.argv.slice(2)).then(report);
 }

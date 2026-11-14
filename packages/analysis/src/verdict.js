@@ -5,6 +5,7 @@ export const MIN_GAMES = 200;
 export const EXTREME = 0.65;
 
 import { HUMAN_PREFIX } from './extras.js';
+import { assertReport } from './input-check.js';
 
 const isBot = (row) => !row.dimension.startsWith(HUMAN_PREFIX); // human rows never gate a patch
 const dist = (row) => Math.abs(row.winRate - 0.5);
@@ -19,6 +20,8 @@ const invalidRate = (r) => {
  * options.targets: dimensions to judge; default = rows flagged outlier in `before`.
  */
 export function judgePatch(before, after, options = {}) {
+  assertReport(before, 'before');
+  assertReport(after, 'after');
   const minGames = options.minGames ?? MIN_GAMES;
   const reasons = [];
   const out = (verdict, targets = []) => ({ verdict, reasons, targets });

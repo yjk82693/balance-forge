@@ -4,6 +4,7 @@
 // currently emits only "play" / "end_turn"; per-card ids need an engine change.
 import { wilson95, round6 } from './wilson.js';
 import { isOutlier, useRate } from './analyzer.js';
+import { assertMatchResults } from './input-check.js';
 
 const CARD_PREFIX = 'play:';
 export const cardIdOf = (actionId) => (actionId.startsWith(CARD_PREFIX) ? actionId.slice(CARD_PREFIX.length) : null);
@@ -21,6 +22,7 @@ const side = (wins, games) => {
  * 55% (dominant) or below 45% (weak), looking at the "played" group.
  */
 export function analyzeCards(results) {
+  assertMatchResults(results);
   const valid = results.filter((r) => r.valid === true);
   const cards = new Map();
   const get = (id) => {

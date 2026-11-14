@@ -1,6 +1,6 @@
 # packages/analysis report
 
-Branch `ultron/analysis`. 47 `node:test` tests, all offline: `node --test packages/analysis/test/*.test.js`.
+Branch `ultron/analysis`. 80 `node:test` tests, all offline: `node --test packages/analysis/test/*.test.js`.
 No dependencies added, no network calls in tests, nothing pushed.
 
 ## What exists
@@ -34,3 +34,33 @@ CLI output folder: `report_baseline.json`, `patch.json` (a plain PatchProposal),
 4. **Gemini and Grok request shapes are untested against the live APIs.** No keys, no network. Endpoints, header names, `responseSchema` / `json_schema` formats and the default model names (`gemini-2.5-flash`, `grok-4`; override with `GEMINI_MODEL` / `XAI_MODEL`) come from my memory of the public docs. Please do one live smoke run with real keys before the demo; a mismatch will show up as `origin: "fallback"` with a reason, not as a crash.
 5. **Win rate semantics.** Row win rate = focal hero wins / valid paired games, draws count as games. The "recorded" badge needs `--metrics` with `kind: "recorded"`; nothing marks a report as recorded by default.
 6. A fake-adapter proposal is a fixed `/moves/1/power -> 72` regardless of the report. It exists to keep the path working offline, not as analysis.
+
+## Round 3 (high-end quality pass)
+
+Order of work: H, N, J, K. Tests: `node --test packages/analysis/test/*.test.js` (80 pass, offline).
+
+### H. Before/after replay (`src/replay.js`, `pipeline/arena-simulator.js`, CLI `replay`)
+- `pickLopsidedMatch`: most lopsided matchup (largest distance from 50%), then the most one-sided win by its dominant side (damage margin, shorter, lower seed, matchId). Deterministic.
+- `buildBeforeAfter`: re-simulates the same seed, seats and bot policy twice: on the unchanged data (must reproduce the recorded `finalStateHash`, else `REPLAY_MISMATCH`) and on the patched data (new dataHash). Output `before_after.json`: `{kind, seed, players, heroes, selection, patch, before, after, delta}`; each side has `outcome`, `durationTicks`, `finalStateHash`, `maxHp`, and an on-change `timeline: [{tick, hp: {p1, p2}}]` (first sample tick 0, last = final tick).
+- The simulator is injected; `pipeline/arena-simulator.js` is the only engine-bound code. It mirrors `services/runner/match.js` and is loaded lazily from `packages/games/action` (read-only import). It was written against the engine on `main` (seat heroes in GameData). If `jokerstar/engine` changes the bot signature or the `initial/step/observe` API, only that file changes.
+- With the v0.1 runner output, `resolveDataVariants` maps both seat variants from one base GameData; the patch's `baseDataHash` decides which variant is replayed.
+
+### N. 5x5 matchup table (`src/matchups.js`)
+- `buildMatchupTable(results, {roster})`: N x N cells, N(N+1)/2 distinct matchups (5 heroes -> 10 pairs + 5 mirrors = 15), `missing` lists matchups with no games. Each cell is from the row hero's side, with its own wins, losses, draws, Wilson interval and the unchanged outlier rule (n >= 30, whole interval outside 45-55%). Mirror cells show the seat-1 advantage.
+- The roster is data (nightcrow is just another hero id); heroes outside a given roster are an error. The CLI writes `matchup_table.json` (`--roster a,b,c` to fix the order).
+- Mirror matches count one by one in seed pairing (a seat swap changes nothing).
+- Nightcrow itself is not in the engine's GameData yet (engine side); the tests use synthetic results.
+
+### J. Human group (`src/human.js`)
+- `buildHumanGroup`: one group per matchup, label `Humans: Bari vs Real Armor 4–1 (n=5)` (draws shown, e.g. `4–1, 1 draw`). Under 30 games: `smallSample: true`, `outlier: false` and the note "Only 5 games. Too few to call a trend; 30 or more are needed before it counts." From 30 games the note shows the Wilson interval and the outlier rule applies. The CLI writes `human_group.json`. The Report schema is closed, so the label and note live in this file, not in Report rows (rows stay `human: <matchup>`).
+
+### K. Error results
+- `src/errors.js`: `AnalysisError(code)`, `safely(fn)`, codes `INVALID_INPUT, INVALID_JSON, IO_ERROR, NO_RESULTS, MIXED_DATAHASH, INVALID_REPORT, INVALID_PATCH, PATCH_BASE_MISMATCH, PATCH_PATH_MISSING, NO_DECISIVE_MATCH, DATA_HASH_MISMATCH, REPLAY_MISMATCH, SIMULATION_FAILED, ENGINE_UNAVAILABLE, ADAPTER_FAILED, USAGE, INTERNAL`.
+- Raw functions throw `AnalysisError` with these codes; the `safe` namespace (`src/safe.js`, `pipeline/pipeline.js` `safe`) and the new modules return `{ok: true, value}` or `{ok: false, error: {code, message, details?}}`. `validatePatch` never throws.
+- Inputs are checked structurally (`src/input-check.js`); messages name the field and index, never the value. A malformed record fails the whole call instead of being skipped silently.
+- CLI `main` always resolves `{ok: true, ...}` or an error result; the process prints errors as JSON on stderr, exit code 1, no stack trace, with `uncaughtException` / `unhandledRejection` handlers as a last resort. An invalid proposal from the adapter is `INVALID_PATCH` (baseline report and meta are still written, `patch.json` is not).
+- Breaking change for callers of `main`: it no longer rejects; success results now carry `ok: true`.
+
+### Still open
+- The Gemini and Grok request shapes are still unverified against the live APIs (see above).
+- `services/room/human-results.json` and per-card statistics ids are still assumptions (see above).

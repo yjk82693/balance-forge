@@ -17,6 +17,14 @@ export function boundsFor(path) {
  * options.moveCount: if known, move indexes must be < moveCount.
  */
 export function validatePatch(proposal, options = {}) {
+  try {
+    return validatePatchUnsafe(proposal, options ?? {});
+  } catch {
+    return { ok: false, errors: ['proposal could not be checked'] };
+  }
+}
+
+function validatePatchUnsafe(proposal, options) {
   const errors = [];
   if (proposal === null || typeof proposal !== 'object' || Array.isArray(proposal)) {
     return { ok: false, errors: ['proposal must be an object'] };
