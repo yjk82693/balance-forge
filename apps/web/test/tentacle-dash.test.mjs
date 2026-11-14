@@ -53,3 +53,18 @@ test("the solo action scene comes after the card scene and before the history, o
   assert.ok(both.indexOf("solo") < both.indexOf("history"));
   assert.ok(ids({ solo: true }).indexOf("solo") > ids({ solo: true }).indexOf("verdict"));
 });
+
+import { LONG_PRESS_MS, chargeFraction, pressKind } from "../src/lib/tentacleButton.ts";
+
+test("one tentacle button: a tap whips, a hold of 250 ms or more throws the rope, the ring fills in between", () => {
+  assert.equal(LONG_PRESS_MS, 250);
+  assert.equal(pressKind(0), "whip");
+  assert.equal(pressKind(249), "whip");
+  assert.equal(pressKind(250), "latch");
+  assert.equal(pressKind(2000), "latch");
+  assert.equal(chargeFraction(0), 0);
+  assert.equal(chargeFraction(125), 0.5);
+  assert.equal(chargeFraction(250), 1);
+  assert.equal(chargeFraction(900), 1);
+  assert.equal(chargeFraction(-5), 0);
+});

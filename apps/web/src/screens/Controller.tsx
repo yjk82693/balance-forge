@@ -19,6 +19,7 @@ import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
 import { syncHero } from "../lib/heroSync";
+import { TentacleButton } from "../components/TentacleButton";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 
@@ -310,22 +311,7 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
         </div>
         {isTentacle ? (
           <div className="btn-cluster">
-            <ActionButton
-              className="b-guard"
-              label="Latch"
-              size={88}
-              icon="assets/sepia_tentacle_run/ui/icon_tentacle.png"
-              disabled={!online}
-              onPress={() => pipeline?.press("latch")}
-            />
-            <ActionButton
-              className="b-attack"
-              label="Whip"
-              size={88}
-              icon="assets/hero_arena/ui/skill_melee.png"
-              disabled={!online}
-              onPress={() => pipeline?.press("whip")}
-            />
+            <TentacleButton disabled={!online} onAction={(action) => pipeline?.press(action)} />
           </div>
         ) : (
         <div className="btn-cluster">

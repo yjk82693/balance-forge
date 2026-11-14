@@ -622,3 +622,7 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 
 - #/present gets one more optional scene "Same platform, a solo action game" (after the card scene) when this tab holds a
   tentacle_run result: the flagged wave before to after, the patch and the verdict. No request; stored per game.
+
+- Phone controller (option A): one tentacle button replaces Latch + Whip. Tap (< 250 ms) = whip; a hold of 250 ms or
+  more throws the rope (latch) on release, toward the last stick direction (the facing when the stick is idle); a ring
+  fills while holding. Same `whip`/`latch` actions, no protocol change (`lib/tentacleButton.ts`, `TentacleButton.tsx`).
