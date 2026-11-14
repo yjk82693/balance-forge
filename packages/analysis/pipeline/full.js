@@ -3,6 +3,7 @@
 // Returns { ok: true, value: body } or an error result; body has the shared-interface fields except the transport
 // ones (runId, gameId, elapsedMs), which the server adds.
 import { addHumanRows } from '../src/human.js';
+import { buildEvidence } from '../src/evidence.js';
 import { withExtras } from '../src/extras.js';
 import { applyPatchToData } from '../src/replay.js';
 import { fail, safely } from '../src/errors.js';
@@ -63,12 +64,14 @@ async function runFullUnsafe(input) {
   const options = { ...(botPolicyVersion && { botPolicyVersion }), ...(seedSetId && { seedSetId }) };
   const base = analyzePhase(baselineResults, { reportId: 'r-baseline', ...options });
   const baseline = withExtras(addHumanRows(base.report, humanResults), { createdAt, elapsedMs });
+  const evidence = buildEvidence(base.counted, baseline);
   const step = await proposeStep(baseline, adapter);
   const body = {
     botPolicyVersion: baseline.botPolicyVersion,
     seedSetId: baseline.seedSetId,
     holdoutSeedSetId: holdoutSeedSetId ?? `${baseline.seedSetId}-holdout`,
     baseline,
+    evidence: evidence.ok ? evidence.value : null, // per outlier row; null only if it could not be built
     proposal: { ...step.proposal, origin: step.origin,
       changes: step.ok ? step.proposal.replacements.map((r) => describeChange(baseData, r)) : [] },
     validation: { ok: step.ok, errors: step.errors },

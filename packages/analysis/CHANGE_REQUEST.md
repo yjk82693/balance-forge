@@ -34,3 +34,20 @@ Found by the pre-merge check (see REPORT.md, "Pre-merge check"). I did not edit 
 6. `src/lib/contract.ts` `MatchConfig`: add optional `options?: { assignments?: Record<string, string> }`.
 7. `src/components/CompareReplay.tsx` / `replayGen.ts`: use `before_after.json` (`before.timeline` / `after.timeline`:
    `[{tick, hp: {p1, p2}}]`, `maxHp` per seat) for the HP numbers instead of the mock damage table when it is available.
+
+## For the engine: per-action damage and hits through guard (Round 7, evidence blocks)
+
+Needed so the evidence for an outlier row can say which move produces the imbalance, for example whether projectiles
+get through a guard. Today `MatchResult.statistics.players[].actions[]` holds only `{actionId, opportunities, uses}`, and
+damage exists only as one total per player, so `src/evidence.js` can show use rates and damage share but not damage by move.
+
+- File: `packages/games/action/index.js` (`statistics`, built from `payload.statistics`), the `statisticsDelta`/`emptyStatistics`
+  helpers in `packages/sim/index.js`, and the `Statistics` shape in `packages/contracts/schema.js`.
+- Field: add to each entry of `statistics.players[].actions[]`, as optional non-negative integers:
+  - `damage`: total damage dealt by hits of this action, after mitigation (the per-action parts sum to the player's `damage`);
+  - `hits`: number of hits of this action that landed;
+  - `hitsThroughGuard`: how many of those hits landed on a target that was guarding at that tick and were not blocked.
+- Expected: `{"actionId": "projectile", "opportunities": 2815, "uses": 1578, "damage": 61200, "hits": 940,
+  "hitsThroughGuard": 310}`. Actual: no `damage`, `hits` or `hitsThroughGuard`.
+- Analysis side: `evidence.json` already has `damage: null` per action and lists `damageByAction` and `hitsThroughGuard` under
+  `missing`. When the fields exist I will fill them from the recorded results; I did not guess them from totals.

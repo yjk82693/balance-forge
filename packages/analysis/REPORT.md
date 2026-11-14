@@ -341,3 +341,20 @@ seeds 1000001..1000100.
 - Mirror rows are no longer targets (step 1); they are not what blocks it.
 - Engine speed with the 0.2.1 recording: 25 matches/s (3,000 matches in 119 s); earlier 0.1.1 runs reached 58 matches/s with
   fewer ticks per match.
+
+## Round 7 (evidence blocks)
+
+`src/evidence.js` `buildEvidence(countedResults, report)` (result-returning) adds an evidence block for each bot outlier row
+(human rows get none), from the same counted matches the report used:
+- both sides of the row (`focal` = alphabetically first hero, `other` = its opponent; `mirror: true` when they are the same hero);
+- per action: `opportunities`, `uses`, `useRate` (`null` when there were no opportunities);
+- per side: total `damage` and `damageShare` (side damage / both sides, `null` when no damage was dealt);
+- `damage` per action is `null` and `missing: ["damageByAction", "hitsThroughGuard"]`: the engine statistics carry only
+  `{actionId, opportunities, uses}` per action and one damage total per player. I did not estimate them. The exact fields
+  to add are in `CHANGE_REQUEST.md` (engine item).
+
+Where it shows up: `evidence.json` from the CLI (`propose` and `run`) and an `evidence` field in the `runFull` body (baseline
+outliers only; `null` if it could not be built). It is additive; the web can ignore it. Real data check (recorded roster run,
+`bari vs real_armor`, 200 games): Bari deals 69.9% of the damage; guard use rates are 35.2% (Bari) and 35.9% (Real Armor),
+so guard use does not separate the sides in this data, and projectile use is 56.1% against 55.9%. These are use rates, not
+proof of a cause. Tests: `test/evidence.test.js` (6 tests, hand-computed numbers).
