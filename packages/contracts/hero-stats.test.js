@@ -15,7 +15,7 @@ test('the patch schema accepts hero stat paths and nothing else new', () => {
   validate('PatchProposal', patchOf(root, `/characters/${bari}/health`, health));
   validate('PatchProposal', patchOf(root, `/characters/${bari}/speed`, speed));
   for (const path of ['/characters/0/name', '/characters/x/health', '/characters/0/health/1', '/character/0/health',
-    '/characters//speed', '/tuning/other']) {
+    '/characters//speed', '/characters/01/health', '/moves/01/power', '/tuning/other']) {
     assert.throws(() => validate('PatchProposal', patchOf(root, path, 100)), /INVALID_SCHEMA/, path);
   }
   assert.throws(() => validate('PatchProposal', patchOf(root, `/characters/${bari}/health`, 1.5)), /INVALID_SCHEMA/);
