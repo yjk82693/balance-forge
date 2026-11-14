@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { WebSocket } from 'ws';
 import { createRoomServer } from '../../services/room/server.js';
+import { twoRoundAuto } from '../../services/room/auto-test-helpers.js';
 import * as arena from '../../packages/games/action/index.js';
 import { chooseActions, chooseAction, deriveBotSeed, botPolicyVersion } from '../../packages/games/action/bot.js';
 import { compareIds, hash, validate } from '../../packages/contracts/index.js';
@@ -176,7 +177,7 @@ async function analysisModules() {
     assert.fail(`Analysis pipeline is unavailable; merge packages/analysis before test:e2e. ${error.message}`);
   }
 }
-async function setup(t) {
+async function setup(t, { runAuto } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'balance-full-flow-'));
   const peers = [];
   let server;
@@ -199,6 +200,7 @@ async function setup(t) {
     storageDir,
     staticDir,
     workers: 2,
+    runAuto,
     analysisEnv: {}
   });
   const address = await server.listen(0, '127.0.0.1');
@@ -564,4 +566,37 @@ test('full live flow: phones, human record, worker progress, fake patch, holdout
   await reconnectPhone(context, display, phoneA, phoneB, roomId, joinCode);
   assert.equal(display.failure, null);
   assert.equal(phoneB.failure, null);
+});
+
+test('two injected auto rounds create versions and a real room plays the selected first version', {
+  skip: enabled ? false : 'Requires RUN_SOCKET_TESTS=1 and localhost listener permission.',
+  timeout: 30000
+}, async t => {
+  const context = await setup(t, { runAuto: twoRoundAuto });
+  const display = await context.connect();
+  const createId = display.send('room.create', { gameId: 'hero_arena' });
+  const created = await display.waitFor('room.status', message => message.requestId === createId);
+  const first = await context.connect(), second = await context.connect();
+  await joinPhone(first, created.payload.joinCode, 'bari');
+  await joinPhone(second, created.payload.joinCode, 'real_armor');
+  const run = await context.request('/v1/playtest/auto', {
+    gameId: 'hero_arena', rounds: 2, requireApproval: false
+  });
+  assert.equal(run.records.length, 2);
+  const versions = await context.request('/v1/versions/hero_arena');
+  assert.equal(versions.length, 3);
+  assert.equal(run.records[1].parentHash, run.records[0].dataHash);
+  const dataHash = run.records[0].dataHash;
+  await context.request('/v1/data/hero_arena/select', { dataHash });
+  assert.equal((await context.request('/v1/data/hero_arena')).dataHash, dataHash);
+  display.send('game.select', { gameId: 'hero_arena', dataHash });
+  display.send('match.start', { seed: 91, maxTicks: 1 });
+  const started = await display.waitFor('match.started');
+  assert.equal(started.payload.config.dataHash, dataHash);
+  const ended = await display.waitFor('match.ended');
+  validate('MatchResult', ended.payload.result);
+  assert.equal(ended.payload.result.valid, true);
+  assert.equal(ended.payload.result.config.dataHash, dataHash);
+  const updates = display.messages.filter(message => message.type === 'playtest.progress');
+  assert.ok(updates.some(message => message.payload.round === 2 && message.payload.phase === 'holdout'));
 });

@@ -587,3 +587,9 @@ changes, rationale and available target/verdict summaries. Content hashes identi
 content keeps the existing record rather than overwriting its provenance. Branches retain their shared parent.
 Version metadata is separate from immutable GameData files. Reused the existing atomic writer via files.js.
 Tests cover roots, branching, approval persistence/restart, retained base data and full-run parent/target data.
+
+Step 2: added GET /v1/versions/:gameId, GET /v1/versions/:gameId/:hash, POST approval and POST current-version
+selection. Detail responses flatten the shared record and add diff; approval takes {} and never selects data.
+Selection atomically changes only the server-wide current pin, preserving retained data and existing room pins.
+Tests exercise every route, persistence/restart, missing hashes, cross-game pins and malformed input without
+state mutation. Initial version/persistence group: 8 passed, 0 failed; full/persistence group: 11 passed, 0 failed.
