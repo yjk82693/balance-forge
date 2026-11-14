@@ -13,6 +13,16 @@ export interface LiveState {
   rows: ReportRow[] | null;
   /** which run is going: the baseline, then the holdout on the patched data */
   phase?: "baseline" | "holdout";
+  /** the holdout run's own counter and bars; the baseline numbers above stay frozen once it starts */
+  holdout?: { done: number; total: number; rows: ReportRow[] };
+}
+
+/** Folds one progress message into the live state. The holdout phase never touches the baseline table. */
+export function foldProgress(prev: LiveState, p: ProgressMsg): LiveState {
+  if (p.phase === "holdout") {
+    return { ...prev, phase: "holdout", holdout: { done: p.matchesDone, total: p.totalMatches, rows: toRows(p) } };
+  }
+  return { done: p.matchesDone, total: p.totalMatches, rows: toRows(p), phase: p.phase };
 }
 
 const isAbort = (e: unknown) => (e as Error)?.name === "AbortError";
@@ -43,9 +53,19 @@ export function useRunner() {
   const [live, setLive] = useState<LiveState>({ done: 0, total: 0, rows: null });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => () => abort.current?.abort(), []);
+
+  // A full roster run takes about a minute. Count seconds so the panel keeps moving between progress messages.
+  useEffect(() => {
+    if (!busy) return;
+    const startedAt = Date.now();
+    setElapsed(0);
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
 
   const finish = (result: PlaytestRun) => {
     setRun(result);
@@ -61,8 +81,7 @@ export function useRunner() {
     setLive({ done: 0, total: 0, rows: null });
     const controller = new AbortController();
     abort.current = controller;
-    const onProgress = (p: ProgressMsg) =>
-      setLive({ done: p.matchesDone, total: p.totalMatches, rows: toRows(p), phase: p.phase });
+    const onProgress = (p: ProgressMsg) => setLive((prev) => foldProgress(prev, p));
     const stopListening = subscribeProgress(onProgress);
     try {
       const result = await runPlaytest(MATCHES, controller.signal, onProgress);
@@ -77,7 +96,8 @@ export function useRunner() {
         finish(stored);
         setNotice(`${why} Showing the stored run instead.`);
       } catch (e2) {
-        if (!isAbort(e2)) setError(why);
+        const unreachable = e instanceof ApiError && e.kind === "network";
+        if (!isAbort(e2)) setError(unreachable ? `${why} Check that the server is running.` : why);
       }
     } finally {
       stopListening();
@@ -85,5 +105,5 @@ export function useRunner() {
     }
   };
 
-  return { run, busy, live, error, notice, start };
+  return { run, busy, live, error, notice, elapsed, start };
 }

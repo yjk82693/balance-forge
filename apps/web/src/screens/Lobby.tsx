@@ -50,7 +50,7 @@ function Qr({ url }: { url: string }) {
   );
 }
 
-export function Lobby({ gameId }: { gameId: string }) {
+export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string }) {
   useManifest();
   const game = gameById(gameId);
   const { transport, status } = useTransport("display", gameId);
@@ -70,9 +70,11 @@ export function Lobby({ gameId }: { gameId: string }) {
     // Once per visit: a match that starts from this lobby must not be reset by its own status change.
     if (status !== "online" || !phase || cleaned.current) return;
     cleaned.current = true;
-    if (roomGame && roomGame !== gameId) transport?.send("game.select", { gameId });
+    // A version picked on the Versions screen (?hash=) is selected for this room; the server keeps it for the match.
+    if (dataHash) transport?.send("game.select", { gameId, dataHash });
+    else if (roomGame && roomGame !== gameId) transport?.send("game.select", { gameId });
     if (phase !== "lobby") transport?.send("match.reset", {});
-  }, [transport, status, phase, roomGame, gameId]);
+  }, [transport, status, phase, roomGame, gameId, dataHash]);
 
   // Go to the big screen once the server says the match is on; if it refuses, stay here and say why.
   useEffect(() => {
@@ -152,6 +154,7 @@ export function Lobby({ gameId }: { gameId: string }) {
           {game.eyebrow}
         </span>
         <span className="spacer" />
+        {dataHash && <span className="badge after">version {dataHash.slice(0, 7)}</span>}
         <VersionToggle />
         <MockStatus online={status === "online"} />
       </TopBar>

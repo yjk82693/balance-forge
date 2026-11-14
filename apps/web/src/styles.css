@@ -1773,6 +1773,17 @@ p {
   background: linear-gradient(90deg, var(--grad-1), var(--grad-2) 62%, var(--grad-3));
   transition: width var(--dur-data) var(--ease-out);
 }
+.progress.waiting > span {
+  width: 30% !important;
+  animation: progress-wait 1.4s var(--ease-out) infinite alternate;
+}
+@keyframes progress-wait {
+  from { transform: translateX(0); }
+  to { transform: translateX(233%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress.waiting > span { animation: none; width: 100% !important; opacity: 0.4; }
+}
 .live-line {
   margin: 0;
 }
@@ -2066,3 +2077,110 @@ p {
 .lobby-players .btn + .btn {
   margin-top: var(--space-2);
 }
+
+/* ---- presenter (#/present) ---- */
+.present {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.present-steps {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4) var(--space-6) 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-3);
+}
+.present-steps li { display: flex; flex-direction: column; gap: var(--space-1); opacity: 0.5; }
+.present-steps li.on, .present-steps li.done { opacity: 1; }
+.present-step-bar { height: 4px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.present-step-bar > span { display: block; height: 100%; background: var(--grad-2); }
+.present-steps li.done .present-step-bar > span { width: 100%; }
+.present-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+.present-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  text-align: center;
+  max-width: 1200px;
+  width: 100%;
+}
+.present-card .progress { width: 480px; }
+.present-wide { width: 100%; max-width: 1500px; }
+.present-bots { width: 100%; max-width: 1500px; display: grid; gap: var(--space-5); }
+.present-duel { display: flex; gap: var(--space-8, 96px); }
+.present-fighter { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.present-verdict { font-size: 96px; font-weight: 800; line-height: 1.2; margin: 0; display: flex; align-items: center; gap: var(--space-4); }
+.present-compare { width: 100%; max-width: 1100px; text-align: left; }
+.present-keys { text-align: center; padding: var(--space-3); color: var(--text-2); }
+.present.auto { cursor: none; }
+@media (max-width: 1099px) {
+  .present-steps { grid-template-columns: repeat(5, 1fr); padding: var(--space-3) var(--space-4) 0; }
+  .present-steps .caption { display: none; }
+  .present-stage { padding: var(--space-4); }
+  .present-duel { gap: var(--space-5); }
+  .present-verdict { font-size: 48px; }
+  .present-card .progress { width: 100%; }
+}
+.present, .present-stage { min-width: 0; max-width: 100%; }
+.present-stage > * { min-width: 0; max-width: 100%; }
+.present-bots { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1099px) {
+  .present { overflow-x: hidden; }
+  .present-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.present-wide .diff { zoom: 1.5; }
+@media (max-width: 1099px) {
+  .present-wide .diff { zoom: 1; }
+}
+
+/* ---- result card ---- */
+.result .panel-head { align-items: center; }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-5); }
+.result-grid > div { min-width: 0; }
+.result-line { margin: var(--space-1) 0 0; font-size: var(--fs-small); line-height: 1.4; }
+.result-line strong { font-size: var(--fs-h3); }
+.result-why { margin-top: var(--space-1); }
+.holdout-strip { margin-bottom: var(--space-3); }
+.progress.holdout { margin-top: var(--space-2); }
+@media (max-width: 600px) {
+  .result-grid { grid-template-columns: 1fr; }
+}
+.result .btn { padding: var(--space-2) var(--space-4); min-height: 0; font-size: var(--fs-small); }
+.result .panel-head { margin-bottom: var(--space-3); }
+@media (min-width: 1100px) {
+  /* the result card is taller than the old patch card, so the replays give up some height to keep one screen */
+  .dash-compact .replays { width: 80%; }
+}
+@media (min-width: 1100px) {
+  .result-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+  .result-line strong { font-size: var(--fs-body); }
+}
+
+/* ---- versions ---- */
+.versions-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-5); padding: var(--space-5) var(--space-6); align-items: start; }
+.balance-bar { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-3); }
+.seg { display: inline-flex; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; }
+.seg button { border: 0; background: none; color: var(--text-2); padding: var(--space-2) var(--space-4); font: inherit; cursor: pointer; }
+.seg button.on { background: var(--grad-2); color: #000; font-weight: 700; }
+.toggle { display: inline-flex; align-items: center; gap: var(--space-2); }
+.version-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.version-row { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); text-align: left; background: var(--surface-2); color: inherit; border: 1px solid transparent; border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); font: inherit; cursor: pointer; }
+.version-row.on { border-color: var(--grad-2); }
+.version-hash { font-family: ui-monospace, monospace; font-weight: 700; }
+.version-fields { flex: 1 1 100%; color: var(--text-2); }
+.version-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+@media (max-width: 1099px) {
+  .versions-grid { grid-template-columns: minmax(0, 1fr); padding: var(--space-4); }
+}
+.balance-bar { flex-wrap: wrap; }
+.balance-bar .btn, .result .btn, .version-actions .btn { white-space: nowrap; }
+.result .panel-head { flex-wrap: wrap; row-gap: var(--space-2); }
