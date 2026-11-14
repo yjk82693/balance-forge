@@ -45,6 +45,8 @@ test('schema extends normative bundle only with approved addendum fields and tra
     }
   });
   delete extended.$defs.MatchResult.properties.botSeats;
+  // A room match against the bot names the bot policy that played the bot seat (scripted-0.2.1-gentle).
+  delete extended.$defs.MatchResult.properties.botPolicyVersion;
   // Design intent (addendum v0.1.3, proposed): the report names the intent it used and rows carry their target.
   for (const key of ['elapsedMs', 'recorded', 'createdAt', 'humanMatches', 'intentVersion']) {
     delete extended.$defs.Report.properties[key];

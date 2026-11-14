@@ -2,7 +2,7 @@
 // produces a new dataHash and runs holdout seeds) -> analyze -> verdict.
 // Steps are plain functions; only the adapter call is async. No clock: callers pass timing/time in.
 import { analyze } from '../src/analyzer.ts';
-import { groupByDataHash, hasAssignments, isCountable, pairBySeed } from '../src/group.ts';
+import { groupByDataHash, hasAssignments, isCountable, isRoomBotMatch, pairBySeed } from '../src/group.ts';
 import { validatePatch } from '../src/validator.ts';
 import { judgePatch } from '../src/verdict.ts';
 import { fail, safely } from '../src/errors.ts';
@@ -21,7 +21,9 @@ export function singleGroup(results) {
 }
 
 /** Analyze one phase. With hero assignments, only complete seed pairs count; the rest is reported as unpaired. */
-export function analyzePhase(results, options = {}) {
+export function analyzePhase(allResults, options = {}) {
+  // Matches played against the room's gentle bot are human-group data, not bot-vs-bot samples.
+  const results = allResults.filter((r) => !isRoomBotMatch(r));
   singleGroup(results);
   const invalid = results.filter((r) => !isCountable(r));
   let counted = results.filter(isCountable);

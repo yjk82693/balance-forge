@@ -14,7 +14,7 @@ import { DesignStore, DesignError } from './design.ts';
 import { createSinks } from '../sinks/index.ts';
 import { replayViews } from './replay-views.ts';
 import { games, cardAction } from '../runner/match.ts';
-import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.ts';
+import { chooseActionsGentle, deriveBotSeed, gentleBotPolicyVersion } from '../../packages/games/action/bot.ts';
 import { Storage } from './storage.ts';
 import { createScheduler } from './scheduler.ts';
 import { autoPlaytest } from './auto.ts';
@@ -500,7 +500,7 @@ export class RoomServer {
     for (const seat of room.seats) {
       if (!seat.bot) continue;
       const inputs = authority.config.mode === 'turn' ? state.payload.activePlayer === seat.seat ? [cardAction(
-        room.game, state, state.tick)] : [] : chooseActions(room.game.observe(state, seat.seat), state.tick * 2,
+        room.game, state, state.tick)] : [] : chooseActionsGentle(room.game.observe(state, seat.seat), state.tick * 2,
         deriveBotSeed(authority.config.seed, authority.config.players.indexOf(seat.seat)));
       for (const input of inputs) authority.submit(input);
     }
@@ -542,7 +542,9 @@ export class RoomServer {
       valid: !failure,
       errorCode: failure ?? '',
       ...(room.seats.some(seat => seat.bot) ? {
-        botSeats: room.seats.filter(seat => seat.bot).map(seat => seat.seat)
+        botSeats: room.seats.filter(seat => seat.bot).map(seat => seat.seat),
+        // Hero Arena's room bot is the gentle policy; Hero Cards plays its first legal card (no policy version)
+        ...(room.game.describe().mode === 'turn' ? {} : { botPolicyVersion: gentleBotPolicyVersion })
       } : {})
     };
     const recording = {

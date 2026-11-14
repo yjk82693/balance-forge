@@ -1,6 +1,11 @@
 import { data, legalActions } from './index.ts';
 import { xorshift32 } from '../../sim/index.ts';
 export const botPolicyVersion = 'scripted-0.2.1';
+// The bot that plays against a human in the room (match.start { bot: true }). Same code path as scripted-0.2.1 with
+// gentler draws: guard chance 20-40%, a larger aim error, a later reaction (see below) and a short hold after each
+// attack. Balance measurements never use it; a result that carries this version is not a bot-vs-bot sample.
+export const gentleBotPolicyVersion = 'scripted-0.2.1-gentle';
+const GENTLE_HOLD_TICKS = 8;
 
 // Stable public boundary: callers derive once per match and pass the result as variant on every tick.
 export function deriveBotSeed(matchSeed, seatIndex) {
@@ -8,12 +13,20 @@ export function deriveBotSeed(matchSeed, seatIndex) {
       !Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex > 63) throw Error('INVALID_SCHEMA');
   return xorshift32(((matchSeed ^ Math.imul(seatIndex + 1, 0x9e3779b9)) >>> 0) || 1);
 }
-function profile(seed) {
+function profile(seed, gentle = false) {
   let rng = (seed >>> 0) || 1;
   const draw = maximum => {
     rng = xorshift32(rng);
     return rng % maximum;
   };
+  // Same draws in the same order, different ranges: reaction 18-30 ticks of delay, guard chance 20-40%, aim error
+  // +-320 (twice the scripted one).
+  if (gentle) {
+    return {
+      reaction: 18 + draw(13), guardChance: 20 + draw(21), distance: 1200 + draw(2401),
+      strafe: draw(2) ? 1 : -1, aimX: draw(641) - 320, aimY: draw(641) - 320, rng
+    };
+  }
   return {
     reaction: draw(13), guardChance: 55 + draw(41), distance: 1200 + draw(2401),
     strafe: draw(2) ? 1 : -1, aimX: draw(321) - 160, aimY: draw(321) - 160, rng
@@ -29,7 +42,10 @@ function attemptsGuard(shot, policy) {
 function incomingProjectile(view, hero, policy) {
   const character = data.characters.find(character => character.id === hero.hero);
   const guard = data.moves.find(move => character.moveIds.includes(move.id) && move.archetype === 'guard');
-  const horizon = data.weightTiers[guard.weightTier].startupTicks + 4 + 12 - policy.reaction;
+  // The guard needs its startup ticks to come up. A gentle bot's delay (18-30) would leave no time at all, so it
+  // counts half: the bot sees a shot 4-10 ticks before impact instead of 7-19.
+  const delay = policy.gentle ? Math.floor(policy.reaction / 2) : policy.reaction;
+  const horizon = data.weightTiers[guard.weightTier].startupTicks + 4 + 12 - delay;
   return view.payload.projectiles.some(shot => {
     if (shot.owner === hero.id || !attemptsGuard(shot, policy)) return false;
     for (let tick = 1; tick <= Math.min(horizon, shot.life); tick++) {
@@ -40,12 +56,31 @@ function incomingProjectile(view, hero, policy) {
     return false;
   });
 }
+// A gentle bot holds back for a few ticks after each attack (stateless: read from the cooldowns the view carries).
+function holdingBack(view, me) {
+  const character = data.characters.find(c => c.id === me.hero);
+  const attacks = ['melee', 'projectile'];
+  return attacks.some(actionId => {
+    const index = ['melee', 'projectile', 'guard'].indexOf(actionId);
+    const move = data.moves.find(m => character.moveIds.includes(m.id) && m.archetype === actionId);
+    const tier = move && data.weightTiers[move.weightTier];
+    if (!tier || !(me.cooldowns[index] > 0)) return false;
+    const usedAt = me.cooldowns[index] - tier.cooldownTicks;
+    return view.tick + 1 < usedAt + tier.startupTicks + tier.recoveryTicks + GENTLE_HOLD_TICKS;
+  });
+}
+export function chooseActionsGentle(view, seq, variant = 0) {
+  return decide(view, seq, variant, true);
+}
 export function chooseActions(view, seq, variant = 0) {
+  return decide(view, seq, variant, false);
+}
+function decide(view, seq, variant, gentle) {
   const legal = legalActions(view),
     me = view.payload.entities.find(e => e.id === view.viewerId),
     enemy = view.payload.entities.find(e => e.id !== view.viewerId);
   if (!legal.length || !enemy) return [];
-  const policy = profile(variant);
+  const policy = { ...profile(variant, gentle), gentle };
   const dx = enemy.x - me.x,
     dy = enemy.y - me.y,
     close = dx * dx + dy * dy <= policy.distance ** 2;
@@ -68,6 +103,7 @@ export function chooseActions(view, seq, variant = 0) {
     }
   }] : [];
   if (actionId === 'move') return movement;
+  if (gentle && actionId !== 'guard' && holdingBack(view, me)) return movement;
   const params = {
     aimX: Math.trunc(dx * 1000 / norm) || 0,
     aimY: Math.trunc(dy * 1000 / norm) || 0

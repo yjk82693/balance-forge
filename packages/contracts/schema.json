@@ -834,6 +834,11 @@
             "minLength": 1,
             "maxLength": 128
           }
+        },
+        "botPolicyVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
         }
       },
       "required": [
