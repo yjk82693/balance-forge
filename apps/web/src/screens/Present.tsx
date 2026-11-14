@@ -24,7 +24,7 @@ import { useManifest } from "../lib/assets";
 import { loadDesigner } from "../lib/designer";
 import { useHeroStats } from "../lib/heroStats";
 import { DesignerSection } from "../components/DesignerCard";
-import { fetchVersions, loadHistory, type HistorySource, type VersionList } from "../lib/versions";
+import { fetchVersions, loadHistory, summaryLine, type HistorySource, type VersionList } from "../lib/versions";
 import { isMockMode } from "../mock/types";
 import type { PlaytestRun } from "../lib/api";
 
@@ -183,6 +183,7 @@ function HistoryScene({ history }: { history: HistoryState | null }) {
       <div className="panel-head">
         <span className="eyebrow">Version history, newest first</span>
         <span className={`badge${history.source === "live run" ? "" : " recorded"}`}>{history.source}</span>
+        {summaryLine(history.list.summary) && <span className="caption">{summaryLine(history.list.summary)}</span>}
       </div>
       <DesignerSection cases={designerCases(history)} />
       <VersionHistory versions={history.list.versions} currentHash={history.list.currentHash} />
