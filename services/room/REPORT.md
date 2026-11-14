@@ -404,3 +404,16 @@ because the web app is outside ownership.
 
 Existing blockers remain: analysis pipeline full.js is absent here, and live socket tests require their opt-in
 listener gate. No dependencies, network calls, commits or pushes. Stopping with report and metrics only.
+
+## Polish 04:21
+
+Already clean; no code changes needed. Reviewed input validation, empty-data and disconnect handling;
+no new gaps, dead code or console noise found. Full `node --test`: 166 passed, 0 failed, 6 unchanged
+socket-gated skips, 1 existing pending integration; 47,972.919042 ms. Determinism and 120-column checks pass.
+No tests were weakened, skipped or deleted this pass.
+
+Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wins, 0 invalid;
+5,875.167875 ms, 51.062371 matches/s including startup, recorded 2026-11-14T09:21:28.686Z.
+Updated recorded metrics; deterministic result data stayed unchanged. Web is outside ownership, so no
+web build or render-FPS measurement. Existing blockers: analysis pipeline full.js remains absent here;
+live socket tests retain their opt-in listener gate. No dependencies, network, commits or pushes. Stopping.
