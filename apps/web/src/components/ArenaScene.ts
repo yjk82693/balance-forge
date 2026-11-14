@@ -8,7 +8,7 @@ export const ARENA_H = 648;
 
 // Art-space playfield rectangle (1920x1080); multiplied by the canvas scale at runtime.
 const FIELD_ART = { x: 150, y: 140, w: 1770 - 150, h: 1000 - 140 };
-const HERO_SCALE = 0.3;
+const HERO_SCALE = 0.36;
 const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
 
 export interface ArenaAssets {
@@ -225,16 +225,14 @@ export class ArenaScene extends Phaser.Scene {
     const fullW = trackW - 24 * k;
     const fullH = (18 / 320) * fullW;
     const fill = this.add.image(x + 12 * k, y + trackH / 2 - fullH / 2, "hp-fill").setOrigin(0, 0).setDisplaySize(fullW, fullH).setDepth(10001);
-    this.add.circle(x + 6 * k, y + trackH + 14 * k, 5 * k, HERO_HEX[hero] ?? 0xffffff).setDepth(10001);
+    this.add.circle(x + 8 * k, y + trackH + 6 * k + 11 * k, 5 * k, HERO_HEX[hero] ?? 0xffffff).setDepth(10002);
     const name = this.add
-      .text(x + 18 * k, y + trackH + 5 * k, heroName(hero), { fontFamily: FONT, fontSize: fs, fontStyle: "700", color: "#E6EBF1" })
-      .setDepth(10001)
-      .setShadow(0, 1, "#0D1219", 4, false, true);
+      .text(x + 18 * k, y + trackH + 6 * k, heroName(hero), { fontFamily: FONT, fontSize: fs, fontStyle: "700", color: "#E6EBF1", backgroundColor: "rgba(13,18,25,0.78)", padding: { x: 8 * k, y: 3 * k } })
+      .setDepth(10001);
     const hp = this.add
-      .text(x + trackW, y + trackH + 5 * k, "", { fontFamily: FONT, fontSize: fs, fontStyle: "500", color: "#E6EBF1" })
+      .text(x + trackW, y + trackH + 6 * k, "", { fontFamily: FONT, fontSize: fs, fontStyle: "700", color: "#E6EBF1", backgroundColor: "rgba(13,18,25,0.78)", padding: { x: 8 * k, y: 3 * k } })
       .setOrigin(1, 0)
-      .setDepth(10001)
-      .setShadow(0, 1, "#0D1219", 4, false, true);
+      .setDepth(10001);
     this.huds.set(id, { fill, name, hp, fullW, fullH, shown: 1, target: 1 });
   }
 

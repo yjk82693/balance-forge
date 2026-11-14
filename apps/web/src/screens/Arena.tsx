@@ -1,4 +1,6 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
+import { useEffect } from "react";
+import { saveJustPlayed } from "../lib/justPlayed";
 import { go } from "../lib/router";
 import { gameById } from "../lib/games";
 import { heroName } from "../lib/heroes";
@@ -24,6 +26,16 @@ export function Arena({ gameId }: { gameId: string }) {
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const cardsObs = observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
+  // Remember the finished match so the dashboard can show "you just played this".
+  useEffect(() => {
+    if (!result || gameId !== "hero_arena") return;
+    const seats = room?.seats ?? [];
+    saveJustPlayed({
+      result,
+      names: Object.fromEntries(seats.map((s) => [s.seat, s.name || heroName(s.hero)])),
+      heroes: Object.fromEntries(seats.flatMap((s) => (s.hero ? [[s.seat, s.hero]] : []))),
+    });
+  }, [result, room, gameId]);
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
   const winnerHero = (isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === winnerSeat)?.hero : undefined) ?? winner?.hero;

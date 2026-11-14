@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { gameById } from "../lib/games";
 import { go } from "../lib/router";
-import { heroName } from "../lib/heroes";
+import { heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useManifest } from "../lib/assets";
@@ -165,7 +165,7 @@ export function Lobby({ gameId }: { gameId: string }) {
                 );
               }
               return (
-                <li key={s.seat} className={`chip${s.connected ? "" : " away"}`}>
+                <li key={s.seat} className={`chip${s.connected ? "" : " away"}`} style={{ ["--hero-chip" as string]: heroColorVar(s.hero) }}>
                   <HeroPortrait hero={s.hero} size={56} />
                   <div className="chip-name">
                     <p className="small" style={{ fontWeight: 700 }}>

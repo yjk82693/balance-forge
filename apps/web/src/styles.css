@@ -1852,3 +1852,82 @@ p {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* "You just played this" */
+.matches tbody tr.just td {
+  background: var(--accent-tint);
+}
+.matches tbody tr.just td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.matches tbody tr.just:hover td {
+  background: var(--accent-tint);
+}
+
+.arena-overlay .caption,
+.arena-overlay .badge {
+  background: rgba(13, 18, 25, 0.8);
+  color: #e6ebf1;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  text-shadow: none;
+  font-weight: 700;
+}
+
+/* UI pass: lobby balance, controller contrast */
+.lobby {
+  align-items: center;
+}
+.lobby-players {
+  padding: var(--space-6);
+}
+.chip {
+  min-height: 80px;
+  padding: var(--space-3) var(--space-5);
+  box-shadow: inset 4px 0 0 var(--hero-chip, transparent);
+}
+.chip .small {
+  font-size: var(--fs-body);
+}
+.lobby-players .btn {
+  height: var(--btn-h-touch);
+}
+/* Non-text contrast >= 3:1 for the stick ring and button outlines (line-strong was ~1.8:1 on the pad). */
+.stick-ring {
+  box-shadow: inset 0 0 0 2px var(--text-3);
+  opacity: 0.85;
+}
+.stick-knob {
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 2px var(--text-3);
+}
+.pad-btn {
+  box-shadow: inset 0 0 0 2px var(--text-3);
+}
+.pad-label {
+  color: var(--text-1);
+}
+.phone-head {
+  box-shadow: inset 0 -3px 0 var(--hero, var(--line));
+}
+.pad {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.phone-body > p {
+  font-size: var(--fs-h3);
+  line-height: 28px;
+  font-weight: 700;
+}
+.phone-body > p .text-2 {
+  font-size: var(--fs-body);
+  line-height: 24px;
+  font-weight: 500;
+}
+.phone-body > p.caption {
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  font-weight: 500;
+}

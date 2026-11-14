@@ -8,6 +8,8 @@ export interface MatchRow {
   /** hero per seat when known (human rows come from the lobby; bot rows carry none) */
   heroes: Record<string, string>;
   names: Record<string, string>;
+  /** the match the viewer just played on their phone */
+  justPlayed?: boolean;
 }
 
 const fmtTime = (ticks: number) => {
@@ -46,7 +48,7 @@ export function MatchesTable({ rows, selected, onSelect, compact }: Props) {
           return (
             <tr
               key={m.matchId}
-              className={`${selected === m.matchId ? "selected" : ""}${!m.valid ? " invalid" : ""}`}
+              className={`${selected === m.matchId ? "selected" : ""}${!m.valid ? " invalid" : ""}${r.justPlayed ? " just" : ""}`}
               tabIndex={0}
               aria-selected={selected === m.matchId}
               onClick={() => onSelect(m.matchId)}
@@ -64,6 +66,7 @@ export function MatchesTable({ rows, selected, onSelect, compact }: Props) {
               <td>
                 <span className="badges">
                   {r.human ? <span className="badge human">human</span> : <span className="badge">bot</span>}
+                  {r.justPlayed && <span className="badge after">you just played this</span>}
                   {m.valid ? (
                     <span className="badge recorded">recorded</span>
                   ) : (

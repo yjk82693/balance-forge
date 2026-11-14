@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CompareReplay } from "../components/CompareReplay";
 import { DiffCard } from "../components/DiffCard";
 import { FitStage } from "../components/FitStage";
@@ -16,6 +16,7 @@ import { mockProgress, toRows, type ProgressMsg } from "../lib/progress";
 import { loadRecordedRun } from "../lib/recorded";
 import type { ReportRow } from "../lib/contract";
 import { useDemoVersion } from "../lib/demo";
+import { loadJustPlayed } from "../lib/justPlayed";
 import { fixtureMatchEnded, fixtureMatchResults, fixtureObservation, fixtureRoomStatus } from "../lib/fixtures";
 import { isMockMode } from "../mock/types";
 import type { Report } from "../lib/contract";
@@ -78,6 +79,17 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState(HUMAN_ID);
+  const played = useMemo(() => loadJustPlayed(), []);
+  const rows: MatchRow[] = useMemo(() => {
+    if (!played) return sampleRows;
+    const mine: MatchRow = { result: played.result, human: true, heroes: played.heroes, names: played.names, justPlayed: true };
+    return [mine, ...sampleRows.filter((r) => r.result.matchId !== played.result.matchId)];
+  }, [played]);
+  const playedWinner = played
+    ? played.result.outcome.status === "draw"
+      ? "draw"
+      : `${played.heroes[played.result.outcome.winners[0]] ? heroName(played.heroes[played.result.outcome.winners[0]]) : (played.names[played.result.outcome.winners[0]] ?? "winner")} won`
+    : "";
   const abort = useRef<AbortController | null>(null);
 
   // Light is for projecting this screen only; every other screen stays dark.
@@ -199,36 +211,39 @@ export function Dashboard() {
                 <span className="meta">{mock ? "sample matches" : "from the last run"}</span>
               </div>
               {mock ? (
-                <MatchesTable rows={sampleRows} selected={selected} onSelect={setSelected} compact />
+                <MatchesTable rows={rows} selected={selected} onSelect={setSelected} compact />
               ) : (
                 <table className="matches compact">
                   <thead>
                     <tr>
                       <th>Group</th>
+                      <th>Details</th>
                       <th className="num">Matches</th>
                       <th className="num">Time</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody aria-live="polite">
-                    <tr>
+                    {/* Human row sits right above the bot row so the two can be read together. */}
+                    <tr className={played ? "just" : undefined}>
                       <td>
                         <span className="players">
-                          <span className="badge human">human</span> Human matches
+                          <span className="badge human">human</span>
+                          {played && <span className="badge after">you just played this</span>}
                         </span>
                       </td>
-                      <td className="num">{run ? n(run.baseline.humanMatches ?? 0) : "—"}</td>
-                      <td className="num">—</td>
-                      <td>
-                        {(run?.baseline.humanMatches ?? 0) > 0 ? <span className="badge recorded">recorded</span> : <span className="caption">{run ? "None yet" : "Waiting for a run"}</span>}
-                      </td>
+                      <td>{played ? `${played.names.p1 ?? "p1"} v ${played.names.p2 ?? "p2"} · ${playedWinner}` : <span className="caption">{run ? "None yet" : "Waiting for a run"}</span>}</td>
+                      <td className="num">{run || played ? n(Math.max(run?.baseline.humanMatches ?? 0, played ? 1 : 0)) : "—"}</td>
+                      <td className="num">{played ? fmtSeconds(Math.round((played.result.statistics.durationTicks / 60) * 1000)) : "—"}</td>
+                      <td>{played?.result.valid ? <span className="badge recorded">recorded</span> : <span className="caption">—</span>}</td>
                     </tr>
                     <tr>
                       <td>
                         <span className="players">
-                          <span className="badge">bot</span> Bot v bot
+                          <span className="badge">bot</span>
                         </span>
                       </td>
+                      <td>Bot v bot</td>
                       <td className="num">{run ? n(run.baseline.validMatches) : "—"}</td>
                       <td className="num">{run?.baseline.elapsedMs != null ? fmtSeconds(run.baseline.elapsedMs) : "—"}</td>
                       <td>{run?.baseline.recorded ? <span className="badge recorded">recorded</span> : <span className="caption">{run ? "Live run" : "Waiting for a run"}</span>}</td>
