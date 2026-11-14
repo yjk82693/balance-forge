@@ -601,8 +601,12 @@ curl -sS -H 'content-type: application/json' \
 
 pairs and holdoutPairs default to 50; roster defaults to false. The response contains runId, gameId, elapsedMs,
 botPolicyVersion, seedSetId, holdoutSeedSetId, baseline Report, proposal with origin/changes, validation, patched
-Report/dataHash, verdict and humanMatches. The seatWins summary contains numeric baseline/holdout first-seat
-counts; holdout is null when no holdout ran. Optional dataHash selects a retained baseline data version.
+Report/dataHash, verdict and humanMatches. The verdict is `{verdict, reasons, targets}`: `targets` is
+`[{matchup, before:{rate,ci95,games}, after:{rate,ci95,games}, outcome:'improved'|'unchanged'|'worse'}]`, one entry
+per flagged matchup. A patch is accepted when at least one target improved beyond noise, none got worse and no new
+extreme matchup (above 65% with 200 games) appeared. A version record stores the same array in its `verdict`.
+The seatWins summary contains numeric baseline/holdout first-seat counts; holdout is null when no holdout ran.
+Optional dataHash selects a retained baseline data version.
 Baseline seeds 1..pairs never overlap holdout 1000001..1000000+holdoutPairs. Both streams include phase equal to
 baseline or holdout. Candidates are retained by hash without automatically replacing the current baseline.
 Production selects Gemini when GEMINI_API_KEY is set, otherwise fake; tests explicitly pass an empty adapter env.

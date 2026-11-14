@@ -671,3 +671,9 @@ baseline in the analysis module: `fair: true`, no proposal, no holdout, no versi
 2-pair runs that are now fair, so they were adapted, not weakened: the roster test asserts the fair response, the
 versions test and the e2e dashboard use one lopsided pair (bari vs daewi, 30 to 40 games) so a patch is still
 proposed and recorded. The socket-gated e2e change could not be run here.
+
+## Per-target verdict in the room
+
+Version records accept `verdict.targets` (matchup, before and after with rate/ci95/games, outcome improved, unchanged or
+worse); older records without it stay valid. README documents the verdict shape. The gate itself is in the analysis
+module.
