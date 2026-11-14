@@ -57,3 +57,33 @@ All six blocks are built and committed in order H, N, G, I, K, J. `npm run build
 - Console: in real mode with no server the browser itself logs failed WebSocket and 404 requests; the app adds no errors of its own. In mock mode the console was clean in the screens I opened.
 - The 15-row dashboard was checked at the scaled 1920x1080 layout only; the phone controller and cards hand at a 390x844 iframe. The Hero Cards table was re-checked after the Phaser scale-mode change and renders correctly; the cards phone hand was not re-opened after the contrast pass.
 - Replays are illustrative until the engine publishes accepted frame streams.
+
+## Polish 23:00
+
+Checks run: `npm test` (all node:test suites in the repo): **46 of 46 pass**, 45 s. `npm run build -w apps/web`: passes. No test was changed, skipped or deleted. The web app has no tests of its own; I did not add any in a polish pass.
+
+**Changed**
+- Readability: no line over 120 characters in `apps/web/src` (checked with a script; the CSS file is excluded). The 340-line `Dashboard.tsx` was split into `lib/dashboardData.ts` (formatting, theme, stored run, sorting, headline), `lib/useRunner.ts` (run, live progress, stored-run fallback), `components/ReportPanel.tsx` and `components/RunTable.tsx`; the screen itself now only composes them. Small helpers replaced several nested ternaries (`winnerLabel`, `rowClass`, `statusLine`, `unitLabel`, `myArenaEntity`).
+- Dead code removed: three unused fixture exports (and the `report_patched.json` import), `isMuted`.
+- Console noise: none in the app. The only `console` call is a warning in the error boundary when a screen crashes.
+- Edge cases and bad input:
+  - Observation payloads are shape-checked (`isArenaPayload` and `isCardsPayload` now require the arrays); malformed `room.status`, `state.view` and `match.ended` messages are ignored instead of replacing good state.
+  - `/v1/playtest/run` replies: rows with impossible counts (wins above games, NaN, negatives) are dropped; a proposal missing `replacements` or `rationale` gets safe defaults; a report with no matchups shows an "empty report" panel.
+  - A stored run in `sessionStorage` is ignored unless it still has report rows.
+  - Match duration `NaN` shows an em dash.
+  - Already handled earlier: server unreachable, dropped connection, malformed or oversized WebSocket frames, live run failing (stored-run fallback), missing art manifest.
+
+**Performance** (production build via `vite preview`, Chrome on the dev laptop, display refresh about 120 Hz, devicePixelRatio 2, viewport 1512x857; frames counted with `requestAnimationFrame`)
+| Screen | fps | worst frame |
+|---|---|---|
+| Dashboard idle: two Phaser canvases replaying | 111 | 34 ms |
+| Dashboard during the live batch (50 progress ticks, chart redraws, mini-arenas) | 99 | 42 ms |
+| Arena during a mock match (hit flashes, trails, shake) | 118 | 24 ms |
+- JS bundle: 1.83 MB (453 KB gzip), almost all Phaser. The stored run (183 KB) is a separate lazy chunk and loads only when a live run fails.
+- Matches per second: the web app does not run matches. The runner's own recorded sample (`services/runner/recorded-metrics.json`) reports 200 matches in 3.4 s, about 58 matches/s with two workers, including worker startup; that is the runner's measurement, not mine.
+- Not measured: a low-end laptop or a phone's frame rate (the phone screens are plain DOM plus one small stick), and memory over a long session.
+
+**Still blocked / open**
+- No real server in the repo, so nothing in the web app has been run against `/ws` or `/v1/playtest/run`; the assumptions listed under Round 3 still need a check against the real server.
+- Not verified at a true 1920x1080 window or on a physical phone (touch, vibration, audio), and the light theme has not been looked at on screen.
+- The line-length rule was not applied to `styles.css` (one long selector list).
