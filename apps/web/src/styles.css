@@ -2513,3 +2513,8 @@ button.intent-btn { cursor: pointer; }
 .trend-axis { fill: var(--text-2); font-size: 12px; }
 .held-out { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 8px; }
 .held-out .badge { white-space: normal; }
+
+/* The "Run live" button is for the presenter; a recording (?auto=1) never shows it. */
+.present.auto .present-run-live {
+  display: none;
+}
