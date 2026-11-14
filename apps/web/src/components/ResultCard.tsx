@@ -186,7 +186,7 @@ export function OthersColumn({ others, note }: { others: NonNullable<ResultFacts
 }
 
 export function ResultCard({ facts, title = "Result", children }: CardProps) {
-  const { fair, outlier, evidence, patch, holdout, verdict, others, othersNote } = facts;
+  const { fair, outlier, evidence, patch, holdout, verdict, others, othersNote, fallbackNote } = facts;
   return (
     <section className="panel result" aria-labelledby="result-title">
       <div className="panel-head">
@@ -222,7 +222,7 @@ export function ResultCard({ facts, title = "Result", children }: CardProps) {
           {outlier?.intended && <p className="caption">{outlier.intended}</p>}
           {evidence && <p className="caption result-why">{evidence}</p>}
         </div>
-        {!fair && <PatchColumn patch={patch} />}
+        {!fair && <PatchColumn patch={patch} fallbackNote={fallbackNote} />}
         {!fair && <HoldoutColumn holdout={holdout} verdict={verdict} />}
         {others && <OthersColumn others={others} note={othersNote} />}
       </div>
