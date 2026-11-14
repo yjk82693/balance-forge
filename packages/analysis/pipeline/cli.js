@@ -19,6 +19,7 @@ import { fail, isError, toErrorResult } from '../src/errors.js';
 import { assertMatchResults, assertReport } from '../src/input-check.js';
 import { loadArenaSimulator } from './arena-simulator.js';
 import { buildMatchupTable } from '../src/matchups.js';
+import { buildEvidence } from '../src/evidence.js';
 import { validatePatch } from '../src/validator.js';
 
 // File errors become coded results; messages name the file, never its contents.
@@ -151,6 +152,8 @@ async function run(argv, env, now) {
       if (isError(hg)) fail(hg.error.code, hg.error.message);
       writeJson(f('human_group.json'), hg.value);
     }
+    const evidence = buildEvidence(counted, baseline);
+    if (evidence.ok) writeJson(f('evidence.json'), evidence.value);
     if (step.ok) writeJson(f('patch.json'), step.proposal);
     const table = buildMatchupTable(counted, flags.roster ? { roster: flags.roster.split(',') } : {});
     if (table.ok) writeJson(f('matchup_table.json'), table.value);

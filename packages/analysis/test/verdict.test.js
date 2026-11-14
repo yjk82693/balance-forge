@@ -62,3 +62,43 @@ test('mismatched seed set, unchanged hash, or no target is inconclusive', () => 
   assert.equal(judgePatch(b, a).verdict, 'inconclusive');
   assert.equal(judgePatch(b, a, { targets: ['bari vs real_armor'] }).verdict, 'accepted');
 });
+
+// --- mirror matchups: not default targets, still part of the "new extreme" check ---
+const mirrorRow = (winRate, outlier) => ({ dimension: 'bari vs bari', wins: Math.round(winRate * 200), games: 200,
+  winRate, ci95: [0.9, 1], uses: 100, opportunities: 200, outlier });
+
+test('a mirror outlier is not a default target', () => {
+  const [b, a] = pair();
+  b.rows.push(mirrorRow(1, true));
+  a.rows.push(mirrorRow(1, true)); // first-seat advantage unchanged; was extreme before, so not "new"
+  const v = judgePatch(b, a);
+  assert.equal(v.verdict, 'accepted', v.reasons.join('; '));
+  assert.deepEqual(v.targets.map((t) => t.dimension), ['bari vs real_armor']);
+});
+
+test('only mirror outliers: inconclusive, and the reason says why', () => {
+  const [b, a] = pair();
+  row(b, 'bari vs real_armor').outlier = false;
+  b.rows.push(mirrorRow(1, true));
+  a.rows.push(mirrorRow(1, true));
+  const v = judgePatch(b, a);
+  assert.equal(v.verdict, 'inconclusive');
+  assert.match(v.reasons.join(), /only outliers are mirror/);
+});
+
+test('a mirror row that becomes extreme after the patch still rejects it', () => {
+  const [b, a] = pair();
+  b.rows.push(mirrorRow(0.5, false));
+  a.rows.push(mirrorRow(0.8, true));
+  const v = judgePatch(b, a);
+  assert.equal(v.verdict, 'rejected');
+  assert.match(v.reasons.join(), /new extreme matchup: bari vs bari/);
+});
+
+test('explicit targets may still name a mirror row', () => {
+  const [b, a] = pair();
+  b.rows.push(mirrorRow(1, true));
+  a.rows.push(mirrorRow(0.55, false));
+  const v = judgePatch(b, a, { targets: ['bari vs bari'] });
+  assert.equal(v.verdict, 'accepted', v.reasons.join('; '));
+});

@@ -85,3 +85,9 @@ test('runFull: bad input becomes clear error results, never a throw', async () =
     seeds: 100 }) }))), 'INVALID_INPUT'); // seeds 1..100 were not requested
   assert.equal(code(await runFull(input({ adapter: {} }))), 'INVALID_INPUT');
 });
+
+test('runFull: change labels find the hero through the engine field moveIds', async () => {
+  const engineShaped = { ...baseData, characters: [{ id: 'bari', moveIds: ['melee', 'spirit_arrow'] }] };
+  const out = await runFull(input({ baseData: engineShaped }));
+  assert.equal(out.value.proposal.changes[0].label, 'Bari · Spirit Arrow power');
+});
