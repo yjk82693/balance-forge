@@ -15,11 +15,11 @@ AI playtesting platform for multiplayer games, built during HackPrinceton Fall 2
 - Keep one working end-to-end path at all times; fix it before adding scope.
 
 ## Folder ownership (parallel work)
-| Folder | Owner branch |
+| Folder | Branch |
 |---|---|
-| `packages/contracts`, `packages/sim`, `packages/games`, `services/runner` | `jokerstar/engine` |
-| `packages/analysis` | `ultron/analysis` |
-| `apps/web` | `vision/web` |
+| `packages/contracts`, `packages/sim`, `packages/games`, `services/runner` | `engine` |
+| `packages/analysis` | `analysis` |
+| `apps/web` | `web` |
 | `spec/`, `fixtures/`, `docs/`, `tools/`, root files | `main` (integration) |
 
 Write only inside your own folder. Read everything else. If the spec must change, write it in `CHANGE_REQUEST.md` inside your folder and continue; the integrator decides. Do not add dependencies; if one is needed, stop and report. If blocked, stop and write the reason in `REPORT.md` in your folder.
