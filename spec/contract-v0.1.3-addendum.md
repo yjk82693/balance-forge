@@ -25,3 +25,8 @@ Status: accepted for the event build. It extends v0.1.2 and does not change any 
 ## API
 - `GET /v1/design/:gameId/intent` and `PUT` the same.
 - `POST /v1/playtest/reanalyze { runId, intent? }` re-judges a stored run without simulating.
+
+## Notes from the implementation
+- `rows[].target` is the target of the **alphabetically first hero** of the pair. Report rows are alphabetical, so this is the row's first hero.
+- `GET`/`PUT` intent reply with `{ gameId, ...intent }`. A `PUT` without `version` gets `intent-<8 hex of the matchups hash>`.
+- A reanalyze reply may also carry `reanalyzed: true`, `stale: true` (the run stopped as fair under the old intent but is flagged under the new one, so re-run it) and `diagnosisIncomplete: true`.
