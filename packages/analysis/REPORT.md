@@ -102,3 +102,44 @@ Still blocked or open (needs someone else):
 - The Cards engine emits no per-card statistics, so `analyzeCards` returns nothing real yet.
 - The recorded runner output still uses per-seat dataHash variants without `options.assignments`; the pipeline refuses it until the engine adopts addendum item 1. `replay` works on it through `resolveDataVariants`.
 - `pipeline/arena-simulator.js` was written against the engine on `main`; it must be re-checked when `jokerstar/engine` is merged.
+
+## Pre-merge check
+
+Checked against `jokerstar/engine` (06860c2, sibling worktree `../balance-forge-engine`) and `vision/web` (5861705), read-only.
+This section supersedes the older "blocked" lines above about assignments, `human-results.json` and `arena-simulator.js`.
+
+### What I ran
+- `services/runner/recorded-roster-match-results.json` (300 matches, one dataHash, `options.assignments` on every match):
+  `cli.js run` with the fake adapter goes through analyze, propose, validate and verdict. Exit 0, verdict `inconclusive`
+  (20 games per matchup is below the n>=30 outlier rule and the 200-game verdict gate, so this is the honest answer).
+- A real patched holdout: engine `applyPatch` (/moves/1/power -> 72) plus `rosterJobs` + `runBatch` (300 matches, new hash
+  9fc13bd0). The pipeline paired it and returned `inconclusive` ("no outlier in the baseline report"). Roster of 5 gives 15 rows.
+- Engine schema check with `validate()` from `packages/contracts`: 300/300 recorded MatchResults, my `report_baseline.json`
+  (with human rows), `report_patched.json` and `patch.json` all pass.
+- Patch validator vs engine `applyPatch`: 204 path/value combinations (bounds, bad index, bad path, float, negative):
+  0 differences.
+- Replay: re-simulating every 7th recorded roster match (43 matches, 10+ matchups) reproduces the runner `finalStateHash`,
+  outcome and duration. New test: `test/replay.test.js`.
+- `human-results.json` is a `MatchResult[]` (the room validates each with `validate('MatchResult')`), so `--human` accepts it
+  as is. A synthetic file of 5 `human-*` results produced `humanMatches: 5` and a valid Report.
+
+### Mismatches
+| # | Where | Expected vs actual | Status |
+|---|---|---|---|
+| 1 | `pipeline/arena-simulator.js` bot call | Engine bot is `chooseActions(view, seq, variant)` -> `ActionInput[]` (move + attack), `seq = tick * 2`, `variant = seat index`; I called the old `chooseAction(view, tick, i)` | fixed-here |
+| 2 | `loadArenaSimulator` | Returned a bare `ENGINE_UNAVAILABLE` for any failure | fixed-here: message names the missing file/export; `createArenaSimulator` throws `TypeError` naming each missing export; test asserts the real engine loads |
+| 3 | `loadArenaSimulator` path | Imported only from this repo's `packages/games`; stale before the merge | fixed-here: optional engine root (`--engine-root`, tests use `test/engine.js`) |
+| 4 | `pickLopsidedMatch` | Picked mirror `bari vs bari` (20/20 = first-seat advantage, not hero balance) for the before/after story | fixed-here: mirrors are skipped while any hero matchup exists |
+| 5 | one dataHash per version | Addendum item 1 adopted by the engine | confirmed; tests now use the engine's `pairedJobs` (one hash) |
+| 6 | Hash format | 64 lowercase hex everywhere (`hash()` from contracts) | no mismatch |
+| 7 | Units | `elapsedMs` ms (I round it, engine metrics are floats), `durationTicks` ticks, rates 0..1, CI rounded to 6 decimals | no mismatch |
+| 8 | `playtest.progress` | Engine: `{runId, gameId, dataHash, matchesDone, totalMatches, elapsedMs, matchups:[{matchup, heroes, wins:{hero:n}, games, draws, invalidMatches}]}`. Web `subscribeProgress` needs `{done, total, rows:[{dimension, wins, games}]}`, so it never fires on the real payload | CHANGE_REQUEST-web (analysis does not produce this message). Note `matchup` equals my report `dimension`, and `heroes[0]` is my focal side |
+| 9 | `POST /v1/playtest/run` | Web sends `{gameId, matches}` and expects `{baseline, patched, proposal, verdict}`. Engine takes `{gameId, pairs}` and returns `{resultsPath, elapsedMs, matchCount, dataHash, recorded}`; nothing runs the analysis pipeline | CHANGE_REQUEST-engine (glue) and CHANGE_REQUEST-web (`pairs`) |
+| 10 | Patch `origin` | I write `fake`, `gemini`, `grok`, `fallback`; web accepts `gemini`, `fallback`, `manual` and shows anything else as `manual` | CHANGE_REQUEST-web (I will not relabel `fake` as `manual`) |
+| 11 | Human rows in `Report.rows` | Mine are `human: <a> vs <b>`; web charts treat every row as a bot matchup (`parseMatchup` makes "human: bari" a hero) | CHANGE_REQUEST-web |
+| 12 | `before_after.json` | Mine has HP timelines only; web has no consumer and draws a mock replay (`replayGen.ts`). HP has no x/y, so a real side-by-side needs frames | CHANGE_REQUEST-web (use timeline for the HP numbers) and CHANGE_REQUEST-engine (optional frames from `replayOnData`) |
+| 13 | `recorded.ts` in web | Reads the old `recorded-match-results.json` (two hashes, no assignments) and hard-codes `ci95: [0,1]`, `outlier: false` | CHANGE_REQUEST-web |
+| 14 | Hero Cards per-card stats | Engine statistics have `play` / `end_turn` only; `analyzeCards` needs `play:<cardId>` | CHANGE_REQUEST-engine (optional) |
+| 15 | Web `MatchConfig` type | Lacks optional `options.assignments` | CHANGE_REQUEST-web (type only) |
+
+Open: Gemini/Grok request shapes are still unverified against live APIs; Node >=24 in root `package.json` vs 22.22.3 here.
