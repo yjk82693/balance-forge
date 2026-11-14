@@ -38,6 +38,8 @@ export function manifestUrl(path: string): string | undefined {
 }
 
 export const heroPortraitPath = (hero: string) => `assets/common/heroes/${hero}/portrait.png`;
+/** Optional still poses: attack.png, hit.png, ko.png next to full_body.png; used only if the manifest lists them. */
+export const heroPosePath = (hero: string, pose: string) => `assets/common/heroes/${hero}/${pose}.png`;
 export const heroFullBodyPath = (hero: string) => `assets/common/heroes/${hero}/full_body.png`;
 
 /** 'loading' until the manifest arrives, 'failed' if it can't be fetched. */

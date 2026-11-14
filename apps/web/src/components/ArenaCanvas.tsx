@@ -2,13 +2,15 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import type { GameEvent, Observation } from "../lib/contract";
 import type { ViewPacket } from "../mock/useRoom";
-import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath } from "../lib/assets";
+import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath, heroPosePath } from "../lib/assets";
 import { HEROES } from "../lib/heroes";
 import { SnapshotBuffer } from "../lib/snapshotBuffer";
 import { ARENA_H, ARENA_W, ArenaScene, type ArenaAssets } from "./ArenaScene";
+import type { PoseName } from "./hitFeel";
 
 const debug = () => new URLSearchParams(location.search).get("debug") === "1";
 
+const POSES: PoseName[] = ["attack", "hit", "ko"];
 const EFFECTS = [
   "spirit_arrow",
   "blaster_burst",
@@ -49,7 +51,15 @@ export function ArenaCanvas({
       if (cancelled || !host.current) return;
       const heroes: Record<string, string> = {};
       for (const h of HEROES) heroes[h.id] = manifestUrl(heroFullBodyPath(h.id)) ?? assetUrl(heroFullBodyPath(h.id));
+      const poses: NonNullable<ArenaAssets["poses"]> = {};
+      for (const h of HEROES) {
+        for (const pose of POSES) {
+          const url = manifestUrl(heroPosePath(h.id, pose)); // only poses the manifest lists; a missing one is skipped
+          if (url) (poses[h.id] ??= {})[pose] = url;
+        }
+      }
       const assets: ArenaAssets = {
+        poses,
         floor: assetUrl("assets/hero_arena/backgrounds/arena_floor.png"),
         heroes,
         effects: Object.fromEntries(EFFECTS.map((k) => [k, assetUrl(`assets/hero_arena/effects/${k}.png`)])),
