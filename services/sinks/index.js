@@ -1,0 +1,127 @@
+// Optional outside stores for run data: MongoDB Atlas keeps documents (versions, reports, runs),
+// Tiger Data (Postgres/Timescale) keeps one row per match as a time series.
+// Both are off unless their connection string is set, and neither can slow or break a run:
+// writes are queued, each has a time limit, and failures are counted, never thrown.
+
+const LIMIT_MS = 2000;
+
+const withLimit = (promise, ms = LIMIT_MS) =>
+  Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(Error('TIMEOUT')), ms).unref())]);
+
+export function matchRows(kind, payload) {
+  // One flat row per match: what the time-series store and its charts need.
+  if (kind !== 'matches') return [];
+  const { results, dataHash, botPolicyVersion, phase, runId } = payload;
+  return (results ?? []).map(r => {
+    const a = r.config?.options?.assignments ?? {};
+    const heroes = Object.values(a).sort();
+    const winnerHero = r.outcome?.winner ? a[r.outcome.winner] ?? null : null;
+    return {
+      at: new Date(payload.at ?? Date.now()),
+      run_id: runId ?? null,
+      phase: phase ?? null,
+      data_hash: dataHash ?? r.config?.dataHash ?? null,
+      bot_policy: botPolicyVersion ?? null,
+      matchup: heroes.join(' vs '),
+      winner_hero: winnerHero,
+      ticks: r.durationTicks ?? null,
+      valid: r.valid !== false,
+      seed: r.config?.seed ?? null,
+    };
+  });
+}
+
+function mongoSink(uri, load) {
+  let client = null;
+  const db = async () => {
+    if (!client) {
+      const { MongoClient } = await load('mongodb');
+      client = new MongoClient(uri, { serverSelectionTimeoutMS: LIMIT_MS });
+      await client.connect();
+    }
+    return client.db('balance_forge');
+  };
+  return {
+    name: 'mongodb',
+    async write(kind, payload) {
+      if (kind === 'matches') return; // match rows go to the time-series store
+      await (await db()).collection(kind).insertOne({ ...payload, storedAt: new Date() });
+    },
+    async close() {
+      await client?.close();
+    },
+  };
+}
+
+function tigerSink(url, load) {
+  let pool = null;
+  const ready = async () => {
+    if (!pool) {
+      const { default: pg } = await load('pg');
+      pool = new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: LIMIT_MS });
+      await pool.query(`CREATE TABLE IF NOT EXISTS match_results (
+        at timestamptz NOT NULL, run_id text, phase text, data_hash text, bot_policy text,
+        matchup text, winner_hero text, ticks integer, valid boolean, seed bigint)`);
+      // Hypertable when the server has TimescaleDB; a plain table still works without it.
+      await pool.query(`SELECT create_hypertable('match_results', 'at', if_not_exists => TRUE)`).catch(() => {});
+    }
+    return pool;
+  };
+  return {
+    name: 'tiger',
+    async write(kind, payload) {
+      const rows = matchRows(kind, payload);
+      if (!rows.length) return;
+      const db = await ready();
+      const cols = Object.keys(rows[0]);
+      const values = rows.flatMap(r => cols.map(c => r[c]));
+      const marks = rows.map((_, i) => `(${cols.map((_, j) => `$${i * cols.length + j + 1}`).join(',')})`);
+      await db.query(`INSERT INTO match_results (${cols.join(',')}) VALUES ${marks.join(',')}`, values);
+    },
+    async trend(matchup) {
+      // Win share of the alphabetically first hero per data version, oldest first.
+      const db = await ready();
+      const first = matchup.split(' vs ')[0];
+      const { rows } = await db.query(`SELECT data_hash, min(at) AS first_seen, count(*)::int AS games,
+        avg((winner_hero = $2)::int)::float AS rate FROM match_results
+        WHERE matchup = $1 AND valid GROUP BY data_hash ORDER BY first_seen`, [matchup, first]);
+      return rows;
+    },
+    async close() {
+      await pool?.end();
+    },
+  };
+}
+
+/** Sinks from env (MONGODB_URI, TIGER_DATABASE_URL). `load` is injectable for tests. */
+export function createSinks(env = process.env, load = name => import(name)) {
+  const sinks = [];
+  if (env.MONGODB_URI) sinks.push(mongoSink(env.MONGODB_URI, load));
+  if (env.TIGER_DATABASE_URL) sinks.push(tigerSink(env.TIGER_DATABASE_URL, load));
+  const status = Object.fromEntries(sinks.map(s => [s.name, { written: 0, failed: 0, lastError: null }]));
+  let queue = Promise.resolve();
+  return {
+    enabled: sinks.map(s => s.name),
+    status,
+    /** Fire and forget: never awaits the caller, never throws. */
+    emit(kind, payload) {
+      for (const sink of sinks) {
+        queue = queue.then(() => withLimit(sink.write(kind, payload)))
+          .then(() => { status[sink.name].written += 1; })
+          .catch(error => {
+            status[sink.name].failed += 1;
+            status[sink.name].lastError = String(error?.code ?? error?.message ?? error).slice(0, 120);
+          });
+      }
+    },
+    async trend(matchup) {
+      const tiger = sinks.find(s => s.name === 'tiger');
+      return tiger ? withLimit(tiger.trend(matchup)) : null;
+    },
+    flush: () => queue,
+    async close() {
+      await queue;
+      await Promise.allSettled(sinks.map(s => s.close()));
+    },
+  };
+}
