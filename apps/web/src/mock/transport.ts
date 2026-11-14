@@ -6,6 +6,7 @@ import { createWsTransport } from "./ws";
 import { isMockMode, type ConnStatus, type Role, type Transport } from "./types";
 
 export type { ConnStatus, Role, Transport };
+type MockRole = Exclude<Role, "observer">;
 
 /*
  * Cross-tab wiring. The display tab owns the MockServer for its whole lifetime (it survives route changes);
@@ -15,7 +16,7 @@ export type { ConnStatus, Role, Transport };
 type Wire =
   | { k: "hello"; from: string }
   | { k: "host"; to: string }
-  | { k: "up"; from: string; connect?: Role; env?: Envelope; bye?: boolean }
+  | { k: "up"; from: string; connect?: MockRole; env?: Envelope; bye?: boolean }
   | { k: "down"; to: string; env: Envelope };
 
 let server: MockServer | null = null;
@@ -36,9 +37,9 @@ chan?.addEventListener("message", (ev: MessageEvent<Wire>) => {
 
 const getServer = () => (server ??= new MockServer());
 let counter = 0;
-const newId = (role: Role) => `${role === "display" ? "display" : "ctrl"}-${Math.random().toString(36).slice(2, 7)}${++counter}`;
+const newId = (role: MockRole) => `${role === "display" ? "display" : "ctrl"}-${Math.random().toString(36).slice(2, 7)}${++counter}`;
 
-function createMockTransport(role: Role): Transport {
+function createMockTransport(role: MockRole): Transport {
   const sessionId = newId(role);
   const listeners = new Set<(env: Envelope) => void>();
   const statusFns = new Set<(s: ConnStatus) => void>();
@@ -130,7 +131,7 @@ function createMockTransport(role: Role): Transport {
 }
 
 export function createTransport(role: Role, opts: { gameId?: string } = {}): Transport {
-  return isMockMode() ? createMockTransport(role) : createWsTransport(role, opts);
+  return isMockMode() ? createMockTransport(role === "observer" ? "controller" : role) : createWsTransport(role, opts);
 }
 
 /** One transport per mounted screen, closed on unmount. Real /ws by default, mock with ?mock=1. */

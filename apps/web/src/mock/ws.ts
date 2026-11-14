@@ -132,7 +132,7 @@ export function createWsTransport(role: Role, opts: { gameId?: string; dataVersi
     shared.refs += 1;
     conn = shared.conn;
   } else {
-    conn = new Conn(() => []);
+    conn = new Conn(() => (role === "observer" ? [["subscribe", { topic: "playtest.progress" }]] : []));
   }
   const mine = new Set<() => void>();
   let released = false;

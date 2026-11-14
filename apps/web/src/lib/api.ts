@@ -1,6 +1,8 @@
 import type { PatchProposal, Report } from "./contract";
 import { fixturePatch } from "./fixtures";
 import { mockReport } from "./mockReport";
+import { mockProgress, type ProgressMsg } from "./progress";
+import { createTransport } from "../mock/transport";
 import { isMockMode } from "../mock/types";
 
 export type PatchOrigin = "gemini" | "fallback" | "manual";
@@ -78,11 +80,34 @@ export function normalizeRun(raw: unknown): PlaytestRun {
   return { baseline, patched: isReport(patched) ? patched : undefined, proposal, verdict };
 }
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** Real mode: listen to the `playtest.progress` topic while a run is in flight. Mock mode feeds progress from runPlaytest itself. */
+export function subscribeProgress(onMsg: (p: ProgressMsg) => void): () => void {
+  if (isMockMode()) return () => {};
+  const t = createTransport("observer");
+  const off = t.subscribe((env) => {
+    if (env.type !== "playtest.progress") return;
+    const p = env.payload as ProgressMsg;
+    if (typeof p?.done === "number" && typeof p?.total === "number") onMsg(p);
+  });
+  return () => {
+    off();
+    t.close();
+  };
+}
 
-export async function runPlaytest(matches = 1000, signal?: AbortSignal): Promise<PlaytestRun> {
+export async function runPlaytest(matches = 1000, signal?: AbortSignal, onProgress?: (p: ProgressMsg) => void): Promise<PlaytestRun> {
   if (isMockMode()) {
-    await delay(1200);
+    const final = mockReport("broken");
+    await new Promise<void>((resolve, reject) => {
+      const stop = mockProgress(final, (p) => {
+        onProgress?.(p);
+        if (p.done >= p.total) resolve();
+      });
+      signal?.addEventListener("abort", () => {
+        stop();
+        reject(new DOMException("aborted", "AbortError"));
+      });
+    });
     return {
       sample: true,
       baseline: mockReport("broken"),

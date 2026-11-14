@@ -1745,3 +1745,38 @@ p {
 .hero-note {
   display: none;
 }
+
+/* Live batch */
+.live {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  justify-content: space-between;
+}
+.live-text {
+  flex: 1;
+  min-width: 0;
+}
+.live .panel-head {
+  margin-bottom: var(--space-2);
+}
+.progress {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+  margin-bottom: var(--space-2);
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--grad-1), var(--grad-2) 62%, var(--grad-3));
+  transition: width var(--dur-data) var(--ease-out);
+}
+.live-line {
+  margin: 0;
+}
+.minis {
+  flex: none;
+  max-width: 100%;
+}

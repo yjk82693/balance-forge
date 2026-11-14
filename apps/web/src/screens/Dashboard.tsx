@@ -10,7 +10,10 @@ import { TopBar } from "../components/TopBar";
 import { useManifest } from "../lib/assets";
 import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
-import { ApiError, runPlaytest, type PlaytestRun, type VerdictKind } from "../lib/api";
+import { ApiError, runPlaytest, subscribeProgress, type PlaytestRun, type VerdictKind } from "../lib/api";
+import { LivePanel } from "../components/LivePanel";
+import { toRows, type ProgressMsg } from "../lib/progress";
+import type { ReportRow } from "../lib/contract";
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchEnded, fixtureMatchResults, fixtureObservation, fixtureRoomStatus } from "../lib/fixtures";
 import { isMockMode } from "../mock/types";
@@ -70,6 +73,7 @@ export function Dashboard() {
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [run, setRun] = useState<PlaytestRun | null>(() => (mock ? null : loadRun()));
   const [busy, setBusy] = useState(false);
+  const [live, setLive] = useState<{ done: number; total: number; rows: ReportRow[] | null }>({ done: 0, total: MATCHES, rows: null });
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState(HUMAN_ID);
   const abort = useRef<AbortController | null>(null);
@@ -93,9 +97,13 @@ export function Dashboard() {
     setBusy(true);
     setError(null);
     abort.current = new AbortController();
+    const onProgress = (p: ProgressMsg) => setLive({ done: p.done, total: p.total, rows: toRows(p) });
+    setLive({ done: 0, total: MATCHES, rows: null });
+    const off = subscribeProgress(onProgress);
     try {
-      const result = await runPlaytest(MATCHES, abort.current.signal);
+      const result = await runPlaytest(MATCHES, abort.current.signal, onProgress);
       setRun(result);
+      setLive({ done: result.baseline.validMatches, total: result.baseline.validMatches, rows: null }); // final numbers come from the report itself
       if (!mock) {
         try {
           sessionStorage.setItem("bf-last-run", JSON.stringify(result));
@@ -107,6 +115,7 @@ export function Dashboard() {
       if ((e as Error).name === "AbortError") return;
       setError(e instanceof ApiError ? e.message : "Something went wrong.");
     } finally {
+      off();
       setBusy(false);
     }
   };
@@ -162,6 +171,7 @@ export function Dashboard() {
               </section>
             )}
             <CompareReplay seed={fixtureMatchConfig.seed} heroes={replayHeroes} active={showPatched ? "patched" : "broken"} sample />
+            <LivePanel busy={busy} done={live.done} total={live.total} />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
                 <span id="matches-title" className="eyebrow">
@@ -219,7 +229,7 @@ export function Dashboard() {
                 {report && <span className="meta">n = {n(report.validMatches)}</span>}
               </div>
 
-              {error && (
+              {!busy && error && (
                 <div className="err" role="alert">
                   <p className="small">{error} Check that the server is running, then try again.</p>
                   <button className="btn secondary" onClick={start}>
@@ -228,15 +238,25 @@ export function Dashboard() {
                 </div>
               )}
 
-              {!run && !error && (
+              {busy && (
+                <>
+                  <h1 className="h2">Bots are playing…</h1>
+                  <p className="kpi">
+                    {n(live.done)} / {n(live.total)} matches
+                  </p>
+                  <hr className="divider" />
+                  {live.rows ? <WinRateChart rows={live.rows} dense /> : <div className="skeleton" aria-hidden="true" />}
+                </>
+              )}
+
+              {!busy && !run && !error && (
                 <div className="empty">
-                  <p className="h3">{busy ? "Bots are playing…" : "No runs yet."}</p>
-                  <p className="text-2">{busy ? "This takes a few seconds." : "Let the bots play to see a report."}</p>
-                  {busy && <div className="skeleton" aria-hidden="true" />}
+                  <p className="h3">No runs yet.</p>
+                  <p className="text-2">Let the bots play to see a report.</p>
                 </div>
               )}
 
-              {run && report && shown && base && (
+              {!busy && run && report && shown && base && (
                 <>
                   <h1 className="h2">{headline}</h1>
                   <p className="kpi">

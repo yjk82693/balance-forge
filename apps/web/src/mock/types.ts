@@ -1,6 +1,6 @@
 import type { Envelope } from "../lib/contract";
 
-export type Role = "display" | "controller";
+export type Role = "display" | "controller" | "observer";
 export type ConnStatus = "connecting" | "online" | "lost";
 
 export interface Transport {
