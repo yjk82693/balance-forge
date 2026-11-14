@@ -53,7 +53,14 @@ export interface ResultFacts {
   evidence: string | null;
   patch: PatchFact[];
   holdout: Rate | null;
-  verdict: { kind: VerdictKind; label: string; reasons: string[]; targets: VerdictTarget[] } | null;
+  verdict: {
+    kind: VerdictKind;
+    label: string;
+    reasons: string[];
+    targets: VerdictTarget[];
+    /** plain words when the verdict could not be decided for lack of games, e.g. "needs more games: 100 of 200" */
+    needsMore?: string;
+  } | null;
   /** other matchups from the recorded roster report that sit clearly away from 50% */
   others: Finding[] | null;
   /** set when the roster report exists but nothing in it can be called an outlier, and why */
@@ -132,10 +139,23 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
           label: VERDICT_COPY[run.verdict.verdict].label,
           reasons: run.verdict.reasons,
           targets: run.verdict.targets ?? [],
+          needsMore: needsMoreGames(run.verdict.reasons) ?? undefined,
         }
       : null,
     ...findingsFrom(roster, target?.row.dimension),
   };
+}
+
+/**
+ * The analysis words a sample-size cause as "<matchup>: only N games after the patch (need M)". Said plainly:
+ * "Bari vs Real Armor needs more games: 100 of 200". Null when no reason names one.
+ */
+export function needsMoreGames(reasons: string[]): string | null {
+  for (const r of reasons) {
+    const m = r.match(/^(.+?): only (\d+) games? after the patch \(need (\d+)\)/);
+    if (m) return `${name(m[1])} needs more games: ${m[2]} of ${m[3]}`;
+  }
+  return null;
 }
 
 const percent = (x: number) => `${Math.round(x * 100)}%`;
@@ -205,6 +225,7 @@ export function summaryText(f: ResultFacts): string {
   if (f.verdict) {
     const why = f.verdict.reasons.length ? `. ${f.verdict.reasons.join(" ")}` : "";
     lines.push(`Verdict: ${f.verdict.label}${why}`);
+    if (f.verdict.needsMore) lines.push(`Sample size: ${f.verdict.needsMore}`);
     for (const t of f.verdict.targets) {
       lines.push(`- ${name(t.matchup)}: ${pct(t.before.rate)}% -> ${pct(t.after.rate)}% (${t.outcome})`);
     }

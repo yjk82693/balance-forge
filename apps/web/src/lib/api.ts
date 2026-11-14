@@ -250,6 +250,7 @@ async function runFullPlaytest(
         ...(heroes ? { heroes } : {}),
         ...(diagnose ? { diagnose: true } : {}),
         pairs: FULL_RUN_PAIRS,
+        holdoutPairs: FULL_RUN_PAIRS, // the holdout needs as many games as the baseline to pass the verdict's gate
       }),
       signal,
     });

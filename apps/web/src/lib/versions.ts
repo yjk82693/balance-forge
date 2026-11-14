@@ -9,7 +9,7 @@ import {
 } from "./api";
 import { describePath } from "../components/PatchCompare";
 import { heroName } from "./heroes";
-import type { Rate, ResultFacts } from "./resultCard";
+import { needsMoreGames, type Rate, type ResultFacts } from "./resultCard";
 import { VERDICT_COPY } from "./dashboardData";
 import { originLabel, targetsFrom } from "./fullRun";
 import { fixturePatch } from "./fixtures";
@@ -187,6 +187,7 @@ export function factsFromVersion(v: VersionRecord, source: ResultFacts["source"]
           label: VERDICT_COPY[v.verdict.verdict].label,
           reasons: v.verdict.reasons,
           targets: v.verdict.targets ?? [],
+          needsMore: needsMoreGames(v.verdict.reasons) ?? undefined,
         }
       : null,
     others: null,

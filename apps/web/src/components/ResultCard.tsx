@@ -147,6 +147,7 @@ function HoldoutColumn({ holdout, verdict }: Pick<ResultFacts, "holdout" | "verd
           {verdict.reasons[0] && <span className="caption"> {verdict.reasons[0]}</span>}
         </p>
       )}
+      {verdict?.needsMore && <p className="small">{verdict.needsMore}</p>}
     </div>
   );
 }
