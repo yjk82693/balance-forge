@@ -128,3 +128,16 @@ test('a run without needs_designer gets an empty list, and a malformed note is r
     assert.equal(response.status, 400);
   }
 });
+test('the auto route gives runAuto an explain hook that replays the pair with the real engine', async t => {
+  let sentence;
+  const { server } = await localServer(t, { runAuto: async input => {
+    sentence = await input.explain({ hero: 'daewi', matchup: 'daewi vs real_armor' });
+    return { records: [], stoppedBecause: 'needs_designer', finalCheck: null, needs_designer: [{
+      hero: 'daewi', tried: [], evidence: `Daewi was tried. ${sentence}` }] };
+  } });
+  const response = await http(server, '/v1/playtest/auto', { method: 'POST', body: { gameId: 'hero_arena' } });
+  assert.equal(response.status, 200);
+  assert.match(sentence, /^Replays of daewi vs real_armor: In range, daewi's swings landed \d+% \(interrupted \d+%/);
+  assert.match(sentence, /of 40 replays never came within melee range \(1900\)/);
+  assert.match(response.json().needs_designer[0].evidence, /Replays of daewi vs real_armor/);
+});

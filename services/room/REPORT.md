@@ -720,3 +720,8 @@ to three candidates per round.
 Holdout size: holdoutPairs now defaults to pairs (it was 50). A live run with pairs 100 had 200 baseline games but
 only 100 holdout games, and the verdict needs 200 per target, so it was inconclusive; the reason now reads
 "<matchup>: holdout has 100 games; 200 needed". Test in full.test.js.
+
+Auto route, designer hand-over: runAuto gets an `explain({hero, matchup})` hook that replays 20 seeds of the worst
+matchup (both seat orders, in this process, no network) with the analysis forensics and returns a sentence with the
+numbers, which is appended to the `needs_designer` evidence. Findings for Daewi vs Real Armor are in the analysis
+report ("Why Daewi loses").
