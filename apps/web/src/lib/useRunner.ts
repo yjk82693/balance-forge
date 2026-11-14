@@ -69,7 +69,7 @@ export function useRunner(game: "hero_arena" | "hero_cards" = "hero_arena") {
   useEffect(() => {
     if (!IS_STATIC) return;
     let alive = true;
-    loadStaticRun().then((r) => alive && r && setRun((prev) => prev ?? r), () => undefined);
+    loadStaticRun(game).then((r) => alive && r && setRun((prev) => prev ?? r), () => undefined);
     return () => {
       alive = false;
     };
@@ -103,7 +103,8 @@ export function useRunner(game: "hero_arena" | "hero_cards" = "hero_arena") {
     try {
       if (IS_STATIC) {
         // No server: "run" plays the recorded result back through the same live view, and says nothing else.
-        const recorded = (await loadStaticRun()) ?? (await loadRecordedRun());
+        const recorded = (await loadStaticRun(game)) ?? (game === "hero_arena" ? await loadRecordedRun() : null);
+        if (!recorded) return setError("The recorded run is not in this build.");
         await playStoredRun(recorded, onProgress, controller.signal);
         finish(recorded);
         return;

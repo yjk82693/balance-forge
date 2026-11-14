@@ -13,11 +13,13 @@ import {
   BOT_SKILLS,
   availableSkills,
   generalization,
+  humanStyle,
   learnedHeroes,
   policyFor,
   skillLabel,
   type BotSkill,
 } from "../lib/botPolicy";
+import { humanStyleNumbers } from "../lib/humanStyle";
 import { MATCHES } from "../lib/dashboardData";
 import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
@@ -196,6 +198,33 @@ function TrainingPanel() {
   );
 }
 
+/** The human-style model while it is not ready: its own numbers and caveats, and no way to pick it for a run. */
+function ExploratoryPanel() {
+  const h = humanStyle();
+  if (!h || h.ready) return null;
+  return (
+    <section className="panel" aria-labelledby="exploratory-title">
+      <div className="panel-head">
+        <span id="exploratory-title" className="eyebrow">
+          Human-style bot
+        </span>
+        <span className="badge">Exploratory</span>
+        <span className="badge recorded">recorded</span>
+      </div>
+      {h.note && <p className="small">{h.note}</p>}
+      <ul className="exploratory-list">
+        {humanStyleNumbers(h).map((line) => (
+          <li key={line} className="small">
+            {line}
+          </li>
+        ))}
+      </ul>
+      {h.caveat && <p className="caption">{h.caveat}</p>}
+      <p className="caption">Not offered for runs until the model file says it is ready.</p>
+    </section>
+  );
+}
+
 export function Skill() {
   useManifest();
   const offered = BOT_SKILLS.filter((s) => availableSkills().includes(s.id));
@@ -213,7 +242,10 @@ export function Skill() {
         </TopBar>
         <main className="versions-grid">
           <Comparison />
-          <TrainingPanel />
+          <div className="skill-side">
+            <TrainingPanel />
+            <ExploratoryPanel />
+          </div>
         </main>
       </div>
     </FitStage>

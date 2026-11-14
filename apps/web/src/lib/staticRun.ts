@@ -2,14 +2,21 @@ import type { PlaytestRun } from "./api";
 import { runFromFull } from "./fullRun";
 import { staticRaw } from "./staticRaw";
 
-const stored = import.meta.glob("../../../../services/runner/recorded-{roster-report,auto-history,full-run}.json", {
-  import: "default",
-});
+const stored = import.meta.glob(
+  "../../../../services/runner/recorded-{roster-report,auto-history,full-run,cards-run}.json",
+  { import: "default" },
+);
 const file = (name: string) =>
   Object.entries(stored).find(([path]) => path.endsWith(`/${name}`))?.[1] as (() => Promise<unknown>) | undefined;
 
 /** The static demo's result: a recorded full run, else the recorded roster with the recorded patch and verdict. */
-export async function loadStaticRun(): Promise<PlaytestRun | null> {
+export async function loadStaticRun(game: "hero_arena" | "hero_cards" = "hero_arena"): Promise<PlaytestRun | null> {
+  if (game === "hero_cards") {
+    // The recorded Hero Cards /full response, as it was.
+    const cards = file("recorded-cards-run.json");
+    const run = cards ? runFromFull(await cards()) : null;
+    return run ? { ...run, baseline: { ...run.baseline, recorded: true } } : null;
+  }
   // A whole recorded /full response (recorded-full-run.json), when the repository has one, is the result as it was.
   const full = file("recorded-full-run.json");
   if (full) {

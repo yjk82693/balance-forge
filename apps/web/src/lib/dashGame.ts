@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { IS_STATIC } from "./staticMode";
 
 export type DashGame = "hero_arena" | "hero_cards";
 
@@ -24,7 +23,6 @@ function fromUrl(): DashGame | null {
 }
 
 export function loadGame(): DashGame {
-  if (IS_STATIC) return "hero_arena";
   const asked = fromUrl();
   if (asked) return asked;
   try {

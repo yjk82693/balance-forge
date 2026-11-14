@@ -2576,3 +2576,7 @@ button.intent-btn { cursor: pointer; }
 @media (max-width: 1099px) {
   .static-banner { height: auto; min-height: 32px; line-height: 1.4; padding: var(--space-2) var(--space-4); }
 }
+
+/* Skill screen: the training panel with the exploratory human-style panel under it. */
+.skill-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.exploratory-list { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
