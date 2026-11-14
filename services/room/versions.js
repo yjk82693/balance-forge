@@ -91,6 +91,7 @@ export class VersionStore {
   approve(gameId, dataHash) {
     const record = this.get(gameId, dataHash);
     if (!record) return null;
+    if (record.verdict?.verdict === 'rejected') throw Error('ILLEGAL_ACTION'); // a rejected version is never shipped
     const approved = { ...record, approved: true };
     writeJson(this.path(gameId), this.list(gameId).map(item => item.dataHash === dataHash ? approved : item));
     return approved;

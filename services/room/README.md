@@ -653,7 +653,9 @@ to rejected (the analysis final roster check uses this when a later scan shows a
 
 ### GET /v1/versions/:gameId
 
-Example: `curl -sS "$BASE/v1/versions/$GAME"` → 200 array of records, oldest first. Captured: http.versions.
+Example: `curl -sS "$BASE/v1/versions/$GAME"` → 200 `{versions, currentHash}`: `versions` is the array of records,
+oldest first, and `currentHash` is the server-wide current version (what "Make current" changes).
+Captured: http.versions.
 
 ### GET /v1/versions/:gameId/:hash
 
@@ -666,7 +668,8 @@ Unknown hash: 400 HASH_MISMATCH. Captured: http.version.
 curl -sS -H 'content-type: application/json' -d '{}' "$BASE/v1/versions/$GAME/$HASH/approve"
 ```
 
-Body must be {}. Returns the approved record. Approval never selects data. Captured: http.approve.
+Body must be {}. Returns the approved record. Approval never selects data. A record whose verdict is `rejected` cannot
+be approved (400 ILLEGAL_ACTION). Captured: http.approve.
 
 ### POST /v1/data/:gameId/select
 
@@ -674,8 +677,8 @@ Body must be {}. Returns the approved record. Approval never selects data. Captu
 curl -sS -H 'content-type: application/json' -d "{\"dataHash\":\"$HASH\"}" "$BASE/v1/data/$GAME/select"
 ```
 
-200 {gameId, dataHash}. Changes only the server-wide current version; rooms keep their own game.select pins.
-Captured: http.select.
+200 `{versions, currentHash}`, the same shape as GET /v1/versions/:gameId, with `currentHash` now the selected hash.
+Changes only the server-wide current version; rooms keep their own game.select pins. Captured: http.select.
 
 ### POST /v1/playtest/auto
 

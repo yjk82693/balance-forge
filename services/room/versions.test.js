@@ -33,7 +33,8 @@ test('version list/detail/approval and current selection routes preserve room pi
   const changed = server.storage.patch('hero_arena', patch(base.dataHash, 72));
   const list = await http(server, '/v1/versions/hero_arena');
   assert.equal(list.status, 200);
-  assert.equal(list.json().length, 2);
+  assert.equal(list.json().versions.length, 2);
+  assert.equal(list.json().currentHash, changed.dataHash); // apply-patch selects the new version
   const detail = await http(server, `/v1/versions/hero_arena/${changed.dataHash}`);
   assert.equal(detail.status, 200);
   assert.equal(detail.json().parentHash, base.dataHash);
@@ -48,6 +49,9 @@ test('version list/detail/approval and current selection routes preserve room pi
     method: 'POST', body: { dataHash: base.dataHash }
   });
   assert.equal(selected.status, 200);
+  assert.equal(selected.json().currentHash, base.dataHash);
+  assert.deepEqual(selected.json().versions, server.storage.versionStore.list('hero_arena')); // same list shape
+  assert.equal((await http(server, '/v1/versions/hero_arena')).json().currentHash, base.dataHash);
   assert.equal((await http(server, '/v1/data/hero_arena')).json().dataHash, base.dataHash);
   assert.equal(room.selectedHash, changed.dataHash);
   host.request('match.start', { maxTicks: 1 });
@@ -137,4 +141,17 @@ test('a later rejection of a stored version is kept; a repeat can never upgrade 
   assert.equal(relabel.rationale, stored.rationale);
   assert.equal(relabel.origin, stored.origin);
   assert.equal(storage.versionStore.list('hero_arena').length, 2);
+});
+test('a rejected version cannot be approved; an accepted or manual one can', async t => {
+  const { server } = await localServer(t);
+  const base = server.storage.get('hero_arena');
+  const changed = server.storage.patch('hero_arena', patch(base.dataHash, 72));
+  const record = server.storage.versionStore.get('hero_arena', changed.dataHash);
+  server.storage.versionStore.add({ ...record, verdict: { verdict: 'rejected', reasons: ['final check'] },
+    approved: false });
+  const refused = await http(server, `/v1/versions/hero_arena/${changed.dataHash}/approve`, {
+    method: 'POST', body: {}
+  });
+  assert.equal(refused.status, 400);
+  assert.equal(server.storage.versionStore.get('hero_arena', changed.dataHash).approved, false);
 });

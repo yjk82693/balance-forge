@@ -584,7 +584,7 @@ test('two injected auto rounds create versions and a real room plays the selecte
   });
   assert.equal(run.records.length, 2);
   const versions = await context.request('/v1/versions/hero_arena');
-  assert.equal(versions.length, 3);
+  assert.equal(versions.versions.length, 3);
   assert.equal(run.records[1].parentHash, run.records[0].dataHash);
   const dataHash = run.records[0].dataHash;
   await context.request('/v1/data/hero_arena/select', { dataHash });

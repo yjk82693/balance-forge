@@ -49,7 +49,10 @@ test('reference covers every HTTP route, retained versions and static HEAD with 
   results.forEach(result => validate('MatchResult', result));
   assert.equal(results.length, examples.http.playtest.response.body.matchCount);
   assert.equal(examples.http.applyPatch.response.body.baseDataHash, base.dataHash);
-  const versions = examples.http.versions.response.body, patched = examples.http.applyPatch.response.body.dataHash;
+  const list = examples.http.versions.response.body, patched = examples.http.applyPatch.response.body.dataHash;
+  const versions = list.versions;
+  assert.ok(Array.isArray(versions));
+  assert.equal(list.currentHash, patched); // apply-patch selects the new version
   assert.equal(versions[0].parentHash, null);
   assert.equal(versions[0].dataHash, base.dataHash);
   assert.ok(versions.some(record => record.dataHash === patched && record.parentHash === base.dataHash));
@@ -57,7 +60,9 @@ test('reference covers every HTTP route, retained versions and static HEAD with 
   assert.ok(Array.isArray(examples.http.version.response.body.diff));
   assert.equal(examples.http.approve.response.body.approved, true);
   assert.equal(examples.http.autoInvalid.response.status, 400);
-  assert.deepEqual(examples.http.select.response.body, { gameId: 'hero_arena', dataHash: base.dataHash });
+  const selected = examples.http.select.response.body;
+  assert.equal(selected.currentHash, base.dataHash); // the same list shape as GET /v1/versions/:gameId
+  assert.deepEqual(selected.versions.map(record => record.dataHash), versions.map(record => record.dataHash));
 });
 test('fresh production-handler captures retain the documented catalog, data and message shapes', async () => {
   const current = await collectExamples();
