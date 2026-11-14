@@ -135,7 +135,16 @@ function checkInput(input) {
 }
 
 class Run {
-  constructor(input) {
+  declare input: any;
+  declare records: any[];
+  declare diagnoses: any[];
+  declare candidates: any[];
+  declare needsDesigner: any[];
+  declare escalated: Set<string>;
+  declare diagnosisCache: Map<string, any>;
+  declare seen: Set<string>;
+  declare firstScan: any;
+  constructor(input: any) {
     this.input = input;
     this.records = [];
     this.diagnoses = [];
@@ -238,10 +247,10 @@ class Run {
     if (diagnosis) this.diagnoses.push({ round, diagnosis });
     const round_ = { round, head, flagged, targets, baselineResults, hero: focus.hero };
     const variants = candidateDiagnoses(diagnosis, diagnosis ? focus.hero : null);
-    const outcomes = [];
+    const outcomes: any[] = [];
     const tried = [];
     for (const [index, variant] of variants.entries()) {
-      const outcome = await this.candidate(round_, variant, index, variants.length);
+      const outcome: any = await this.candidate(round_, variant, index, variants.length);
       if (outcome.failed) return outcome.stop; // an error of the run itself
       tried.push(leverOutcome(variant, outcome));
       this.candidates.push({ round, candidate: index + 1, origin: outcome.origin ?? null,
@@ -397,7 +406,7 @@ async function execute(input, run) {
     diagnoses: run.diagnoses, needs_designer: run.needsDesigner, candidates: run.candidates, ...extra };
 }
 
-export async function runAuto(input = {}) {
+export async function runAuto(input: any = {}) {
   const settings = { rounds: DEFAULT_ROUNDS, requireApproval: true, now: () => new Date().toISOString(), ...input };
   try {
     checkInput(settings);

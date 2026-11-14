@@ -31,7 +31,7 @@ export function createArenaSimulator({ arena, chooseActions, chooseAction, hash,
   if (missing.length) throw new TypeError(`Hero Arena engine export missing: ${missing.join(', ')}`);
   if (typeof botSeed !== 'function') throw new TypeError('botSeed must be a function');
   const decide = (view, tick, seat, config) => {
-    const { seq, variant } = botSeed({ tick, seat, config });
+    const { seq, variant } = (botSeed as (input: any) => any)({ tick, seat, config });
     return chooseActions ? chooseActions(view, seq, variant) : [chooseAction(view, tick, variant)].filter(Boolean);
   };
   const simulate = ({ config, data }) => {

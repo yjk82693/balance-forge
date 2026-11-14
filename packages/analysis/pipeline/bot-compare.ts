@@ -60,7 +60,7 @@ export function reportOf(name, totals) {
 }
 
 /** Runs every policy on the roster. Resolves { ok: true, value: { pairs, policies: [...] } } or an error result. */
-export async function compareBots({ pairs = 100, heroes, engineRoot, policies = POLICIES } = {}) {
+export async function compareBots({ pairs = 100, heroes, engineRoot, policies = POLICIES }: any = {}) {
   try {
     if (!Number.isInteger(pairs) || pairs < 1 || pairs > 1000) {
       return errorResult('INVALID_INPUT', 'pairs must be 1..1000');
@@ -99,9 +99,9 @@ export async function compareBots({ pairs = 100, heroes, engineRoot, policies = 
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: any = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
-  const result = await compareBots({ pairs: Number(flags.pairs ?? 100),
+  const result: any = await compareBots({ pairs: Number(flags.pairs ?? 100),
     heroes: flags.heroes ? flags.heroes.split(',') : undefined, engineRoot: flags['engine-root'] });
   (result.ok ? console.log : console.error)(JSON.stringify(result.ok ? result.value : result, null, 1));
   process.exit(result.ok ? 0 : 1);

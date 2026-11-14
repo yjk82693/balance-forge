@@ -32,7 +32,7 @@ const rowOf = (report) => {
 };
 
 /** Runs the measurement; resolves { ok: true, value } or an error result. Never rejects. */
-export async function measureFull({ mode = 'nonroster', pairs = 100, engineRoot, env = {} } = {}) {
+export async function measureFull({ mode = 'nonroster', pairs = 100, engineRoot, env = {} }: any = {}) {
   try {
     const load = (rel) => import(engineRoot ? pathToFileURL(join(resolve(engineRoot), rel)).href
       : new URL(`../../../${rel}`, import.meta.url).href);

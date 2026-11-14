@@ -95,7 +95,7 @@ function patchData({ baseData, rootData, hashData, applyPatch }, proposal) {
  * holdout run.
  * `validation`, `patched` and `patchedDataHash` are null because nothing was proposed or applied.
  */
-function fairBody(baseline, evidence, holdoutSeedSetId, extra = {}) {
+function fairBody(baseline, evidence, holdoutSeedSetId, extra: any = {}) {
   return {
     ...extra,
     botPolicyVersion: baseline.botPolicyVersion,
