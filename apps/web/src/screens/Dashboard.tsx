@@ -45,7 +45,7 @@ export function Dashboard() {
   useHeroStats();
   const mock = isMockMode();
   const version = useDemoVersion();
-  const { run, busy, live, error, notice, elapsed, start } = useRunner();
+  const { run, busy, live, error, notice, elapsed, start, replace } = useRunner();
   const [theme, setTheme] = useState<Theme>(readTheme);
   const [selected, setSelected] = useState(SAMPLE_HUMAN_ID);
   const played = useMemo(loadJustPlayed, []);
@@ -114,6 +114,7 @@ export function Dashboard() {
           setSkill(s);
         },
         onRun: go,
+        onReplace: replace,
         theme,
         onTheme: () => setTheme(theme === "dark" ? "light" : "dark"),
         showPatched,

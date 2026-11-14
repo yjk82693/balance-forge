@@ -32,12 +32,14 @@ interface Props {
   /** the one place that says where the numbers come from */
   status: ReactNode;
   actions: ReactNode;
+  /** the "Intended?" question, shown under the bar when the matchup is flagged */
+  chips?: ReactNode;
   /** shown when nothing has run yet */
   empty: ReactNode;
 }
 
 /** The headline strip: matchup, actual against intended, the verdict. Always above the fold. */
-export function HeadlineStrip({ shown, headline, facts, busy, live, elapsed, status, actions, empty }: Props) {
+export function HeadlineStrip({ shown, headline, facts, busy, live, elapsed, status, actions, chips, empty }: Props) {
   const verdict = facts?.verdict;
   const verdictClass = verdict?.kind === "accepted" ? "ok" : verdict?.kind === "rejected" ? "bad" : "warn";
   const games = (k: number) => k.toLocaleString("en-US");
@@ -79,6 +81,7 @@ export function HeadlineStrip({ shown, headline, facts, busy, live, elapsed, sta
               {shown.target.favored ? shown.target.label : "intended: even (50%)"}
               {shown.estimated && shown.target.favored ? " · estimated" : ""}
             </p>
+            {shown.outlier && chips}
           </div>
           <div className="strip-verdict">
             {verdict ? (

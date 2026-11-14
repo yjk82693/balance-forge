@@ -111,5 +111,11 @@ export function useRunner() {
     }
   };
 
-  return { run, busy, live, error, notice, elapsed, start };
+  /** Swap in the same run judged again (after reanalyze), without a new bot run. */
+  const replace = (next: PlaytestRun) => {
+    setRun(next);
+    if (!mock) saveRun(next);
+  };
+
+  return { run, busy, live, error, notice, elapsed, start, replace };
 }
