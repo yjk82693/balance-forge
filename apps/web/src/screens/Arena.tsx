@@ -1,3 +1,4 @@
+import { isArenaPayload, type Observation } from "../lib/contract";
 import { go } from "../lib/router";
 import { gameById } from "../lib/games";
 import { heroName } from "../lib/heroes";
@@ -16,9 +17,10 @@ export function Arena({ gameId }: { gameId: string }) {
   const game = gameById(gameId);
   const { transport, status } = useTransport("display");
   const { room, observation, result } = useRoom(transport);
+  const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
-  const winnerHero = observation?.payload.entities.find((e) => e.id === winnerSeat)?.hero ?? winner?.hero;
+  const winnerHero = (isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === winnerSeat)?.hero : undefined) ?? winner?.hero;
 
   return (
     <div className="screen" style={{ ["--game" as string]: `var(${game?.accentVar ?? "--game-arena"})` }}>
@@ -34,7 +36,7 @@ export function Arena({ gameId }: { gameId: string }) {
       </TopBar>
       <main className="arena-screen">
         <div className="arena-stage">
-          <ArenaCanvas observation={observation} />
+          <ArenaCanvas observation={arenaObs} />
           <div className="arena-overlay">
             <span className="badge">sample replay</span>
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}

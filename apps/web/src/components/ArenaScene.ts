@@ -91,7 +91,7 @@ export class ArenaScene extends Phaser.Scene {
       v.tx = p.x;
       v.ty = p.y;
       v.sprite.setFlipX(e.facing === 180);
-      this.updateHud(e.id, e.hero, e.hp);
+      this.updateHud(e.id, e.hero, e.hp, e.maxHp ?? 100);
     });
 
     const live = new Set<string>();
@@ -137,10 +137,10 @@ export class ArenaScene extends Phaser.Scene {
     this.huds.set(id, { fill, name, hp, fullW, fullH });
   }
 
-  private updateHud(id: string, hero: string, hpValue: number) {
+  private updateHud(id: string, hero: string, hpValue: number, maxHp: number) {
     const h = this.huds.get(id);
     if (!h) return;
-    const f = Math.max(0, Math.min(1, hpValue / 100)); // hp is shown out of 100 until the engine publishes max HP
+    const f = Math.max(0, Math.min(1, hpValue / maxHp)); // maxHp is optional in v0.1.1; 100 when absent
     h.fill.setCrop(0, 0, Math.max(1, f * h.fill.width), h.fill.height);
     h.fill.setDisplaySize(h.fullW, h.fullH);
     h.name.setText(heroName(hero));

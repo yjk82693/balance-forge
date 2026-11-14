@@ -46,6 +46,7 @@ export class MockServer {
   readonly roomId = fixtureRoomStatus.roomId;
   readonly joinCode = fixtureRoomStatus.payload.joinCode;
   inputCount = 0;
+  private gameId = "hero_arena";
 
   constructor() {
     // Fixture seats carry no hero; the mock gives the two named judges the heroes in observation.json.
@@ -81,6 +82,12 @@ export class MockServer {
         return this.onJoin(session, env as Envelope<{ joinCode: string; name: string; hero?: string }>);
       case "input.submit":
         return this.onInput(session, env as Envelope<ActionInput>);
+      case "game.select":
+        if (session.role === "display") {
+          this.gameId = String((env.payload as { gameId?: string }).gameId ?? "hero_arena");
+          this.broadcastStatus();
+        }
+        return;
       case "match.start":
         return session.role === "display" ? this.startMatch() : this.error(session, env, "ILLEGAL_ACTION", false);
       case "match.reset":
@@ -134,7 +141,7 @@ export class MockServer {
     this.frame = 0;
     this.broadcastStatus();
     for (const s of this.sessions.values()) {
-      this.to(s, "match.started", { config: { ...fixtureMatchConfig, players: this.seats.filter((x) => x.connected).map((x) => x.seat) } });
+      this.to(s, "match.started", { config: { ...fixtureMatchConfig, gameId: this.gameId, players: this.seats.filter((x) => x.connected).map((x) => x.seat) } });
     }
     this.stopReplay();
     this.sendFrame();
@@ -171,7 +178,7 @@ export class MockServer {
   }
 
   private statusPayload(you?: string): RoomStatusPayload {
-    return { joinCode: this.joinCode, phase: this.phase, seats: this.seats.map((x) => ({ ...x })), ...(you ? { you } : {}) };
+    return { joinCode: this.joinCode, gameId: this.gameId, phase: this.phase, seats: this.seats.map((x) => ({ ...x })), ...(you ? { you } : {}) };
   }
 
   private broadcastStatus(joiner?: string, seat?: string, requestId = "") {

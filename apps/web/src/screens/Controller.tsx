@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isArenaPayload } from "../lib/contract";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { Stick } from "../components/Stick";
@@ -24,7 +25,7 @@ interface Profile {
 export function Controller({ initialCode }: { initialCode: string }) {
   useManifest();
   const { transport, status } = useTransport("controller");
-  const { room, observation, result, error } = useRoom(transport);
+  const { room, observation, config, result, error } = useRoom(transport);
   const [profile, setProfile] = useState<Profile>({ code: initialCode.toUpperCase(), name: "", hero: "bari" });
   const [joined, setJoined] = useState<Profile | null>(null);
   const seat = room?.you;
@@ -44,6 +45,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   );
   useEffect(() => () => pipeline?.dispose(), [pipeline]);
 
+  const gameId = room?.gameId ?? config?.gameId ?? "hero_arena";
   const online = status === "online";
   const playing = !!seat && !!joined;
   const padName = useGamepad(pipeline, playing && online);
@@ -76,6 +78,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   if (!playing) {
     return (
       <JoinForm
+        gameId={gameId}
         profile={profile}
         onChange={setProfile}
         onJoin={join}
@@ -88,7 +91,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
 
   const me = room?.seats.find((s) => s.seat === seat);
   const hero = me?.hero ?? joined.hero;
-  const mine = observation?.payload.entities.find((e) => e.id === seat);
+  const mine = isArenaPayload(observation?.payload) ? observation.payload.entities.find((e) => e.id === seat) : undefined;
   const ended = !!result || room?.phase === "ended";
   const gameOn = room?.phase === "playing";
 
@@ -125,7 +128,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
           <div className="hp" aria-label={`HP ${mine.hp}`}>
             <span className="caption">HP</span>
             <span className="hp-track">
-              <span className="hp-fill" style={{ width: `${Math.max(0, Math.min(100, mine.hp))}%` }} />
+              <span className="hp-fill" style={{ width: `${Math.max(0, Math.min(100, (mine.hp / (mine.maxHp ?? 100)) * 100))}%` }} />
             </span>
             <span className="small">{mine.hp}</span>
           </div>
@@ -174,6 +177,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
 }
 
 function JoinForm(props: {
+  gameId: string;
   profile: Profile;
   onChange: (p: Profile) => void;
   onJoin: (p: Profile) => void;
@@ -181,7 +185,7 @@ function JoinForm(props: {
   error: string | null;
   offline: boolean;
 }) {
-  const { profile, onChange, onJoin, busy, error, offline } = props;
+  const { profile, onChange, onJoin, busy, error, offline, gameId } = props;
   const ok = profile.code.length >= 4;
   return (
     <form
@@ -218,19 +222,28 @@ function JoinForm(props: {
       </label>
       <fieldset className="heroes">
         <legend className="caption">Hero</legend>
-        {HEROES.map((h) => (
-          <label key={h.id} className={`hero-pick${profile.hero === h.id ? " on" : ""}`} style={{ ["--hero" as string]: `var(${h.cssVar})` }}>
-            <input
-              type="radio"
-              name="hero"
-              value={h.id}
-              checked={profile.hero === h.id}
-              onChange={() => onChange({ ...profile, hero: h.id })}
-            />
-            <HeroPortrait hero={h.id} size={56} />
-            <span className="small">{h.name}</span>
-          </label>
-        ))}
+        {HEROES.map((h) => {
+          const planned = !!h.plannedIn?.includes(gameId);
+          return (
+            <label
+              key={h.id}
+              className={`hero-pick${profile.hero === h.id ? " on" : ""}${planned ? " planned" : ""}`}
+              style={{ ["--hero" as string]: `var(${h.cssVar})` }}
+            >
+              <input
+                type="radio"
+                name="hero"
+                value={h.id}
+                disabled={planned}
+                checked={profile.hero === h.id}
+                onChange={() => onChange({ ...profile, hero: h.id })}
+              />
+              <HeroPortrait hero={h.id} size={56} dim={planned} />
+              <span className="small">{h.name}</span>
+              {planned && <span className="badge planned">planned</span>}
+            </label>
+          );
+        })}
       </fieldset>
       {error && (
         <p className="form-error" role="alert">

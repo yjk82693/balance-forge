@@ -8,6 +8,8 @@ import { MockStatus, TopBar } from "../components/TopBar";
 import { useManifest } from "../lib/assets";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
+import { VersionToggle } from "../components/VersionToggle";
+import { getDemoVersion } from "../lib/demo";
 
 const SLOTS = 4;
 
@@ -41,15 +43,17 @@ function Qr({ url }: { url: string }) {
 export function Lobby({ gameId }: { gameId: string }) {
   useManifest();
   const game = gameById(gameId);
-  const { transport, status } = useTransport("display");
+  const { transport, status } = useTransport("display", gameId);
   const { room } = useRoom(transport);
   const [left, setLeft] = useState<string | null>(null);
   const prev = useRef(new Map<string, { name: string; connected: boolean }>());
 
   // Lobby always starts clean: a finished or running match from earlier is reset.
   useEffect(() => {
-    if (status === "online") transport?.send("match.reset", {});
-  }, [transport, status]);
+    if (status !== "online") return;
+    transport?.send("game.select", { gameId, dataVersion: getDemoVersion() });
+    transport?.send("match.reset", {});
+  }, [transport, status, gameId]);
 
   useEffect(() => {
     if (!room) return;
@@ -93,6 +97,7 @@ export function Lobby({ gameId }: { gameId: string }) {
           {game.eyebrow}
         </span>
         <span className="spacer" />
+        <VersionToggle />
         <MockStatus online={status === "online"} />
       </TopBar>
       <div className="lobby-bar" />

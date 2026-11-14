@@ -69,6 +69,11 @@ export interface Report {
   invalidMatches: number;
   draws: number;
   rows: ReportRow[];
+  /** v0.1.1 addendum (all optional) */
+  elapsedMs?: number;
+  recorded?: boolean;
+  createdAt?: string;
+  humanMatches?: number;
 }
 
 export interface PatchProposal {
@@ -83,6 +88,8 @@ export interface ArenaEntity {
   x: number;
   y: number;
   hp: number;
+  /** v0.1.1 addendum: optional; the UI falls back to 100 when absent. */
+  maxHp?: number;
   facing: number;
 }
 
@@ -131,4 +138,40 @@ export interface RoomStatusPayload {
   seats: Seat[];
   /** Extension: set only on the reply addressed to a joining controller. */
   you?: string;
+  /** Not in the addendum: lets a phone know which controller to show. See REPORT.md. */
+  gameId?: string;
 }
+
+export interface CardDef {
+  id: string;
+  cost: number;
+  kind: "damage" | "ward" | "summon" | "hypnosis";
+  power: number;
+  ignoresWard: boolean;
+}
+
+export interface CardsEntity {
+  id: string;
+  hp: number;
+  maxHp?: number;
+  energy: number;
+  ward: number;
+  handCount: number;
+  deckCount: number;
+  units: { id: string; power: number; sleepUntil: number }[];
+}
+
+/** hero_cards observation payload (packages/games/cards/schemas.js). `hand` is only the viewer's. */
+export interface CardsPayload {
+  activePlayer: string;
+  round: number;
+  turnId: number;
+  entities: CardsEntity[];
+  hand: CardDef[];
+  outcome: Outcome;
+}
+
+export const isArenaPayload = (p: unknown): p is ArenaPayload =>
+  !!p && typeof p === "object" && "arena" in p && "entities" in p;
+export const isCardsPayload = (p: unknown): p is CardsPayload =>
+  !!p && typeof p === "object" && "hand" in p && "activePlayer" in p;

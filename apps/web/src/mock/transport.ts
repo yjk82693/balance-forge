@@ -2,20 +2,10 @@ import { useEffect, useState } from "react";
 import type { Envelope } from "../lib/contract";
 import { makeEnvelope } from "./envelope";
 import { MockServer } from "./mockServer";
+import { createWsTransport } from "./ws";
+import { isMockMode, type ConnStatus, type Role, type Transport } from "./types";
 
-export type Role = "display" | "controller";
-export type ConnStatus = "connecting" | "online" | "lost";
-
-export interface Transport {
-  readonly sessionId: string;
-  send(type: string, payload: unknown): void;
-  subscribe(fn: (env: Envelope) => void): () => void;
-  onStatus(fn: (s: ConnStatus) => void): () => void;
-  /** Mock only: simulate a dropped connection; reconnect() brings it back. */
-  drop(): void;
-  reconnect(): void;
-  close(): void;
-}
+export type { ConnStatus, Role, Transport };
 
 /*
  * Cross-tab wiring. The display tab owns the MockServer for its whole lifetime (it survives route changes);
@@ -48,7 +38,7 @@ const getServer = () => (server ??= new MockServer());
 let counter = 0;
 const newId = (role: Role) => `${role === "display" ? "display" : "ctrl"}-${Math.random().toString(36).slice(2, 7)}${++counter}`;
 
-export function createTransport(role: Role): Transport {
+function createMockTransport(role: Role): Transport {
   const sessionId = newId(role);
   const listeners = new Set<(env: Envelope) => void>();
   const statusFns = new Set<(s: ConnStatus) => void>();
@@ -139,12 +129,16 @@ export function createTransport(role: Role): Transport {
   };
 }
 
-/** One transport per mounted screen, closed on unmount. */
-export function useTransport(role: Role) {
+export function createTransport(role: Role, opts: { gameId?: string } = {}): Transport {
+  return isMockMode() ? createMockTransport(role) : createWsTransport(role, opts);
+}
+
+/** One transport per mounted screen, closed on unmount. Real /ws by default, mock with ?mock=1. */
+export function useTransport(role: Role, gameId?: string) {
   const [transport, setTransport] = useState<Transport | null>(null);
   const [status, setStatus] = useState<ConnStatus>("connecting");
   useEffect(() => {
-    const t = createTransport(role);
+    const t = createTransport(role, { gameId });
     setTransport(t);
     const off = t.onStatus(setStatus);
     return () => {
@@ -152,6 +146,6 @@ export function useTransport(role: Role) {
       t.close();
       setTransport(null);
     };
-  }, [role]);
+  }, [role, gameId]);
   return { transport, status };
 }

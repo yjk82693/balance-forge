@@ -2,6 +2,8 @@ export interface HeroInfo {
   id: string;
   name: string;
   cssVar: string;
+  /** games where this hero is not playable yet */
+  plannedIn?: string[];
 }
 
 // Hero identity colors: chips, portrait rings, legend swatches. Never bar fills.
@@ -10,7 +12,7 @@ export const HEROES: HeroInfo[] = [
   { id: "real_armor", name: "Real Armor", cssVar: "--hero-real-armor" },
   { id: "daewi", name: "Daewi", cssVar: "--hero-daewi" },
   { id: "sepia", name: "Sepia", cssVar: "--hero-sepia" },
-  { id: "nightcrow", name: "Nightcrow", cssVar: "--hero-nightcrow" },
+  { id: "nightcrow", name: "Nightcrow", cssVar: "--hero-nightcrow", plannedIn: ["hero_arena"] },
 ];
 
 export function heroInfo(id: string | undefined): HeroInfo | undefined {
