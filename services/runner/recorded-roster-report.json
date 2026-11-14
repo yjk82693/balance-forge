@@ -1,0 +1,211 @@
+{
+  "reportId": "r-baseline",
+  "gameId": "hero_arena",
+  "simVersion": "arena-0.1.1",
+  "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+  "botPolicyVersion": "scripted-0.1.1",
+  "seedSetId": "explicit-paired-seeds",
+  "validMatches": 300,
+  "invalidMatches": 0,
+  "draws": 0,
+  "rows": [
+    {
+      "dimension": "bari vs bari",
+      "wins": 20,
+      "games": 20,
+      "winRate": 1,
+      "ci95": [
+        0.83887,
+        1
+      ],
+      "uses": 320,
+      "opportunities": 580,
+      "outlier": false
+    },
+    {
+      "dimension": "bari vs daewi",
+      "wins": 20,
+      "games": 20,
+      "winRate": 1,
+      "ci95": [
+        0.83887,
+        1
+      ],
+      "uses": 320,
+      "opportunities": 590,
+      "outlier": false
+    },
+    {
+      "dimension": "bari vs nightcrow",
+      "wins": 20,
+      "games": 20,
+      "winRate": 1,
+      "ci95": [
+        0.83887,
+        1
+      ],
+      "uses": 250,
+      "opportunities": 460,
+      "outlier": false
+    },
+    {
+      "dimension": "bari vs real_armor",
+      "wins": 10,
+      "games": 20,
+      "winRate": 0.5,
+      "ci95": [
+        0.299295,
+        0.700705
+      ],
+      "uses": 500,
+      "opportunities": 900,
+      "outlier": false
+    },
+    {
+      "dimension": "bari vs sepia",
+      "wins": 20,
+      "games": 20,
+      "winRate": 1,
+      "ci95": [
+        0.83887,
+        1
+      ],
+      "uses": 250,
+      "opportunities": 460,
+      "outlier": false
+    },
+    {
+      "dimension": "daewi vs daewi",
+      "wins": 20,
+      "games": 20,
+      "winRate": 1,
+      "ci95": [
+        0.83887,
+        1
+      ],
+      "uses": 260,
+      "opportunities": 520,
+      "outlier": false
+    },
+    {
+      "dimension": "daewi vs nightcrow",
+      "wins": 0,
+      "games": 20,
+      "winRate": 0,
+      "ci95": [
+        0,
+        0.16113
+      ],
+      "uses": 290,
+      "opportunities": 590,
+      "outlier": false
+    },
+    {
+      "dimension": "daewi vs real_armor",
+      "wins": 0,
+      "games": 20,
+      "winRate": 0,
+      "ci95": [
+        0,
+        0.16113
+      ],
+      "uses": 300,
+      "opportunities": 600,
+      "outlier": false
+    },
+    {
+      "dimension": "daewi vs sepia",
+      "wins": 0,
+      "games": 20,
+      "winRate": 0,
+      "ci95": [
+        0,
+        0.16113
+      ],
+      "uses": 290,
+      "opportunities": 590,
+      "outlier": false
+    },
+    {
+      "dimension": "nightcrow vs nightcrow",
+      "wins": 0,
+      "games": 20,
+      "winRate": 0,
+      "ci95": [
+        0,
+        0.16113
+      ],
+      "uses": 320,
+      "opportunities": 580,
+      "outlier": false
+    },
+    {
+      "dimension": "nightcrow vs real_armor",
+      "wins": 10,
+      "games": 20,
+      "winRate": 0.5,
+      "ci95": [
+        0.299295,
+        0.700705
+      ],
+      "uses": 460,
+      "opportunities": 830,
+      "outlier": false
+    },
+    {
+      "dimension": "nightcrow vs sepia",
+      "wins": 10,
+      "games": 20,
+      "winRate": 0.5,
+      "ci95": [
+        0.299295,
+        0.700705
+      ],
+      "uses": 330,
+      "opportunities": 600,
+      "outlier": false
+    },
+    {
+      "dimension": "real_armor vs real_armor",
+      "wins": 0,
+      "games": 20,
+      "winRate": 0,
+      "ci95": [
+        0,
+        0.16113
+      ],
+      "uses": 740,
+      "opportunities": 1320,
+      "outlier": false
+    },
+    {
+      "dimension": "real_armor vs sepia",
+      "wins": 10,
+      "games": 20,
+      "winRate": 0.5,
+      "ci95": [
+        0.299295,
+        0.700705
+      ],
+      "uses": 460,
+      "opportunities": 830,
+      "outlier": false
+    },
+    {
+      "dimension": "sepia vs sepia",
+      "wins": 0,
+      "games": 20,
+      "winRate": 0,
+      "ci95": [
+        0,
+        0.16113
+      ],
+      "uses": 320,
+      "opportunities": 580,
+      "outlier": false
+    }
+  ],
+  "elapsedMs": 6385,
+  "recorded": true,
+  "createdAt": "2026-11-14T11:21:44.455Z"
+}
