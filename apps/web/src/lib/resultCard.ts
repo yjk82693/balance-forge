@@ -28,7 +28,8 @@ export interface PatchFact {
   next: number;
   rationale: string;
   origin: string;
-  valid: boolean;
+  /** not known for a stored version record */
+  valid?: boolean;
   errors: string[];
 }
 
@@ -42,7 +43,7 @@ export interface ResultFacts {
   holdout: Rate | null;
   verdict: { kind: VerdictKind; label: string; reasons: string[] } | null;
   /** other matchups from the recorded roster report that sit clearly away from 50% */
-  others: Finding[];
+  others: Finding[] | null;
   /** set when the roster report exists but nothing in it can be called an outlier, and why */
   othersNote: string | null;
 }
@@ -128,7 +129,9 @@ export function summaryText(f: ResultFacts): string {
   for (const p of f.patch) {
     const change = `${p.field} ${p.old ?? "?"} -> ${p.next}`;
     lines.push(`Patch (${p.origin}): ${change}. ${p.rationale}`.trim());
-    lines.push(`Validation: ${p.valid ? "passed" : `failed${p.errors.length ? ` (${p.errors.join("; ")})` : ""}`}`);
+    if (p.valid !== undefined) {
+      lines.push(`Validation: ${p.valid ? "passed" : `failed${p.errors.length ? ` (${p.errors.join("; ")})` : ""}`}`);
+    }
   }
   if (f.holdout) {
     lines.push(`Holdout on the patched data: ${f.holdout.matchup}, first hero wins ${rateText(f.holdout)}`);
@@ -137,7 +140,7 @@ export function summaryText(f: ResultFacts): string {
     const why = f.verdict.reasons.length ? `. ${f.verdict.reasons.join(" ")}` : "";
     lines.push(`Verdict: ${f.verdict.label}${why}`);
   }
-  if (f.others.length) {
+  if (f.others?.length) {
     lines.push("Other findings (recorded roster report):");
     for (const o of f.others) lines.push(`- ${o.matchup}: ${o.side} wins ${rateText(o)}`);
   } else if (f.othersNote) lines.push(`Other findings (recorded roster report): ${f.othersNote}`);

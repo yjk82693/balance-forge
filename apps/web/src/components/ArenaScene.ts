@@ -105,7 +105,12 @@ export class ArenaScene extends Phaser.Scene {
     this.feed = (this.registry.get("feed") as SnapshotBuffer | undefined) ?? null;
     if (this.feed && this.registry.get("debug")) {
       this.debugText = this.add
-        .text(8, this.scale.height - 28, "", { fontFamily: "monospace", fontSize: "14px", color: "#9CF", backgroundColor: "#000A" })
+        .text(8, this.scale.height - 28, "", {
+          fontFamily: "monospace",
+          fontSize: "14px",
+          color: "#9CF",
+          backgroundColor: "#000A",
+        })
         .setDepth(20000);
     }
     this.registry.events.on("changedata", this.onData);

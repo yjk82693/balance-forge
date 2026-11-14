@@ -89,6 +89,9 @@ export function Dashboard() {
             Balance report{run ? ` · ${showPatched ? "patched" : "broken"} data` : ""}
           </span>
           <span className="spacer" />
+          <a className="btn secondary" href="#/versions">
+            Versions
+          </a>
           <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
           <button className="btn primary" onClick={start} aria-busy={busy} aria-disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}

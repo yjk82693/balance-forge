@@ -164,7 +164,14 @@ function BotsScene({ run, busy, live, elapsed, error, notice }: Omit<BodyProps, 
   const rows = live.rows ?? run?.baseline.rows ?? null;
   return (
     <div className="present-bots">
-      <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} elapsed={elapsed} holdout={live.holdout} />
+      <LivePanel
+        busy={busy}
+        done={live.done}
+        total={live.total}
+        phase={live.phase}
+        elapsed={elapsed}
+        holdout={live.holdout}
+      />
       <section className="panel">
         <div className="panel-head">
           <span className="eyebrow">Win rate per matchup</span>

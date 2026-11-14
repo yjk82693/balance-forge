@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { pct } from "../lib/stats";
 import { n } from "../lib/dashboardData";
 import { VERDICT_COPY } from "../lib/dashboardData";
@@ -50,13 +50,20 @@ function CopyButton({ facts }: { facts: ResultFacts }) {
 }
 
 /** The finished run in one card: outlier, patch, holdout and verdict, then other findings from the recorded roster. */
-export function ResultCard({ facts }: { facts: ResultFacts }) {
+interface CardProps {
+  facts: ResultFacts;
+  title?: string;
+  /** extra lines under the header, e.g. what a version was compared with */
+  children?: ReactNode;
+}
+
+export function ResultCard({ facts, title = "Result", children }: CardProps) {
   const { outlier, patch, holdout, verdict, others, othersNote } = facts;
   return (
     <section className="panel result" aria-labelledby="result-title">
       <div className="panel-head">
         <span id="result-title" className="eyebrow">
-          Result
+          {title}
         </span>
         <span className={`badge${facts.source === "live run" ? "" : " recorded"}`}>
           {facts.source}
@@ -65,6 +72,7 @@ export function ResultCard({ facts }: { facts: ResultFacts }) {
         <span className="spacer" />
         <CopyButton facts={facts} />
       </div>
+      {children}
       <div className="result-grid">
         <div>
           <p className="caption">{outlier?.isOutlier ? "Outlier" : "Most lopsided matchup"}</p>
@@ -83,10 +91,12 @@ export function ResultCard({ facts }: { facts: ResultFacts }) {
             <p key={p.field} className="result-line">
               {p.field} <span className="old">{p.old ?? "—"}</span> → <span className="new">{p.next}</span>{" "}
               <span className="badge origin">{p.origin}</span>{" "}
-              <span className={`status ${p.valid ? "ok" : "bad"}`}>
-                <span className="dot" />
-                {p.valid ? "valid" : "failed validation"}
-              </span>
+              {p.valid !== undefined && (
+                <span className={`status ${p.valid ? "ok" : "bad"}`}>
+                  <span className="dot" />
+                  {p.valid ? "valid" : "failed validation"}
+                </span>
+              )}
             </p>
           ))}
           {patch[0]?.rationale && <p className="caption result-why">{patch[0].rationale}</p>}
@@ -108,17 +118,19 @@ export function ResultCard({ facts }: { facts: ResultFacts }) {
             </p>
           )}
         </div>
-        <div>
-          <p className="caption">
-            Other findings <span className="badge recorded">recorded</span>
-          </p>
-          {others.map((o) => (
-            <p key={o.matchup} className="result-line">
-              {o.matchup} · {o.side} {rateLine(o)}
+        {others && (
+          <div>
+            <p className="caption">
+              Other findings <span className="badge recorded">recorded</span>
             </p>
-          ))}
-          {others.length === 0 && <p className="small text-2">{othersNote ?? "No recorded roster report."}</p>}
-        </div>
+            {others.map((o) => (
+              <p key={o.matchup} className="result-line">
+                {o.matchup} · {o.side} {rateLine(o)}
+              </p>
+            ))}
+            {others.length === 0 && <p className="small text-2">{othersNote ?? "No recorded roster report."}</p>}
+          </div>
+        )}
       </div>
     </section>
   );
