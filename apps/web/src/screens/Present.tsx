@@ -12,6 +12,7 @@ import { botRows } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
 import { currentDiagnose, currentMatchup } from "../lib/matchup";
+import { needsMoreGames } from "../lib/resultCard";
 import { loadRecordedRun } from "../lib/recorded";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
@@ -349,6 +350,7 @@ function VerdictScene({ run, busy, error }: { run: PlaytestRun | null; busy: boo
         {v.glyph}
         {v.label}
       </p>
+      {needsMoreGames(run.verdict.reasons) && <p className="h3">{needsMoreGames(run.verdict.reasons)}</p>}
       {run.verdict.reasons.slice(0, 2).map((r) => (
         <p key={r} className="h3 text-2">
           {r}
