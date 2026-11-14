@@ -11,7 +11,8 @@
 //   adapter, hashData, applyPatch(data, proposal) -> { data, dataHash }, runBatch(dataHash, matchups, seeds) ->
 //   MatchResult[], seedsFor(round, 'scan' | 'holdout') -> seeds (never overlapping), allMatchups (dimension strings,
 //   e.g. "bari vs daewi"), botPolicyVersion, seedSetId, onProgress({ round, phase, matchesDone, totalMatches }),
-//   onRecord(versionRecord), now() -> ISO string }
+//   onRecord(versionRecord), now() -> ISO string, explain({ hero, matchup }) -> string (optional: replay findings for
+//   the hand-over to a designer) }
 // returns { records, stoppedBecause: 'fair'|'needs_designer'|'regression'|'rounds'|'awaiting_approval'|'error',
 //   error?, finalCheck: Report | null, headHash, diagnoses: [{ round, diagnosis }], needs_designer: [{ hero, tried:
 //   [{ label, path, old, new, outcome }], evidence }] }. Never throws. The run stops only when nothing is flagged
@@ -67,6 +68,8 @@ export function candidateDiagnoses(diagnosis, focusHero) {
 }
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
+const worstOf = (rows) => [...rows].sort((a, b) =>
+  Math.abs(b.before.rate - 0.5) - Math.abs(a.before.rate - 0.5))[0].matchup;
 
 /** One or two sentences with the numbers: how lopsided the hero is and what the levers did. */
 function evidenceText(hero, entry, tried, rows) {
@@ -243,8 +246,19 @@ class Run {
     }
     const chosen = this.choose(round_, outcomes);
     if (chosen.stop !== 'not_accepted') return chosen;
-    this.escalate(round_, diagnosis, tried, outcomes);
+    await this.escalate(round_, diagnosis, tried, outcomes);
     return { head, scope: flagged }; // nothing changed: the next round works on the next hero
+  }
+
+  /** The optional injected `explain({ hero, matchup })` (a replay of the pair); a failure never stops the run. */
+  async explain(hero, matchup) {
+    if (typeof this.input.explain !== 'function' || !matchup) return null;
+    try {
+      const text = await this.input.explain({ hero, matchup });
+      return typeof text === 'string' && text ? text.slice(0, 1500) : null;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -252,14 +266,15 @@ class Run {
    * numbers. Not a version record. Shape for the screen:
    * { hero, tried: [{ label, path, old, new, outcome }], evidence }.
    */
-  escalate({ round, hero, targets }, diagnosis, tried, outcomes) {
+  async escalate({ round, hero, targets }, diagnosis, tried, outcomes) {
     this.escalated.add(hero);
     const entry = diagnosis?.heroes.find((h) => h.hero === hero) ?? null;
     const rows = tried.find((t) => t.targets)?.targets ?? [];
+    const replay = await this.explain(hero, rows.length ? worstOf(rows) : targets[0]);
     this.needsDesigner.push({ hero, round, matchups: targets,
       tried: tried.map(({ label, path, old, new: value, outcome, reason }) => ({ label, path, old, new: value,
         outcome, ...(reason ? { reason } : {}) })),
-      evidence: evidenceText(hero, entry, tried, rows),
+      evidence: [evidenceText(hero, entry, tried, rows), replay].filter(Boolean).join(' '),
       rawEvidence: outcomes.find((o) => o.evidence)?.evidence ?? null });
   }
 
