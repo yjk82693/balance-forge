@@ -2,7 +2,7 @@
   "name": "balance-forge",
   "private": true,
   "version": "0.1.0",
-  "description": "AI playtesting platform for game developers \u2014 HackPrinceton Fall 2026",
+  "description": "AI playtesting platform for game developers — HackPrinceton Fall 2026",
   "type": "module",
   "workspaces": [
     "packages/*",
@@ -14,7 +14,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "check:secrets": "node tools/check-secrets.mjs"
+    "check:secrets": "node tools/check-secrets.mjs",
+    "demo": "node tools/demo.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
