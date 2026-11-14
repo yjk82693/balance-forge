@@ -95,7 +95,7 @@ All on one laptop. Win rates are for the first-named hero, with 200 games per ma
 - **Not done yet:** human-style bots learned from recorded matches; a third sample game.
 
 ## Code
-TypeScript throughout. Node 26 runs the engine, analysis and server `.ts` files directly (type stripping, no build step); the web app is built with Vite. Strict typing is being added module by module (`npm run typecheck:server`).
+TypeScript throughout. Node 26 runs the engine, analysis and server `.ts` files directly (type stripping, no build step); the web app is built with Vite. `npm run typecheck` passes with 0 errors: the web app under `strict`, the server and engine in a looser mode that strict typing will tighten next.
 
 ## Layout
 - `spec/`: shared game contract v0.1 and addenda v0.1.1–v0.1.4 (assignments, hero-stat patches, designer intent, card patches)

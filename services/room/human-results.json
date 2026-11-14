@@ -1030,5 +1030,928 @@
     "botSeats": [
       "p2"
     ]
+  },
+  {
+    "matchId": "human-e7fcfa52-74e8-41aa-8458-fc65ff869a00",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 152,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 248,
+              "uses": 9
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 302,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 302,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 700,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 17,
+              "uses": 15
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 16,
+              "uses": 9
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 24,
+              "uses": 8
+            }
+          ]
+        }
+      ],
+      "durationTicks": 422
+    },
+    "finalStateHash": "f1c65d9ba958327bede2d8c5138d8728defb07015884d5670cd6ae5428ae518a",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-3c70842b-b32b-4a36-8d0b-e885355f2751",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 76,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 267,
+              "uses": 4
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 285,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 285,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 700,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 15,
+              "uses": 12
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 13,
+              "uses": 8
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 20,
+              "uses": 7
+            }
+          ]
+        }
+      ],
+      "durationTicks": 362
+    },
+    "finalStateHash": "45dbb83c917a1776cf57ce632caf881ece1389abbe379853888ec505488b758b",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-cd703a52-955e-4c93-a9f5-1c5b02e6e6fb",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 661,
+              "uses": 0
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 661,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 661,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 770,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 31,
+              "uses": 22
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 23,
+              "uses": 16
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 38,
+              "uses": 15
+            }
+          ]
+        }
+      ],
+      "durationTicks": 693
+    },
+    "finalStateHash": "85b47ac0805402c449701f3b8dc33908e4041f2cc1cf1fc460643fc047568265",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-3a126273-cb96-40f1-9f39-ea657047cbb1",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 114,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 360,
+              "uses": 6
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 395,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 395,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 770,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 21,
+              "uses": 18
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 18,
+              "uses": 10
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 28,
+              "uses": 10
+            }
+          ]
+        }
+      ],
+      "durationTicks": 500
+    },
+    "finalStateHash": "6cb13340cecd496686604c3fca59ed735eb620fbec8eef5b6e3d03c2d6b8ce83",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-03fefa6d-acdd-44f3-b384-9a06321a7333",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 76,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 205,
+              "uses": 4
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 232,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 225,
+              "uses": 1
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 770,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 13,
+              "uses": 11
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 12,
+              "uses": 7
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 18,
+              "uses": 6
+            }
+          ]
+        }
+      ],
+      "durationTicks": 315
+    },
+    "finalStateHash": "58dcc0e766574144c491f01b46815e51ef62931bdd8ebc3a5508aae9bc208677",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-cc0ef607-4595-4e9b-80f4-8752dd222b4d",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 312,
+              "uses": 4
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 339,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 339,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 770,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 17,
+              "uses": 15
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 16,
+              "uses": 9
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 24,
+              "uses": 8
+            }
+          ]
+        }
+      ],
+      "durationTicks": 418
+    },
+    "finalStateHash": "4aa84b7589408eff0db157cad6a3fd5bb73d1ea1e4140a8ab2591900fb07865c",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-d0f7b58f-b2c3-4107-a128-1106af7413d3",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "real_armor",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 304,
+              "uses": 5
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 335,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 335,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 770,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 18,
+              "uses": 15
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 15,
+              "uses": 9
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 24,
+              "uses": 8
+            }
+          ]
+        }
+      ],
+      "durationTicks": 422
+    },
+    "finalStateHash": "94e09448ca390384b32a78848c6cdea16318929d60db8279141f1b28cb82d876",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
+  },
+  {
+    "matchId": "human-44cd6f25-1640-4f85-8a58-2064a40e194f",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "bari",
+          "p2": "sepia"
+        }
+      }
+    },
+    "outcome": {
+      "status": "draw",
+      "winners": [],
+      "reason": "max_ticks"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 1,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 1770,
+              "uses": 1
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 1777,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 1770,
+              "uses": 1
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 0,
+          "draws": 1,
+          "damage": 38,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 1782,
+              "uses": 1
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 1789,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 1789,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 1800
+    },
+    "finalStateHash": "92956f83682f9cf247a944195db2b7db3ab42b2b86878c488d2b902bc1e970a1",
+    "valid": true,
+    "errorCode": ""
+  },
+  {
+    "matchId": "human-5e2cd401-ad1e-46c1-89ec-d5527899746f",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "nightcrow",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 38,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 950,
+              "uses": 1
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 955,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 927,
+              "uses": 4
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 480,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 640,
+              "uses": 12
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 665,
+              "uses": 8
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 675,
+              "uses": 6
+            }
+          ]
+        }
+      ],
+      "durationTicks": 1040
+    },
+    "finalStateHash": "31da8021f32a1111caed5d0a6ad13864db32494e6218427708893b36ebc82bdb",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ],
+    "botPolicyVersion": "scripted-0.2.1-gentle"
+  },
+  {
+    "matchId": "human-27124b95-6635-4de3-8a7d-c8a4decf0a3b",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_cards",
+      "simVersion": "cards-0.1.2",
+      "dataHash": "ef652b24e8e59f427ea70f009aff0cd87f5567a16700e111444ac86a6c4359fb",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "turn",
+      "maxTicks": 180,
+      "options": {
+        "assignments": {
+          "p1": "standard",
+          "p2": "standard"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p1"
+      ],
+      "reason": "six_rounds"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 1,
+          "draws": 0,
+          "damage": 17,
+          "actions": [
+            {
+              "actionId": "play",
+              "opportunities": 13,
+              "uses": 12
+            },
+            {
+              "actionId": "end_turn",
+              "opportunities": 13,
+              "uses": 0
+            },
+            {
+              "actionId": "play:spark",
+              "opportunities": 4,
+              "uses": 3
+            },
+            {
+              "actionId": "play:ward",
+              "opportunities": 7,
+              "uses": 3
+            },
+            {
+              "actionId": "play:sentinel",
+              "opportunities": 3,
+              "uses": 1
+            },
+            {
+              "actionId": "play:hypnosis",
+              "opportunities": 8,
+              "uses": 2
+            },
+            {
+              "actionId": "play:pulse",
+              "opportunities": 11,
+              "uses": 3
+            },
+            {
+              "actionId": "play:mechanical_crows",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "play:forethought",
+              "opportunities": 0,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 0,
+          "draws": 0,
+          "damage": 14,
+          "actions": [
+            {
+              "actionId": "play",
+              "opportunities": 13,
+              "uses": 11
+            },
+            {
+              "actionId": "end_turn",
+              "opportunities": 13,
+              "uses": 0
+            },
+            {
+              "actionId": "play:spark",
+              "opportunities": 7,
+              "uses": 3
+            },
+            {
+              "actionId": "play:ward",
+              "opportunities": 3,
+              "uses": 2
+            },
+            {
+              "actionId": "play:sentinel",
+              "opportunities": 3,
+              "uses": 2
+            },
+            {
+              "actionId": "play:hypnosis",
+              "opportunities": 8,
+              "uses": 1
+            },
+            {
+              "actionId": "play:pulse",
+              "opportunities": 12,
+              "uses": 3
+            },
+            {
+              "actionId": "play:mechanical_crows",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "play:forethought",
+              "opportunities": 0,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 26
+    },
+    "finalStateHash": "0844627828c5fa842325cca59e5ddf39d860534092c66fe0c7d5ffab9363f1d8",
+    "valid": true,
+    "errorCode": ""
   }
 ]
