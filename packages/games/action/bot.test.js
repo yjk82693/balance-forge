@@ -26,3 +26,24 @@ test('the old alias returns null when only movement is legal or the viewer has n
   assert.equal(bot.chooseAction(observe(next, 'p1'), 2, 0), null);
   assert.equal(bot.chooseAction(observe(next, 'display'), 2, 0), null);
 });
+test('incoming hostile projectiles trigger a generic legal guard without changing the view', () => {
+  for (const hero of data.characters) {
+    const config = makeConfig(data);
+    config.options.assignments.p1 = hero.id;
+    const state = initial(config, data);
+    const me = state.payload.entities[0];
+    state.payload.projectiles.push({
+      id: 'pr1', owner: 'p2', kind: 'projectile', moveId: 'projectile',
+      x: me.x + 1200, y: me.y, vx: -300, vy: 0, life: 20, power: 44, ignoresGuard: false
+    });
+    const view = observe(state, 'p1'), before = structuredClone(view);
+    assert.equal(bot.chooseAction(view, 0).actionId, 'guard');
+    assert.deepEqual(view, before);
+    view.payload.projectiles[0].vx = 300;
+    assert.notEqual(bot.chooseAction(view, 0).actionId, 'guard');
+    view.payload.projectiles[0].vx = -300;
+    view.payload.entities[0].cooldowns[2] = 100;
+    assert.notEqual(bot.chooseAction(view, 0).actionId, 'guard');
+  }
+  assert.equal(bot.botPolicyVersion, 'scripted-0.2.0');
+});

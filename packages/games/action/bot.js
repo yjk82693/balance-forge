@@ -1,5 +1,20 @@
-import { legalActions } from './index.js';
-export const botPolicyVersion = 'scripted-0.1.1';
+import { data, legalActions } from './index.js';
+export const botPolicyVersion = 'scripted-0.2.0';
+// Predict discrete projectile positions without consulting guard-bypass traits or hero identities.
+function incomingProjectile(view, hero) {
+  const character = data.characters.find(character => character.id === hero.hero);
+  const guard = data.moves.find(move => character.moveIds.includes(move.id) && move.archetype === 'guard');
+  const horizon = data.weightTiers[guard.weightTier].startupTicks + 4;
+  return view.payload.projectiles.some(shot => {
+    if (shot.owner === hero.id) return false;
+    for (let tick = 1; tick <= Math.min(horizon, shot.life); tick++) {
+      const dx = shot.x + shot.vx * tick - hero.x;
+      const dy = shot.y + shot.vy * tick - hero.y;
+      if (dx * dx + dy * dy <= data.gameRules.projectileRadius ** 2) return true;
+    }
+    return false;
+  });
+}
 export function chooseActions(view, seq, variant = 0) {
   const legal = legalActions(view),
     me = view.payload.entities.find(e => e.id === view.viewerId),
@@ -10,7 +25,8 @@ export function chooseActions(view, seq, variant = 0) {
     close = dx * dx + dy * dy <= 1800 ** 2;
   const preference = close ? ['melee', 'projectile', 'guard', 'move'] : variant % 3 === 1 && view.tick % 120 < 55 ? [
     'guard', 'projectile', 'melee', 'move'] : ['projectile', 'guard', 'melee', 'move'];
-  const actionId = preference.find(id => legal.some(a => a.actionId === id));
+  const actionId = legal.some(action => action.actionId === 'guard') && incomingProjectile(view, me) ?
+    'guard' : preference.find(id => legal.some(a => a.actionId === id));
   if (!actionId) return [];
   const norm = Math.max(Math.abs(dx), Math.abs(dy), 1);
   const movement = legal.some(a => a.actionId === 'move') ? [{

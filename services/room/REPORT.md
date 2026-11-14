@@ -443,3 +443,12 @@ Fresh runner: 300 valid matches across 15 matchups, 2 workers, 100 first-seat wi
 Updated recorded metrics; deterministic result data stayed unchanged. Web is outside ownership, so no
 web build/FPS measurement. Existing blockers: analysis pipeline full.js remains absent here; live socket
 tests retain their opt-in gate. No dependencies, network calls, commits or pushes. Stopping.
+
+## Round 7
+
+Step 1: added scripted-0.2.0 generic discrete projectile prediction using guard startup plus four ticks.
+Incoming hostile shots prioritize a legal guard; outgoing/friendly shots and guard cooldown preserve prior
+behavior. No hero branches, balance data changes or bypass-trait checks. Stable bot exports remain intact.
+All three bot tests pass, including every hero, unchanged observations and unavailable guards.
+Follow-up: regenerate roster recordings and every derived artifact with this policy in steps 2–3 below.
+No commits attempted; external committer owns git writes.

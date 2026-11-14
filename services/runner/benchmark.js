@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { rosterJobs, runBatch } from './index.js';
-const jobs = rosterJobs(),
+const seedsPerMatchup = 100;
+const jobs = rosterJobs({ seeds: Array.from({ length: seedsPerMatchup }, (_, index) => index + 1) }),
   {
     results,
     metrics
@@ -15,7 +16,7 @@ const details = {
   createdAt: new Date().toISOString(),
   matchups: 15,
   includesMirrors: true,
-  seedsPerMatchup: 10
+  seedsPerMatchup
 };
 writeFileSync(new URL('./recorded-roster-match-results.json', import.meta.url), JSON.stringify(results, null,
   2) + '\n');
