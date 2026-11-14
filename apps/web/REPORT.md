@@ -245,3 +245,7 @@ Checked: `npm test` 159 tests, 153 pass, 6 skipped, 0 fail (48 s; the skips are 
 **Performance** (production build, `?mock=1`, display about 120 Hz, devicePixelRatio 2, viewport 1512x857, frames counted with `requestAnimationFrame`): dashboard idle with two Phaser canvases 102 fps (worst frame 74 ms); dashboard during the two-phase live batch with 15 matchup bars, human group and mini-arenas 88 fps (worst frame 74 ms). Earlier numbers were 111 and 99 fps with a worst frame of 34-42 ms; the dashboard now draws more rows and a second phase, and one worst-frame spike is higher, but it stays smooth. Not re-measured: arena (118 fps earlier), phones, long sessions. The matches/s figure belongs to the runner (roster sample: 300 matches in 4.3 s, about 69 matches/s), not to the web app.
 
 **Still blocked / open:** `/v1/playtest/full`, `/v1/replay/:id/views`, `recorded-roster-report.json` and bot start do not exist in the repo yet, so those paths were only checked with the mock and with pure-function tests; no physical phone test.
+
+## Polish 03:14
+
+Nothing to change. `npm test` 153 pass, 6 skipped (other folders' opt-in tests), 0 fail; `npm run build -w apps/web` passes; no line over 120 characters. Performance numbers and blocked items are unchanged from Polish 01:10.
