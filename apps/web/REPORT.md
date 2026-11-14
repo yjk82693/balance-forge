@@ -557,3 +557,9 @@ The version is named beside the toggle ("version 9b0f5d2 · Bari · Health 540 �
 Opening the dashboard (arena or cards) without a run shows one panel, "Run the bots to see the verdict", with the Run
 button, instead of the per-section empty lines and the view toggle; the sections and the toggle appear with the first
 result. The recorded roster stays on the right (arena).
+
+### Versions for either game
+
+`fetchVersions`, `fetchVersion`, `approveVersion`, `makeCurrent`, `runAutoBalance` and `loadHistory` take a `gameId`
+(default hero_arena); the paths live in `src/lib/versionPaths.ts`. The Versions screen follows the dashboard game, and
+the cards lobby's Patched button selects the newest accepted hero_cards version.

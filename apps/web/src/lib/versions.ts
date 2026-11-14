@@ -14,6 +14,7 @@ import { VERDICT_COPY } from "./dashboardData";
 import { originLabel, targetsFrom } from "./fullRun";
 import { fixturePatch } from "./fixtures";
 import { parseDesigner, saveDesigner, type DesignerCase } from "./designer";
+import { versionPaths } from "./versionPaths";
 import { isMockMode } from "../mock/types";
 
 export type HistorySource = "live run" | "recorded" | "sample data";
@@ -299,7 +300,7 @@ const JSON_POST = (body: unknown): RequestInit => ({
 
 /** GET /v1/versions/<game>: the history and the current hash; null when the server has no history endpoint. */
 export async function fetchVersions(signal?: AbortSignal, gameId = "hero_arena"): Promise<VersionList | null> {
-  const raw = await call<unknown>(`/v1/versions/${gameId}`, undefined, signal);
+  const raw = await call<unknown>(versionPaths(gameId).list, undefined, signal);
   return raw === null ? null : parseVersionList(raw);
 }
 
@@ -309,9 +310,13 @@ export interface VersionDetail {
   diff: VersionRecord["changes"];
 }
 
-/** GET /v1/versions/hero_arena/:hash: the record plus its diff against the parent (`diff`, or `diff.changes`). */
-export async function fetchVersion(hash: string, signal?: AbortSignal): Promise<VersionDetail | null> {
-  const raw = await call<unknown>(`/v1/versions/hero_arena/${encodeURIComponent(hash)}`, undefined, signal);
+/** GET /v1/versions/<game>/:hash: the record plus its diff against the parent (`diff`, or `diff.changes`). */
+export async function fetchVersion(
+  hash: string,
+  signal?: AbortSignal,
+  gameId = "hero_arena",
+): Promise<VersionDetail | null> {
+  const raw = await call<unknown>(versionPaths(gameId).detail(hash), undefined, signal);
   if (!isObject(raw)) return null;
   const record = parseVersion(isObject(raw.record) ? raw.record : raw);
   if (!record) return null;
@@ -321,17 +326,24 @@ export async function fetchVersion(hash: string, signal?: AbortSignal): Promise<
   return { record, diff: own?.changes ?? record.changes };
 }
 
-/** POST /v1/versions/hero_arena/:hash/approve: ship a candidate version. The list is read again afterwards. */
-export async function approveVersion(hash: string, signal?: AbortSignal): Promise<VersionList | null> {
-  const path = `/v1/versions/hero_arena/${encodeURIComponent(hash)}/approve`;
-  const done = await call<unknown>(path, JSON_POST({}), signal);
-  return done === null ? null : fetchVersions(signal);
+/** POST /v1/versions/<game>/:hash/approve: ship a candidate version. The list is read again afterwards. */
+export async function approveVersion(
+  hash: string,
+  signal?: AbortSignal,
+  gameId = "hero_arena",
+): Promise<VersionList | null> {
+  const done = await call<unknown>(versionPaths(gameId).approve(hash), JSON_POST({}), signal);
+  return done === null ? null : fetchVersions(signal, gameId);
 }
 
-/** POST /v1/data/hero_arena/select { dataHash }: make a kept version current (the revert). Nothing is deleted. */
-export async function makeCurrent(dataHash: string, signal?: AbortSignal): Promise<VersionList | null> {
-  const done = await call<unknown>("/v1/data/hero_arena/select", JSON_POST({ dataHash }), signal);
-  return done === null ? null : fetchVersions(signal);
+/** POST /v1/data/<game>/select { dataHash }: make a kept version current (the revert). Nothing is deleted. */
+export async function makeCurrent(
+  dataHash: string,
+  signal?: AbortSignal,
+  gameId = "hero_arena",
+): Promise<VersionList | null> {
+  const done = await call<unknown>(versionPaths(gameId).select, JSON_POST({ dataHash }), signal);
+  return done === null ? null : fetchVersions(signal, gameId);
 }
 
 /** The auto run's output file also has `needs_designer`: /v1/playtest/results/<runId>-auto.json ([] if unreadable). */
@@ -353,11 +365,11 @@ async function designerFromResults(runId: string, signal?: AbortSignal): Promise
  * Progress (round and phase) streams over /ws; when it ends the list is read again.
  */
 export async function runAutoBalance(
-  opts: { rounds: number; approval: boolean; fromHash?: string },
+  opts: { rounds: number; approval: boolean; fromHash?: string; gameId?: string },
   signal?: AbortSignal,
 ): Promise<VersionList | null> {
-  const { rounds, approval, fromHash } = opts;
-  const body = { gameId: "hero_arena", rounds, requireApproval: approval, ...(fromHash ? { fromHash } : {}) };
+  const { rounds, approval, fromHash, gameId = "hero_arena" } = opts;
+  const body = { gameId, rounds, requireApproval: approval, ...(fromHash ? { fromHash } : {}) };
   const done = await call<unknown>("/v1/playtest/auto", JSON_POST(body), signal);
   if (done === null) return null;
   // The hand-overs ride on the auto result; the list is read again for the versions themselves.
@@ -365,19 +377,23 @@ export async function runAutoBalance(
   const runId = isObject(done) && typeof done.runId === "string" ? done.runId : undefined;
   if (!cases.length && runId) cases = await designerFromResults(runId, signal);
   saveDesigner(cases);
-  const list = await fetchVersions(signal);
+  const list = await fetchVersions(signal, gameId);
   return list && cases.length ? { ...list, needsDesigner: cases } : list;
 }
 
 /** Where the history comes from: the server, else the stored file, else (?mock=1) the sample. */
-export async function loadHistory(): Promise<{ list: VersionList | null; source: HistorySource }> {
+export async function loadHistory(
+  gameId = "hero_arena",
+): Promise<{ list: VersionList | null; source: HistorySource }> {
   if (isMockMode()) return { list: sampleVersions(), source: "sample data" };
   try {
-    const live = await fetchVersions();
+    const live = await fetchVersions(undefined, gameId);
     if (live) return { list: live, source: "live run" };
   } catch {
     /* no server: fall through to the stored history */
   }
+  // The recorded history is the arena's; Hero Cards has none.
+  if (gameId !== "hero_arena") return { list: null, source: "recorded" };
   return { list: await loadRecordedVersions().catch(() => null), source: "recorded" };
 }
 
