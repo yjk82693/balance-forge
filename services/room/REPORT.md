@@ -618,7 +618,32 @@ Stopping at Tony's request for an outside commit/merge and continuation by anoth
   on this laptop; it passed 2/2 when run.
 - README "Round 8 versions" documents the five routes; examples.json regenerated with versions, version, approve,
   select and autoInvalid captures; documentation.test.js asserts them.
-- Verification: node --test → 231 tests, 222 pass, 0 fail, 9 opt-in skips. Socket/E2E (RUN_SOCKET_TESTS=1) could not run here:
-  listen EPERM on 127.0.0.1 in this sandbox. Not verified: the two E2E scenarios and room TCP tests.
+- Verification: node --test → 231 tests, 222 pass, 0 fail, 9 opt-in skips. Socket/E2E (RUN_SOCKET_TESTS=1) could not
+  run here: listen EPERM on 127.0.0.1 in this sandbox. Not verified: the two E2E scenarios and room TCP tests.
 - Limits: a live auto run takes minutes, so the 2-minute demo should use a recorded history. The 400 message for
   a bad /auto body mentions actions.available, which is misleading for an HTTP route (not changed).
+
+## Held movement (controls fix)
+
+Problem: the sim moves a hero only on ticks whose frame holds a move input, the phone sends one about every 33 ms,
+and the
+room kept no held input, so a held stick moved the hero on about half the ticks and stopped on any Wi-Fi gap.
+
+Fix: `Authority` (packages/sim) keeps each human seat's last accepted non-zero move vector (`holdMoves` lists the
+seats;
+bots are not listed because they send a move every tick). On every authoritative tick where that seat has no new
+move,
+`advance` adds a server-generated move with that vector to the frame. It is recorded in the accepted frame history,
+so
+replays and MatchResults stay deterministic, and it makes no receipt and no change to the seat's sequence numbers.
+- Cleared by: a `(0, 0)` move, a disconnect (`server.disconnect` calls `authority.release`), a stun or KO (the pure-
+  copy legality check fails, so the hold ends), and the end of the match.
+- Never carries an attack. If the seat sends an attack on the same tick, the held move uses the sequence number just
+  below it.
+- Rule change in the arena step: a `move` may repeat the seat's latest sequence number (`>=`; other actions still
+  need `>`). Only the server can do this, because `Authority.submit` still requires strictly rising sequence
+  numbers. Old recordings are unaffected (their sequence numbers always rise). `simVersion` is unchanged on purpose;
+  the integrator may bump it.
+- Tests: `services/room/held-move.test.js` (8): silence keeps moving every tick, `(0, 0)` stops, a new vector
+  replaces the old one, no attack is carried and sequence numbers stay valid, stun stops it, bots and match end,
+  replay reproduces the final hash, and a room test where a disconnect stops a held stick.
