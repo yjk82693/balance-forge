@@ -33,3 +33,10 @@ Armor).
 Adopting it changes every recorded number, including the designed Bari vs Real Armor flaw, so it needs a decision
 and one
 regeneration of the recorded files (and a new botPolicyVersion in their metadata). Tests: bot-0.2.2.test.js (unit only).
+
+### scripted-0.2.2b (candidate variant, not adopted)  bot-0.2.2b.js is 0.2.2 with one difference: a projectile-first
+hero still closes to melee range when the opponent is melee-first (read from the data, as in 0.2.2) or when its own
+melee is ready and the opponent is in recovery. The melee stand-off keeps the seat's seeded position inside the
+60-95% band (no extra draws), and a bot that has closed in only stops approaching, it does not walk back out. Why:
+0.2.2 holds every projectile user 3,200-6,400 apart for the whole match, which makes every fight between two
+projectile users a pure ranged duel and may hide melee balance. Tests: bot-0.2.2b.test.js.

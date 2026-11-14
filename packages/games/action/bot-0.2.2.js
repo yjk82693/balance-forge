@@ -16,7 +16,7 @@ import { deriveBotSeed } from './bot.js';
 export const botPolicyVersion = 'scripted-0.2.2';
 export { deriveBotSeed };
 
-const MELEE_STANDOFF = [0.6, 0.95]; // share of the melee range
+export const MELEE_STANDOFF = [0.6, 0.95]; // share of the melee range
 const PROJECTILE_STANDOFF = [0.2, 0.4]; // share of the projectile range
 const ATTACKS = ['melee', 'projectile'];
 
@@ -55,13 +55,13 @@ export function profile(seed, heroId) {
   };
 }
 // Unchanged from 0.2.1: each projectile owns a fixed draw from the same stream.
-function attemptsGuard(shot, policy) {
+export function attemptsGuard(shot, policy) {
   let rng = policy.rng;
   const index = Number(shot.id.replace(/^pr/, ''));
   for (let i = 0; i < index; i++) rng = xorshift32(rng);
   return rng % 100 < policy.guardChance;
 }
-function incomingProjectile(view, hero, policy) {
+export function incomingProjectile(view, hero, policy) {
   const character = data.characters.find(character => character.id === hero.hero);
   const guard = data.moves.find(move => character.moveIds.includes(move.id) && move.archetype === 'guard');
   const horizon = data.weightTiers[guard.weightTier].startupTicks + 4 + 12 - policy.reaction;
@@ -75,15 +75,20 @@ function incomingProjectile(view, hero, policy) {
     return false;
   });
 }
-export function chooseActions(view, seq, variant = 0) {
+/**
+ * The decision, shared with scripted-0.2.2b. `options.standOff(context)` may replace the stand-off distance of this
+ * tick (0.2.2 keeps the seeded one); it gets { me, enemy, legal, policy, view } and returns a distance in whole units.
+ */
+export function decide(view, seq, variant, options = {}) {
   const legal = legalActions(view),
     me = view.payload.entities.find(e => e.id === view.viewerId),
     enemy = view.payload.entities.find(e => e.id !== view.viewerId);
   if (!legal.length || !enemy) return [];
   const policy = profile(variant, me.hero);
+  const standOff = options.standOff ? options.standOff({ me, enemy, legal, policy, view }) : policy.distance;
   const dx = enemy.x - me.x,
     dy = enemy.y - me.y,
-    close = dx * dx + dy * dy <= policy.distance ** 2,
+    close = dx * dx + dy * dy <= standOff ** 2,
     inMeleeReach = dx * dx + dy * dy <= data.gameRules.meleeRange ** 2;
   const preference = close ? ['melee', 'projectile', 'guard', 'move'] : variant % 3 === 1 && view.tick % 120 < 55 ? [
     'guard', 'projectile', 'melee', 'move'] : ['projectile', 'guard', 'melee', 'move'];
@@ -124,3 +129,5 @@ export function chooseActions(view, seq, variant = 0) {
     params
   }];
 }
+
+export const chooseActions = (view, seq, variant = 0) => decide(view, seq, variant);
