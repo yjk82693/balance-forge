@@ -506,3 +506,16 @@ only; nothing is applied. Output `{ focusHero, matchup, heroes, classification, 
 Change labels in `runFull` follow the same ownership: a move only one hero owns reads "Bari · Spirit Arrow power"; a shared move
 reads "Projectile power (shared: Daewi, Real Armor, Sepia)" instead of naming whichever hero happens to be listed first. 5 new
 diagnose tests (shared-move ranking, own non-attack move first, hero with only shared moves, no global lever) and a label test.
+
+## Hero stats in the allowlist (contract v0.1.2)
+
+Step 1 of widening the levers: `/characters/N/health` (100..3000) and `/characters/N/speed` (30..400), integers, and within 40%
+of the ROOT data value (integer test `10 x value` between `6 x` and `14 x` the root value). Accepted by the validator
+(`validatePatch(..., { rootData })`; without `rootData` only the absolute bounds can be checked), the LLM response schema
+(`PATH_PATTERN`, no leading zeros) and prompt (hero stat paths marked hero-only, plus each hero's original value and allowed
+range when `rootData` is known), `applyPatchToData(..., { rootData })` for replay, `runFull` (`rootData`, default `baseData`)
+and `runAuto` (`rootData`, default `data`; the engine passes the game's original data so later rounds cannot drift).
+`test/patch-agreement.test.js` cross-checks the engine's `applyPatch(data, proposal, root)` against the validator on 400+
+path/value combinations (bounds, leading zeros, bad indexes, relative bounds on the root and on a grown version, duplicates,
+the 8-change limit): 0 differences. The engine copy of the path schema now refuses leading zeros too (`/moves/01/power`),
+which the analysis validator always did; the normative spec pattern `[0-9]+` is looser, so this is a note for the spec.

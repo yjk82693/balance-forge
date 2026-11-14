@@ -5,6 +5,7 @@
 // matchups and judges it. One version record per round.
 //
 // input: { gameId, fromHash, data (the data for fromHash), rounds (1..5, default 3), requireApproval (default true),
+//   rootData (the original game data that hero-stat bounds are measured against; default: `data`),
 //   adapter, hashData, applyPatch(data, proposal) -> { data, dataHash }, runBatch(dataHash, matchups, seeds) ->
 //   MatchResult[], seedsFor(round, 'scan' | 'holdout') -> seeds (never overlapping), allMatchups (dimension strings,
 //   e.g. "bari vs daewi"), botPolicyVersion, seedSetId, onProgress({ round, phase, matchesDone, totalMatches }),
@@ -140,7 +141,8 @@ class Run {
     const baselineResults = results.filter((r) => targets.includes(heroMatchup(r)?.dimension));
     let patched = null;
     if (diagnosis) this.diagnoses.push({ round, diagnosis });
-    const full = await runFull({ baselineResults, baseData: head.data, diagnosis, adapter: input.adapter,
+    const rootData = input.rootData ?? input.data;
+    const full = await runFull({ baselineResults, baseData: head.data, rootData, diagnosis, adapter: input.adapter,
       hashData: input.hashData,
       applyPatch: (data, proposal) => {
         patched = input.applyPatch(data, proposal);

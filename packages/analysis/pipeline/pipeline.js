@@ -52,7 +52,7 @@ export async function proposeStep(report, adapter, { context = {}, ...options } 
   } catch (e) {
     return fail('ADAPTER_FAILED', `the patch adapter failed: ${String(e?.message ?? e).slice(0, 120)}`);
   }
-  const check = validatePatch(got.proposal, { baseDataHash: report.dataHash, ...options });
+  const check = validatePatch(got.proposal, { baseDataHash: report.dataHash, rootData: context.rootData, ...options });
   return { proposal: got.proposal, origin: got.origin, fallbackReason: got.fallbackReason, ok: check.ok,
     errors: check.errors };
 }

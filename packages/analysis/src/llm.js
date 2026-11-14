@@ -7,7 +7,10 @@ import { assertReport } from './input-check.js';
 export const TIMEOUT_MS = 8000;
 export const RETRIES = 1;
 
-/** JSON Schema for PatchProposal (same constraints as spec/contract-v0.1.md). */
+export const PATH_PATTERN = '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|'
+  + 'characters/(0|[1-9][0-9]*)/(health|speed))$';
+
+/** JSON Schema for PatchProposal (spec/contract-v0.1.md plus the v0.1.2 hero stat paths). */
 export const PATCH_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -21,7 +24,7 @@ export const PATCH_JSON_SCHEMA = {
         type: 'object',
         additionalProperties: false,
         properties: {
-          path: { type: 'string', pattern: '^/(tuning/damageScalePermille|moves/[0-9]+/power)$' },
+          path: { type: 'string', pattern: PATH_PATTERN },
           value: { type: 'integer', minimum: 0, maximum: 10000 },
         },
         required: ['path', 'value'],
@@ -61,9 +64,18 @@ function compactDiagnosis(d) {
     heroes: d.heroes.map((h) => ({ hero: h.hero, strength: h.strength,
       overall: { rate: h.overall.rate, games: h.overall.games },
       opponents: h.opponents.map((o) => ({ opponent: o.opponent, rate: o.rate, games: o.games })) })),
-    recommendations: d.recommendations.map(({ hero, role, path, direction, sizePct, why, expected }) => ({ hero, role,
-      path, direction, sizePct, why, expected })),
+    recommendations: d.recommendations.map(({ hero, role, path, direction, sizePct, why, expected, alsoAffects }) => ({
+      hero, role, path, direction, sizePct, why, expected, alsoAffects })),
   };
+}
+
+/** Original health and speed per hero with the range the patch may use (within 40% and the absolute bounds). */
+function heroStats(rootData) {
+  const range = (value, [low, high]) => [Math.max(low, Math.ceil((value * 6) / 10)),
+    Math.min(high, Math.floor((value * 14) / 10))];
+  return rootData.characters.map((c, index) => ({ index, id: c.id,
+    health: { original: c.health, allowed: range(c.health, boundsFor('/characters/0/health')) },
+    speed: { original: c.speed, allowed: range(c.speed, boundsFor('/characters/0/speed')) } }));
 }
 
 export function buildPrompt(report, context = {}) {
@@ -76,6 +88,10 @@ export function buildPrompt(report, context = {}) {
     { path: '/tuning/damageScalePermille', min: boundsFor('/tuning/damageScalePermille')[0],
       max: boundsFor('/tuning/damageScalePermille')[1] },
     { path: '/moves/<N>/power', min: boundsFor('/moves/0/power')[0], max: boundsFor('/moves/0/power')[1] },
+    { path: '/characters/<N>/health', min: boundsFor('/characters/0/health')[0],
+      max: boundsFor('/characters/0/health')[1], hero_only: true },
+    { path: '/characters/<N>/speed', min: boundsFor('/characters/0/speed')[0],
+      max: boundsFor('/characters/0/speed')[1], hero_only: true },
   ];
   return [
     'You tune a multiplayer game. Below are aggregate bot-playtest results (win rate of the first-named side).',
@@ -83,6 +99,9 @@ export function buildPrompt(report, context = {}) {
     'Reply with JSON only: {"baseDataHash", "replacements": [{"path","value"}], "rationale"}.',
     `At most ${MAX_REPLACEMENTS} replacements, integer values only.`,
     'Use only these paths: ' + JSON.stringify(allowed),
+    ...(context.rootData?.characters ? [
+      'Hero stats may move at most 40% from the original value (health and speed belong to one hero only). Heroes: '
+      + JSON.stringify(heroStats(context.rootData))] : []),
     `baseDataHash must be exactly: ${report.dataHash}`,
     'Rows: ' + JSON.stringify(rows),
     ...(context.diagnosis ? [
@@ -146,7 +165,7 @@ class LlmAdapter {
       retries: this.retries,
       parse: (json) => {
         const p = parseProposal(this.extractText(json));
-        const check = validatePatch(p, { baseDataHash: report.dataHash });
+        const check = validatePatch(p, { baseDataHash: report.dataHash, rootData: context.rootData });
         if (!check.ok) throw new Error(`invalid proposal: ${check.errors[0]}`);
         return p;
       },

@@ -1,13 +1,22 @@
 // PatchProposal validator. Data only: allowlisted paths, bounded integers, max 8, pinned base hash.
+// Contract v0.1.2 adds hero stats: /characters/N/health and /characters/N/speed, which must also stay within 40% of the
+// ROOT data value (options.rootData). Without rootData only the absolute bounds can be checked.
 export const MAX_REPLACEMENTS = 8;
 const HASH_RE = /^[0-9a-f]{64}$/;
 const MOVE_POWER_RE = /^\/moves\/(0|[1-9][0-9]*)\/power$/;
+const HERO_STAT_RE = /^\/characters\/(0|[1-9][0-9]*)\/(health|speed)$/;
 const DAMAGE_PATH = '/tuning/damageScalePermille';
+const HERO_STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] };
 
-/** Value bounds per allowed path (contract: power 0..10000, damageScalePermille 100..3000). */
+/** Integer test for "within 40% of the root value": 10 x value between 6 x and 14 x the root value. */
+export const withinFortyPercent = (value, rootValue) => 10 * value >= 6 * rootValue && 10 * value <= 14 * rootValue;
+
+/** Absolute value bounds per allowed path (power 0..10000, damageScalePermille 100..3000, health, speed). */
 export function boundsFor(path) {
   if (path === DAMAGE_PATH) return [100, 3000];
   if (MOVE_POWER_RE.test(path)) return [0, 10000];
+  const stat = HERO_STAT_RE.exec(path);
+  if (stat) return HERO_STAT_BOUNDS[stat[2]];
   return null;
 }
 
@@ -15,6 +24,7 @@ export function boundsFor(path) {
  * @returns {{ok: boolean, errors: string[]}}
  * options.baseDataHash: the hash the server expects the proposal to be based on.
  * options.moveCount: if known, move indexes must be < moveCount.
+ * options.rootData: the original game data; hero stats must stay within 40% of its values.
  */
 export function validatePatch(proposal, options = {}) {
   try {
@@ -60,6 +70,14 @@ function validatePatchUnsafe(proposal, options) {
       const m = MOVE_POWER_RE.exec(r.path);
       if (m && options.moveCount !== undefined && Number(m[1]) >= options.moveCount) {
         errors.push(`${at}: move index out of range`);
+      }
+      const stat = HERO_STAT_RE.exec(r.path);
+      if (stat && options.rootData) {
+        const rootValue = options.rootData.characters?.[Number(stat[1])]?.[stat[2]];
+        if (!Number.isInteger(rootValue)) errors.push(`${at}: character index out of range`);
+        else if (!withinFortyPercent(r.value, rootValue)) {
+          errors.push(`${at}: value must stay within 40% of ${rootValue}`);
+        }
       }
     });
   }

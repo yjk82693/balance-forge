@@ -121,7 +121,7 @@ export async function recordAutoHistory({ rounds = 3, engineRoot, now = () => ne
       adapter: steppingAdapter((hash) => versions.get(hash), (hero) => usage[hero] ?? {}),
       allMatchups: matchupsOf(arena.data), seedsFor, botPolicyVersion: match.botPolicyVersion, now,
       applyPatch: (base, proposal) => {
-        const data = applyEngine(base, proposal);
+        const data = applyEngine(base, proposal, arena.data);
         return { data, dataHash: keep(data) };
       },
       runBatch: async (dataHash, matchups, seeds) => {
