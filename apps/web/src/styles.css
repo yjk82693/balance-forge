@@ -1784,3 +1784,71 @@ p {
 .phone-foot {
   gap: var(--space-3);
 }
+
+/* States */
+.server-down {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  max-width: 520px;
+  box-shadow: inset 4px 0 0 var(--danger);
+}
+.server-down.compact {
+  max-width: none;
+}
+.server-down-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+.boundary {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+}
+.sk {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+  border-radius: var(--radius-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
+}
+.notice {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--warning-tint);
+  color: var(--text-1);
+  box-shadow: inset 4px 0 0 var(--warning);
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+.stage-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(13, 18, 25, 0.72);
+  z-index: 3;
+}
+.stage-overlay .panel {
+  text-align: left;
+}
+.art-failed {
+  margin: 0 var(--space-5);
+}
+
+.seg [aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

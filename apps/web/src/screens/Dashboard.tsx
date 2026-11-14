@@ -12,7 +12,8 @@ import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
 import { ApiError, runPlaytest, subscribeProgress, type PlaytestRun, type VerdictKind } from "../lib/api";
 import { LivePanel } from "../components/LivePanel";
-import { toRows, type ProgressMsg } from "../lib/progress";
+import { mockProgress, toRows, type ProgressMsg } from "../lib/progress";
+import { loadRecordedRun } from "../lib/recorded";
 import type { ReportRow } from "../lib/contract";
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchEnded, fixtureMatchResults, fixtureObservation, fixtureRoomStatus } from "../lib/fixtures";
@@ -75,6 +76,7 @@ export function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState<{ done: number; total: number; rows: ReportRow[] | null }>({ done: 0, total: MATCHES, rows: null });
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState(HUMAN_ID);
   const abort = useRef<AbortController | null>(null);
 
@@ -99,6 +101,7 @@ export function Dashboard() {
     abort.current = new AbortController();
     const onProgress = (p: ProgressMsg) => setLive({ done: p.done, total: p.total, rows: toRows(p) });
     setLive({ done: 0, total: MATCHES, rows: null });
+    setNotice(null);
     const off = subscribeProgress(onProgress);
     try {
       const result = await runPlaytest(MATCHES, abort.current.signal, onProgress);
@@ -113,7 +116,23 @@ export function Dashboard() {
       }
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
-      setError(e instanceof ApiError ? e.message : "Something went wrong.");
+      const why = e instanceof ApiError ? e.message : "Something went wrong.";
+      // Live run failed: play the stored (recorded) run instead, and say so.
+      try {
+        const rec = await loadRecordedRun();
+        await new Promise<void>((resolve, reject) => {
+          const stop = mockProgress(rec.baseline, (p) => {
+            onProgress(p);
+            if (p.done >= p.total) resolve();
+          }, { steps: 25, stepMs: 100 });
+          abort.current?.signal.addEventListener("abort", () => (stop(), reject(new DOMException("aborted", "AbortError"))));
+        });
+        setRun(rec);
+        setLive({ done: rec.baseline.validMatches, total: rec.baseline.validMatches, rows: null });
+        setNotice(`${why} Showing the stored run instead.`);
+      } catch (e2) {
+        if ((e2 as Error).name !== "AbortError") setError(why);
+      }
     } finally {
       off();
       setBusy(false);
@@ -143,7 +162,7 @@ export function Dashboard() {
           </span>
           <span className="small text-2">Balance report{run ? ` · ${showPatched ? "patched" : "broken"} data` : ""}</span>
           <span className="spacer" />
-          <VersionToggle />
+          <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
           <button className="btn primary" onClick={start} aria-busy={busy} aria-disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
             {busy ? "Bots are playing…" : `Run ${n(MATCHES)} bot matches`}
@@ -228,6 +247,15 @@ export function Dashboard() {
                 </span>
                 {report && <span className="meta">n = {n(report.validMatches)}</span>}
               </div>
+
+              {!busy && notice && (
+                <div className="notice" role="status">
+                  <span>{notice}</span>
+                  <button className="btn secondary" onClick={start}>
+                    Try live again
+                  </button>
+                </div>
+              )}
 
               {!busy && error && (
                 <div className="err" role="alert">

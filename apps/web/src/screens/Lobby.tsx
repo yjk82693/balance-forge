@@ -9,6 +9,7 @@ import { useManifest } from "../lib/assets";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 import { VersionToggle } from "../components/VersionToggle";
+import { ServerDown, useServerState } from "../components/ServerDown";
 import { getDemoVersion } from "../lib/demo";
 
 const SLOTS = 4;
@@ -45,6 +46,7 @@ export function Lobby({ gameId }: { gameId: string }) {
   const game = gameById(gameId);
   const { transport, status } = useTransport("display", gameId);
   const { room } = useRoom(transport);
+  const srv = useServerState(status);
   const [left, setLeft] = useState<string | null>(null);
   const prev = useRef(new Map<string, { name: string; connected: boolean }>());
 
@@ -70,6 +72,23 @@ export function Lobby({ gameId }: { gameId: string }) {
   }, [left]);
 
   if (!game) return <TopBar />;
+  if (srv === "unreachable") {
+    return (
+      <div className="screen">
+        <TopBar>
+          <a className="link-back" href="#/">
+            ← Games
+          </a>
+          <span className="spacer" />
+          <MockStatus online={false} />
+        </TopBar>
+        <main className="boundary">
+          <ServerDown onRetry={() => transport?.reconnect()} />
+        </main>
+      </div>
+    );
+  }
+  const connecting = !room;
   const code = room?.joinCode ?? "····";
   const url = joinUrl(code);
   const seats = room?.seats ?? [];
@@ -108,7 +127,7 @@ export function Lobby({ gameId }: { gameId: string }) {
           </h1>
           <div className="join-row">
             <div className="qr-card">
-              <Qr url={url} />
+              {connecting ? <div className="sk" style={{ aspectRatio: "1", width: "100%" }} aria-label="Getting the room ready" /> : <Qr url={url} />}
             </div>
             <div className="join-code">
               <p className="eyebrow text-2" style={{ color: "var(--text-2)" }}>
@@ -130,8 +149,9 @@ export function Lobby({ gameId }: { gameId: string }) {
               Players · {here} of {SLOTS} here
             </span>
           </div>
-          <ul className="chips" aria-live="polite">
-            {Array.from({ length: SLOTS }, (_, i) => {
+          <ul className="chips" aria-live="polite" aria-busy={connecting}>
+            {connecting && Array.from({ length: SLOTS }, (_, i) => <li key={`sk-${i}`} className="chip sk" style={{ animation: undefined }} />)}
+            {!connecting && Array.from({ length: SLOTS }, (_, i) => {
               const s = seats[i];
               if (!s) {
                 return (
@@ -163,7 +183,7 @@ export function Lobby({ gameId }: { gameId: string }) {
             })}
           </ul>
           <p className="caption lobby-note" aria-live="polite">
-            {left ?? "Bots fill empty slots when you start."}
+            {connecting ? "Getting the room ready…" : (left ?? "Bots fill empty slots when you start.")}
           </p>
           <button className="btn primary touch" aria-disabled={!canStart} onClick={start}>
             Start match

@@ -71,6 +71,10 @@ class Conn {
 
   private scheduleRetry() {
     clearTimeout(this.timer);
+    if (this.tries >= 5) {
+      this.setStatus("lost"); // stop hammering a server that is not there; reconnect() tries again
+      return;
+    }
     const wait = Math.min(5000, 400 * 2 ** this.tries++);
     this.timer = setTimeout(() => this.open(), wait);
   }

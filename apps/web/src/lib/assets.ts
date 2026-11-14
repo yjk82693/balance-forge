@@ -40,6 +40,19 @@ export function manifestUrl(path: string): string | undefined {
 export const heroPortraitPath = (hero: string) => `assets/common/heroes/${hero}/portrait.png`;
 export const heroFullBodyPath = (hero: string) => `assets/common/heroes/${hero}/full_body.png`;
 
+/** 'loading' until the manifest arrives, 'failed' if it can't be fetched. */
+export function useManifestState(): "loading" | "ready" | "failed" {
+  const [state, setState] = useState<"loading" | "ready" | "failed">(manifest ? "ready" : "loading");
+  useEffect(() => {
+    let alive = true;
+    loadManifest().then((x) => alive && setState(x ? "ready" : "failed"));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return state;
+}
+
 export function useManifest(): Manifest | null {
   const [m, setM] = useState<Manifest | null>(manifest);
   useEffect(() => {

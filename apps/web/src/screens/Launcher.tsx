@@ -1,7 +1,7 @@
 import { GAMES, type GameInfo } from "../lib/games";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { MockStatus, TopBar } from "../components/TopBar";
-import { manifestUrl, useManifest } from "../lib/assets";
+import { manifestUrl, useManifestState } from "../lib/assets";
 import { go } from "../lib/router";
 import { fixtureReportBaseline } from "../lib/fixtures";
 
@@ -14,7 +14,7 @@ function lastRunLine(g: GameInfo): string {
   return `Sample report · ${Math.round(top.winRate * 100)}% max · ${top.games.toLocaleString("en-US")} games`;
 }
 
-function Tile({ game }: { game: GameInfo }) {
+function Tile({ game, loading }: { game: GameInfo; loading: boolean }) {
   const planned = game.status === "planned";
   const art = manifestUrl(game.art);
   const open = () => !planned && go(`/lobby/${game.id}`);
@@ -25,7 +25,7 @@ function Tile({ game }: { game: GameInfo }) {
       onClick={open}
       aria-disabled={planned}
     >
-      <div className="tile-art" style={art ? { backgroundImage: `url(${art})` } : undefined}>
+      <div className={`tile-art${loading ? " sk" : ""}`} style={art ? { backgroundImage: `url(${art})` } : undefined}>
         <div className="tile-scrim" />
         <div className="tile-portrait">
           <HeroPortrait hero={game.portraitHero} size={64} />
@@ -62,7 +62,7 @@ function Tile({ game }: { game: GameInfo }) {
 }
 
 export function Launcher() {
-  useManifest();
+  const ms = useManifestState();
   return (
     <div className="screen">
       <TopBar>
@@ -73,9 +73,17 @@ export function Launcher() {
         <p className="eyebrow">Bots play · AI patches · You verify</p>
         <h1 className="h1">Pick a game to test</h1>
         <div className="grad-bar" />
+        {ms === "failed" && (
+          <div className="notice art-failed-note" role="alert">
+            <span>Couldn't load the game art. The games still work.</span>
+            <button className="btn secondary" onClick={() => location.reload()}>
+              Reload
+            </button>
+          </div>
+        )}
         <div className="tiles">
           {GAMES.map((g) => (
-            <Tile key={g.id} game={g} />
+            <Tile key={g.id} game={g} loading={ms === "loading"} />
           ))}
         </div>
       </main>

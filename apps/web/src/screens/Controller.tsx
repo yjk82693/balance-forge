@@ -8,6 +8,7 @@ import { useManifest } from "../lib/assets";
 import { go } from "../lib/router";
 import { InputPipeline } from "../lib/input";
 import { useGamepad } from "../lib/gamepad";
+import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
@@ -49,6 +50,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   useEffect(() => () => pipeline?.dispose(), [pipeline]);
 
   const gameId = room?.gameId ?? config?.gameId ?? "hero_arena";
+  const srv = useServerState(status);
   const online = status === "online";
   const playing = !!seat && !!joined;
   const padName = useGamepad(pipeline, playing && online);
@@ -105,6 +107,8 @@ export function Controller({ initialCode }: { initialCode: string }) {
         busy={!!joined && !error}
         error={error ? (ERRORS[error.code] ?? "Something went wrong. Try again.") : null}
         offline={status === "lost"}
+        srv={srv}
+        onRetry={() => transport?.reconnect()}
       />
     );
   }
@@ -219,15 +223,24 @@ function JoinForm(props: {
   busy: boolean;
   error: string | null;
   offline: boolean;
+  srv: "ok" | "connecting" | "unreachable";
+  onRetry: () => void;
 }) {
-  const { profile, onChange, onJoin, busy, error, offline, gameId } = props;
+  const { profile, onChange, onJoin, busy, error, offline, gameId, srv, onRetry } = props;
+  if (srv === "unreachable") {
+    return (
+      <div className="phone join">
+        <ServerDown compact onRetry={onRetry} />
+      </div>
+    );
+  }
   const ok = profile.code.length >= 4;
   return (
     <form
       className="phone join"
       onSubmit={(e) => {
         e.preventDefault();
-        if (ok && !busy) onJoin(profile);
+        if (ok && !busy && props.srv === "ok") onJoin(profile);
       }}
     >
       <h1 className="h2">Pick your hero</h1>
@@ -285,9 +298,9 @@ function JoinForm(props: {
           {error}
         </p>
       )}
-      {offline && <p className="form-error">Lost the connection. Reload to try again.</p>}
-      <button className="btn primary touch" type="submit" aria-disabled={!ok || busy} aria-busy={busy}>
-        {busy ? "Joining…" : "Join"}
+      {offline && <p className="form-error">Lost the connection. Tap Join to try again.</p>}
+      <button className="btn primary touch" type="submit" aria-disabled={!ok || busy || srv === "connecting"} aria-busy={busy || srv === "connecting"}>
+        {srv === "connecting" ? "Connecting…" : busy ? "Joining…" : "Join"}
       </button>
     </form>
   );

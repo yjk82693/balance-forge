@@ -4,6 +4,7 @@ import { gameById } from "../lib/games";
 import { heroName } from "../lib/heroes";
 import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardsCanvas } from "../components/CardsCanvas";
+import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useTransport } from "../mock/transport";
@@ -19,6 +20,7 @@ export function Arena({ gameId }: { gameId: string }) {
   const game = gameById(gameId);
   const { transport, status } = useTransport("display");
   const { room, observation, result } = useRoom(transport);
+  const srv = useServerState(status);
   const arenaObs = observation && isArenaPayload(observation.payload) ? (observation as Observation) : null;
   const cardsObs = observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
@@ -46,6 +48,24 @@ export function Arena({ gameId }: { gameId: string }) {
             {gameId !== "hero_cards" && <span className="badge">sample replay</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
+          {srv === "unreachable" ? (
+            <div className="stage-overlay">
+              <ServerDown compact onRetry={() => transport?.reconnect()} />
+            </div>
+          ) : (
+            !observation && (
+              <div className="stage-overlay" aria-busy="true">
+                <div className="panel">
+                  <p className="eyebrow">{srv === "connecting" ? "Connecting" : "Waiting"}</p>
+                  <p className="h3">{srv === "connecting" ? "Reaching the server…" : "Waiting for the match to start."}</p>
+                  <p className="text-2">Start it from the lobby.</p>
+                  <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => go(`/lobby/${gameId}`)}>
+                    Back to lobby
+                  </button>
+                </div>
+              </div>
+            )
+          )}
           {result && (
             <div className="result-card panel" role="status">
               <p className="eyebrow">Match over</p>
