@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type SceneId = "match" | "intent" | "bots" | "profile" | "patch" | "replay" | "verdict" | "history";
+export type SceneId =
+  | "match"
+  | "intent"
+  | "bots"
+  | "profile"
+  | "patch"
+  | "replay"
+  | "verdict"
+  | "cards"
+  | "history";
 
 export interface Scene {
   id: SceneId;
@@ -21,13 +30,15 @@ const MIDDLE_SCENES: Scene[] = [
 /**
  * The flow. The design intent chart comes before the bots when the designer wants anything but even. The hero profile
  * comes between the result and the patch when the run has a diagnosis; the version history comes last when there is
- * one to show, otherwise the verdict is the end.
+ * one to show, otherwise the verdict is the end. A Hero Cards result adds one scene after the verdict.
  */
-export function scenesFor(opts: { intent: boolean; profile: boolean; history: boolean }): Scene[] {
-  const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history ? 8 : 0 };
+export function scenesFor(opts: { intent: boolean; profile: boolean; history: boolean; cards?: boolean }): Scene[] {
+  const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history || opts.cards ? 8 : 0 };
+  // Optional: only when a Hero Cards result exists (the same platform, a second genre).
+  const cards: Scene[] = opts.cards ? [{ id: "cards", title: "Same platform, a card game", min: opts.history ? 10 : 0 }] : [];
   const history: Scene[] = opts.history ? [{ id: "history", title: "Version history", min: 0 }] : [];
   const first = [MATCH_SCENE, ...(opts.intent ? [INTENT_SCENE] : []), BOTS_SCENE];
-  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...MIDDLE_SCENES, verdict, ...history];
+  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...MIDDLE_SCENES, verdict, ...cards, ...history];
 }
 
 const TICK_MS = 250;

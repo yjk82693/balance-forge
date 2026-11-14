@@ -20,6 +20,8 @@ import { shouldStartOnMount } from "../lib/presentStart";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
 import { useRunner } from "../lib/useRunner";
+import { loadRun } from "../lib/dashboardData";
+import { heroName as deckLabel } from "../lib/heroes";
 import { HeroProfile } from "../components/HeroProfile";
 import { VersionHistory } from "../components/VersionHistory";
 import { useManifest } from "../lib/assets";
@@ -83,9 +85,11 @@ export function Present({ auto }: { auto: boolean }) {
   const hasHistory = !!history && (history.list.versions.length > 1 || designerCases(history).length > 0);
   const intent = useIntent();
   const wantsIntent = hasIntent(intent);
+  // The last Hero Cards result of this tab, if there is one: it adds one scene (never a request).
+  const cardsRun = useMemo(() => (mock ? null : loadRun("hero_cards")), [mock]);
   const scenes = useMemo(
-    () => scenesFor({ intent: wantsIntent, profile: hasProfile, history: hasHistory }),
-    [wantsIntent, hasProfile, hasHistory],
+    () => scenesFor({ intent: wantsIntent, profile: hasProfile, history: hasHistory, cards: !!cardsRun }),
+    [wantsIntent, hasProfile, hasHistory, cardsRun],
   );
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
   const source = sourceLabel(run, !!notice || (!lastRun && !!recorded), mock);
@@ -122,6 +126,7 @@ export function Present({ auto }: { auto: boolean }) {
             error={error}
             notice={notice}
             history={history}
+            cardsRun={cardsRun}
             onRun={replace}
             onStart={restart}
           />
@@ -145,17 +150,20 @@ interface BodyProps {
   error: string | null;
   notice: string | null;
   history: HistoryState | null;
+  cardsRun: PlaytestRun | null;
   onRun: (next: PlaytestRun) => void;
   /** start a new live run (R, or the button on the bots scene) */
   onStart: () => void;
 }
 
-function SceneBody({ id, run, busy, live, elapsed, error, notice, history, onRun, onStart }: BodyProps) {
+function SceneBody({ id, run, busy, live, elapsed, error, notice, history, cardsRun, onRun, onStart }: BodyProps) {
   switch (id) {
     case "intent":
       return <IntentScene />;
     case "history":
       return <HistoryScene history={history} />;
+    case "cards":
+      return <CardsScene run={cardsRun} />;
     case "profile":
       return <ProfileScene run={run} />;
     case "match":
@@ -324,7 +332,9 @@ function BigRate({ run }: { run: PlaytestRun }) {
   );
 }
 
-function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: Omit<BodyProps, "id" | "history" | "onRun">) {
+type BotsProps = Omit<BodyProps, "id" | "history" | "cardsRun" | "onRun">;
+
+function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: BotsProps) {
   if (!busy && !run && !error) {
     return (
       <section className="present-card">
@@ -361,6 +371,48 @@ function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: Omit<Bo
         </button>
       </section>
     </div>
+  );
+}
+
+/** A Hero Cards result in the same shape as the arena's: the headline and the card change, big. */
+function CardsScene({ run }: { run: PlaytestRun | null }) {
+  if (!run) return null;
+  const stats = botRows(run.baseline.rows).map(rowStats);
+  const s = stats.find((x) => x.row.dimension === pickTargetDimension(stats));
+  if (!s) return null;
+  const facts = buildFacts(run, null);
+  const after = run.patched?.rows.find((r) => r.dimension === s.row.dimension);
+  const v = run.verdict && !run.fair ? VERDICT_COPY[run.verdict.verdict] : null;
+  return (
+    <section className="present-card">
+      <p className="present-sub">Same platform, a card game</p>
+      <p className="present-names">
+        {deckLabel(s.matchup.a)} <span className="text-2">vs</span> {deckLabel(s.matchup.b)}
+      </p>
+      <p className="present-big">
+        {pct(s.rate)}%
+        {after && (
+          <>
+            {" "}
+            <span className="text-2">→</span> {pct(after.winRate)}%
+          </>
+        )}
+      </p>
+      <p className="present-mid">{headlineFor(s)}</p>
+      {facts.patch.slice(0, 2).map((c) => (
+        <p key={c.path} className="present-change">
+          {c.field} <span className="old">{c.old ?? "—"}</span> → <span className="new">{c.next}</span>{" "}
+          <span className="badge origin">{c.origin}</span>
+        </p>
+      ))}
+      {v && (
+        <p className={`present-verdict status ${v.cls}`} role="status">
+          <span className="dot" />
+          {v.label}
+        </p>
+      )}
+      {facts.fallbackNote && <p className="present-sub present-fallback">{facts.fallbackNote}</p>}
+    </section>
   );
 }
 

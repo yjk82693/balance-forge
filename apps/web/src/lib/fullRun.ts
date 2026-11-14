@@ -18,6 +18,7 @@ import type {
   VerdictRate,
   VerdictTarget,
 } from "./api";
+import { cardDiagnosisFrom } from "./cardDiagnosis";
 import { parseTimeline } from "./replaySource";
 
 const ORIGINS: PatchOrigin[] = ["gemini", "grok", "fallback", "fake", "manual"];
@@ -275,6 +276,7 @@ export function runFromFull(raw: unknown): PlaytestRun | null {
     runId: top.reportId,
     fair: raw.fair === true ? true : undefined,
     diagnosis: diagnosisFrom(raw.diagnosis) ?? undefined,
+    cardDiagnosis: cardDiagnosisFrom(raw.diagnosis) ?? undefined,
     evidence: evidenceFrom(raw.evidence) ?? undefined,
     replay: replayFrom(raw.replay),
   };
