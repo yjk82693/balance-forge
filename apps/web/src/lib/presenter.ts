@@ -9,6 +9,7 @@ export type SceneId =
   | "replay"
   | "verdict"
   | "cards"
+  | "solo"
   | "history";
 
 export interface Scene {
@@ -37,16 +38,22 @@ export function scenesFor(opts: {
   profile: boolean;
   history: boolean;
   cards?: boolean;
+  /** a Sepia Tentacle Run result exists: one more scene after the card one */
+  solo?: boolean;
   /** false in the static build: a replay needs the server */
   replay?: boolean;
 }): Scene[] {
-  const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history || opts.cards ? 8 : 0 };
+  const verdict: Scene = { id: "verdict", title: "Verdict", min: opts.history || opts.cards || opts.solo ? 8 : 0 };
   // Optional: only when a Hero Cards result exists (the same platform, a second genre).
-  const cards: Scene[] = opts.cards ? [{ id: "cards", title: "Same platform, a card game", min: opts.history ? 10 : 0 }] : [];
+  const more = opts.history || opts.solo;
+  const cards: Scene[] = opts.cards ? [{ id: "cards", title: "Same platform, a card game", min: more ? 10 : 0 }] : [];
+  const solo: Scene[] = opts.solo
+    ? [{ id: "solo", title: "Same platform, a solo action game", min: opts.history ? 10 : 0 }]
+    : [];
   const history: Scene[] = opts.history ? [{ id: "history", title: "Version history", min: 0 }] : [];
   const first = [MATCH_SCENE, ...(opts.intent ? [INTENT_SCENE] : []), BOTS_SCENE];
   const middle = opts.replay === false ? MIDDLE_SCENES.filter((s) => s.id !== "replay") : MIDDLE_SCENES;
-  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...middle, verdict, ...cards, ...history];
+  return [...first, ...(opts.profile ? [PROFILE_SCENE] : []), ...middle, verdict, ...cards, ...solo, ...history];
 }
 
 const TICK_MS = 250;

@@ -42,3 +42,14 @@ test("the scene reads the engine payload, and draws arena points on the canvas",
   assert.equal(activePips(0, 3), 3);
   assert.equal(activePips(2, 3), 1);
 });
+
+import { scenesFor } from "../src/lib/presenter.ts";
+
+test("the solo action scene comes after the card scene and before the history, only with a tentacle result", () => {
+  const ids = (o) => scenesFor({ intent: false, profile: false, history: true, ...o }).map((s) => s.id);
+  assert.ok(!ids({ cards: true }).includes("solo"));
+  const both = ids({ cards: true, solo: true });
+  assert.ok(both.indexOf("solo") > both.indexOf("cards"));
+  assert.ok(both.indexOf("solo") < both.indexOf("history"));
+  assert.ok(ids({ solo: true }).indexOf("solo") > ids({ solo: true }).indexOf("verdict"));
+});

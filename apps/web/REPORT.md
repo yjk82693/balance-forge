@@ -619,3 +619,6 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Checked with a dev-only stub scene (`#/arena/tentacle_run?stub=1`, only under `npm run dev`), `?mock=1` sample data
   (labelled) and the example body served through the real run path. Not yet against the live engine room.
 - The static build offers no Tentacle Run (no recorded run).
+
+- #/present gets one more optional scene "Same platform, a solo action game" (after the card scene) when this tab holds a
+  tentacle_run result: the flagged wave before to after, the patch and the verdict. No request; stored per game.

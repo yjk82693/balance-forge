@@ -13,7 +13,9 @@ import { heroName } from "../lib/heroes";
 import { loadJustPlayed } from "../lib/justPlayed";
 import { loadSkill, policyFor } from "../lib/botPolicy";
 import { currentDiagnose, currentMatchup } from "../lib/matchup";
-import { buildFacts, needsMoreGames } from "../lib/resultCard";
+import { buildFacts, fallbackNote, needsMoreGames } from "../lib/resultCard";
+import { originLabel } from "../lib/fullRun";
+import { waveChangeLabel, waveName } from "../lib/tentacleDash";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
 import { IS_STATIC } from "../lib/staticMode";
@@ -96,6 +98,8 @@ export function Present({ auto }: { auto: boolean }) {
     () => (IS_STATIC ? staticCards : mock ? null : loadRun("hero_cards")),
     [mock, staticCards],
   );
+  // And the last Sepia Tentacle Run result of this tab: one more scene, no request.
+  const soloRun = useMemo(() => (IS_STATIC || mock ? null : loadRun("tentacle_run")), [mock]);
   const scenes = useMemo(
     () =>
       scenesFor({
@@ -103,9 +107,10 @@ export function Present({ auto }: { auto: boolean }) {
         profile: hasProfile,
         history: hasHistory,
         cards: !!cardsRun,
+        solo: !!soloRun?.tentacle,
         replay: !IS_STATIC,
       }),
-    [wantsIntent, hasProfile, hasHistory, cardsRun],
+    [wantsIntent, hasProfile, hasHistory, cardsRun, soloRun],
   );
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);
   const source = sourceLabel(run, !!notice || (!lastRun && !!recorded), mock);
@@ -143,6 +148,7 @@ export function Present({ auto }: { auto: boolean }) {
             notice={notice}
             history={history}
             cardsRun={cardsRun}
+            soloRun={soloRun}
             onRun={replace}
             onStart={restart}
           />
@@ -167,12 +173,14 @@ interface BodyProps {
   notice: string | null;
   history: HistoryState | null;
   cardsRun: PlaytestRun | null;
+  soloRun: PlaytestRun | null;
   onRun: (next: PlaytestRun) => void;
   /** start a new live run (R, or the button on the bots scene) */
   onStart: () => void;
 }
 
-function SceneBody({ id, run, busy, live, elapsed, error, notice, history, cardsRun, onRun, onStart }: BodyProps) {
+function SceneBody(props: BodyProps) {
+  const { id, run, busy, live, elapsed, error, notice, history, cardsRun, soloRun, onRun, onStart } = props;
   switch (id) {
     case "intent":
       return <IntentScene />;
@@ -180,6 +188,8 @@ function SceneBody({ id, run, busy, live, elapsed, error, notice, history, cards
       return <HistoryScene history={history} />;
     case "cards":
       return <CardsScene run={cardsRun} />;
+    case "solo":
+      return <SoloScene run={soloRun} />;
     case "profile":
       return <ProfileScene run={run} />;
     case "match":
@@ -348,7 +358,7 @@ function BigRate({ run }: { run: PlaytestRun }) {
   );
 }
 
-type BotsProps = Omit<BodyProps, "id" | "history" | "cardsRun" | "onRun">;
+type BotsProps = Omit<BodyProps, "id" | "history" | "cardsRun" | "soloRun" | "onRun">;
 
 function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: BotsProps) {
   if (!busy && !run && !error) {
@@ -387,6 +397,49 @@ function BotsScene({ run, busy, live, elapsed, error, notice, onStart }: BotsPro
         </button>
       </section>
     </div>
+  );
+}
+
+/** A Sepia Tentacle Run result: the flagged wave before and after the patch, the patch and the verdict, big. */
+function SoloScene({ run }: { run: PlaytestRun | null }) {
+  const t = run?.tentacle;
+  if (!run || !t) return null;
+  const f = t.flagged;
+  const after = f ? t.patchedWaves.find((w) => w.wave === f.wave)?.clearRate : null;
+  const v = run.verdict && !run.fair ? VERDICT_COPY[run.verdict.verdict] : null;
+  const note = fallbackNote(run);
+  return (
+    <section className="present-card">
+      <p className="present-sub">Same platform, a solo action game</p>
+      <p className="present-names">{f ? waveName(f.wave) : "Every wave"}</p>
+      <p className="present-big">
+        {f ? `${pct(f.clearRate)}%` : t.winRate === null ? "—" : `${pct(t.winRate)}%`}
+        {f && after != null && (
+          <>
+            {" "}
+            <span className="text-2">→</span> {pct(after)}%
+          </>
+        )}
+      </p>
+      <p className="present-mid">
+        {f
+          ? `${waveName(f.wave)} clears ${pct(f.clearRate)}% of the time; the target is ${pct(f.target)}%`
+          : "Within target"}
+      </p>
+      {(run.proposal?.changes ?? []).slice(0, 2).map((c) => (
+        <p key={c.path} className="present-change">
+          {waveChangeLabel(c.path) ?? c.label ?? c.path} <span className="old">{c.old ?? "—"}</span> →{" "}
+          <span className="new">{c.new}</span> <span className="badge origin">{originLabel(run.proposal!.origin)}</span>
+        </p>
+      ))}
+      {v && (
+        <p className={`present-verdict status ${v.cls}`} role="status">
+          <span className="dot" />
+          {v.label}
+        </p>
+      )}
+      {note && <p className="present-sub present-fallback">{note}</p>}
+    </section>
   );
 }
 
