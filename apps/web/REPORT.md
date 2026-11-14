@@ -551,3 +551,9 @@ else the newest accepted one; "Broken" selects the root version (and the room is
 The version is named beside the toggle ("version 9b0f5d2 · Bari · Health 540 → 486, ..."); with no accepted version
 "Patched" is disabled with a hint. The dashboard toggle is a view switch and is labelled "View". Logic and test:
 `src/lib/roomVersion.ts`, `apps/web/test/room-version.test.mjs`.
+
+## One empty state before a run
+
+Opening the dashboard (arena or cards) without a run shows one panel, "Run the bots to see the verdict", with the Run
+button, instead of the per-section empty lines and the view toggle; the sections and the toggle appear with the first
+result. The recorded roster stays on the right (arena).

@@ -14,6 +14,7 @@ import { BotSkillPicker } from "./BotSkillPicker";
 import { Collapsible } from "./Collapsible";
 import { CompareReplay } from "./CompareReplay";
 import { DesignerSection } from "./DesignerCard";
+import { EmptyResult } from "./EmptyResult";
 import { FitStage } from "./FitStage";
 import { GameSwitch } from "./GameSwitch";
 import { HeadlineStrip } from "./HeadlineStrip";
@@ -255,8 +256,8 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
   );
   const empty = (
     <>
-      <p className="strip-mid">Pick a matchup and let the bots play.</p>
-      <p>The result appears here: the win rate, what was intended and the verdict.</p>
+      <p className="strip-mid">Pick a matchup above.</p>
+      <p>The win rate, what was intended and the verdict appear here.</p>
     </>
   );
   return (
@@ -334,6 +335,8 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
           <div className="d2-left">
             {ctx.busy ? (
               <ResultSkeleton live={ctx.live} elapsed={ctx.elapsed} />
+            ) : !run ? (
+              <EmptyResult onRun={ctx.onRun} />
             ) : (
               sections.map((sec) => (
                 <Collapsible key={sec.id} title={sec.title} note={sec.note} defaultOpen={sec.id === "patch"}>
