@@ -2,11 +2,12 @@ import type { MatchResult, PatchProposal, Report, ReportRow } from "./contract";
 import { fixturePatch } from "./fixtures";
 import { mockReport } from "./mockReport";
 import { isProgressMsg, mockProgress, type ProgressMsg } from "./progress";
+import { runFromFull } from "./fullRun";
 import { reportFromResults, type RunInfo } from "./reportFromResults";
 import { createTransport } from "../mock/transport";
 import { isMockMode } from "../mock/types";
 
-export type PatchOrigin = "gemini" | "fallback" | "manual";
+export type PatchOrigin = "gemini" | "grok" | "fallback" | "fake" | "manual";
 export type VerdictKind = "accepted" | "rejected" | "inconclusive";
 
 export interface Change {
@@ -35,6 +36,8 @@ export interface PlaytestRun {
   proposal?: Proposal;
   patched?: Report;
   verdict?: Verdict;
+  /** id of the run, when the server gave one */
+  runId?: string;
   /** GET /v1/replay/:matchId for one finished bot match: the stored seed and accepted inputs, not views */
   replay?: ReplayInfo;
   /** client-side flag: data came from fixtures (?mock=1), not from a run */
@@ -97,31 +100,70 @@ export async function runPlaytest(
   onProgress?: (p: ProgressMsg) => void,
 ): Promise<PlaytestRun> {
   if (isMockMode()) {
-    const final = mockReport("broken");
-    await new Promise<void>((resolve, reject) => {
-      const stop = mockProgress(final, (p) => {
-        onProgress?.(p);
-        if (p.matchesDone >= p.totalMatches) resolve();
-      });
-      signal?.addEventListener("abort", () => {
-        stop();
-        reject(new DOMException("aborted", "AbortError"));
-      });
-    });
+    // Baseline run, then the holdout run on the patched data, like the real /full endpoint.
+    await playMockPhase(mockReport("broken"), "baseline", onProgress, signal);
+    await playMockPhase(mockReport("patched"), "holdout", onProgress, signal);
     return {
       sample: true,
       baseline: mockReport("broken"),
       patched: mockReport("patched"),
       proposal: {
         patch: fixturePatch,
-        origin: "manual",
+        origin: "fake",
         changes: [{ path: "/moves/1/power", label: "Bari · Spirit arrow power", old: 100, new: 72 }],
         validation: { ok: true, errors: [] },
       },
       verdict: { verdict: "accepted", reasons: ["sample verdict for the fixtures; not computed"] },
     };
   }
-  return runRealPlaytest(matches, signal);
+  return (await runFullPlaytest(signal)) ?? runRealPlaytest(matches, signal);
+}
+
+/**
+ * POST /v1/playtest/full {gameId, roster: true}: baseline run, proposal, validation, holdout run on the patched data
+ * and a verdict, in one request (progress streams over /ws meanwhile). Returns null when the server has no such
+ * endpoint (404/405), so the caller can fall back to the plain bot run.
+ */
+async function runFullPlaytest(signal?: AbortSignal): Promise<PlaytestRun | null> {
+  let res: Response;
+  try {
+    res = await fetch("/v1/playtest/full", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ gameId: "hero_arena", roster: true }),
+      signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new ApiError("Couldn't reach the server.", "network");
+  }
+  if (res.status === 404 || res.status === 405) return null;
+  if (!res.ok) return failFrom(res);
+  const run = runFromFull(await readJson<unknown>(res, "run reply"));
+  if (!run) throw new ApiError("The server's reply had no report.", "shape");
+  return run;
+}
+
+function playMockPhase(
+  report: Report,
+  phase: "baseline" | "holdout",
+  onProgress?: (p: ProgressMsg) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const stop = mockProgress(
+      report,
+      (p) => {
+        onProgress?.(p);
+        if (p.matchesDone >= p.totalMatches) resolve();
+      },
+      { phase, steps: phase === "baseline" ? 40 : 20 },
+    );
+    signal?.addEventListener("abort", () => {
+      stop();
+      reject(new DOMException("aborted", "AbortError"));
+    });
+  });
 }
 
 const MESSAGES: Record<string, string> = {

@@ -4,6 +4,7 @@ import { VERDICT_COPY, fmtSeconds, headlineFor, n, outliersFirst, pickTargetDime
 import type { LiveState } from "../lib/useRunner";
 import { heroName } from "../lib/heroes";
 import { pct } from "../lib/stats";
+import { phaseName } from "./LivePanel";
 import { PatchCompare } from "./PatchCompare";
 import { WinRateChart, rowStats } from "./WinRateChart";
 
@@ -80,8 +81,9 @@ function LiveReport({ live }: { live: LiveState }) {
   return (
     <>
       <h1 className="h2">Bots are playing…</h1>
+      {live.phase && <p className="eyebrow">{phaseName(live.phase)}</p>}
       <p className="kpi">
-        {n(live.done)} / {n(live.total)} matches
+        {n(live.done)} / {live.total ? n(live.total) : "…"} matches
       </p>
       <hr className="divider" />
       {live.rows ? <WinRateChart rows={live.rows} dense /> : <div className="skeleton" aria-hidden="true" />}

@@ -58,6 +58,8 @@ export interface ReportRow {
   uses: number;
   opportunities: number;
   outlier: boolean;
+  /** mirror matchups only: games won by the first seat */
+  seatWins?: number;
 }
 
 export interface Report {

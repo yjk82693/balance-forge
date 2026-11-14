@@ -145,3 +145,23 @@ Checked again after the live-server pass: `npm test` 46 of 46 pass (43 s), `npm 
 **Changed:** removed one unused export (`getDemoVersion`, left over when the lobby stopped sending the data version).
 
 **Still blocked / open** (unchanged, see "Live server check" and `CHANGE_REQUEST.md`): replay views and a patch proposal/verdict API need the engine; the Hero Cards screens and floating damage numbers were not watched against the live server; no physical phone or LAN test.
+
+---
+
+# Round 6: the live dashboard
+
+Built against the shared interface in the task (`POST /v1/playtest/full`). Neither that endpoint nor `/v1/replay/:id/views`
+nor bot start exists in the repo yet (checked `main` and the engine and analysis branches at 6745e53), so none of this was
+run against a real server; it was checked with `?mock=1` (which now follows the same shapes) and with a pure-function test
+of the response mapping.
+
+## Step 1: Run calls /v1/playtest/full
+- The button (now "Let the bots play", since the run size is the server's choice) calls `POST /v1/playtest/full
+  {gameId: "hero_arena", roster: true}`. A 404/405 falls back to the older pairs run, so a server without the endpoint
+  still works.
+- `lib/fullRun.ts` maps the response to the page: `baseline`, `proposal` (+ `changes`), the top-level `validation`,
+  `patched` (with `patchedDataHash` and `holdoutSeedSetId`), `verdict`, `humanMatches`, `elapsedMs`, `runId`. Bad rows
+  (wins above games, NaN) are dropped; missing counters get neutral defaults; a bare Report is accepted as a
+  baseline-only run. A script checked this on a response built from the interface text.
+- Origin badges: `gemini`, `grok`, `fallback`, `manual` as is; `fake` is shown as "offline sample" with a tooltip saying
+  no model was called.

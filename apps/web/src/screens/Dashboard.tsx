@@ -11,9 +11,7 @@ import { VersionToggle } from "../components/VersionToggle";
 import { rowStats } from "../components/WinRateChart";
 import { useManifest } from "../lib/assets";
 import {
-  MATCHES,
   SAMPLE_HUMAN_ID,
-  n,
   pickTargetDimension,
   readTheme,
   sampleRows,
@@ -81,7 +79,7 @@ export function Dashboard() {
           <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
           <button className="btn primary" onClick={start} aria-busy={busy} aria-disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            {busy ? "Bots are playing…" : `Run ${n(MATCHES)} bot matches`}
+            {busy ? "Bots are playing…" : "Let the bots play"}
           </button>
           <button
             className="btn secondary icon-btn"
@@ -116,7 +114,7 @@ export function Dashboard() {
               active={showPatched ? "patched" : "broken"}
               sample
             />
-            <LivePanel busy={busy} done={live.done} total={live.total} />
+            <LivePanel busy={busy} done={live.done} total={live.total} phase={live.phase} />
             <section className="panel matches-panel" aria-labelledby="matches-title">
               <div className="panel-head">
                 <span id="matches-title" className="eyebrow">

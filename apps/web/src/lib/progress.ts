@@ -19,6 +19,8 @@ export interface MatchupProgress {
 export interface ProgressMsg {
   runId?: string;
   gameId?: string;
+  /** "baseline" on the data as it is, then "holdout" on the patched data (POST /v1/playtest/full) */
+  phase?: "baseline" | "holdout";
   dataHash?: string;
   matchesDone: number;
   totalMatches: number;
@@ -72,7 +74,7 @@ function xorshift32(x: number): number {
 export function mockProgress(
   final: Report,
   onTick: (p: ProgressMsg) => void,
-  opts: { steps?: number; stepMs?: number } = {},
+  opts: { steps?: number; stepMs?: number; phase?: "baseline" | "holdout" } = {},
 ): () => void {
   const steps = opts.steps ?? 50;
   const total = final.validMatches;
@@ -107,6 +109,7 @@ export function mockProgress(
       };
     });
     onTick({
+      phase: opts.phase,
       matchesDone: i === steps ? total : Math.round((total * i) / steps),
       totalMatches: total,
       matchups,

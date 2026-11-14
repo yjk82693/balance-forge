@@ -1,4 +1,5 @@
 import type { Proposal } from "../lib/api";
+import { originHint, originLabel } from "../lib/fullRun";
 import { describePath } from "./PatchCompare";
 
 /** The patch in one card: what changed (field, old -> new), why (the model's rationale), and where it came from. */
@@ -17,8 +18,8 @@ export function DiffCard({ proposal, sample }: { proposal: Proposal; sample?: bo
         <span id="diff-title" className="eyebrow">
           Suggested patch
         </span>
-        <span className="badge origin" title="Where this proposal came from">
-          {proposal.origin}
+        <span className="badge origin" title={originHint(proposal.origin)}>
+          {originLabel(proposal.origin)}
         </span>
         {sample && <span className="badge">sample</span>}
         <span className="meta">
