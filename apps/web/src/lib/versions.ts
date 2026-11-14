@@ -288,6 +288,19 @@ export async function makeCurrent(dataHash: string, signal?: AbortSignal): Promi
   return done === null ? null : fetchVersions(signal);
 }
 
+/** The auto run's output file also has `needs_designer`: /v1/playtest/results/<runId>-auto.json ([] if unreadable). */
+async function designerFromResults(runId: string, signal?: AbortSignal): Promise<DesignerCase[]> {
+  try {
+    const res = await fetch(`/v1/playtest/results/${encodeURIComponent(runId)}-auto.json`, { signal });
+    if (!res.ok) return [];
+    const body: unknown = await res.json();
+    return isObject(body) ? parseDesigner(body.needs_designer ?? body.needsDesigner) : [];
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    return [];
+  }
+}
+
 /**
  * POST /v1/playtest/auto { gameId, fromHash?, rounds, requireApproval }: rounds of measure, propose, validate, holdout.
  * `approval` is the screen's "Ask me before each version" toggle and goes out as `requireApproval`.
@@ -302,7 +315,9 @@ export async function runAutoBalance(
   const done = await call<unknown>("/v1/playtest/auto", JSON_POST(body), signal);
   if (done === null) return null;
   // The hand-overs ride on the auto result; the list is read again for the versions themselves.
-  const cases = isObject(done) ? parseDesigner(done.needs_designer ?? done.needsDesigner) : [];
+  let cases = isObject(done) ? parseDesigner(done.needs_designer ?? done.needsDesigner) : [];
+  const runId = isObject(done) && typeof done.runId === "string" ? done.runId : undefined;
+  if (!cases.length && runId) cases = await designerFromResults(runId, signal);
   saveDesigner(cases);
   const list = await fetchVersions(signal);
   return list && cases.length ? { ...list, needsDesigner: cases } : list;

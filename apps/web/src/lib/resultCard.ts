@@ -146,13 +146,16 @@ export function buildFacts(run: PlaytestRun, roster: PlaytestRun | null): Result
   };
 }
 
+const THIN_HOLDOUT = /^(.+?): holdout has (\d+) games?; (\d+) needed/;
+const THIN_HOLDOUT_OLD = /^(.+?): only (\d+) games? after the patch \(need (\d+)\)/;
+
 /**
- * The analysis words a sample-size cause as "<matchup>: only N games after the patch (need M)". Said plainly:
- * "Bari vs Real Armor needs more games: 100 of 200". Null when no reason names one.
+ * The analysis words a sample-size cause as "<matchup>: holdout has N games; M needed" (earlier: "<matchup>: only N
+ * games after the patch (need M)"). Said plainly: "Bari vs Real Armor needs more games: 100 of 200". Null if none.
  */
 export function needsMoreGames(reasons: string[]): string | null {
   for (const r of reasons) {
-    const m = r.match(/^(.+?): only (\d+) games? after the patch \(need (\d+)\)/);
+    const m = r.match(THIN_HOLDOUT) ?? r.match(THIN_HOLDOUT_OLD);
     if (m) return `${name(m[1])} needs more games: ${m[2]} of ${m[3]}`;
   }
   return null;
