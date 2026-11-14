@@ -234,9 +234,9 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
   const stats = bots.map(rowStats);
   const shown = stats.find((s) => s.row.dimension === pickTargetDimension(stats));
   const trend = shown && shown.matchup.b ? <TrendSection a={shown.matchup.a} b={shown.matchup.b} /> : null;
-  // The static build shows what the recorded data has: no diagnosis, evidence, replay or match list (need a server).
+  // The static build shows what the recorded run has: no replay or match list (they need a server).
   const sections = useMemo(
-    () => sectionsFor(ctx, report, trend).filter((s) => !IS_STATIC || ["patch", "targets"].includes(s.id)),
+    () => sectionsFor(ctx, report, trend).filter((s) => !IS_STATIC || ["patch", "diagnosis", "targets", "evidence"].includes(s.id)),
     [ctx, report, trend],
   );
   // The pickers and the headline name the same pair. In sample mode the picker is locked to the sample's pair; with a

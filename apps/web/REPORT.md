@@ -580,13 +580,21 @@ base that works from any static host. In it:
   page never calls the server; `?mock=1` is ignored and no sample data is shown.
 - The front page is the dashboard, with the recorded roster on the right and one recorded result: the newest accepted,
   approved patch of the committed auto-balance history on top of the recorded roster report (`lib/staticRaw.ts`).
-  Today that is **Bari vs Daewi** (99% to 93%, gemini, accepted): the committed history has no Bari vs Real Armor patch.
-  A whole `/full` response committed as `services/runner/recorded-full-run.json` is used as it is when it exists.
+  Now `services/runner/recorded-full-run.json` (the whole Bari vs Real Armor /full response, with diagnosis) is used as
+  it is; without it the build falls back to the newest approved patch of the auto-balance history (Bari vs Daewi).
+  Bari vs Daewi stays reachable as that history on the Versions screen. Hero Cards opens on
+  `recorded-cards-run.json` (Nightcrow 36.0% to 55.5%), and the presenter uses both runs.
 - The Run button reads "Replay recorded run" and plays the recorded result back; no bots, no diagnosis, replay or match
   list. Intent shows the committed approved chart; the Intended? chips are disabled with a note (re-judging needs the
   server); versions show the recorded history and the designer hand-off cards; present runs on the recorded data
   (no replay scene); skill shows the learned results and not the live comparison.
 - A thin banner on every screen, with the repository link; lobby, arena and phone screens show "This part needs the
-  live server" instead of connecting. Hero Cards is not offered (no recorded cards run).
+  live server" instead of connecting. Hero Cards plays back its recorded run.
 - The 5 MB per-match file of the recorded roster (only a fallback for a missing report) and the art of the cards and
   tentacle-run games are left out of the folder. Tests: `apps/web/test/static-demo.test.mjs`.
+
+### Human-style bot is exploratory
+
+`learned/human-style.json` is shown on the skill screen under an "Exploratory" label with the file's own numbers (9 usable
+matches, held-out accuracy against its baseline, cross-validation against its baseline), its readiness note and its
+caveats. It is offered as a bot for runs only when `readiness.ready === true` (`lib/humanStyle.ts`, `availableSkills`).

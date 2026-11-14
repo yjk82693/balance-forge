@@ -4,6 +4,8 @@
  * server as `botPolicy` in /run and /full. Which of them exist is read from the files the trainer commits under
  * services/runner/learned/; with none, only the scripted bot is offered.
  */
+import { parseHumanStyle, type HumanStyle } from "./humanStyle";
+
 export type BotSkill = "scripted" | "trained" | "human";
 
 export const BOT_SKILLS: { id: BotSkill; label: string; policy?: string }[] = [
@@ -133,12 +135,20 @@ export function learnedHeroes(files: Record<string, unknown> = learnedFiles): Le
   });
 }
 
-/** Which skills can be chosen: trained once at least one hero is trained, human-style once its model file exists. */
+/** The human-style file, parsed, when it is in the committed files. */
+export function humanStyle(files: Record<string, unknown> = learnedFiles): HumanStyle | null {
+  const entry = Object.entries(files).find(([path]) => path.endsWith("/human-style.json"));
+  return entry ? parseHumanStyle(entry[1]) : null;
+}
+
+/**
+ * Which skills can be chosen: trained once at least one hero is trained, human-style only when its model file says it
+ * is ready. Until then it is shown as exploratory (Skill screen) and never offered for a run.
+ */
 export function availableSkills(files: Record<string, unknown> = learnedFiles): BotSkill[] {
-  const names = Object.keys(files).map((p) => p.split("/").pop());
   const skills: BotSkill[] = ["scripted"];
   if (learnedHeroes(files).length > 0) skills.push("trained");
-  if (names.includes("human-style.json")) skills.push("human");
+  if (humanStyle(files)?.ready) skills.push("human");
   return skills;
 }
 

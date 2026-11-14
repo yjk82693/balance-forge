@@ -17,6 +17,7 @@ import { buildFacts, needsMoreGames } from "../lib/resultCard";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
 import { IS_STATIC } from "../lib/staticMode";
+import { loadStaticRun } from "../lib/staticRun";
 import { shouldStartOnMount } from "../lib/presentStart";
 import { scenesFor, usePresenter, type SceneId } from "../lib/presenter";
 import { useReplaySource } from "../lib/replaySource";
@@ -87,10 +88,23 @@ export function Present({ auto }: { auto: boolean }) {
   const intent = useIntent();
   const wantsIntent = hasIntent(intent);
   // The last Hero Cards result of this tab, if there is one: it adds one scene (never a request).
-  const cardsRun = useMemo(() => (mock || IS_STATIC ? null : loadRun("hero_cards")), [mock]);
+  const [staticCards, setStaticCards] = useState<PlaytestRun | null>(null);
+  useEffect(() => {
+    if (IS_STATIC) loadStaticRun("hero_cards").then(setStaticCards, () => null);
+  }, []);
+  const cardsRun = useMemo(
+    () => (IS_STATIC ? staticCards : mock ? null : loadRun("hero_cards")),
+    [mock, staticCards],
+  );
   const scenes = useMemo(
     () =>
-      scenesFor({ intent: wantsIntent, profile: hasProfile, history: hasHistory, cards: !!cardsRun, replay: !IS_STATIC }),
+      scenesFor({
+        intent: wantsIntent,
+        profile: hasProfile,
+        history: hasHistory,
+        cards: !!cardsRun,
+        replay: !IS_STATIC,
+      }),
     [wantsIntent, hasProfile, hasHistory, cardsRun],
   );
   const { index, scene, held, paused } = usePresenter(scenes, ready, restart);

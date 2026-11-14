@@ -1,4 +1,3 @@
-import { IS_STATIC } from "../lib/staticMode";
 import { GAME_LABEL, setGame, useDashGame, type DashGame } from "../lib/dashGame";
 
 const GAMES: DashGame[] = ["hero_arena", "hero_cards"];
@@ -6,7 +5,6 @@ const GAMES: DashGame[] = ["hero_arena", "hero_cards"];
 /** Hero Arena | Hero Cards: the one genre switch of the dashboard's top bar. */
 export function GameSwitch({ disabled = false }: { disabled?: boolean }) {
   const game = useDashGame();
-  if (IS_STATIC) return <span className="eyebrow">HERO ARENA</span>; // Hero Cards has no recorded run
   return (
     <div className="seg game-switch" role="radiogroup" aria-label="Game">
       {GAMES.map((g) => (

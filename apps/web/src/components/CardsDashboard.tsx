@@ -7,6 +7,7 @@ import { buildFacts } from "../lib/resultCard";
 import { useDemoVersion } from "../lib/demo";
 import { useManifest } from "../lib/assets";
 import { useRunner } from "../lib/useRunner";
+import { IS_STATIC } from "../lib/staticMode";
 import { isMockMode } from "../mock/types";
 import { CardTable, LeverList } from "./CardsPanels";
 import { Collapsible } from "./Collapsible";
@@ -23,6 +24,10 @@ import { TopBar } from "./TopBar";
 import { VersionToggle } from "./VersionToggle";
 import { CHART_FOOT, WinRateChart, rowStats } from "./WinRateChart";
 
+/** The Run button's words; the static build only plays the recorded result back. */
+const runWords = (busy: boolean) =>
+  IS_STATIC ? (busy ? "Replaying…" : "Replay recorded run") : busy ? "Bots are playing…" : "Let the bots play";
+
 const none = (text: string) => <p className="text-2">{text}</p>;
 
 interface Props {
@@ -34,6 +39,7 @@ interface Props {
 export function CardsDashboard({ theme, onTheme }: Props) {
   useManifest();
   const mock = isMockMode();
+  const fixed = mock || IS_STATIC; // sample or recorded: the pair is the one that was measured
   const version = useDemoVersion();
   const { run, busy, live, error, notice, elapsed, start } = useRunner("hero_cards");
   const [decks, setDecks] = useState<DeckPair>(loadDecks);
@@ -50,7 +56,7 @@ export function CardsDashboard({ theme, onTheme }: Props) {
   const diagnosis = run?.cardDiagnosis;
   const measured: DeckPair | null = shown && shown.matchup.b ? [shown.matchup.a, shown.matchup.b] : null;
   const stale =
-    !mock && measured && [...measured].sort().join() !== [...decks].sort().join()
+    !fixed && measured && [...measured].sort().join() !== [...decks].sort().join()
       ? `Showing the last run (${heroName(measured[0])} vs ${heroName(measured[1])}). Run again for the new pick.`
       : null;
   const detail = facts?.sourceDetail ? ` · ${facts.sourceDetail}` : "";
@@ -113,7 +119,7 @@ export function CardsDashboard({ theme, onTheme }: Props) {
         <TopBar>
           <GameSwitch disabled={busy} />
           <span className="spacer" />
-          <DeckPicker value={mock ? (measured ?? DEFAULT_DECKS) : decks} onChange={choose} disabled={busy || mock} />
+          <DeckPicker value={fixed ? (measured ?? DEFAULT_DECKS) : decks} onChange={choose} disabled={busy || fixed} />
           <SinkChip />
           <RunMenu>
             <button className="btn secondary" onClick={onTheme}>
@@ -128,7 +134,7 @@ export function CardsDashboard({ theme, onTheme }: Props) {
           </RunMenu>
           <button className="btn primary" onClick={go} aria-busy={busy} aria-disabled={busy}>
             {busy && <span className="spinner" aria-hidden="true" />}
-            {busy ? "Bots are playing…" : "Let the bots play"}
+            {runWords(busy)}
           </button>
         </TopBar>
         <HeadlineStrip
