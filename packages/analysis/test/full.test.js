@@ -226,3 +226,19 @@ test('change labels: a unique move names its hero, a shared move lists every her
   assert.equal(await labelFor(1), 'Bari · Spirit Arrow power');
   assert.equal(await labelFor(0), 'Melee power (shared: Bari, Daewi, Real Armor)');
 });
+
+test('change labels and old values for hero stats come from the character, not from the damage scale', async () => {
+  const data = { tuning: { damageScalePermille: 1000 },
+    moves: [{ id: 'melee', power: 50 }, { id: 'spirit_arrow', power: 92 }],
+    characters: [{ id: 'bari', moveIds: ['melee', 'spirit_arrow'], health: 540, speed: 120 },
+      { id: 'real_armor', moveIds: ['melee'], health: 700, speed: 85 }] };
+  const hash = (d) => (d.characters[1].speed === 85 ? BASE_HASH : PATCHED_HASH);
+  const out = await runFull(input({ baseData: data, hashData: hash, adapter: { async proposeWithOrigin(report) {
+    return { origin: 'fake', proposal: { baseDataHash: report.dataHash, rationale: 'x', replacements: [
+      { path: '/characters/1/speed', value: 100 }, { path: '/characters/0/health', value: 600 }] } };
+  } } }));
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual(out.value.proposal.changes, [
+    { path: '/characters/1/speed', label: 'Real Armor · Speed', old: 85, new: 100 },
+    { path: '/characters/0/health', label: 'Bari · Health', old: 540, new: 600 }]);
+});

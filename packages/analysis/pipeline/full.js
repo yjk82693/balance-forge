@@ -14,10 +14,17 @@ import { assertMatchResults } from '../src/input-check.js';
 import { analyzePhase, proposeStep, verifyStep } from './pipeline.js';
 
 const MOVE_POWER = /^\/moves\/(\d+)\/power$/;
+const HERO_STAT = /^\/characters\/(\d+)\/(health|speed)$/;
 const titleCase = (id) => String(id).split('_').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
 
 /** Old value and a readable label for one replacement, read from the data the patch is based on. */
 function describeChange(baseData, { path, value }) {
+  const stat = HERO_STAT.exec(path);
+  if (stat) {
+    const hero = baseData.characters?.[Number(stat[1])];
+    return { path, label: `${titleCase(hero?.id ?? `Character ${stat[1]}`)} · ${titleCase(stat[2])}`,
+      old: hero?.[stat[2]], new: value };
+  }
   const move = MOVE_POWER.exec(path);
   if (!move) return { path, label: 'Damage scale (permille)', old: baseData.tuning?.damageScalePermille, new: value };
   const index = Number(move[1]);
