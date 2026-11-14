@@ -962,3 +962,337 @@ p {
   font-weight: 500;
   font-size: var(--fs-small);
 }
+
+/* Arena */
+.arena-screen {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+}
+.arena-stage {
+  position: relative;
+  width: min(100%, calc((100vh - var(--topbar-h) - 48px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-1);
+  box-shadow: var(--shadow-card);
+}
+.arena-host {
+  position: absolute;
+  inset: 0;
+}
+.arena-host canvas {
+  display: block;
+}
+.arena-overlay {
+  position: absolute;
+  left: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  pointer-events: none;
+}
+.arena-overlay .caption {
+  color: #e6ebf1;
+  text-shadow: 0 1px 4px #0d1219;
+}
+.arena-overlay .badge {
+  background: rgba(13, 18, 25, 0.8);
+  color: #e6ebf1;
+}
+.result-card {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  min-width: 320px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-card-hover);
+}
+.result-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+/* Dashboard */
+.icon-btn {
+  width: var(--btn-h);
+  padding: 0;
+  font-size: 20px;
+}
+.dash-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1152fr) minmax(0, 696fr);
+  gap: var(--space-5);
+  padding: var(--space-5);
+  align-items: start;
+}
+.dash-left,
+.dash-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.dash-stage {
+  width: 100%;
+}
+.divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--space-4) 0;
+}
+.report .kpi {
+  margin-top: var(--space-1);
+}
+.report-meta {
+  margin: var(--space-3) 0 0;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.result-line {
+  margin: var(--space-4) 0 0;
+}
+
+/* Matches table */
+.matches {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+.matches th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 0 var(--space-3);
+  height: 32px;
+}
+.matches th:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.matches th:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.matches td {
+  height: var(--row-h);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.matches .num {
+  text-align: right;
+}
+.matches tbody tr {
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-out);
+}
+.matches tbody tr:hover td {
+  background: var(--surface-2);
+}
+.matches tbody tr.selected td {
+  background: var(--surface-3);
+}
+.matches tbody tr.selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.matches .players {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.matches .badges {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.matches tr.invalid td:nth-child(3),
+.matches tr.invalid td:nth-child(4) {
+  color: var(--text-3);
+}
+
+/* Win-rate chart: all percentages, so it scales with the panel */
+.viz {
+  display: flex;
+  flex-direction: column;
+}
+.viz-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr) 74px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  position: relative;
+}
+.viz-row.head {
+  min-height: 24px;
+}
+.viz-row.outlier::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--warning);
+}
+.viz-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.viz-name {
+  min-width: 0;
+}
+.viz-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+.viz-axis {
+  position: relative;
+  height: 16px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.viz-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+  line-height: 16px;
+}
+.viz-axis span:first-child {
+  transform: none;
+}
+.viz-axis span:last-child {
+  transform: translateX(-100%);
+}
+.viz-plot {
+  position: relative;
+  height: 44px;
+}
+.viz-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--viz-band);
+}
+.viz-baseline {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: repeating-linear-gradient(to bottom, var(--viz-baseline) 0 4px, transparent 4px 8px);
+  z-index: 2;
+}
+.viz-bar {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  height: 20px;
+  background: var(--viz-bar);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  transition: width var(--dur-data) var(--ease-out), background var(--dur-hover) var(--ease-out);
+  z-index: 1;
+}
+.viz-bar.warn {
+  background: var(--warning);
+  box-shadow: 0 0 0 2px var(--warning); /* heavier edge: outlier is never color alone */
+}
+.viz-bar.small-n {
+  background: repeating-linear-gradient(45deg, var(--viz-bar) 0 3px, transparent 3px 7px);
+  box-shadow: inset 0 0 0 1.5px var(--viz-bar);
+}
+.viz-ci {
+  position: absolute;
+  top: 21px;
+  height: 2px;
+  background: var(--text-1);
+  z-index: 3;
+  opacity: 1;
+  transition: opacity var(--dur-hover) var(--ease-out) var(--dur-data);
+}
+.viz-ci .cap {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 8px;
+  background: var(--text-1);
+}
+.viz-ci .cap.l {
+  left: 0;
+}
+.viz-ci .cap.r {
+  right: 0;
+}
+.viz-ci .tick {
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--text-1);
+}
+.viz-foot {
+  margin-top: var(--space-2);
+}
+.viz.patch .viz-row.pair {
+  min-height: 72px;
+}
+.viz.patch .viz-plot {
+  height: 72px;
+}
+.before-bar {
+  top: 8px;
+  height: 18px;
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--viz-before) 30%, transparent) 0 2px, transparent 2px 6px);
+  box-shadow: inset 0 0 0 1.5px var(--viz-before);
+}
+.after-bar {
+  top: 42px;
+  height: 18px;
+  background: var(--accent);
+}
+.after-bar.hidden {
+  opacity: 0;
+}
+.viz.patch .viz-ci {
+  top: 16px;
+}
+.viz.patch .viz-ci ~ .after-bar ~ .viz-ci {
+  top: 50px;
+}
+.delta .accent {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.patch-note {
+  margin-top: var(--space-3);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+@media (max-width: 1100px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
