@@ -1,14 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 import Phaser from "phaser";
 import type { GameEvent, Observation } from "../lib/contract";
 import type { ViewPacket } from "../mock/useRoom";
 import { assetUrl, loadManifest, manifestUrl, heroFullBodyPath, heroPosePath, preferWebp } from "../lib/assets";
 import { HEROES } from "../lib/heroes";
-import { SnapshotBuffer } from "../lib/snapshotBuffer";
+import { isDebug } from "../lib/netStats";
+import { SnapshotBuffer, type BufferStats } from "../lib/snapshotBuffer";
 import { ARENA_H, ARENA_W, ArenaScene, type ArenaAssets } from "./ArenaScene";
 import type { PoseName } from "./hitFeel";
 
-const debug = () => new URLSearchParams(location.search).get("debug") === "1";
 
 const POSES: PoseName[] = ["attack", "hit", "ko"];
 const EFFECTS = [
@@ -29,6 +29,7 @@ export function ArenaCanvas({
   compact = false,
   views,
   smooth = !compact,
+  bufferStats,
 }: {
   observation: Observation | null;
   events?: GameEvent[];
@@ -37,11 +38,14 @@ export function ArenaCanvas({
   views?: (fn: (v: ViewPacket) => void) => () => void;
   /** snapshot interpolation for live matches; the replay side-by-side keeps its own frame clock */
   smooth?: boolean;
+  /** receives the live buffer numbers (depth, delay, late packets) for the debug readout */
+  bufferStats?: MutableRefObject<BufferStats | null>;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
   const buffer = useRef<SnapshotBuffer | null>(null);
   if (smooth && !buffer.current) buffer.current = new SnapshotBuffer();
+  if (bufferStats && buffer.current) bufferStats.current = buffer.current.stats;
   const latest = useRef<Observation | null>(observation);
   latest.current = observation;
 
@@ -85,7 +89,7 @@ export function ArenaCanvas({
             gm.registry.set("k", compact ? 768 / ARENA_W : 1);
             if (latest.current) gm.registry.set("obs", latest.current);
             if (buffer.current) gm.registry.set("feed", buffer.current);
-            gm.registry.set("debug", debug());
+            gm.registry.set("debug", isDebug());
           },
         },
       });
