@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { baseVersionRecord, runAuto } from '../pipeline/auto.js';
+import { baseVersionRecord, focusTargets, runAuto } from '../pipeline/auto.js';
 import { pairedResults } from './helpers.js';
 
 const ROSTER = ['bari vs bari', 'bari vs daewi', 'daewi vs real_armor', 'bari vs real_armor'];
@@ -166,6 +166,9 @@ test('progress and records are reported', async () => {
   const done = events.filter((e) => e.matchesDone > 0 && e.phase === 'scan')[0];
   assert.equal(done.matchesDone, done.totalMatches); // 4 matchups x 100 seeds x 2 seats
   assert.equal(done.totalMatches, 800);
+  // The room service rejects rounds outside 1..rounds+1, so the final check is reported as round rounds + 1.
+  assert.ok(events.every((e) => Number.isInteger(e.round) && e.round >= 1 && e.round <= 2), JSON.stringify(events));
+  assert.equal(events.find((e) => e.phase === 'final_check').round, 2);
 });
 
 test('bad input and failures are results with stoppedBecause "error", never throws', async () => {
@@ -189,4 +192,31 @@ test('bad input and failures are results with stoppedBecause "error", never thro
   assert.equal(failing.finalCheck, null);
   const rejectedByEngine = await runAuto(w.input({ applyPatch: () => { throw new Error('PATCH_REJECTED'); } }));
   assert.equal(code(rejectedByEngine), 'INVALID_PATCH');
+});
+
+test('focusTargets: the hero in the most flagged matchups, ties alphabetical, mirrors never', () => {
+  assert.deepEqual(focusTargets([]), []);
+  assert.deepEqual(focusTargets(['bari vs daewi']), ['bari vs daewi']);
+  assert.deepEqual(focusTargets(['bari vs daewi', 'daewi vs real_armor', 'daewi vs sepia']),
+    ['bari vs daewi', 'daewi vs real_armor', 'daewi vs sepia']);
+  assert.deepEqual(focusTargets(['bari vs real_armor', 'daewi vs sepia']), ['bari vs real_armor']);
+});
+
+test('a round targets one hero; the other flagged matchups are scanned again in later rounds', async () => {
+  // Bari's two matchups fall with move b; the third flagged matchup (daewi vs real_armor) does not depend on it.
+  const w = world((dim, p) => (dim === 'daewi vs real_armor' ? 0.8 : dim.startsWith('bari vs')
+    ? 0.5 + ((p - 52) / 40) * 0.3 : 0.5));
+  const roster = ['bari vs bari', 'bari vs daewi', 'bari vs real_armor', 'daewi vs real_armor'];
+  const out = await runAuto(w.input({ allMatchups: roster, rounds: 3 }));
+  const holdouts = w.calls.filter((c) => c.seeds[0] > 1000000);
+  assert.deepEqual(holdouts[0].matchups, ['bari vs daewi', 'bari vs real_armor']); // not daewi vs real_armor
+  assert.equal(out.records[0].verdict.verdict, 'accepted', JSON.stringify(out.records[0].verdict));
+  const scans = w.calls.filter((c) => c.seeds[0] === 1);
+  assert.deepEqual(scans[1].matchups, ['bari vs daewi', 'bari vs real_armor', 'daewi vs real_armor']);
+  // It does not claim "fair" while a matchup is still flagged. Round 3 targets the one left, and this stub adapter has
+  // nothing left to lower (move b is at its floor), so the patch changes nothing and no third record is made.
+  assert.equal(out.stoppedBecause, 'not_accepted');
+  assert.equal(out.noChange, true);
+  assert.equal(out.records.length, 2);
+  assert.deepEqual(scans[2].matchups, ['bari vs daewi', 'bari vs real_armor', 'daewi vs real_armor']);
 });

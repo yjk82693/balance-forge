@@ -5,6 +5,8 @@ const HIT_STOP_MS = [0, 50, 67, 83];
 /** After a hit-stop the sprites ease back to where the match is, instead of jumping there. */
 const CATCH_UP_MS = 120;
 const KNOCK_DECAY_MS = 90;
+/** How far a hero leans forward into an attack. */
+const LUNGE_PX = 12;
 const LEAN_EASE_MS = 40;
 const LEAN_RELEASE_MS = 110;
 const LEAN_MAX_HOLD_MS = 220;
@@ -66,7 +68,7 @@ export class HitFeel {
     if (f.pose?.name === "ko") f.pose = undefined;
   }
 
-  /** Lean forward now and hold it until the attack lands (`release`), at most a moment. */
+  /** Lunge forward now and hold it until the attack lands (`attack`), at most a moment. */
   anticipate(id: string) {
     if (this.reduce) return;
     this.of(id).leanHold = LEAN_MAX_HOLD_MS;
@@ -86,11 +88,11 @@ export class HitFeel {
     return name && this.hasPose(hero, name) ? poseKey(hero, name) : undefined;
   }
 
-  /** Sprite offset and tilt: knockback pixels, plus the lean forward in the facing direction (+1 right, -1 left). */
+  /** Sprite offset and tilt: knockback pixels, plus the lunge forward in the facing direction (+1 right, -1 left). */
   offset(id: string, facing: number): { x: number; angle: number } {
     const f = this.feel.get(id);
     if (!f) return { x: 0, angle: 0 };
-    return { x: f.knock + f.lean * 5 * this.k * facing, angle: f.lean * 7 * facing };
+    return { x: f.knock + f.lean * LUNGE_PX * this.k * facing, angle: f.lean * 6 * facing };
   }
 
   /** Advance the timers; true while the world should hold still (hit-stop). */
