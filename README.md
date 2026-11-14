@@ -32,6 +32,20 @@ For phones on another network, run `cloudflared tunnel --url http://localhost:30
 
 Screens: `#/lobby` · `#/dashboard` · `#/intent` (counter chart) · `#/versions` · `#/skill` (trained bots) · `#/present` (2-minute presenter mode).
 
+## Screens
+
+Taken from the live server (a 200-match run of Bari vs Real Armor, Gemini patch).
+
+![Dashboard after a run](docs/screens/dashboard.png)
+
+![Data versions with sibling candidates](docs/screens/versions.png)
+
+![Design intent chart](docs/screens/intent.png)
+
+![Presenter verdict](docs/screens/present-verdict.png)
+
+![Progress of a live run (sped up about 7x)](docs/screens/run.gif)
+
 ## How it works
 ```mermaid
 flowchart LR
