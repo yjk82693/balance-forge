@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { analyzePhase, proposeStep, verifyStep } from './pipeline.js';
 import { createAdapter } from '../src/adapters.js';
 import { withExtras } from '../src/extras.js';
-import { addHumanRows, humanResultsOf } from '../src/human.js';
+import { addHumanRows, humanResultsOf, buildHumanGroup } from '../src/human.js';
 import { buildBeforeAfter, matchupResolver, pickLopsidedMatch, resolveDataVariants } from '../src/replay.js';
 import { fail, isError } from '../src/errors.js';
 import { loadArenaSimulator } from './arena-simulator.js';
@@ -89,6 +89,11 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
     const adapter = createAdapter(flags.adapter ?? 'fake', env);
     const step = await proposeStep(baseline, adapter);
     writeJson(f('report_baseline.json'), baseline);
+    if (flags.human) {
+      const hg = buildHumanGroup(humanResultsOf(readJson(flags.human)));
+      if (isError(hg)) fail(hg.error.code, hg.error.message);
+      writeJson(f('human_group.json'), hg.value);
+    }
     writeJson(f('patch.json'), step.proposal);
     const table = buildMatchupTable(counted, flags.roster ? { roster: flags.roster.split(',') } : {});
     if (table.ok) writeJson(f('matchup_table.json'), table.value);
