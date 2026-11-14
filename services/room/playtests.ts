@@ -194,7 +194,9 @@ export async function fullPlaytest(server, body) {
   } = await import('../../packages/analysis/src/adapters.ts');
   const adapter = createAdapter(server.analysisEnv.GEMINI_API_KEY ? 'gemini' : 'fake', server.analysisEnv);
   const intent = await server.design.get(body.gameId);
-  const humanSnapshot = structuredClone(server.storage.humans);
+  // Human matches of this game only: Hero Arena rows do not belong in a Hero Cards report, and the reverse.
+  const humanSnapshot = structuredClone(server.storage.humans.filter(result =>
+    (result?.config?.gameId ?? body.gameId) === body.gameId)); // a malformed entry still reaches the validation
   const baseline = await matchBatch(server, {
     gameId: body.gameId,
     data,
