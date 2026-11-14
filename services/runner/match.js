@@ -3,6 +3,7 @@ import * as cards from '../../packages/games/cards/index.js';
 import { chooseActions, deriveBotSeed, botPolicyVersion } from '../../packages/games/action/bot.js';
 import { hash, validate, validateOutcome, compareIds } from '../../packages/contracts/index.js';
 import { emptyStatistics } from '../../packages/sim/index.js';
+import { learnedBot } from './learn/load.js';
 export { botPolicyVersion };
 export const games = {
   hero_arena: arena,
@@ -30,11 +31,21 @@ function getGame(gameId) {
   if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
   return games[gameId];
 }
+// Which bot plays a job: 'scripted' (default, scripted-0.2.1) or 'learned' (trained parameters, see learn/).
+export const botPolicies = ['scripted', 'learned'];
+function botFor(job) {
+  if (job.botPolicy === undefined || job.botPolicy === 'scripted') return { chooseActions, deriveBotSeed };
+  if (job.botPolicy !== 'learned') throw Error('INVALID_SCHEMA');
+  const bot = learnedBot();
+  if (!bot) throw Error('LEARNED_UNAVAILABLE');
+  return bot;
+}
 export function executeMatch(job, {
   captureReplay = false
 } = {}) {
   if (!job || typeof job !== 'object') throw Error('INVALID_SCHEMA');
   validate('MatchConfig', job.config);
+  const bot = botFor(job);
   const {
       matchId,
       config,
@@ -48,8 +59,8 @@ export function executeMatch(job, {
     state = game.initial(config, data);
     while (game.outcome(state).status === 'running') {
       const actions = config.mode === 'turn' ? [cardAction(game, state, state.tick)] : config.players.flatMap((id,
-        i) => chooseActions(game.observe(state, id), state.tick * 2,
-          deriveBotSeed(config.seed, i))).sort((a, b) => compareIds(a.playerId, b.playerId));
+        i) => bot.chooseActions(game.observe(state, id), state.tick * 2,
+          bot.deriveBotSeed(config.seed, i))).sort((a, b) => compareIds(a.playerId, b.playerId));
       const frame = {
         tick: state.tick + 1,
         actions,
@@ -118,11 +129,13 @@ export function pairedJobs({
   }, (_, index) => index + 1),
   heroes,
   gameId = 'hero_arena',
-  data
+  data,
+  botPolicy
 } = {}) {
   const game = getGame(gameId);
   data ??= game.data;
   validate('GameData', data);
+  checkBotPolicy(gameId, botPolicy);
   const selected = heroes === undefined ? gameId === 'hero_arena' ? ['bari', 'real_armor'] : ['standard',
     'standard'] : heroes;
   if (!Array.isArray(selected) || selected.length !== 2 || !Array.isArray(seeds) || !seeds.length || seeds.some(
@@ -141,21 +154,30 @@ export function pairedJobs({
     jobs.push({
       matchId: `m-${jobs.length + 1}`,
       config,
-      data
+      data,
+      ...(botPolicy === undefined ? {} : { botPolicy })
     });
   }
   return jobs;
+}
+// 'learned' needs trained parameters and only exists for Hero Arena; asking for it without them is an explicit error.
+function checkBotPolicy(gameId, botPolicy) {
+  if (botPolicy === undefined || botPolicy === 'scripted') return;
+  if (botPolicy !== 'learned' || gameId !== 'hero_arena') throw Error('INVALID_SCHEMA');
+  if (!learnedBot()) throw Error('LEARNED_UNAVAILABLE');
 }
 export function rosterJobs({
   seeds = Array.from({
     length: 10
   }, (_, index) => index + 1),
   gameId = 'hero_arena',
-  data
+  data,
+  botPolicy
 } = {}) {
   const game = getGame(gameId);
   data ??= game.data;
   validate('GameData', data);
+  checkBotPolicy(gameId, botPolicy);
   const roster = gameId === 'hero_arena' ? data.characters : data.gameRules.decks;
   if (!Array.isArray(roster) || !roster.length) throw Error('INVALID_SCHEMA');
   const jobs = [];
@@ -164,7 +186,8 @@ export function rosterJobs({
       seeds,
       heroes: [roster[left].id, roster[right].id],
       gameId,
-      data
+      data,
+      botPolicy
     });
     for (const job of pair) {
       job.matchId = `m-${jobs.length + 1}`;
