@@ -205,7 +205,7 @@ progress is committed externally. No network or dependencies added; only owned e
 
 ## Stable bot exports
 
-Read Ultron's worktree report and replay adapter. No separate engine CHANGE_REQUEST file was present there;
+Read the analysis report and replay adapter. No separate engine CHANGE_REQUEST file was present there;
 its replay adapter already prefers chooseActions with an optional single-input fallback. Assignment/human-result
 assumptions in the report are resolved here; per-card action statistics remain a separate integration request.
 Added the thin deprecated chooseAction(view, seq, variant) alias, documented as "for old callers": it selects the

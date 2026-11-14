@@ -1,6 +1,6 @@
 # Change requests from apps/web
 
-Checked against `services/room` on `jokerstar/engine` (06860c2), running locally. The web side was fixed wherever the
+Checked against `services/room` on the `engine` branch (06860c2), running locally. The web side was fixed wherever the
 server's behaviour is clear; the items below need an engine decision. The first round of requests (hero on seats,
 `you`, `room.join`, `match.reset`, action catalog, `maxHp`) were accepted in the v0.1.1 addendum and match the server.
 

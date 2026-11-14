@@ -1,6 +1,6 @@
 # packages/analysis report
 
-Branch `ultron/analysis`. 80 `node:test` tests, all offline: `node --test packages/analysis/test/*.test.js`.
+Branch `analysis`. 80 `node:test` tests, all offline: `node --test packages/analysis/test/*.test.js`.
 No dependencies added, no network calls in tests, nothing pushed.
 
 ## What exists
@@ -30,7 +30,7 @@ CLI output folder: `report_baseline.json`, `patch.json` (a plain PatchProposal),
 
 1. **Current runner output cannot go through the pipeline.** `services/runner/recorded-match-results.json` still uses the v0.1 per-seat dataHash variants and has no `options.assignments` (two hashes, no hero names). The pipeline rejects it on purpose. The engine needs to switch to addendum item 1 before the end-to-end path works on real runs. My tests use synthetic paired results shaped like `fixtures/match_results.json`.
 2. **`services/room/human-results.json` does not exist yet.** I assumed it is a `MatchResult[]` (or `{results: [...]}`), the same shape as the `match.ended` payload. If the room service writes something else, only `humanResultsOf` in `src/human.js` needs to change.
-3. **Hero Cards statistics lack per-card ids.** The cards engine emits only `play` and `end_turn` actions. `analyzeCards` expects `play:<cardId>` actions (opportunities = card playable, uses = card played). Until the engine emits those, the analysis returns no cards. This is an engine-side change (`jokerstar/engine`); I did not touch it.
+3. **Hero Cards statistics lack per-card ids.** The cards engine emits only `play` and `end_turn` actions. `analyzeCards` expects `play:<cardId>` actions (opportunities = card playable, uses = card played). Until the engine emits those, the analysis returns no cards. This is an engine-side change (the `engine` branch); I did not touch it.
 4. **Gemini and Grok request shapes are untested against the live APIs.** No keys, no network. Endpoints, header names, `responseSchema` / `json_schema` formats and the default model names (`gemini-2.5-flash`, `grok-4`; override with `GEMINI_MODEL` / `XAI_MODEL`) come from my memory of the public docs. Please do one live smoke run with real keys before the demo; a mismatch will show up as `origin: "fallback"` with a reason, not as a crash.
 5. **Win rate semantics.** Row win rate = focal hero wins / valid paired games, draws count as games. The "recorded" badge needs `--metrics` with `kind: "recorded"`; nothing marks a report as recorded by default.
 6. A fake-adapter proposal is a fixed `/moves/1/power -> 72` regardless of the report. It exists to keep the path working offline, not as analysis.
@@ -42,7 +42,7 @@ Order of work: H, N, J, K. Tests: `node --test packages/analysis/test/*.test.js`
 ### H. Before/after replay (`src/replay.js`, `pipeline/arena-simulator.js`, CLI `replay`)
 - `pickLopsidedMatch`: most lopsided matchup (largest distance from 50%), then the most one-sided win by its dominant side (damage margin, shorter, lower seed, matchId). Deterministic.
 - `buildBeforeAfter`: re-simulates the same seed, seats and bot policy twice: on the unchanged data (must reproduce the recorded `finalStateHash`, else `REPLAY_MISMATCH`) and on the patched data (new dataHash). Output `before_after.json`: `{kind, seed, players, heroes, selection, patch, before, after, delta}`; each side has `outcome`, `durationTicks`, `finalStateHash`, `maxHp`, and an on-change `timeline: [{tick, hp: {p1, p2}}]` (first sample tick 0, last = final tick).
-- The simulator is injected; `pipeline/arena-simulator.js` is the only engine-bound code. It mirrors `services/runner/match.js` and is loaded lazily from `packages/games/action` (read-only import). It was written against the engine on `main` (seat heroes in GameData). If `jokerstar/engine` changes the bot signature or the `initial/step/observe` API, only that file changes.
+- The simulator is injected; `pipeline/arena-simulator.js` is the only engine-bound code. It mirrors `services/runner/match.js` and is loaded lazily from `packages/games/action` (read-only import). It was written against the engine on `main` (seat heroes in GameData). If the `engine` branch changes the bot signature or the `initial/step/observe` API, only that file changes.
 - With the v0.1 runner output, `resolveDataVariants` maps both seat variants from one base GameData; the patch's `baseDataHash` decides which variant is replayed.
 
 ### N. 5x5 matchup table (`src/matchups.js`)
@@ -101,11 +101,11 @@ Still blocked or open (needs someone else):
 - `services/room/human-results.json` still does not exist; the format is my assumption.
 - The Cards engine emits no per-card statistics, so `analyzeCards` returns nothing real yet.
 - The recorded runner output still uses per-seat dataHash variants without `options.assignments`; the pipeline refuses it until the engine adopts addendum item 1. `replay` works on it through `resolveDataVariants`.
-- `pipeline/arena-simulator.js` was written against the engine on `main`; it must be re-checked when `jokerstar/engine` is merged.
+- `pipeline/arena-simulator.js` was written against the engine on `main`; it must be re-checked when the `engine` branch is merged.
 
 ## Pre-merge check
 
-Checked against `jokerstar/engine` (06860c2, sibling worktree `../balance-forge-engine`) and `vision/web` (5861705), read-only.
+Checked against the `engine` branch (06860c2, sibling worktree `../balance-forge-engine`) and `web` (5861705), read-only.
 This section supersedes the older "blocked" lines above about assignments, `human-results.json` and `arena-simulator.js`.
 
 ### What I ran

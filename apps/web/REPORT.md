@@ -94,7 +94,7 @@ Checks run: `npm test` (all node:test suites in the repo): **46 of 46 pass**, 45
 
 ## Live server check
 
-Checked against `services/room` on `jokerstar/engine` (06860c2), started locally from a scratch worktree on
+Checked against `services/room` on the `engine` branch (06860c2), started locally from a scratch worktree on
 127.0.0.1 and driven both by node scripts (protocol level) and by the built web app in Chrome. Mock mode (`?mock=1`)
 was changed to emit the same shapes.
 
