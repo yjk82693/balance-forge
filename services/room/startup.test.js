@@ -143,3 +143,48 @@ test('invalid port spellings fail before constructing server resources', async (
     assert.match(state.output.stderr, /Invalid PORT/);
   }
 });
+test('shutdown forces a failure exit at three seconds if close never finishes', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const state = runtime(), exits = [];
+  let closes = 0;
+  state.exit = code => exits.push(code);
+  await runCli({
+    runtime: state,
+    createServer: () => ({
+      listen: async () => ({ port: 3000 }),
+      close: () => { closes++; return new Promise(() => {}); }
+    })
+  });
+  state.emit('SIGTERM');
+  state.emit('SIGINT');
+  t.mock.timers.tick(2999);
+  assert.deepEqual(exits, []);
+  t.mock.timers.tick(1);
+  assert.deepEqual(exits, [1]);
+  assert.equal(closes, 1);
+  assert.match(state.output.stderr, /shutdown exceeded 3 seconds; forcing exit/);
+});
+test('completed shutdown cancels the forced-exit deadline', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const state = runtime(), exits = [];
+  state.exit = code => exits.push(code);
+  await runCli({
+    runtime: state,
+    createServer: () => ({ listen: async () => ({ port: 3000 }), close: async () => {} })
+  });
+  state.emit('SIGINT');
+  await Promise.resolve();
+  t.mock.timers.tick(3000);
+  assert.deepEqual(exits, []);
+  assert.equal(state.exitCode, 0);
+  assert.equal(state.output.stderr, '');
+});
+test('server closes active HTTP connections before closing its listener', async t => {
+  const { server } = await localServer(t);
+  const calls = [];
+  Object.defineProperty(server.http, 'listening', { configurable: true, get: () => true });
+  server.http.closeAllConnections = () => calls.push('connections');
+  server.http.close = callback => { calls.push('listener'); callback(); };
+  await server.close();
+  assert.deepEqual(calls, ['connections', 'listener']);
+});

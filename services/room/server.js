@@ -14,6 +14,7 @@ import { replayViews } from './replay-views.js';
 import { games, cardAction } from '../runner/match.js';
 import { chooseActions, deriveBotSeed } from '../../packages/games/action/bot.js';
 import { Storage } from './storage.js';
+import { createScheduler } from './scheduler.js';
 import { parseEnvelope, validatePayload, assertDepth, errorCode } from './protocol.js';
 import { messages } from './errors.js';
 const directory = fileURLToPath(new URL('./', import.meta.url));
@@ -124,7 +125,7 @@ export class RoomServer {
       this.failures.push(errorCode(error));
       if (this.failures.length > 100) this.failures.shift();
     });
-    this.timer = setInterval(() => {
+    this.scheduler = createScheduler(() => {
       try {
         this.pump();
       } catch (error) {
@@ -137,8 +138,7 @@ export class RoomServer {
           retryable: true
         });
       }
-    }, 8);
-    this.timer.unref();
+    });
   }
   createRoom(gameId = 'hero_arena') {
     if (!Object.hasOwn(games, gameId)) throw Error('INVALID_SCHEMA');
@@ -815,7 +815,7 @@ export class RoomServer {
   }
   async close() {
     this.closed = true;
-    clearInterval(this.timer);
+    this.scheduler.stop();
     for (const room of this.rooms.values()) if (room.phase === 'playing') this.finish(room, 'TRANSPORT_UNAVAILABLE');
     for (const session of [...this.sessions]) {
       try {
@@ -825,6 +825,7 @@ export class RoomServer {
     for (const matchId of [...this.pendingRecords.keys()]) this.flushRecord(matchId);
     await Promise.allSettled([...this.tasks]);
     await new Promise(resolve => this.ws.close(resolve));
+    this.http.closeAllConnections();
     if (this.http.listening) await new Promise((resolve, reject) => this.http.close(error => error ? reject(
       error) : resolve()));
   }

@@ -14,11 +14,17 @@ function attachShutdown(runtime, server) {
   for (const signal of ['SIGINT', 'SIGTERM']) runtime.on(signal, async () => {
     if (closing) return;
     closing = true;
+    const deadline = setTimeout(() => {
+      runtime.stderr.write('Room server shutdown exceeded 3 seconds; forcing exit.\n');
+      runtime.exit(1);
+    }, 3000);
     try {
       await server.close();
     } catch {
       runtime.stderr.write('Room server could not finish shutdown cleanly.\n');
       runtime.exitCode = 1;
+    } finally {
+      clearTimeout(deadline);
     }
   });
 }
