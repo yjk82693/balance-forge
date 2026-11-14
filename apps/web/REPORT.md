@@ -424,3 +424,6 @@ The live run's request now carries `holdoutPairs` equal to `pairs` (100), so the
 | `turn.ended` | turn counter changes | seen (turn chip, "Round N of 6 · X's turn") | seen ("Your turn" / "Waiting for X") |
 | match end | result | seen (match over panel) | seen ("Match over") |
 Not checked: the fixed build against the live server (see above); a unit being destroyed (the rules have no such event); the peek result on a phone.
+
+## Round 8 long runs
+While a run goes on (30-60 s with diagnosis) the big result area on the dashboard is the Result card's shape in shimmering blocks (`components/ResultSkeleton.tsx`): the phase in words (Measuring baseline / Diagnosing heroes / Testing the patch on fresh seeds / Starting the run), matches done of total for that phase with a progress bar, and the elapsed time; it is replaced by the card when the run ends, so the area is never empty. The right panel keeps its live bars. Shimmer stops under reduced motion. Checked in the mock run (phase changed from baseline to fresh-seeds testing, counters and time ran, the screen stayed at 1080 px); not with the real 60-second run.

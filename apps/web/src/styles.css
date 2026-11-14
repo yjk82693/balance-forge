@@ -2335,3 +2335,20 @@ table.sr-only { display: block; max-width: 1px; }
 }
 @keyframes banner-in { from { opacity: 0; margin-top: -12px; } to { opacity: 1; margin-top: 0; } }
 @media (prefers-reduced-motion: reduce) { .card-banner, .turn-chip { animation: none; } }
+
+/* a long run: the result card's shape in shimmering blocks */
+.skeleton-card { min-height: 240px; }
+.phase-words { margin: var(--space-2) 0; }
+.sk-grid { margin-top: var(--space-4); }
+.sk-line {
+  height: 12px;
+  margin-top: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+.sk-line.wide { width: 90%; }
+.sk-line.short { width: 45%; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk-line { animation: none; } }

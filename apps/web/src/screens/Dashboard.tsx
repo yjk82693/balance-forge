@@ -5,6 +5,7 @@ import { LivePanel } from "../components/LivePanel";
 import { MatchesTable, type MatchRow } from "../components/MatchesTable";
 import { ReportPanel } from "../components/ReportPanel";
 import { ResultCard } from "../components/ResultCard";
+import { ResultSkeleton } from "../components/ResultSkeleton";
 import { MatchupPicker } from "../components/MatchupPicker";
 import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
@@ -93,6 +94,20 @@ export function Dashboard() {
     ? [target.matchup.a, target.matchup.b || target.matchup.a]
     : ["bari", "real_armor"];
 
+  // The big result area is never empty: the skeleton while a run goes on, the card once there is one.
+  const resultArea = busy ? (
+    <ResultSkeleton live={live} elapsed={elapsed} />
+  ) : facts ? (
+    <ResultCard facts={facts} />
+  ) : (
+    <section className="panel diff">
+      <div className="panel-head">
+        <span className="eyebrow">Suggested patch</span>
+      </div>
+      <p className="small text-2">No patch yet. Let the bots play and a suggestion shows up here.</p>
+    </section>
+  );
+
   return (
     <FitStage>
       <div className={`screen dash dash-compact${hasProfile ? " has-profile" : ""}`}>
@@ -150,20 +165,7 @@ export function Dashboard() {
 
         <main className="dash-grid">
           <div className="dash-left">
-            {facts && !busy ? (
-              <ResultCard facts={facts} />
-            ) : (
-              <section className="panel diff">
-                <div className="panel-head">
-                  <span className="eyebrow">Suggested patch</span>
-                </div>
-                <p className="small text-2">
-                  {busy
-                    ? "Waiting for the model's proposal…"
-                    : "No patch yet. Let the bots play and a suggestion shows up here."}
-                </p>
-              </section>
-            )}
+            {resultArea}
             <CompareReplay
               seed={run?.replay?.seed ?? fixtureMatchConfig.seed}
               storedMatchId={run?.replay?.matchId}
