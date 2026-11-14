@@ -42,7 +42,7 @@ export function normalizeIntent(raw) {
     if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
       fail('INVALID_INPUT', `${canonical}: bad entry`);
     }
-    const { favored = null, strength } = entry;
+    const { favored = null, strength } = entry as { favored?: string | null; strength?: string };
     if (!STRENGTHS.includes(strength)) {
       fail('INVALID_INPUT', `${canonical}: strength must be one of ${STRENGTHS.join(', ')}`);
     }
@@ -53,7 +53,8 @@ export function normalizeIntent(raw) {
     }
     matchups[canonical] = { favored, strength };
   }
-  const out = { version: raw.version, matchups };
+  const out: { version: string; matchups: Record<string, unknown>; notes?: Record<string, unknown> } =
+    { version: raw.version, matchups };
   if (raw.notes !== undefined) {
     if (raw.notes === null || typeof raw.notes !== 'object' || Array.isArray(raw.notes) ||
         Object.values(raw.notes).some((n) => typeof n !== 'string' || n.length > 300)) {

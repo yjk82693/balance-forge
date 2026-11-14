@@ -27,19 +27,19 @@ export class FakePatchAdapter {
   constructor(proposal) {
     this.#proposal = proposal;
   }
-  async proposePatch(report, context = {}) {
+  async proposePatch(report, context: any = {}) {
     assertReport(report);
     if (context.rootData?.gameRules?.cards) return cardsProposal(report, context);
     // Keep the pin honest: the proposal must be based on the report's data.
     return { ...structuredClone(this.#proposal), baseDataHash: report.dataHash };
   }
-  async proposeWithOrigin(report, context = {}) {
+  async proposeWithOrigin(report, context: any = {}) {
     return { proposal: await this.proposePatch(report, context), origin: 'fake' };
   }
 }
 
 /** Run an adapter and validate before anything downstream sees the result. */
-export async function proposeValidated(adapter, report, validate, options = {}) {
+export async function proposeValidated(adapter, report, validate, options: any = {}) {
   const proposal = await adapter.proposePatch(report);
   const check = validate(proposal, { baseDataHash: report.dataHash, ...options });
   if (!check.ok) throw new Error(`PATCH_REJECTED: ${check.errors.join('; ')}`);

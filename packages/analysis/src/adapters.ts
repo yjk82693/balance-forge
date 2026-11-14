@@ -8,7 +8,7 @@ export const DEFAULT_FAKE_PROPOSAL = {
 };
 
 /** Factory for the CLI. Default is the offline fake; network adapters always fall back to it. */
-export function createAdapter(name = 'fake', env = {}, options = {}) {
+export function createAdapter(name = 'fake', env = {}, options: any = {}) {
   const fake = new FakePatchAdapter(DEFAULT_FAKE_PROPOSAL);
   if (name === 'fake') return fake;
   if (name === 'gemini') return new FallbackAdapter(new GeminiPatchAdapter({ env, ...options }), fake);

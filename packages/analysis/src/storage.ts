@@ -55,7 +55,7 @@ export class JsonFileStorage {
       return fail(e instanceof SyntaxError ? 'INVALID_JSON' : 'IO_ERROR', `could not read report ${reportId}`);
     }
   }
-  async listReports(filter = {}) {
+  async listReports(filter: any = {}) {
     let names;
     try {
       names = readdirSync(this.#dir).filter((n) => n.endsWith('.json'));

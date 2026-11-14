@@ -42,7 +42,7 @@ const defaultFocal = (result) => heroMatchup(result)?.focal ?? result.config.pla
  * report records `intentVersion`),
  * allowMixed (skip the single-dataHash check; used for human matches, which may span content versions).
  */
-export function analyze(results, options = {}) {
+export function analyze(results, options: any = {}) {
   assertMatchResults(results);
   const intent = options.intent === undefined ? null : normalizeIntent(options.intent);
   const dimensionOf = options.dimensionOf ?? defaultDimension;

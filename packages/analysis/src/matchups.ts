@@ -9,7 +9,7 @@ import { fail, safely } from './errors.ts';
 const cell = (row, col, dimension, mirror, wins, losses, draws) => {
   const games = wins + losses + draws;
   const ci95 = wilson95(wins, games);
-  const c = { row, col, dimension, mirror, wins, losses, draws, games, winRate: games ? round6(wins / games) : 0,
+  const c: any = { row, col, dimension, mirror, wins, losses, draws, games, winRate: games ? round6(wins / games) : 0,
     ci95, outlier: isOutlier(ci95, games) };
   c.tooFewGames = tooFewGames(c);
   return c;
@@ -21,7 +21,7 @@ const cell = (row, col, dimension, mirror, wins, losses, draws) => {
  * Mirror cells (hero vs itself): "wins" = seat-1 wins, i.e. the seat advantage.
  * Returns { roster, expected, matchups, cells, missing } via safely: { ok, value } or an error result.
  */
-export const buildMatchupTable = safely((results, options = {}) => {
+export const buildMatchupTable = safely((results, options: any = {}) => {
   if (!Array.isArray(results)) fail('INVALID_INPUT', 'results must be an array');
   const tally = new Map(); // "a|b" with a <= b -> { aWins, bWins, draws }
   const seen = new Set();
