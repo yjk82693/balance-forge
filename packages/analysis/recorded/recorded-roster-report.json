@@ -1,7 +1,7 @@
 {
   "reportId": "r-baseline",
   "gameId": "hero_arena",
-  "simVersion": "arena-0.1.1",
+  "simVersion": "arena-0.1.2",
   "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
   "botPolicyVersion": "scripted-0.2.1",
   "seedSetId": "explicit-paired-seeds",
@@ -205,7 +205,7 @@
       "outlier": true
     }
   ],
-  "elapsedMs": 119027,
+  "elapsedMs": 133553,
   "recorded": true,
-  "createdAt": "2026-11-14T13:56:30.766Z"
+  "createdAt": "2026-11-14T17:56:29.517Z"
 }
