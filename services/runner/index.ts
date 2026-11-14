@@ -66,13 +66,13 @@ export async function runBatch(jobs: MatchJob[], {
     // Observers cannot change final match outcomes or crash worker cleanup.
     try {
       const pending = onProgress(progress);
-      pending?.catch?.(() => {});
+      (pending as any)?.catch?.(() => {});
     } catch {}
   };
   report();
   const timer = onProgress ? setInterval(report, 100) : null;
   try {
-    await Promise.all(chunks.map(chunk => new Promise((resolve, reject) => {
+    await Promise.all(chunks.map(chunk => new Promise<void>((resolve, reject) => {
       const worker = new Worker(new URL('./worker.ts', import.meta.url), {
         workerData: {
           jobs: chunk,

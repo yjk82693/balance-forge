@@ -147,12 +147,12 @@ export function trainHumanStyle({ results, replaysDir, dataDir, seed = 1, testSh
         perFold: cv.map(f => ({ matches: f.matches, rows: f.rows, accuracy: f.accuracy,
           baselineAccuracy: f.baselineAccuracy })) },
       classShare: Object.fromEntries(CLASSES.map((name, c) => [name, round6(allRows.filter(r => r.y === c).length /
-        allRows.length)]).filter(([, share]) => share > 0)) },
+        allRows.length)]).filter(([, share]) => (share as number) > 0)) },
     caveats: CAVEATS };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: Record<string, string> = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   if (!flags.results || !flags.replays) {
     throw Error('usage: --results <human-results.json> --replays <dir> [--data <dir>]');

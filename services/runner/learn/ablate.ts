@@ -13,9 +13,9 @@ const OPPONENTS = ['real_armor', 'daewi', 'sepia', 'bari'];
 export async function ablate({ hero = 'daewi', generations = 6, population = 16, seedsPerOpponent = 5, workers = 2,
   heldOutPairs = 100, seed = 1, env = process.env } = {}) {
   const opponents = OPPONENTS.filter(h => h !== hero);
-  const makers = { cem: cemProposer, mutation: mutationProposer,
+  const makers: Record<string, any> = { cem: cemProposer, mutation: mutationProposer,
     ...(env.GEMINI_API_KEY ? { coach: args => coachProposer({ ...args, env }) } : {}) };
-  const rows = {};
+  const rows: Record<string, any> = {};
   for (const [name, makeProposer] of Object.entries(makers)) {
     const run = await trainHero({ hero, opponents, generations, populationSize: population, seedsPerOpponent, seed,
       makeProposer, workers });
@@ -30,7 +30,7 @@ export async function ablate({ hero = 'daewi', generations = 6, population = 16,
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: Record<string, string> = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   const num = key => (flags[key] === undefined ? undefined : Number(flags[key]));
   const out = await ablate({ hero: flags.hero, generations: num('generations'), population: num('population'),

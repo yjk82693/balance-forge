@@ -13,7 +13,7 @@ export async function evaluateMany(tasks, { workers = 1 } = {}) {
   const results = new Array(tasks.length);
   const pool = [];
   try {
-    await Promise.all(chunks.map(chunk => new Promise((resolve, reject) => {
+    await Promise.all(chunks.map(chunk => new Promise<void>((resolve, reject) => {
       const worker = new Worker(new URL('./eval-worker.ts', import.meta.url), { workerData: { chunk } });
       pool.push(worker);
       worker.on('message', message => {

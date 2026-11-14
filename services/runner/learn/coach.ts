@@ -87,8 +87,8 @@ export function parseCandidates(json) {
   return parsed.candidates;
 }
 
-export function coachProposer({ seed, start, hero = 'hero', env = {}, fetch: fetchFn = globalThis.fetch,
-  timeoutMs = COACH_TIMEOUT_MS, retries = COACH_RETRIES, model }) {
+export function coachProposer({ seed, start, hero = 'hero', env = {} as Record<string, string>,
+  fetch: fetchFn = globalThis.fetch, timeoutMs = COACH_TIMEOUT_MS, retries = COACH_RETRIES, model }: any) {
   const standIn = mutationProposer({ seed, start });
   const history = [];
   const origins = [];

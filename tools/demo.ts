@@ -166,7 +166,7 @@ if (!forceRecorded) {
   } else {
     console.error('live: room server did not answer in 8 s; switching to recorded mode');
     live.kill();
-    await new Promise((r) => (live.exitCode !== null ? r() : live.once('exit', r)));
+    await new Promise<void>((r) => (live.exitCode !== null ? r() : live.once('exit', () => r())));
     live = null;
   }
 }

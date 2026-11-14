@@ -28,7 +28,7 @@ const allHeroes = () => arena.data.characters.map(c => c.id);
 
 /** Trains one hero against the opponents' current parameters. Resolves { params, curve, evaluated, matches, ms }. */
 export async function trainHero({ hero, population = {}, opponents, generations, populationSize, seedsPerOpponent,
-  seed, makeProposer = cemProposer, workers = 1, maxTicks = MAX_TICKS }) {
+  seed, makeProposer = cemProposer as (options: any) => any, workers = 1, maxTicks = MAX_TICKS }: any) {
   if (!opponents.length || opponents.includes(hero)) throw Error('INVALID_SCHEMA');
   const trainSeeds = seedRange(TRAIN_SEED_BASE, seedsPerOpponent);
   const started = performance.now();
@@ -61,8 +61,11 @@ export function heldOutEvaluation({ hero, heldOutHero, params, population, pairs
 export async function trainRoster({ heroes = allHeroes().filter(h => h !== 'nightcrow'), heldOut = ['nightcrow'],
   generations = DEFAULTS.generations, populationSize = DEFAULTS.population,
   seedsPerOpponent = DEFAULTS.seedsPerOpponent, heldOutPairs = DEFAULTS.heldOutPairs, seed = DEFAULTS.seed,
-  workers = DEFAULTS.workers, maxTicks = MAX_TICKS, makeProposer = cemProposer, outDir,
-  now = () => new Date().toISOString(), onHero } = {}) {
+  workers = DEFAULTS.workers, maxTicks = MAX_TICKS, makeProposer = cemProposer as (options: any) => any, outDir,
+  now = () => new Date().toISOString(), onHero }: { heroes?: string[]; heldOut?: string[]; generations?: number;
+  populationSize?: number; seedsPerOpponent?: number; heldOutPairs?: number; seed?: number; workers?: number;
+  maxTicks?: number; makeProposer?: (options: any) => any; outDir?: string; now?: () => string;
+  onHero?: (info: any) => void } = {}) {
   const roster = allHeroes();
   if (heroes.some(h => !roster.includes(h) || heldOut.includes(h)) || heldOut.some(h => !roster.includes(h))) {
     throw Error('INVALID_SCHEMA');
@@ -104,7 +107,7 @@ export async function trainRoster({ heroes = allHeroes().filter(h => h !== 'nigh
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const flags = {};
+  const flags: Record<string, string> = {};
   for (let i = 2; i < process.argv.length; i += 2) flags[process.argv[i].replace(/^--/, '')] = process.argv[i + 1];
   const number = (name, fallback) => (flags[name] === undefined ? fallback : Number(flags[name]));
   const outDir = flags.out ?? fileURLToPath(new URL('../learned', import.meta.url));
