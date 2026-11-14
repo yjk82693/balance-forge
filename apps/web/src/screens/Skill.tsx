@@ -195,6 +195,7 @@ function TrainingPanel() {
 
 export function Skill() {
   useManifest();
+  const offered = BOT_SKILLS.filter((s) => availableSkills().includes(s.id));
   return (
     <FitStage>
       <div className="screen">
@@ -205,7 +206,7 @@ export function Skill() {
           <span className="eyebrow" style={{ color: "var(--game-arena)" }}>
             HERO ARENA
           </span>
-          <span className="small text-2">Bot skill: {BOT_SKILLS.map((s) => s.label).join(" · ")}</span>
+          <span className="small text-2">Bot skill: {offered.map((s) => s.label).join(" · ")}</span>
         </TopBar>
         <main className="versions-grid">
           <Comparison />
