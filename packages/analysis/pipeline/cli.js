@@ -17,6 +17,7 @@ import { addHumanRows, humanResultsOf } from '../src/human.js';
 import { buildBeforeAfter, matchupResolver, pickLopsidedMatch, resolveDataVariants } from '../src/replay.js';
 import { fail, isError } from '../src/errors.js';
 import { loadArenaSimulator } from './arena-simulator.js';
+import { buildMatchupTable } from '../src/matchups.js';
 
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const writeJson = (p, v) => writeFileSync(p, JSON.stringify(v, null, 2) + '\n');
@@ -51,7 +52,7 @@ function extrasFrom(flags) {
 export async function main(argv, env = process.env, now = () => new Date().toISOString()) {
   const { cmd, flags } = parseArgs(argv);
   if (!flags.out || !['propose', 'verify', 'run', 'replay'].includes(cmd)) {
-    throw new Error('usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--adapter fake|gemini|grok] [--metrics f]');
+    throw new Error('usage: cli.js propose|verify|run|replay --out dir [--baseline f] [--holdout f] [--adapter fake|gemini|grok] [--metrics f] [--roster a,b,c]');
   }
   mkdirSync(flags.out, { recursive: true });
   const f = (name) => join(flags.out, name);
@@ -83,12 +84,14 @@ export async function main(argv, env = process.env, now = () => new Date().toISO
   }
 
   if (cmd === 'propose' || cmd === 'run') {
-    const { report, meta } = analyzePhase(resultsOf(flags.baseline), { reportId: 'r-baseline', ...reportOptions });
+    const { report, meta, counted } = analyzePhase(resultsOf(flags.baseline), { reportId: 'r-baseline', ...reportOptions });
     const baseline = withExtras(withHuman(report, flags), { createdAt: now(), ...extrasFrom(flags) });
     const adapter = createAdapter(flags.adapter ?? 'fake', env);
     const step = await proposeStep(baseline, adapter);
     writeJson(f('report_baseline.json'), baseline);
     writeJson(f('patch.json'), step.proposal);
+    const table = buildMatchupTable(counted, flags.roster ? { roster: flags.roster.split(',') } : {});
+    if (table.ok) writeJson(f('matchup_table.json'), table.value);
     writeJson(f('pipeline-meta.json'), { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors, baseline: meta });
     Object.assign(summary, { patchOrigin: step.origin, fallbackReason: step.fallbackReason, patchValid: step.ok, patchErrors: step.errors });
   }

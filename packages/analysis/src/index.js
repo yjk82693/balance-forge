@@ -12,3 +12,4 @@ export * from './cards.js';
 export * from './storage.js';
 export * from './errors.js';
 export * from './replay.js';
+export * from './matchups.js';

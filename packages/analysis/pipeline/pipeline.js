@@ -27,7 +27,7 @@ export function analyzePhase(results, options = {}) {
     Object.assign(meta, { paired: true, pairs: pairs.length, unpairedMatches: unpaired.length });
   }
   const report = analyze([...counted, ...invalid], options);
-  return { report, meta };
+  return { report, meta, counted };
 }
 
 /** Baseline: analyze, ask the adapter, validate. `adapter.proposeWithOrigin` falls back to proposePatch. */

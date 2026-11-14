@@ -14,7 +14,8 @@ export function pairedResults({ dataHash = HASH('a'), heroes = ['bari', 'real_ar
     for (let swap = 0; swap < 2; swap++) {
       const seatHeroes = swap ? [heroes[1], heroes[0]] : [heroes[0], heroes[1]];
       const w = winner(seed, swap);
-      const winners = w === 'draw' ? [] : [['p1', 'p2'][seatHeroes.indexOf(heroes[w === 'a' ? 0 : 1])]];
+      const mirror = heroes[0] === heroes[1]; // same hero both sides: 'a' = seat p1, 'b' = seat p2
+      const winners = w === 'draw' ? [] : [mirror ? (w === 'a' ? 'p1' : 'p2') : ['p1', 'p2'][seatHeroes.indexOf(heroes[w === 'a' ? 0 : 1])]];
       const invalid = swap === 1 && invalidSeeds.includes(seed);
       out.push({
         ...structuredClone(base),

@@ -28,7 +28,8 @@ export const hasAssignments = (results) => results.some((r) => heroMatchup(r) !=
 
 /**
  * Pair by seed: a pair = same dataHash + seed + hero matchup, both valid, with seats swapped
- * (the focal hero sits in different seats). Anything else is unpaired.
+ * (the focal hero sits in different seats). Mirror matchups (hero vs itself) count per match.
+ * Anything else is unpaired.
  * @returns {{pairs: Array<{seed:number, dimension:string, results:object[]}>, unpaired: object[]}}
  */
 export function pairBySeed(results) {
@@ -47,7 +48,12 @@ export function pairBySeed(results) {
   const pairs = [];
   for (const b of [...buckets.entries()].sort(([a], [c]) => (a < c ? -1 : 1)).map((e) => e[1])) {
     const seats = new Set(b.items.map((i) => i.focal));
-    if (b.items.length === 2 && seats.size === 2) {
+    const [left, right] = b.dimension.split(' vs ');
+    if (left === right) {
+      // Mirror matchup: swapping seats changes nothing, so every valid match counts on its own
+      // (its win rate is the seat-1 advantage).
+      for (const i of b.items) pairs.push({ seed: b.seed, dimension: b.dimension, results: [i.r] });
+    } else if (b.items.length === 2 && seats.size === 2) {
       pairs.push({ seed: b.seed, dimension: b.dimension, results: b.items.map((i) => i.r) });
     } else {
       unpaired.push(...b.items.map((i) => i.r));
