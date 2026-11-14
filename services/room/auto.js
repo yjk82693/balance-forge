@@ -57,6 +57,7 @@ export async function autoPlaytest(server, body) {
   const { data, dataHash: fromHash } = server.storage.get(body.gameId, body.fromHash);
   if (!server.storage.versionStore.get(body.gameId, fromHash)) throw Error('HASH_MISMATCH');
   const { createAdapter } = await import('../../packages/analysis/src/adapters.js');
+  const { forensics, forensicsSentence } = await import('../../packages/analysis/pipeline/matchup-forensics.js');
   const adapter = createAdapter(server.analysisEnv.GEMINI_API_KEY ? 'gemini' : 'fake', server.analysisEnv);
   const runId = randomUUID(), allMatchups = matchupsFor(body.gameId, data);
   let progress = { round: 1, phase: 'scan' }, batchIndex = 0;
@@ -92,6 +93,11 @@ export async function autoPlaytest(server, body) {
         gameId: body.gameId, data, seeds, matchups, ...progress, runId, batchId: `${runId}-${++batchIndex}`
       });
       return batch.results;
+    },
+    // Replay findings for the designer hand-over: 20 seeds of the pair, both seat orders, in this process.
+    explain: async ({ matchup }) => {
+      const replay = await forensics({ heroes: matchup.split(' vs '), seeds: 20 });
+      return replay.ok ? forensicsSentence(replay.value) : null;
     },
     seedsFor: autoSeeds, botPolicyVersion, onProgress, onRecord
   });
