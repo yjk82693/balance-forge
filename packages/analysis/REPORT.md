@@ -469,3 +469,33 @@ version record's `verdict` (the engine's version schema accepts it). A fair stop
 **Offline stand-in direction (history script only).** For the focus hero of a round: if it is winning over the round's
 matchups, its most-used attack (melee or projectile, counted from the matches it has seen) is lowered by 20%; if it is
 losing, raised by 20%. Origin stays `fake`. Tests in `test/measure.test.js`.
+
+## Diagnosis (Round 8)
+
+`src/diagnose.js` (`buildDiagnosis`, `diagnosisMatchups`, `focusMatchupOf`). For a flagged matchup "A vs B" both heroes are
+measured against every other hero (non-mirror; with 5 heroes the 3 + 3 other matchups plus the flagged one), from results
+only; nothing is applied. Output `{ focusHero, matchup, heroes, classification, recommendations }`:
+- `heroes[]`: `{ hero, overall {rate, ci95, games}, opponents [{ opponent, rate, ci95, games }], strength { role:
+  'winner'|'loser', overallRate, marginPts, opponentsOutsideBand, worstOpponent } }`. Both sides are treated the same: the
+  winner gets how much stronger than the rest and how many opponents it beats beyond the fair band (95% interval wholly above
+  55%, at least 30 games), the loser the same below 45%. `worstOpponent` is where the hero is furthest from 50% in its role
+  direction.
+- `classification` (the flagged partner is left out of the counts, "most" means more than half of the other opponents):
+  `overall_strong` (the winner is above the band against most) -> nerf the winner; `overall_weak` (the loser is below the band
+  against most) -> buff the loser; both -> the larger gap decides; neither -> `counter_specific` (change the interaction).
+- `recommendations[]` (ranked, one or two per hero): `{ hero, role, path, direction 'up'|'down', sizePct, why, expected, scope }`.
+  The first one follows the classification (strong: the winner's nerf; weak: the loser's buff; counter: the winner's most-used
+  attack in this matchup), then the other hero's. `sizePct` is 0.8 x the overall gap in points (0.5 x for an interaction),
+  rounded to 5, within 5..30. The lever is the hero's most-used attack (melee or projectile) from the use counts in the
+  results, because damage per move is not recorded yet (engine request in `CHANGE_REQUEST.md`); `why` says so. A second,
+  global recommendation (`/tuning/damageScalePermille`, `scope: 'global'`, it scales every hero) is added only for a hero that
+  is off against at least 75% of its opponents. `expected` is a plain sentence ("brings 4 of 4 matchups toward the band"), an
+  expectation not a measurement.
+- Use: `runFull` accepts `runDiagnose(matchups, seeds)` and `diagnoseSeeds` (must not overlap baseline or holdout seeds), puts
+  `diagnosis` in the body (`null` without `runDiagnose`, on a fair stop or if it cannot be built, then with `diagnosisError`)
+  and gives it to the adapter as `context` (`proposeWithOrigin(report, { diagnosis })`); the LLM prompt carries aggregate numbers
+  only. The patch still goes through validation and the holdout. `runAuto` diagnoses the most lopsided flagged matchup each
+  round (reusing the scan where it covers the heroes, else running the missing matchups on the round's scan seeds as phase
+  `diagnose`), targets the matchups of the hero it recommends, and returns `diagnoses: [{ round, diagnosis }]`. So "Bari beats
+  Daewi, Daewi loses to everyone" becomes a Daewi buff. The offline stand-in follows the first recommendation. Tests:
+  `test/diagnose.test.js` (each classification, lever, size, global, errors, prompt), `test/full.test.js`, `test/auto.test.js`.

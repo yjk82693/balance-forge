@@ -29,14 +29,30 @@ export const matchupsOf = (data) => {
 
 const ATTACKS = ['melee', 'projectile'];
 
+/** Applies a diagnosis recommendation: its path, its direction and its size in percent of the current value. */
+function followRecommendation(report, data, rec) {
+  if (!rec) return null;
+  const global = rec.path === '/tuning/damageScalePermille';
+  const current = global ? data.tuning?.damageScalePermille : data.moves[Number(rec.path.split('/')[2])]?.power;
+  if (!Number.isInteger(current)) return null;
+  const [low, high] = global ? [100, 3000] : [0, MAX_POWER];
+  const factor = 100 + (rec.direction === 'up' ? rec.sizePct : -rec.sizePct);
+  const value = Math.min(high, Math.max(low, Math.round((current * factor) / 100)));
+  return { origin: 'fake', proposal: { baseDataHash: report.dataHash, replacements: [{ path: rec.path, value }],
+    rationale: `Offline stand-in follows the first recommendation (${rec.direction} ${rec.sizePct}%): ${rec.why}` } };
+}
+
 /**
- * Offline stand-in adapter (origin "fake"): the focus hero is the one in the most flagged matchups of the report. If it
- * is winning (over those matchups) its most-used attack loses 20% power; if it is losing it gains 20%.
+ * Offline stand-in adapter (origin "fake"): follows the diagnosis context when there is one (first recommendation).
+ * Without it: the focus hero is the one in the most flagged matchups of the report. If it is winning (over those
+ * matchups) its most-used attack loses 20% power; if it is losing it gains 20%.
  * `dataOf(hash)` gives the data a report was measured on; `usesOf(hero)` gives { actionId: uses } counted so far.
  */
 export function steppingAdapter(dataOf, usesOf = () => ({})) {
-  return { async proposeWithOrigin(report) {
+  return { async proposeWithOrigin(report, context = {}) {
     const data = dataOf(report.dataHash);
+    const followed = followRecommendation(report, data, context.diagnosis?.recommendations?.[0]);
+    if (followed) return followed;
     const rows = report.rows.filter((r) => r.outlier && !/^(\S+) vs \1$/.test(r.dimension));
     const dimensions = focusTargets(rows.map((r) => r.dimension));
     const heroId = focusHeroOf(dimensions);
