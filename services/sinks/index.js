@@ -53,7 +53,7 @@ function mongoSink(uri, load) {
   return {
     name: 'mongodb',
     async write(kind, payload) {
-      if (kind === 'matches') return; // match rows go to the time-series store
+      if (kind === 'matches') return 'skipped'; // match rows go to the time-series store
       await (await db()).collection(kind).insertOne({ ...payload, storedAt: new Date() });
     },
     async close() {
@@ -62,12 +62,15 @@ function mongoSink(uri, load) {
   };
 }
 
-function tigerSink(url, load) {
+function tigerSink(url, load, ca) {
   let pool = null;
   const ready = async () => {
     if (!pool) {
       const { default: pg } = await load('pg');
-      pool = new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: LIMIT_MS });
+      // With the provider's CA certificate (TIGER_CA_CERT, PEM text) the server is fully verified;
+      // TLS verification is never switched off here.
+      pool = new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: LIMIT_MS,
+        ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}) });
       await pool.query(`CREATE TABLE IF NOT EXISTS match_results (
         at timestamptz NOT NULL, run_id text, phase text, data_hash text, bot_policy text,
         matchup text, winner_hero text, ticks integer, valid boolean, seed bigint)`);
@@ -80,7 +83,7 @@ function tigerSink(url, load) {
     name: 'tiger',
     async write(kind, payload) {
       const rows = matchRows(kind, payload);
-      if (!rows.length) return;
+      if (!rows.length) return 'skipped';
       const db = await ready();
       const cols = Object.keys(rows[0]);
       const values = rows.flatMap(r => cols.map(c => r[c]));
@@ -106,7 +109,7 @@ function tigerSink(url, load) {
 export function createSinks(env = process.env, load = name => import(name), log = m => console.warn(m)) {
   const sinks = [];
   if (env.MONGODB_URI) sinks.push(mongoSink(env.MONGODB_URI, load));
-  if (env.TIGER_DATABASE_URL) sinks.push(tigerSink(env.TIGER_DATABASE_URL, load));
+  if (env.TIGER_DATABASE_URL) sinks.push(tigerSink(env.TIGER_DATABASE_URL, load, env.TIGER_CA_CERT));
   const status = Object.fromEntries(sinks.map(s => [s.name, { written: 0, failed: 0, lastError: null }]));
   let queue = Promise.resolve();
   return {
@@ -116,7 +119,7 @@ export function createSinks(env = process.env, load = name => import(name), log 
     emit(kind, payload) {
       for (const sink of sinks) {
         queue = queue.then(() => withLimit(sink.write(kind, payload)))
-          .then(() => { status[sink.name].written += 1; })
+          .then(result => { if (result !== 'skipped') status[sink.name].written += 1; })
           .catch(error => {
             status[sink.name].failed += 1;
             status[sink.name].lastError = redact(error);

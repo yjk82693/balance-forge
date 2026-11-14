@@ -49,7 +49,7 @@ test('documents go to MongoDB and match rows to Tiger Data', async () => {
   await sinks.flush();
   assert.deepEqual(fake.mongoDocs.map(d => d.kind), ['version']);
   assert.ok(fake.sql.some(q => q.text.startsWith('INSERT INTO match_results')));
-  assert.equal(sinks.status.mongodb.written, 2);
+  assert.equal(sinks.status.mongodb.written, 1); // match rows are skipped, not counted
   assert.equal(sinks.status.tiger.failed, 0);
 });
 

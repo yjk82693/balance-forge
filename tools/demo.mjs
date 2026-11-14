@@ -61,7 +61,7 @@ async function waitForHealth(url, ms) {
 
 // Secrets come from the environment or, on macOS, from Keychain items of the same name.
 // They go to the server process only and are never printed; only the names are listed.
-const SECRETS = ['GEMINI_API_KEY', 'XAI_API_KEY', 'MONGODB_URI', 'TIGER_DATABASE_URL'];
+const SECRETS = ['GEMINI_API_KEY', 'XAI_API_KEY', 'MONGODB_URI', 'TIGER_DATABASE_URL', 'TIGER_CA_CERT'];
 
 function secretEnv() {
   const env = {};
