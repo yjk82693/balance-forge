@@ -10,6 +10,7 @@ import { originLabel } from "../lib/fullRun";
 import { botRows } from "../lib/groups";
 import { go } from "../lib/router";
 import { pct } from "../lib/stats";
+import { useDashGame } from "../lib/dashGame";
 import { useManifest } from "../lib/assets";
 import { useIntent } from "../lib/intent";
 import { loadDesigner } from "../lib/designer";
@@ -51,6 +52,7 @@ function BotResult({ run, target }: { run: PlaytestRun; target?: string }) {
 }
 
 export function Versions() {
+  const game = useDashGame();
   useManifest();
   useIntent();
   useHeroStats();
@@ -68,7 +70,7 @@ export function Versions() {
 
   useEffect(() => {
     let alive = true;
-    loadHistory().then((h) => {
+    loadHistory(game).then((h) => {
       if (!alive) return;
       setList(h.list);
       setSource(h.source);
@@ -78,15 +80,15 @@ export function Versions() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [game]);
 
   // The server's own diff against the parent, when it has one for the selected version.
   useEffect(() => {
     if (!selected || source !== "live run" || details[selected]) return;
-    fetchVersion(selected)
+    fetchVersion(selected, undefined, game)
       .then((d) => d && setDetails((all) => ({ ...all, [selected]: d })))
       .catch(() => undefined);
-  }, [selected, source, details]);
+  }, [selected, source, details, game]);
 
   // While auto-balance runs, the server's progress says which round and phase it is in.
   useEffect(() => {
@@ -120,7 +122,8 @@ export function Versions() {
     }
   }, []);
 
-  const balance = (fromHash?: string) => act("balance", () => runAutoBalance({ rounds, approval, fromHash }));
+  const balance = (fromHash?: string) =>
+    act("balance", () => runAutoBalance({ rounds, approval, fromHash, gameId: game }));
   const runBots = (v: VersionRecord) =>
     act("bots", async () => {
       const run = await runBotsOnVersion(v.dataHash);
@@ -249,7 +252,9 @@ export function Versions() {
                       className="btn secondary"
                       aria-disabled={!live || busy !== null}
                       title={needsServer || "Ship this candidate version."}
-                      onClick={() => live && !busy && act("approve", () => approveVersion(record.dataHash))}
+                      onClick={() =>
+                        live && !busy && act("approve", () => approveVersion(record.dataHash, undefined, game))
+                      }
                     >
                       Approve
                     </button>
@@ -258,7 +263,7 @@ export function Versions() {
                     className="btn secondary"
                     aria-disabled={!live || busy !== null || record.dataHash === list?.currentHash}
                     title={needsServer || "Select this older version as the current one. Nothing is deleted."}
-                    onClick={() => live && !busy && act("current", () => makeCurrent(record.dataHash))}
+                    onClick={() => live && !busy && act("current", () => makeCurrent(record.dataHash, undefined, game))}
                   >
                     Make current
                   </button>

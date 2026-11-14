@@ -54,3 +54,25 @@ test("the version line names the hash and the changes", () => {
   assert.equal(versionLine(older), "version 1111111 · Bari · Health 540 → 480");
   assert.equal(versionLine(newer), "version 2222222");
 });
+
+import { versionPaths } from "../src/lib/versionPaths.ts";
+
+test("Patched in the cards lobby selects the newest accepted hero_cards version", () => {
+  const cardsRoot = v("c".repeat(64), { parentHash: null, origin: "base", verdict: null, approved: true });
+  const pulse = v("d".repeat(64), {
+    changes: [{ path: "/gameRules/cards/4/cost", label: "Pulse · cost", old: 1, new: 2 }],
+  });
+  const t = sent();
+  const picked = selectRoomVersion(t, "hero_cards", { versions: [cardsRoot, pulse] }, "patched");
+  assert.deepEqual(t.log, [{ type: "game.select", payload: { gameId: "hero_cards", dataHash: pulse.dataHash } }]);
+  assert.equal(versionLine(picked), "version ddddddd · Pulse · cost 1 → 2");
+});
+
+test("the version endpoints take the game: detail, approve and select for hero_cards", () => {
+  const p = versionPaths("hero_cards");
+  assert.equal(p.list, "/v1/versions/hero_cards");
+  assert.equal(p.detail("abc"), "/v1/versions/hero_cards/abc");
+  assert.equal(p.approve("abc"), "/v1/versions/hero_cards/abc/approve");
+  assert.equal(p.select, "/v1/data/hero_cards/select");
+  assert.equal(versionPaths("hero_arena").detail("abc"), "/v1/versions/hero_arena/abc");
+});
