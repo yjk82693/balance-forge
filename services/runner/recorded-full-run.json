@@ -1,0 +1,517 @@
+{
+  "intentVersion": "2026-11-14-v1",
+  "heroOverall": [
+    {
+      "hero": "bari",
+      "rate": 0.795,
+      "ci95": [
+        0.733742,
+        0.845139
+      ],
+      "games": 200,
+      "outlier": true
+    },
+    {
+      "hero": "real_armor",
+      "rate": 0.205,
+      "ci95": [
+        0.154861,
+        0.266258
+      ],
+      "games": 200,
+      "outlier": true
+    }
+  ],
+  "botPolicyVersion": "scripted-0.2.1",
+  "seedSetId": "paired-1-100",
+  "holdoutSeedSetId": "holdout-1000001-1000100",
+  "baseline": {
+    "reportId": "r-baseline",
+    "gameId": "hero_arena",
+    "simVersion": "arena-0.1.2",
+    "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+    "botPolicyVersion": "scripted-0.2.1",
+    "seedSetId": "paired-1-100",
+    "validMatches": 200,
+    "invalidMatches": 0,
+    "draws": 0,
+    "rows": [
+      {
+        "dimension": "bari vs real_armor",
+        "wins": 159,
+        "games": 200,
+        "winRate": 0.795,
+        "ci95": [
+          0.733742,
+          0.845139
+        ],
+        "uses": 5614,
+        "opportunities": 10042,
+        "outlier": true,
+        "target": 0.6,
+        "deltaToTarget": 0.195
+      },
+      {
+        "dimension": "human: bari vs daewi",
+        "wins": 1,
+        "games": 1,
+        "winRate": 1,
+        "ci95": [
+          0.206543,
+          1
+        ],
+        "uses": 23,
+        "opportunities": 41,
+        "outlier": false
+      },
+      {
+        "dimension": "human: bari vs real_armor",
+        "wins": 1,
+        "games": 3,
+        "winRate": 0.333333,
+        "ci95": [
+          0.06149,
+          0.792345
+        ],
+        "uses": 40,
+        "opportunities": 3727,
+        "outlier": false
+      },
+      {
+        "dimension": "human: bari vs sepia",
+        "wins": 1,
+        "games": 1,
+        "winRate": 1,
+        "ci95": [
+          0.206543,
+          1
+        ],
+        "uses": 31,
+        "opportunities": 55,
+        "outlier": false
+      },
+      {
+        "dimension": "human: daewi vs real_armor",
+        "wins": 0,
+        "games": 1,
+        "winRate": 0,
+        "ci95": [
+          0,
+          0.793457
+        ],
+        "uses": 22,
+        "opportunities": 3242,
+        "outlier": false
+      }
+    ],
+    "intentVersion": "2026-11-14-v1",
+    "humanMatches": 6,
+    "elapsedMs": 5966,
+    "createdAt": "2026-11-14T20:57:41.439Z"
+  },
+  "evidence": {
+    "missing": [
+      "damageByAction",
+      "hitsThroughGuard"
+    ],
+    "rows": [
+      {
+        "dimension": "bari vs real_armor",
+        "games": 200,
+        "winRate": 0.795,
+        "ci95": [
+          0.733742,
+          0.845139
+        ],
+        "mirror": false,
+        "focal": {
+          "hero": "bari",
+          "damage": 128350,
+          "damageShare": 0.699425,
+          "actions": [
+            {
+              "actionId": "guard",
+              "opportunities": 4157,
+              "uses": 1462,
+              "useRate": 0.351696,
+              "damage": null
+            },
+            {
+              "actionId": "melee",
+              "opportunities": 3070,
+              "uses": 2574,
+              "useRate": 0.838436,
+              "damage": null
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 2815,
+              "uses": 1578,
+              "useRate": 0.560568,
+              "damage": null
+            }
+          ]
+        },
+        "other": {
+          "hero": "real_armor",
+          "damage": 55158,
+          "damageShare": 0.300575,
+          "actions": [
+            {
+              "actionId": "guard",
+              "opportunities": 4171,
+              "uses": 1498,
+              "useRate": 0.359146,
+              "damage": null
+            },
+            {
+              "actionId": "melee",
+              "opportunities": 3097,
+              "uses": 2580,
+              "useRate": 0.833064,
+              "damage": null
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 2759,
+              "uses": 1541,
+              "useRate": 0.558536,
+              "damage": null
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "diagnosis": {
+    "focusHero": "bari",
+    "matchup": "bari vs real_armor",
+    "heroes": [
+      {
+        "hero": "bari",
+        "overall": {
+          "rate": 0.89625,
+          "ci95": [
+            0.873191,
+            0.915522
+          ],
+          "games": 800
+        },
+        "opponents": [
+          {
+            "opponent": "daewi",
+            "rate": 0.99,
+            "ci95": [
+              0.964278,
+              0.997253
+            ],
+            "games": 200,
+            "target": 0.55,
+            "deltaToTarget": 0.44
+          },
+          {
+            "opponent": "nightcrow",
+            "rate": 0.9,
+            "ci95": [
+              0.850593,
+              0.93433
+            ],
+            "games": 200,
+            "target": 0.45,
+            "deltaToTarget": 0.45
+          },
+          {
+            "opponent": "real_armor",
+            "rate": 0.795,
+            "ci95": [
+              0.733742,
+              0.845139
+            ],
+            "games": 200,
+            "target": 0.6,
+            "deltaToTarget": 0.195
+          },
+          {
+            "opponent": "sepia",
+            "rate": 0.9,
+            "ci95": [
+              0.850593,
+              0.93433
+            ],
+            "games": 200,
+            "target": 0.4,
+            "deltaToTarget": 0.5
+          }
+        ],
+        "strength": {
+          "role": "winner",
+          "overallRate": 0.89625,
+          "marginPts": 39.6,
+          "opponentsOutsideBand": 4,
+          "worstOpponent": "sepia",
+          "overallOutsideBand": true
+        }
+      },
+      {
+        "hero": "real_armor",
+        "overall": {
+          "rate": 0.60125,
+          "ci95": [
+            0.566913,
+            0.634619
+          ],
+          "games": 800
+        },
+        "opponents": [
+          {
+            "opponent": "bari",
+            "rate": 0.205,
+            "ci95": [
+              0.154861,
+              0.266258
+            ],
+            "games": 200,
+            "target": 0.4,
+            "deltaToTarget": -0.195
+          },
+          {
+            "opponent": "daewi",
+            "rate": 0.98,
+            "ci95": [
+              0.949712,
+              0.992196
+            ],
+            "games": 200,
+            "target": 0.4,
+            "deltaToTarget": 0.58
+          },
+          {
+            "opponent": "nightcrow",
+            "rate": 0.61,
+            "ci95": [
+              0.540936,
+              0.674918
+            ],
+            "games": 200,
+            "target": 0.6,
+            "deltaToTarget": 0.01
+          },
+          {
+            "opponent": "sepia",
+            "rate": 0.61,
+            "ci95": [
+              0.540936,
+              0.674918
+            ],
+            "games": 200,
+            "target": 0.6,
+            "deltaToTarget": 0.01
+          }
+        ],
+        "strength": {
+          "role": "loser",
+          "overallRate": 0.60125,
+          "marginPts": 10.1,
+          "opponentsOutsideBand": 1,
+          "worstOpponent": "bari",
+          "overallOutsideBand": true
+        }
+      }
+    ],
+    "classification": "overall_strong",
+    "recommendations": [
+      {
+        "hero": "bari",
+        "role": "winner",
+        "path": "/moves/1/power",
+        "direction": "down",
+        "sizePct": 30,
+        "why": "bari is too strong (39.6 points from 50% overall): lower spirit_arrow, its own attack, no other hero has it (38% of its attack uses across its matchups). Damage per move is not recorded yet, so use counts stand in for the highest-damage move.",
+        "expected": "brings 4 of 4 matchups toward the band",
+        "scope": "overall",
+        "alsoAffects": []
+      },
+      {
+        "hero": "bari",
+        "role": "winner",
+        "path": "/characters/0/health",
+        "direction": "down",
+        "sizePct": 30,
+        "why": "bari is too strong (39.6 points from 50% overall): lower health, a stat that belongs to bari alone (now 540; it may still move about 40% this way within the 40% limit from the original value).",
+        "expected": "brings 4 of 4 matchups toward the band",
+        "scope": "overall",
+        "alsoAffects": []
+      },
+      {
+        "hero": "bari",
+        "role": "winner",
+        "path": "/characters/0/speed",
+        "direction": "down",
+        "sizePct": 30,
+        "why": "bari is too strong (39.6 points from 50% overall): lower speed, a stat that belongs to bari alone (now 120; it may still move about 40% this way within the 40% limit from the original value).",
+        "expected": "brings 4 of 4 matchups toward the band",
+        "scope": "overall",
+        "alsoAffects": []
+      },
+      {
+        "hero": "real_armor",
+        "role": "loser",
+        "path": "/characters/1/speed",
+        "direction": "up",
+        "sizePct": 10,
+        "why": "real_armor is too weak (10.1 points from 50% overall): raise speed, a stat that belongs to real_armor alone (now 85; it may still move about 40% this way within the 40% limit from the original value).",
+        "expected": "brings 1 of 4 matchups toward the band",
+        "scope": "overall",
+        "alsoAffects": []
+      },
+      {
+        "hero": "real_armor",
+        "role": "loser",
+        "path": "/characters/1/health",
+        "direction": "up",
+        "sizePct": 10,
+        "why": "real_armor is too weak (10.1 points from 50% overall): raise health, a stat that belongs to real_armor alone (now 700; it may still move about 40% this way within the 40% limit from the original value).",
+        "expected": "brings 1 of 4 matchups toward the band",
+        "scope": "overall",
+        "alsoAffects": []
+      },
+      {
+        "hero": "real_armor",
+        "role": "loser",
+        "path": "/moves/0/power",
+        "direction": "up",
+        "sizePct": 10,
+        "why": "real_armor is too weak (10.1 points from 50% overall): raise melee, a attack shared with bari, sepia: this also changes them, so it ranks below the hero's own moves (64% of its attack uses across its matchups). Damage per move is not recorded yet, so use counts stand in for the highest-damage move.",
+        "expected": "brings 1 of 4 matchups toward the band",
+        "scope": "overall",
+        "alsoAffects": [
+          "bari",
+          "sepia"
+        ]
+      }
+    ]
+  },
+  "fair": false,
+  "proposal": {
+    "baseDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+    "replacements": [
+      {
+        "path": "/characters/0/health",
+        "value": 378
+      },
+      {
+        "path": "/characters/0/speed",
+        "value": 84
+      },
+      {
+        "path": "/characters/1/health",
+        "value": 770
+      },
+      {
+        "path": "/characters/1/speed",
+        "value": 93
+      }
+    ],
+    "rationale": "Lowered bari health and speed by 30 percent to address its overall dominant win rate, and raised real_armor health and speed by 10 percent to improve its underperforming matchups.",
+    "origin": "gemini",
+    "changes": [
+      {
+        "path": "/characters/0/health",
+        "label": "Bari · Health",
+        "old": 540,
+        "new": 378
+      },
+      {
+        "path": "/characters/0/speed",
+        "label": "Bari · Speed",
+        "old": 120,
+        "new": 84
+      },
+      {
+        "path": "/characters/1/health",
+        "label": "Real Armor · Health",
+        "old": 700,
+        "new": 770
+      },
+      {
+        "path": "/characters/1/speed",
+        "label": "Real Armor · Speed",
+        "old": 85,
+        "new": 93
+      }
+    ]
+  },
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "humanMatches": 6,
+  "patchedDataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+  "patched": {
+    "reportId": "r-patched",
+    "gameId": "hero_arena",
+    "simVersion": "arena-0.1.2",
+    "dataHash": "0bef205b110eceb29e746fce48a770d27c8dd06c25dfd4cca4e3a733005be7d2",
+    "botPolicyVersion": "scripted-0.2.1",
+    "seedSetId": "holdout-1000001-1000100",
+    "validMatches": 200,
+    "invalidMatches": 0,
+    "draws": 6,
+    "rows": [
+      {
+        "dimension": "bari vs real_armor",
+        "wins": 113,
+        "games": 200,
+        "winRate": 0.565,
+        "ci95": [
+          0.495706,
+          0.631844
+        ],
+        "uses": 5626,
+        "opportunities": 10111,
+        "outlier": false,
+        "target": 0.6,
+        "deltaToTarget": -0.035
+      }
+    ],
+    "intentVersion": "2026-11-14-v1",
+    "createdAt": "2026-11-14T20:57:41.439Z"
+  },
+  "verdict": {
+    "verdict": "accepted",
+    "reasons": [
+      "bari vs real_armor: improved (79.5% [73.4%-84.5%] n=200 -> 56.5% [49.6%-63.2%] n=200)",
+      "1 of 1 target(s) moved toward their target beyond noise; none moved away, no new extreme matchup and no more invalid matches"
+    ],
+    "targets": [
+      {
+        "matchup": "bari vs real_armor",
+        "before": {
+          "rate": 0.795,
+          "ci95": [
+            0.733742,
+            0.845139
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.565,
+          "ci95": [
+            0.495706,
+            0.631844
+          ],
+          "games": 200
+        },
+        "outcome": "improved"
+      }
+    ]
+  },
+  "runId": "960293e6-6a93-4aa1-906d-9f5a9d0bff76",
+  "gameId": "hero_arena",
+  "botPolicy": "scripted",
+  "elapsedMs": 66450,
+  "seatWins": {
+    "baseline": 87,
+    "holdout": 97
+  }
+}

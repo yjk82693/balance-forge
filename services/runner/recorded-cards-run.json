@@ -1,0 +1,700 @@
+{
+  "intentVersion": "default",
+  "heroOverall": [
+    {
+      "hero": "nightcrow",
+      "rate": 0.36,
+      "ci95": [
+        0.296691,
+        0.428586
+      ],
+      "games": 200,
+      "outlier": true
+    },
+    {
+      "hero": "standard",
+      "rate": 0.605,
+      "ci95": [
+        0.535882,
+        0.67016
+      ],
+      "games": 200,
+      "outlier": false
+    }
+  ],
+  "botPolicyVersion": "cards-bot-0.1.0",
+  "seedSetId": "paired-1-100",
+  "holdoutSeedSetId": "holdout-1000001-1000100",
+  "baseline": {
+    "reportId": "r-baseline",
+    "gameId": "hero_cards",
+    "simVersion": "cards-0.1.2",
+    "dataHash": "ef652b24e8e59f427ea70f009aff0cd87f5567a16700e111444ac86a6c4359fb",
+    "botPolicyVersion": "cards-bot-0.1.0",
+    "seedSetId": "paired-1-100",
+    "validMatches": 200,
+    "invalidMatches": 0,
+    "draws": 7,
+    "rows": [
+      {
+        "dimension": "nightcrow vs standard",
+        "wins": 72,
+        "games": 200,
+        "winRate": 0.36,
+        "ci95": [
+          0.296691,
+          0.428586
+        ],
+        "uses": 4253,
+        "opportunities": 10475,
+        "outlier": true,
+        "target": 0.5,
+        "deltaToTarget": -0.14
+      },
+      {
+        "dimension": "human: standard vs standard",
+        "wins": 2,
+        "games": 6,
+        "winRate": 0.333333,
+        "ci95": [
+          0.096769,
+          0.700012
+        ],
+        "uses": 23,
+        "opportunities": 92,
+        "outlier": false
+      }
+    ],
+    "intentVersion": "default",
+    "humanMatches": 6,
+    "elapsedMs": 870,
+    "createdAt": "2026-11-14T20:45:27.819Z"
+  },
+  "evidence": {
+    "missing": [
+      "damageByAction",
+      "hitsThroughGuard"
+    ],
+    "rows": [
+      {
+        "dimension": "nightcrow vs standard",
+        "games": 200,
+        "winRate": 0.36,
+        "ci95": [
+          0.296691,
+          0.428586
+        ],
+        "mirror": false,
+        "focal": {
+          "hero": "nightcrow",
+          "damage": 2814,
+          "damageShare": 0.465278,
+          "actions": [
+            {
+              "actionId": "end_turn",
+              "opportunities": 2225,
+              "uses": 197,
+              "useRate": 0.088539,
+              "damage": null
+            },
+            {
+              "actionId": "play",
+              "opportunities": 2187,
+              "uses": 2028,
+              "useRate": 0.927298,
+              "damage": null
+            },
+            {
+              "actionId": "play:forethought",
+              "opportunities": 1626,
+              "uses": 387,
+              "useRate": 0.238007,
+              "damage": null
+            },
+            {
+              "actionId": "play:hypnosis",
+              "opportunities": 1230,
+              "uses": 377,
+              "useRate": 0.306504,
+              "damage": null
+            },
+            {
+              "actionId": "play:mechanical_crows",
+              "opportunities": 1005,
+              "uses": 332,
+              "useRate": 0.330348,
+              "damage": null
+            },
+            {
+              "actionId": "play:pulse",
+              "opportunities": 0,
+              "uses": 0,
+              "useRate": null,
+              "damage": null
+            },
+            {
+              "actionId": "play:sentinel",
+              "opportunities": 0,
+              "uses": 0,
+              "useRate": null,
+              "damage": null
+            },
+            {
+              "actionId": "play:spark",
+              "opportunities": 1068,
+              "uses": 484,
+              "useRate": 0.453184,
+              "damage": null
+            },
+            {
+              "actionId": "play:ward",
+              "opportunities": 1134,
+              "uses": 448,
+              "useRate": 0.395062,
+              "damage": null
+            }
+          ]
+        },
+        "other": {
+          "hero": "standard",
+          "damage": 3234,
+          "damageShare": 0.534722,
+          "actions": [
+            {
+              "actionId": "end_turn",
+              "opportunities": 2326,
+              "uses": 256,
+              "useRate": 0.11006,
+              "damage": null
+            },
+            {
+              "actionId": "play",
+              "opportunities": 2235,
+              "uses": 2070,
+              "useRate": 0.926174,
+              "damage": null
+            },
+            {
+              "actionId": "play:forethought",
+              "opportunities": 0,
+              "uses": 0,
+              "useRate": null,
+              "damage": null
+            },
+            {
+              "actionId": "play:hypnosis",
+              "opportunities": 1370,
+              "uses": 332,
+              "useRate": 0.242336,
+              "damage": null
+            },
+            {
+              "actionId": "play:mechanical_crows",
+              "opportunities": 0,
+              "uses": 0,
+              "useRate": null,
+              "damage": null
+            },
+            {
+              "actionId": "play:pulse",
+              "opportunities": 1255,
+              "uses": 493,
+              "useRate": 0.392829,
+              "damage": null
+            },
+            {
+              "actionId": "play:sentinel",
+              "opportunities": 1136,
+              "uses": 303,
+              "useRate": 0.266725,
+              "damage": null
+            },
+            {
+              "actionId": "play:spark",
+              "opportunities": 1217,
+              "uses": 495,
+              "useRate": 0.406738,
+              "damage": null
+            },
+            {
+              "actionId": "play:ward",
+              "opportunities": 1219,
+              "uses": 447,
+              "useRate": 0.366694,
+              "damage": null
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "diagnosis": {
+    "kind": "cards",
+    "matchup": "nightcrow vs standard",
+    "focalDeck": "nightcrow",
+    "focalRate": 0.36,
+    "target": 0.5,
+    "direction": "up",
+    "probeBaseline": {
+      "rate": 0.395,
+      "games": 200,
+      "ci95": [
+        0.32984,
+        0.464118
+      ]
+    },
+    "levers": [
+      {
+        "path": "/gameRules/cards/4/cost",
+        "cardId": "pulse",
+        "field": "cost",
+        "from": 1,
+        "to": 2,
+        "rate": 0.565,
+        "games": 200,
+        "effect": 0.17,
+        "significant": true,
+        "towardTarget": true
+      },
+      {
+        "path": "/gameRules/cards/5/cost",
+        "cardId": "mechanical_crows",
+        "field": "cost",
+        "from": 2,
+        "to": 1,
+        "rate": 0.56,
+        "games": 200,
+        "effect": 0.165,
+        "significant": true,
+        "towardTarget": true
+      },
+      {
+        "path": "/gameRules/cards/5/power",
+        "cardId": "mechanical_crows",
+        "field": "power",
+        "from": 2,
+        "to": 3,
+        "rate": 0.52,
+        "games": 200,
+        "effect": 0.125,
+        "significant": true,
+        "towardTarget": true
+      },
+      {
+        "path": "/gameRules/cards/2/power",
+        "cardId": "sentinel",
+        "field": "power",
+        "from": 2,
+        "to": 1,
+        "rate": 0.505,
+        "games": 200,
+        "effect": 0.11,
+        "significant": true,
+        "towardTarget": true
+      }
+    ],
+    "probed": 22,
+    "significantLevers": 9,
+    "cards": {
+      "matches": 200,
+      "invalidMatches": 0,
+      "decks": [
+        {
+          "deck": "nightcrow",
+          "wins": 72,
+          "games": 200,
+          "winRate": 0.36,
+          "ci95": [
+            0.296691,
+            0.428586
+          ]
+        },
+        {
+          "deck": "standard",
+          "wins": 121,
+          "games": 200,
+          "winRate": 0.605,
+          "ci95": [
+            0.535882,
+            0.67016
+          ]
+        }
+      ],
+      "cards": [
+        {
+          "deck": "nightcrow",
+          "cardId": "forethought",
+          "plays": 387,
+          "opportunities": 1626,
+          "playRate": 0.23800738007380073,
+          "played": {
+            "wins": 66,
+            "games": 188,
+            "winRate": 0.351064,
+            "ci95": [
+              0.286438,
+              0.421655
+            ]
+          },
+          "notPlayed": {
+            "wins": 6,
+            "games": 11,
+            "winRate": 0.545455,
+            "ci95": [
+              0.280088,
+              0.78729
+            ]
+          },
+          "deckWinRate": 0.36,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "nightcrow",
+          "cardId": "hypnosis",
+          "plays": 377,
+          "opportunities": 1230,
+          "playRate": 0.3065040650406504,
+          "played": {
+            "wins": 71,
+            "games": 186,
+            "winRate": 0.38172,
+            "ci95": [
+              0.314965,
+              0.453263
+            ]
+          },
+          "notPlayed": {
+            "wins": 1,
+            "games": 12,
+            "winRate": 0.083333,
+            "ci95": [
+              0.014865,
+              0.353886
+            ]
+          },
+          "deckWinRate": 0.36,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "nightcrow",
+          "cardId": "mechanical_crows",
+          "plays": 332,
+          "opportunities": 1005,
+          "playRate": 0.33034825870646767,
+          "played": {
+            "wins": 70,
+            "games": 194,
+            "winRate": 0.360825,
+            "ci95": [
+              0.296553,
+              0.430502
+            ]
+          },
+          "notPlayed": {
+            "wins": 1,
+            "games": 5,
+            "winRate": 0.2,
+            "ci95": [
+              0.036223,
+              0.624472
+            ]
+          },
+          "deckWinRate": 0.36,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "nightcrow",
+          "cardId": "spark",
+          "plays": 484,
+          "opportunities": 1068,
+          "playRate": 0.45318352059925093,
+          "played": {
+            "wins": 72,
+            "games": 194,
+            "winRate": 0.371134,
+            "ci95": [
+              0.30627,
+              0.441002
+            ]
+          },
+          "notPlayed": {
+            "wins": 0,
+            "games": 5,
+            "winRate": 0,
+            "ci95": [
+              0,
+              0.434491
+            ]
+          },
+          "deckWinRate": 0.36,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "nightcrow",
+          "cardId": "ward",
+          "plays": 448,
+          "opportunities": 1134,
+          "playRate": 0.3950617283950617,
+          "played": {
+            "wins": 70,
+            "games": 185,
+            "winRate": 0.378378,
+            "ci95": [
+              0.311636,
+              0.450069
+            ]
+          },
+          "notPlayed": {
+            "wins": 2,
+            "games": 11,
+            "winRate": 0.181818,
+            "ci95": [
+              0.051367,
+              0.476986
+            ]
+          },
+          "deckWinRate": 0.36,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "standard",
+          "cardId": "hypnosis",
+          "plays": 332,
+          "opportunities": 1370,
+          "playRate": 0.24233576642335766,
+          "played": {
+            "wins": 117,
+            "games": 181,
+            "winRate": 0.646409,
+            "ci95": [
+              0.574376,
+              0.712356
+            ]
+          },
+          "notPlayed": {
+            "wins": 4,
+            "games": 17,
+            "winRate": 0.235294,
+            "ci95": [
+              0.095549,
+              0.472622
+            ]
+          },
+          "deckWinRate": 0.605,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "standard",
+          "cardId": "pulse",
+          "plays": 493,
+          "opportunities": 1255,
+          "playRate": 0.39282868525896414,
+          "played": {
+            "wins": 120,
+            "games": 199,
+            "winRate": 0.603015,
+            "ci95": [
+              0.533703,
+              0.668425
+            ]
+          },
+          "notPlayed": {
+            "wins": 1,
+            "games": 1,
+            "winRate": 1,
+            "ci95": [
+              0.206543,
+              1
+            ]
+          },
+          "deckWinRate": 0.605,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "standard",
+          "cardId": "sentinel",
+          "plays": 303,
+          "opportunities": 1136,
+          "playRate": 0.26672535211267606,
+          "played": {
+            "wins": 112,
+            "games": 186,
+            "winRate": 0.602151,
+            "ci95": [
+              0.530427,
+              0.66974
+            ]
+          },
+          "notPlayed": {
+            "wins": 9,
+            "games": 13,
+            "winRate": 0.692308,
+            "ci95": [
+              0.423689,
+              0.873195
+            ]
+          },
+          "deckWinRate": 0.605,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "standard",
+          "cardId": "spark",
+          "plays": 495,
+          "opportunities": 1217,
+          "playRate": 0.4067378800328677,
+          "played": {
+            "wins": 121,
+            "games": 196,
+            "winRate": 0.617347,
+            "ci95": [
+              0.547666,
+              0.682517
+            ]
+          },
+          "notPlayed": {
+            "wins": 0,
+            "games": 4,
+            "winRate": 0,
+            "ci95": [
+              0,
+              0.4899
+            ]
+          },
+          "deckWinRate": 0.605,
+          "dominant": false,
+          "weak": false
+        },
+        {
+          "deck": "standard",
+          "cardId": "ward",
+          "plays": 447,
+          "opportunities": 1219,
+          "playRate": 0.3666940114848236,
+          "played": {
+            "wins": 115,
+            "games": 185,
+            "winRate": 0.621622,
+            "ci95": [
+              0.549931,
+              0.688364
+            ]
+          },
+          "notPlayed": {
+            "wins": 4,
+            "games": 11,
+            "winRate": 0.363636,
+            "ci95": [
+              0.151662,
+              0.646203
+            ]
+          },
+          "deckWinRate": 0.605,
+          "dominant": false,
+          "weak": false
+        }
+      ]
+    }
+  },
+  "fair": false,
+  "proposal": {
+    "baseDataHash": "ef652b24e8e59f427ea70f009aff0cd87f5567a16700e111444ac86a6c4359fb",
+    "replacements": [
+      {
+        "path": "/gameRules/cards/4/cost",
+        "value": 2
+      }
+    ],
+    "rationale": "Increase the cost of card 4 (pulse) to raise the win rate of nightcrow towards the 50% target based on empirical leverage data.",
+    "origin": "gemini",
+    "changes": [
+      {
+        "path": "/gameRules/cards/4/cost",
+        "label": "Pulse · Cost",
+        "old": 1,
+        "new": 2
+      }
+    ]
+  },
+  "validation": {
+    "ok": true,
+    "errors": []
+  },
+  "humanMatches": 6,
+  "patchedDataHash": "66e210c1b98d227fd4aa38336a052063321a87f61eb8e55004f82aa9f9f166dc",
+  "patched": {
+    "reportId": "r-patched",
+    "gameId": "hero_cards",
+    "simVersion": "cards-0.1.2",
+    "dataHash": "66e210c1b98d227fd4aa38336a052063321a87f61eb8e55004f82aa9f9f166dc",
+    "botPolicyVersion": "cards-bot-0.1.0",
+    "seedSetId": "holdout-1000001-1000100",
+    "validMatches": 200,
+    "invalidMatches": 0,
+    "draws": 8,
+    "rows": [
+      {
+        "dimension": "nightcrow vs standard",
+        "wins": 111,
+        "games": 200,
+        "winRate": 0.555,
+        "ci95": [
+          0.485732,
+          0.622195
+        ],
+        "uses": 4421,
+        "opportunities": 11101,
+        "outlier": false,
+        "target": 0.5,
+        "deltaToTarget": 0.055
+      }
+    ],
+    "intentVersion": "default",
+    "createdAt": "2026-11-14T20:45:27.819Z"
+  },
+  "verdict": {
+    "verdict": "accepted",
+    "reasons": [
+      "nightcrow vs standard: improved (36.0% [29.7%-42.9%] n=200 -> 55.5% [48.6%-62.2%] n=200)",
+      "1 of 1 target(s) moved toward their target beyond noise; none moved away, no new extreme matchup and no more invalid matches"
+    ],
+    "targets": [
+      {
+        "matchup": "nightcrow vs standard",
+        "before": {
+          "rate": 0.36,
+          "ci95": [
+            0.296691,
+            0.428586
+          ],
+          "games": 200
+        },
+        "after": {
+          "rate": 0.555,
+          "ci95": [
+            0.485732,
+            0.622195
+          ],
+          "games": 200
+        },
+        "outcome": "improved"
+      }
+    ]
+  },
+  "runId": "42998b18-e92e-46db-8d80-85df49ca8100",
+  "gameId": "hero_cards",
+  "botPolicy": "scripted",
+  "elapsedMs": 22150,
+  "seatWins": {
+    "baseline": 111,
+    "holdout": 119
+  }
+}
