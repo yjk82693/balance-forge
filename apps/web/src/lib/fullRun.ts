@@ -56,6 +56,10 @@ function cleanRow(r: unknown): ReportRow | null {
     opportunities: Number(r.opportunities) || 0,
     outlier: r.outlier === true,
     ...(seatWins !== undefined ? { seatWins } : {}),
+    ...(Number.isFinite(Number(r.target)) && r.target != null ? { target: Number(r.target) } : {}),
+    ...(Number.isFinite(Number(r.deltaToTarget)) && r.deltaToTarget != null
+      ? { deltaToTarget: Number(r.deltaToTarget) }
+      : {}),
   };
 }
 

@@ -2375,3 +2375,11 @@ button.intent-btn { cursor: pointer; }
 .intent-btn strong { font-size: var(--fs-h3); }
 .caption.intended { flex-basis: 100%; }
 .present-intent { zoom: 1.3; }
+/* bot skill screen */
+.training-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
+.fitness { margin: var(--space-2) 0; }
+.fitness-mid { stroke: var(--line-strong); stroke-dasharray: 4 4; }
+.fitness-line { stroke: var(--accent); stroke-width: 2; }
+.fitness-dot { fill: var(--accent); }
+.skill-row { list-style: none; }
+.skill-row .rate-rows { margin: 0; }

@@ -201,6 +201,7 @@ export async function runPlaytest(
   onProgress?: (p: ProgressMsg) => void,
   heroes?: [string, string],
   diagnose = false,
+  botPolicy?: string,
 ): Promise<PlaytestRun> {
   if (isMockMode()) {
     // Baseline run, then the holdout run on the patched data, like the real /full endpoint.
@@ -223,7 +224,8 @@ export async function runPlaytest(
         : undefined,
     };
   }
-  return (await runFullPlaytest(signal, heroes, diagnose)) ?? runRealPlaytest(matches, signal);
+  const full = await runFullPlaytest(signal, heroes, diagnose, botPolicy);
+  return full ?? runRealPlaytest(matches, signal, undefined, botPolicy);
 }
 
 /** Pairs per seat assignment for the live run: Bari vs Real Armor, 400 matches, over the 200-game verdict gate. */
@@ -239,6 +241,7 @@ async function runFullPlaytest(
   signal?: AbortSignal,
   heroes?: [string, string],
   diagnose = false,
+  botPolicy?: string,
 ): Promise<PlaytestRun | null> {
   let res: Response;
   try {
@@ -249,6 +252,7 @@ async function runFullPlaytest(
         gameId: "hero_arena",
         ...(heroes ? { heroes } : {}),
         ...(diagnose ? { diagnose: true } : {}),
+        ...(botPolicy ? { botPolicy } : {}),
         pairs: FULL_RUN_PAIRS,
         holdoutPairs: FULL_RUN_PAIRS, // the holdout needs as many games as the baseline to pass the verdict's gate
       }),
@@ -259,10 +263,14 @@ async function runFullPlaytest(
     throw new ApiError("Couldn't reach the server.", "network");
   }
   if (res.status === 404 || res.status === 405) return null;
-  // A server that rejects `heroes` or `diagnose` must not be answered with a different run: show the error.
-  if (res.status === 400 && (heroes || diagnose)) {
+  // A server that rejects `heroes`, `diagnose` or `botPolicy` must not be answered with another run: show the error.
+  if (res.status === 400 && (heroes || diagnose || botPolicy)) {
     const { code, text } = await readError(res);
-    const what = [heroes ? heroes.map(heroName).join(" vs ") : "", diagnose ? "with diagnosis" : ""].filter(Boolean);
+    const what = [
+      heroes ? heroes.map(heroName).join(" vs ") : "",
+      diagnose ? "with diagnosis" : "",
+      botPolicy ? `bots: ${botPolicy}` : "",
+    ].filter(Boolean);
     const said = `${code ? `${code}: ` : ""}${text}`;
     throw new ApiError(`The server didn't accept this run (${what.join(", ")}). ${said}`, "server", code, true);
   }
@@ -326,7 +334,12 @@ export const runBotsOnVersion = (dataHash: string, matches = 400, signal?: Abort
   runRealPlaytest(matches, signal, dataHash);
 
 /** POST /v1/playtest/run, then GET the returned resultsPath and build the report from the match results. */
-async function runRealPlaytest(matches: number, signal?: AbortSignal, dataHash?: string): Promise<PlaytestRun> {
+async function runRealPlaytest(
+  matches: number,
+  signal?: AbortSignal,
+  dataHash?: string,
+  botPolicy?: string,
+): Promise<PlaytestRun> {
   const get = async (path: string, init?: RequestInit) => {
     try {
       return await fetch(path, { ...init, signal });
@@ -342,6 +355,7 @@ async function runRealPlaytest(matches: number, signal?: AbortSignal, dataHash?:
       gameId: "hero_arena",
       pairs: Math.max(1, Math.round(matches / 2)),
       ...(dataHash ? { dataHash } : {}),
+      ...(botPolicy ? { botPolicy } : {}),
     }),
   });
   if (!res.ok) return failFrom(res);

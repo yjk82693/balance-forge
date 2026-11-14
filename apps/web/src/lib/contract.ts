@@ -60,6 +60,12 @@ export interface ReportRow {
   outlier: boolean;
   /** mirror matchups only: games won by the first seat */
   seatWins?: number;
+  /**
+   * The analysis's own view of this row against the design intent: the target win rate of the first-named hero, how far
+   * the row is from it, and whether that makes it an outlier. When present the screens show these as they are.
+   */
+  target?: number;
+  deltaToTarget?: number;
 }
 
 export interface Report {

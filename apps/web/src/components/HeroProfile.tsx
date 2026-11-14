@@ -68,7 +68,7 @@ interface RateRowProps {
   band?: [number, number];
 }
 
-function RateRow({ label, rate, strong, band }: RateRowProps) {
+export function RateRow({ label, rate, strong, band }: RateRowProps) {
   const [lo, hi] = rate.ci95;
   return (
     <li className={`rate-row${strong ? " strong" : ""}`}>

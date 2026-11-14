@@ -73,6 +73,16 @@ export function targetFor(a: string, b: string, intent: Intent = current): Targe
   return { rate, band, strength: m?.strength ?? "even", favored: m?.favored, label };
 }
 
+/** The target of a row that carries its own (the analysis's number): whoever is above 50% is the favored one. */
+export function targetFromRate(a: string, b: string, rate: number): Target {
+  const favored = rate > 0.5 ? a : rate < 0.5 ? b : undefined;
+  const top = Math.round(Math.max(rate, 1 - rate) * 100);
+  const label = favored ? `intended: ${heroName(favored)} favored (${top}%)` : "intended: even (50%)";
+  const band: [number, number] = [rate - BAND_HALF, rate + BAND_HALF];
+  const strength = STRENGTHS.find((s) => Math.abs(TARGET_RATE[s] - Math.max(rate, 1 - rate)) < 0.0251) ?? "even";
+  return { rate, band, strength, favored, label };
+}
+
 /** The states a cell cycles through for the pair (a, b): even, a slight/clear/strong, b slight/clear/strong. */
 export function cycleStates(a: string, b: string): MatchupIntent[] {
   const side = (hero: string): MatchupIntent[] => STRENGTHS.slice(1).map((strength) => ({ favored: hero, strength }));

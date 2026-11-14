@@ -75,7 +75,7 @@ function rateOf(dimension: string, rows: Parameters<typeof botRows>[0]): Rate | 
   const row = botRows(rows).find((r) => r.dimension === dimension);
   if (!row) return null;
   const s = rowStats(row);
-  const intended = s.target.favored ? s.target.label : undefined;
+  const intended = s.target.favored ? `${s.target.label}${s.estimated ? " · estimated" : ""}` : undefined;
   return { matchup: name(dimension), rate: s.rate, lo: s.lo, hi: s.hi, games: row.games, intended };
 }
 

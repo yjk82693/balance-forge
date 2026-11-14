@@ -6,6 +6,7 @@ import { MatchesTable, type MatchRow } from "../components/MatchesTable";
 import { ReportPanel } from "../components/ReportPanel";
 import { ResultCard } from "../components/ResultCard";
 import { ResultSkeleton } from "../components/ResultSkeleton";
+import { BotSkillPicker } from "../components/BotSkillPicker";
 import { MatchupPicker } from "../components/MatchupPicker";
 import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
@@ -23,6 +24,7 @@ import {
   saveTheme,
   type Theme,
 } from "../lib/dashboardData";
+import { loadSkill, policyFor, saveSkill, type BotSkill } from "../lib/botPolicy";
 import { useDemoVersion } from "../lib/demo";
 import { fixtureMatchConfig } from "../lib/fixtures";
 import { loadJustPlayed } from "../lib/justPlayed";
@@ -80,6 +82,7 @@ export function Dashboard() {
     saveChosen(m);
     setPicked(m);
   };
+  const [skill, setSkill] = useState<BotSkill>(loadSkill);
   const [diagnoseChoice, setDiagnoseChoice] = useState<boolean | null>(null);
   const diagnose = diagnoseChoice ?? currentDiagnose(matchup, roster);
   // With a hero profile on the card the screen is full: the finished live panel and the matches table make room.
@@ -127,12 +130,23 @@ export function Dashboard() {
           <a className="btn secondary" href="#/intent">
             Design intent
           </a>
+          <a className="btn secondary" href="#/skill">
+            Bot skill
+          </a>
           <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
           <MatchupPicker
             value={matchup}
             onChange={choose}
             disabled={busy || mock}
             title={mock ? "Sample data: the matchup is fixed." : undefined}
+          />
+          <BotSkillPicker
+            value={skill}
+            disabled={busy || mock}
+            onChange={(s) => {
+              saveSkill(s);
+              setSkill(s);
+            }}
           />
           <label
             className="small toggle"
@@ -151,7 +165,7 @@ export function Dashboard() {
           </label>
           <button
             className="btn primary"
-            onClick={() => start(matchup, diagnose)}
+            onClick={() => start(matchup, diagnose, policyFor(skill))}
             aria-busy={busy}
             aria-disabled={busy}
           >
@@ -216,7 +230,7 @@ export function Dashboard() {
               notice={notice}
               elapsed={elapsed}
               showPatched={showPatched}
-              onRun={() => start(matchup, diagnose)}
+              onRun={() => start(matchup, diagnose, policyFor(skill))}
             />
           </div>
         </main>
