@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isArenaPayload, isCardsPayload, type CardsPayload } from "../lib/contract";
+import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { Stick } from "../components/Stick";
@@ -12,6 +12,7 @@ import { clearSeat, loadSeat, saveSeat } from "../lib/seat";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
+import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardsHand } from "../components/CardsHand";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -37,7 +38,8 @@ interface Profile {
 export function Controller({ initialCode }: { initialCode: string }) {
   useManifest();
   const { transport, status } = useTransport("controller");
-  const { room, observation, config, result, error, lastAckSeq } = useRoom(transport);
+  const { room, observation, events, config, result, error, lastAckSeq, views } = useRoom(transport);
+  const [arenaOn, setArenaOn] = useState(true); // the small arena above the controls; one button turns it off
   const [profile, setProfile] = useState<Profile>({ code: initialCode.toUpperCase(), name: "", hero: "bari" });
   const [joined, setJoined] = useState<Profile | null>(null);
   const seat = room?.you;
@@ -195,7 +197,18 @@ export function Controller({ initialCode }: { initialCode: string }) {
         />
       ) : (
       <>
-      <section className="phone-body" aria-live="polite">
+      {arenaOn && (
+        <div className="phone-arena">
+          <ArenaCanvas
+            observation={observation && isArenaPayload(observation.payload) ? (observation as Observation) : null}
+            events={events}
+            views={views}
+            compact
+            smooth
+          />
+        </div>
+      )}
+      <section className={`phone-body${arenaOn ? " tight" : ""}`} aria-live="polite">
         {ended ? (
           <p>Thanks for playing. Your match is recorded.</p>
         ) : (
@@ -248,6 +261,11 @@ export function Controller({ initialCode }: { initialCode: string }) {
       </>
       )}
       <footer className="phone-foot">
+        {gameId !== "hero_cards" && (
+          <button className="btn secondary touch" aria-pressed={arenaOn} onClick={() => setArenaOn(!arenaOn)}>
+            {arenaOn ? "Arena: on" : "Arena: off"}
+          </button>
+        )}
         <SoundToggle className="btn secondary touch" />
         <button className="btn secondary touch" onClick={() => {
             clearSeat();
