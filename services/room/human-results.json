@@ -953,5 +953,82 @@
     "finalStateHash": "360e84d3191443c2485e252288728d4dfb4edd4161f7ba4fa3747f8a43e38599",
     "valid": false,
     "errorCode": "TRANSPORT_UNAVAILABLE"
+  },
+  {
+    "matchId": "human-fd8c961c-c98c-4233-86fc-b64c53fae882",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_cards",
+      "simVersion": "cards-0.1.1",
+      "dataHash": "ef652b24e8e59f427ea70f009aff0cd87f5567a16700e111444ac86a6c4359fb",
+      "seed": 1,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "turn",
+      "maxTicks": 180,
+      "options": {
+        "assignments": {
+          "p1": "standard",
+          "p2": "standard"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "play",
+              "opportunities": 4,
+              "uses": 0
+            },
+            {
+              "actionId": "end_turn",
+              "opportunities": 4,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 20,
+          "actions": [
+            {
+              "actionId": "play",
+              "opportunities": 9,
+              "uses": 9
+            },
+            {
+              "actionId": "end_turn",
+              "opportunities": 9,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 13
+    },
+    "finalStateHash": "081cee6702215ba45c9550db95558414d49af1dfd93a0ecf1419bcefb728cd17",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ]
   }
 ]

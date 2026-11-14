@@ -31,9 +31,10 @@ function newestMtime(dir) {
 }
 
 function buildWebIfStale() {
-  const src = join(root, 'apps/web/src');
+  // The bundle also embeds recorded runs from services/runner and the public assets.
+  const inputs = ['apps/web/src', 'apps/web/public', 'services/runner'].map(p => join(root, p)).filter(existsSync);
   const builtAt = existsSync(join(dist, 'index.html')) ? statSync(join(dist, 'index.html')).mtimeMs : 0;
-  if (builtAt > newestMtime(src)) return console.log('web: build is up to date');
+  if (builtAt > Math.max(...inputs.map(newestMtime))) return console.log('web: build is up to date');
   console.log('web: building apps/web ...');
   const build = spawnSync('npm', ['run', 'build', '-w', 'apps/web'], { cwd: root, stdio: 'inherit' });
   if (build.status !== 0) throw Error('web build failed; fix it or run `npm run build -w apps/web` to see why');
