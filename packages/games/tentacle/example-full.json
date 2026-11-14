@@ -1,5 +1,5 @@
 {
-  "note": "STUB: field names and shapes are final; the numbers are from a 60-run stub and an illustrative patch, not a recorded result",
+  "note": "STUB: field names and shapes are final; the numbers come from a 60-run stub and an illustrative patch",
   "runId": "00000000-0000-4000-8000-000000000000",
   "gameId": "tentacle_run",
   "botPolicyVersion": "tentacle-bot-0.1.0",

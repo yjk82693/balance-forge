@@ -92,3 +92,27 @@ test('card patches: bounds, indexes and the peek card', async () => {
   assert.throws(() => applyPatch(data, propose('/gameRules/cards/01/cost', 2)), /INVALID_SCHEMA/);
   assert.throws(() => applyPatch(data, propose('/gameRules/health', 2)), /INVALID_SCHEMA/);
 });
+
+// Tentacle Run (contract v0.1.5): wave numbers, absolute bounds; both validators agree.
+test('wave patches: paths, bounds and agreement with the analysis validator', async () => {
+  const { data } = await import('../games/tentacle/index.ts');
+  const { validatePatch } = await import('../analysis/src/validator.ts');
+  const propose = (path: string, value: number) => ({ baseDataHash: hash(data), replacements: [{ path, value }],
+    rationale: 'test' });
+  const cases: Array<[string, number]> = [['/gameRules/waves/3/enemyDamage', 18], ['/gameRules/waves/3/enemyDamage', 0],
+    ['/gameRules/waves/3/enemyDamage', 61], ['/gameRules/waves/3/fireIntervalTicks', 14],
+    ['/gameRules/waves/3/fireIntervalTicks', 300], ['/gameRules/waves/3/sentries', 8],
+    ['/gameRules/waves/3/sentries', 9], ['/gameRules/waves/0/walkers', 0], ['/gameRules/waves/0/enemySpeed', 4],
+    ['/gameRules/waves/5/walkers', 3], ['/gameRules/waves/03/walkers', 3], ['/gameRules/waves/1/hp', 3]];
+  for (const [path, value] of cases) {
+    const proposal = propose(path, value);
+    let engine = true;
+    try {
+      applyPatch(data, proposal, data);
+    } catch {
+      engine = false;
+    }
+    assert.equal(validatePatch(proposal, { rootData: data }).ok, engine, `${path}=${value}`);
+  }
+  assert.equal(applyPatch(data, propose('/gameRules/waves/3/enemyDamage', 18)).gameRules.waves[3].enemyDamage, 18);
+});

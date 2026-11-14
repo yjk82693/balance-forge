@@ -9,6 +9,10 @@ const MOVE_POWER_RE = /^\/moves\/(0|[1-9][0-9]*)\/power$/;
 const HERO_STAT_RE = /^\/characters\/(0|[1-9][0-9]*)\/(health|speed)$/;
 const CARD_RE = /^\/gameRules\/cards\/(0|[1-9][0-9]*)\/(cost|power)$/;
 const CARD_BOUNDS = { cost: [1, 3], power: [1, 10] }; // contract v0.1.4: Hero Cards cost and power
+const WAVE_RE = /^\/gameRules\/waves\/([0-4])\/(walkers|drones|sentries|enemySpeed|enemyDamage|fireIntervalTicks)$/;
+// contract v0.1.5: Tentacle Run wave numbers
+const WAVE_BOUNDS = { walkers: [0, 12], drones: [0, 10], sentries: [0, 8], enemySpeed: [5, 60], enemyDamage: [1, 60],
+  fireIntervalTicks: [15, 300] };
 const DAMAGE_PATH = '/tuning/damageScalePermille';
 const HERO_STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] };
 
@@ -23,6 +27,8 @@ export function boundsFor(path) {
   if (stat) return HERO_STAT_BOUNDS[stat[2]];
   const card = CARD_RE.exec(path);
   if (card) return CARD_BOUNDS[card[2]];
+  const wave = WAVE_RE.exec(path);
+  if (wave) return WAVE_BOUNDS[wave[2]];
   return null;
 }
 
