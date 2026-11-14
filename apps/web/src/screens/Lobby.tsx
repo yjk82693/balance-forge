@@ -8,7 +8,7 @@ import { MockStatus, TopBar } from "../components/TopBar";
 import { useManifest } from "../lib/assets";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
-import { VersionToggle } from "../components/VersionToggle";
+import { LobbyVersion } from "../components/LobbyVersion";
 import { ServerDown, useServerState } from "../components/ServerDown";
 
 const SLOTS = 2;
@@ -155,7 +155,12 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
         </span>
         <span className="spacer" />
         {dataHash && <span className="badge after">version {dataHash.slice(0, 7)}</span>}
-        <VersionToggle />
+        <LobbyVersion
+          transport={transport}
+          gameId={gameId}
+          ready={status === "online" && !!room}
+          fixed={!!dataHash}
+        />
         <MockStatus online={status === "online"} />
       </TopBar>
       <div className="lobby-bar" />
