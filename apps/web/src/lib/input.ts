@@ -10,7 +10,8 @@ const clampInt = (v: number) => Math.max(-1000, Math.min(1000, Math.round(v * 10
  * Turns raw input (touch stick, gamepad stick, buttons) into ActionInput messages.
  * Every source goes through here, so a phone and a gamepad produce identical messages:
  *   move:       { actionId: "move", params: { moveX, moveY } }          (-1000..1000)
- *   buttons:    { actionId: "melee" | "projectile" | "guard", params: { aimX, aimY } }  (aim = last non-zero stick direction)
+ *   buttons:    { actionId: "melee" | "projectile" | "guard", params: { aimX, aimY } }
+ *               (aim = last non-zero stick direction)
  * The server decides legality; nothing here advances game state.
  */
 export class InputPipeline {

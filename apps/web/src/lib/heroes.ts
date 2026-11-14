@@ -2,6 +2,8 @@ export interface HeroInfo {
   id: string;
   name: string;
   cssVar: string;
+  /** games where this hero is not playable yet */
+  plannedIn?: string[];
 }
 
 // Hero identity colors: chips, portrait rings, legend swatches. Never bar fills.

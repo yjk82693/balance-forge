@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { gameById } from "../lib/games";
 import { go } from "../lib/router";
-import { heroName } from "../lib/heroes";
+import { heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { MockStatus, TopBar } from "../components/TopBar";
 import { useManifest } from "../lib/assets";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
+import { VersionToggle } from "../components/VersionToggle";
+import { ServerDown, useServerState } from "../components/ServerDown";
 
-const SLOTS = 4;
+const SLOTS = 2;
+/** The room server starts a match with exactly two connected players. */
+const PLAYERS_TO_START = 2;
 
 function joinUrl(code: string) {
   return `${location.origin}${location.pathname}#/play?code=${code}`;
@@ -41,15 +45,21 @@ function Qr({ url }: { url: string }) {
 export function Lobby({ gameId }: { gameId: string }) {
   useManifest();
   const game = gameById(gameId);
-  const { transport, status } = useTransport("display");
+  const { transport, status } = useTransport("display", gameId);
   const { room } = useRoom(transport);
+  const srv = useServerState(status);
   const [left, setLeft] = useState<string | null>(null);
   const prev = useRef(new Map<string, { name: string; connected: boolean }>());
 
-  // Lobby always starts clean: a finished or running match from earlier is reset.
+  // Lobby always starts clean: a finished or running match from earlier is reset. The server needs the room's
+  // id and epoch on every host message, so wait for the first room.status.
+  const phase = room?.phase;
+  const roomGame = room?.gameId;
   useEffect(() => {
-    if (status === "online") transport?.send("match.reset", {});
-  }, [transport, status]);
+    if (status !== "online" || !phase) return;
+    if (roomGame && roomGame !== gameId) transport?.send("game.select", { gameId });
+    if (phase !== "lobby") transport?.send("match.reset", {});
+  }, [transport, status, phase, roomGame, gameId]);
 
   useEffect(() => {
     if (!room) return;
@@ -66,16 +76,33 @@ export function Lobby({ gameId }: { gameId: string }) {
   }, [left]);
 
   if (!game) return <TopBar />;
+  if (srv === "unreachable") {
+    return (
+      <div className="screen">
+        <TopBar>
+          <a className="link-back" href="#/">
+            ← Games
+          </a>
+          <span className="spacer" />
+          <MockStatus online={false} />
+        </TopBar>
+        <main className="boundary">
+          <ServerDown onRetry={() => transport?.reconnect()} />
+        </main>
+      </div>
+    );
+  }
+  const connecting = !room;
   const code = room?.joinCode ?? "····";
   const url = joinUrl(code);
   const seats = room?.seats ?? [];
   const here = seats.filter((s) => s.connected).length;
-  const arena = game.id === "hero_arena";
-  const canStart = here >= 1 && arena && status === "online";
+  const arena = game.status === "ready";
+  const canStart = here === PLAYERS_TO_START && arena && status === "online";
   const reason = !arena
     ? `${game.title} can't be played on the big screen yet.`
-    : here < 1
-      ? "Waiting for at least 1 player"
+    : here < PLAYERS_TO_START
+      ? `Waiting for ${PLAYERS_TO_START - here} more ${PLAYERS_TO_START - here === 1 ? "player" : "players"}`
       : "";
   const start = () => {
     if (!canStart) return;
@@ -93,6 +120,7 @@ export function Lobby({ gameId }: { gameId: string }) {
           {game.eyebrow}
         </span>
         <span className="spacer" />
+        <VersionToggle />
         <MockStatus online={status === "online"} />
       </TopBar>
       <div className="lobby-bar" />
@@ -103,7 +131,11 @@ export function Lobby({ gameId }: { gameId: string }) {
           </h1>
           <div className="join-row">
             <div className="qr-card">
-              <Qr url={url} />
+              {connecting ? (
+                <div className="sk" style={{ aspectRatio: "1", width: "100%" }} aria-label="Getting the room ready" />
+              ) : (
+                <Qr url={url} />
+              )}
             </div>
             <div className="join-code">
               <p className="eyebrow text-2" style={{ color: "var(--text-2)" }}>
@@ -125,8 +157,9 @@ export function Lobby({ gameId }: { gameId: string }) {
               Players · {here} of {SLOTS} here
             </span>
           </div>
-          <ul className="chips" aria-live="polite">
-            {Array.from({ length: SLOTS }, (_, i) => {
+          <ul className="chips" aria-live="polite" aria-busy={connecting}>
+            {connecting && Array.from({ length: SLOTS }, (_, i) => <li key={`sk-${i}`} className="chip sk" />)}
+            {!connecting && Array.from({ length: SLOTS }, (_, i) => {
               const s = seats[i];
               if (!s) {
                 return (
@@ -140,7 +173,11 @@ export function Lobby({ gameId }: { gameId: string }) {
                 );
               }
               return (
-                <li key={s.seat} className={`chip${s.connected ? "" : " away"}`}>
+                <li
+                  key={s.seat}
+                  className={`chip${s.connected ? "" : " away"}`}
+                  style={{ ["--hero-chip" as string]: heroColorVar(s.hero) }}
+                >
                   <HeroPortrait hero={s.hero} size={56} />
                   <div className="chip-name">
                     <p className="small" style={{ fontWeight: 700 }}>
@@ -158,7 +195,7 @@ export function Lobby({ gameId }: { gameId: string }) {
             })}
           </ul>
           <p className="caption lobby-note" aria-live="polite">
-            {left ?? "Bots fill empty slots when you start."}
+            {connecting ? "Getting the room ready…" : (left ?? "Two players start a match.")}
           </p>
           <button className="btn primary touch" aria-disabled={!canStart} onClick={start}>
             Start match

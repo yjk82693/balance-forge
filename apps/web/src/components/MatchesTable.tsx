@@ -8,6 +8,8 @@ export interface MatchRow {
   /** hero per seat when known (human rows come from the lobby; bot rows carry none) */
   heroes: Record<string, string>;
   names: Record<string, string>;
+  /** the match the viewer just played on their phone */
+  justPlayed?: boolean;
 }
 
 const fmtTime = (ticks: number) => {
@@ -16,17 +18,29 @@ const fmtTime = (ticks: number) => {
 };
 const seatLabel = (row: MatchRow, seat: string) => row.names[seat] ?? "bot";
 
+function winnerLabel(r: MatchRow, winSeat: string): string {
+  const m = r.result;
+  if (m.outcome.status === "draw") return "Draw";
+  if (!m.valid) return "—";
+  return r.heroes[winSeat] ? heroName(r.heroes[winSeat]) : seatLabel(r, winSeat);
+}
+
+function rowClass(r: MatchRow, selected: boolean): string {
+  return [selected && "selected", !r.result.valid && "invalid", r.justPlayed && "just"].filter(Boolean).join(" ");
+}
+
 interface Props {
   rows: MatchRow[];
   selected: string;
   onSelect: (matchId: string) => void;
+  compact?: boolean;
 }
 
-export function MatchesTable({ rows, selected, onSelect }: Props) {
+export function MatchesTable({ rows, selected, onSelect, compact }: Props) {
   // Human matches pin to the top.
   const ordered = [...rows].sort((a, b) => Number(b.human) - Number(a.human));
   return (
-    <table className="matches">
+    <table className={`matches${compact ? " compact" : ""}`}>
       <thead>
         <tr>
           <th>Match</th>
@@ -41,11 +55,11 @@ export function MatchesTable({ rows, selected, onSelect }: Props) {
           const { result: m } = r;
           const [p1, p2] = m.config.players;
           const win = m.outcome.winners[0];
-          const winner = m.outcome.status === "draw" ? "Draw" : !m.valid ? "—" : r.heroes[win] ? heroName(r.heroes[win]) : seatLabel(r, win);
+          const winner = winnerLabel(r, win);
           return (
             <tr
               key={m.matchId}
-              className={`${selected === m.matchId ? "selected" : ""}${!m.valid ? " invalid" : ""}`}
+              className={rowClass(r, selected === m.matchId)}
               tabIndex={0}
               aria-selected={selected === m.matchId}
               onClick={() => onSelect(m.matchId)}
@@ -63,6 +77,7 @@ export function MatchesTable({ rows, selected, onSelect }: Props) {
               <td>
                 <span className="badges">
                   {r.human ? <span className="badge human">human</span> : <span className="badge">bot</span>}
+                  {r.justPlayed && <span className="badge after">you just played this</span>}
                   {m.valid ? (
                     <span className="badge recorded">recorded</span>
                   ) : (

@@ -1,173 +1,150 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArenaCanvas } from "../components/ArenaCanvas";
+import { CompareReplay } from "../components/CompareReplay";
+import { DiffCard } from "../components/DiffCard";
+import { FitStage } from "../components/FitStage";
+import { LivePanel } from "../components/LivePanel";
 import { MatchesTable, type MatchRow } from "../components/MatchesTable";
-import { PatchCompare } from "../components/PatchCompare";
-import { WinRateChart, rowStats } from "../components/WinRateChart";
+import { ReportPanel } from "../components/ReportPanel";
+import { RunTable } from "../components/RunTable";
 import { TopBar } from "../components/TopBar";
+import { VersionToggle } from "../components/VersionToggle";
+import { rowStats } from "../components/WinRateChart";
 import { useManifest } from "../lib/assets";
-import { heroName } from "../lib/heroes";
-import { pct } from "../lib/stats";
 import {
-  fixtureMatchEnded,
-  fixtureMatchResults,
-  fixtureObservation,
-  fixturePatch,
-  fixtureReportBaseline,
-  fixtureReportPatched,
-  fixtureRoomStatus,
-} from "../lib/fixtures";
-import { replayObservation } from "../mock/mockServer";
-import type { Observation } from "../lib/contract";
+  MATCHES,
+  SAMPLE_HUMAN_ID,
+  n,
+  pickTargetDimension,
+  readTheme,
+  sampleRows,
+  saveTheme,
+  type Theme,
+} from "../lib/dashboardData";
+import { useDemoVersion } from "../lib/demo";
+import { fixtureMatchConfig } from "../lib/fixtures";
+import { loadJustPlayed } from "../lib/justPlayed";
+import { useRunner } from "../lib/useRunner";
+import { isMockMode } from "../mock/types";
 
-type Theme = "dark" | "light";
-const readTheme = (): Theme => {
-  try {
-    return localStorage.getItem("bf-theme") === "light" ? "light" : "dark";
-  } catch {
-    return "dark";
-  }
-};
-
-/** Loops the Observation fixture; restarting on `key` change is how a selected row "loads" its replay. */
-function useReplay(restartKey: string): Observation {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    setFrame(0);
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    const t = setInterval(() => setFrame((f) => f + 1), 100);
-    return () => clearInterval(t);
-  }, [restartKey]);
-  return useMemo(() => replayObservation(frame, []), [frame]);
+/** Sample rows with the match the viewer just played pinned on top (replacing the fixture human row). */
+function rowsWithJustPlayed(played: ReturnType<typeof loadJustPlayed>): MatchRow[] {
+  if (!played) return sampleRows;
+  const mine: MatchRow = {
+    result: played.result,
+    human: true,
+    heroes: played.heroes,
+    names: played.names,
+    justPlayed: true,
+  };
+  return [mine, ...sampleRows.filter((r) => r.result.matchId !== played.result.matchId)];
 }
-
-// The human row is the match from the WebSocket fixture; its seat names come from the room.status fixture.
-const HUMAN_ID = fixtureMatchEnded.payload.result.matchId;
-const HEROES_BY_SEAT = Object.fromEntries(fixtureObservation.payload.entities.map((e) => [e.id, e.hero]));
-const NAMES_BY_SEAT: Record<string, string> = Object.fromEntries(fixtureRoomStatus.payload.seats.map((s) => [s.seat, s.name]));
-const rows: MatchRow[] = fixtureMatchResults.map((result) => {
-  const human = result.matchId === HUMAN_ID;
-  return { result, human, heroes: human ? HEROES_BY_SEAT : {}, names: human ? NAMES_BY_SEAT : {} };
-});
 
 export function Dashboard() {
   useManifest();
+  const mock = isMockMode();
+  const version = useDemoVersion();
+  const { run, busy, live, error, notice, start } = useRunner();
   const [theme, setTheme] = useState<Theme>(readTheme);
-  const [patched, setPatched] = useState(false);
-  const [selected, setSelected] = useState(HUMAN_ID);
-  const observation = useReplay(selected);
+  const [selected, setSelected] = useState(SAMPLE_HUMAN_ID);
+  const played = useMemo(loadJustPlayed, []);
+  const rows = useMemo(() => rowsWithJustPlayed(played), [played]);
 
   // Light is for projecting this screen only; every other screen stays dark.
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem("bf-theme", theme);
-    } catch {
-      /* private mode: theme just won't persist */
-    }
+    saveTheme(theme);
     return () => {
       document.documentElement.dataset.theme = "dark";
     };
   }, [theme]);
 
-  const report = patched ? fixtureReportPatched : fixtureReportBaseline;
-  const stats = report.rows.map(rowStats);
-  const worst = stats.reduce((a, b) => (Math.abs(b.rate - 0.5) > Math.abs(a.rate - 0.5) ? b : a));
-  const outlier = stats.find((s) => s.outlier);
-  const before = rowStats(fixtureReportBaseline.rows.find((r) => r.dimension === worst.row.dimension)!);
-  const shown = outlier ?? worst;
-  const headline = outlier
-    ? `${heroName(outlier.matchup.a)} wins too often against ${heroName(outlier.matchup.b)}`
-    : "Within normal range";
-  const valid = report.validMatches;
+  const canPatch = !!run?.patched;
+  const showPatched = canPatch && version === "patched";
+  const baseStats = run ? run.baseline.rows.map(rowStats) : [];
+  const target = baseStats.find((s) => s.row.dimension === pickTargetDimension(baseStats));
+  // Replay heroes follow the baseline's target matchup, so they stay put when the toggle flips.
+  const replayHeroes: [string, string] = target
+    ? [target.matchup.a, target.matchup.b || target.matchup.a]
+    : ["bari", "real_armor"];
 
   return (
-    <div className="screen dash">
-      <TopBar>
-        <span className="eyebrow" style={{ color: "var(--game-arena)" }}>
-          HERO ARENA
-        </span>
-        <span className="small text-2">Balance report · {patched ? "after patch" : "baseline"}</span>
-        <span className="spacer" />
-        {patched ? (
-          <button className="btn secondary" onClick={() => setPatched(false)}>
-            Show baseline
+    <FitStage>
+      <div className="screen dash dash-compact">
+        <TopBar>
+          <span className="eyebrow" style={{ color: "var(--game-arena)" }}>
+            HERO ARENA
+          </span>
+          <span className="small text-2">
+            Balance report{run ? ` · ${showPatched ? "patched" : "broken"} data` : ""}
+          </span>
+          <span className="spacer" />
+          <VersionToggle disabled={!!run && !canPatch} hint="This run has no patched data to switch to." />
+          <button className="btn primary" onClick={start} aria-busy={busy} aria-disabled={busy}>
+            {busy && <span className="spinner" aria-hidden="true" />}
+            {busy ? "Bots are playing…" : `Run ${n(MATCHES)} bot matches`}
           </button>
-        ) : (
-          <button className="btn primary" onClick={() => setPatched(true)}>
-            Try the patch
+          <button
+            className="btn secondary icon-btn"
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            aria-pressed={theme === "light"}
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          >
+            ◐
           </button>
-        )}
-        <button
-          className="btn secondary icon-btn"
-          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-          aria-pressed={theme === "light"}
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-        >
-          ◐
-        </button>
-      </TopBar>
+        </TopBar>
 
-      <main className="dash-grid">
-        <div className="dash-left">
-          <div className="arena-stage dash-stage">
-            <ArenaCanvas observation={observation} />
-            <div className="arena-overlay">
-              <span className="badge">sample replay</span>
-            </div>
-          </div>
-          <section className="panel matches-panel" aria-labelledby="matches-title">
-            <div className="panel-head">
-              <span id="matches-title" className="eyebrow">
-                Matches
-              </span>
-              <span className="meta">sample matches</span>
-            </div>
-            <MatchesTable rows={rows} selected={selected} onSelect={setSelected} />
-          </section>
-        </div>
-
-        <div className="dash-right">
-          <section className="panel report" aria-labelledby="report-title">
-            <div className="panel-head">
-              <span id="report-title" className="eyebrow">
-                Balance report
-              </span>
-              <span className="meta">n = {valid.toLocaleString("en-US")}</span>
-            </div>
-            <h1 className="h2">{headline}</h1>
-            <p className="kpi">
-              {pct(shown.rate)}% · {shown.row.games.toLocaleString("en-US")} games
-            </p>
-            <p className="report-meta">
-              <span className="badge recorded">recorded · {valid.toLocaleString("en-US")} matches</span>
-              <span className="badge">sample data</span>
-              <span className="caption">
-                {report.seedSetId} · {report.draws} draws
-              </span>
-            </p>
-            <hr className="divider" />
-            <p className="eyebrow text-2" style={{ color: "var(--text-2)" }}>
-              Win rate by matchup
-            </p>
-            <WinRateChart rows={report.rows} />
-            <hr className="divider" />
-            <div className="panel-head">
-              <span className="eyebrow">Suggested patch</span>
-              <span className="meta">{patched ? "after" : "before"}</span>
-            </div>
-            <PatchCompare before={fixtureReportBaseline} after={fixtureReportPatched} patch={fixturePatch} showAfter={patched} />
-            {patched && (
-              <p className="result-line" role="status">
-                <span className="status ok">
-                  <span className="dot" />
-                  Not an outlier now: {pct(before.rate)}% → {pct(shown.rate)}% · 95% CI {pct(shown.lo)}–{pct(shown.hi)}%
-                </span>
-              </p>
+        <main className="dash-grid">
+          <div className="dash-left">
+            {run?.proposal ? (
+              <DiffCard proposal={run.proposal} sample={run.sample} />
+            ) : (
+              <section className="panel diff">
+                <div className="panel-head">
+                  <span className="eyebrow">Suggested patch</span>
+                </div>
+                <p className="small text-2">
+                  {busy
+                    ? "Waiting for the model's proposal…"
+                    : "No patch yet. Let the bots play and a suggestion shows up here."}
+                </p>
+              </section>
             )}
-          </section>
-        </div>
-      </main>
-    </div>
+            <CompareReplay
+              seed={run?.replay?.seed ?? fixtureMatchConfig.seed}
+              storedMatchId={run?.replay?.matchId}
+              heroes={replayHeroes}
+              active={showPatched ? "patched" : "broken"}
+              sample
+            />
+            <LivePanel busy={busy} done={live.done} total={live.total} />
+            <section className="panel matches-panel" aria-labelledby="matches-title">
+              <div className="panel-head">
+                <span id="matches-title" className="eyebrow">
+                  Matches
+                </span>
+                <span className="meta">{mock ? "sample matches" : "from the last run"}</span>
+              </div>
+              {mock ? (
+                <MatchesTable rows={rows} selected={selected} onSelect={setSelected} compact />
+              ) : (
+                <RunTable run={run} played={played} />
+              )}
+            </section>
+          </div>
+
+          <div className="dash-right">
+            <ReportPanel
+              run={run}
+              busy={busy}
+              live={live}
+              error={error}
+              notice={notice}
+              showPatched={showPatched}
+              onRun={start}
+            />
+          </div>
+        </main>
+      </div>
+    </FitStage>
   );
 }

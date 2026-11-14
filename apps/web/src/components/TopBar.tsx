@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { isMockMode } from "../mock/types";
 
 export function Brand() {
   return (
@@ -18,12 +19,13 @@ export function TopBar({ children }: { children?: ReactNode }) {
   );
 }
 
-/** Honest status: we only talk to the in-browser mock server for now. */
+/** Honest status: says which server the page is talking to. */
 export function MockStatus({ online = true }: { online?: boolean }) {
+  const mock = isMockMode();
   return (
     <span className={`status ${online ? "ok" : "bad"}`} role="status">
       <span className="dot" />
-      {online ? "Mock server" : "Offline"}
+      {online ? (mock ? "Mock server" : "Live server") : mock ? "Offline" : "Reconnecting"}
     </span>
   );
 }

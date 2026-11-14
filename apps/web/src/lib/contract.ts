@@ -18,6 +18,8 @@ export interface MatchConfig {
   players: string[];
   mode: "realtime" | "turn" | "party";
   maxTicks: number;
+  /** v0.1.1 addendum: per-match hero or deck per seat */
+  options?: { assignments?: Record<string, string> };
 }
 
 export interface Outcome {
@@ -69,6 +71,11 @@ export interface Report {
   invalidMatches: number;
   draws: number;
   rows: ReportRow[];
+  /** v0.1.1 addendum (all optional) */
+  elapsedMs?: number;
+  recorded?: boolean;
+  createdAt?: string;
+  humanMatches?: number;
 }
 
 export interface PatchProposal {
@@ -83,6 +90,8 @@ export interface ArenaEntity {
   x: number;
   y: number;
   hp: number;
+  /** v0.1.1 addendum: optional; the UI falls back to 100 when absent. */
+  maxHp?: number;
   facing: number;
 }
 
@@ -104,6 +113,14 @@ export interface Observation<P = ArenaPayload> {
   tick: number;
   viewerId: string;
   payload: P;
+}
+
+/** Transient step event carried by state.view (`events`): combat.hit/guard/ko, projectile.spawn/expire, action.used. */
+export interface GameEvent {
+  eventId: string;
+  audience: string[];
+  kind: string;
+  payload: Record<string, unknown>;
 }
 
 export interface Envelope<P = unknown> {
@@ -131,4 +148,47 @@ export interface RoomStatusPayload {
   seats: Seat[];
   /** Extension: set only on the reply addressed to a joining controller. */
   you?: string;
+  /** Not in the addendum: lets a phone know which controller to show. See REPORT.md. */
+  gameId?: string;
+  /** private token for the joiner only; keep it out of URLs and logs */
+  seatToken?: string;
 }
+
+export interface CardDef {
+  id: string;
+  cost: number;
+  kind: "damage" | "ward" | "summon" | "hypnosis" | "peek";
+  power: number;
+  ignoresWard: boolean;
+}
+
+export interface CardsEntity {
+  id: string;
+  hp: number;
+  maxHp?: number;
+  energy: number;
+  ward: number;
+  handCount: number;
+  deckCount: number;
+  units: { id: string; power: number; sleepUntil: number }[];
+}
+
+/** hero_cards observation payload (packages/games/cards/schemas.js). `hand` is only the viewer's. */
+export interface CardsPayload {
+  activePlayer: string;
+  round: number;
+  turnId: number;
+  entities: CardsEntity[];
+  hand: CardDef[];
+  outcome: Outcome;
+  /** private: the viewer's own peek result, when the server includes one */
+  peek?: unknown;
+}
+
+const isObject = (p: unknown): p is Record<string, unknown> => !!p && typeof p === "object";
+
+/** Shape checks for observation payloads: a malformed view is ignored instead of crashing a screen. */
+export const isArenaPayload = (p: unknown): p is ArenaPayload =>
+  isObject(p) && isObject(p.arena) && Array.isArray(p.entities) && Array.isArray(p.projectiles);
+export const isCardsPayload = (p: unknown): p is CardsPayload =>
+  isObject(p) && Array.isArray(p.hand) && Array.isArray(p.entities) && typeof p.activePlayer === "string";
