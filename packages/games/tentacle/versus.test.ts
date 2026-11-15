@@ -135,3 +135,64 @@ test('each seat has its own held control; a seat cannot send for the other', () 
   assert.equal(state.payload.runners[0].input.slide, 1); // kept
   assert.throws(() => stepWith(state, [control(state, 'p3', 1, 0)]), /ILLEGAL_ACTION|INVALID_SCHEMA/);
 });
+
+// controls: a press in the air without an anchor is harmless, a quick double tap hooks, seats never cross
+const solo = (seed = 9) => game.initial(game.makeConfig(game.data, seed, ['p1'], 3000), game.data);
+const tap = (state, jump, slide = 0) => stepWith(state, [control(state, 'p1', jump, slide, state.tick)]);
+const flat = (state, anchors = []) => {
+  state.payload.obstacles = [];
+  state.payload.anchors = anchors;
+  return state;
+};
+
+test('a second press in the air with no anchor in range changes nothing but the landing buffer', () => {
+  const base = flat(solo());
+  let a = base, b = structuredClone(base);
+  for (const [jump, tick] of [[1, 0], [0, 1], [1, 2], [0, 3]]) { // jump, release, press again, release
+    a = tap(a, jump);
+    b = tap(b, tick === 2 ? 0 : jump);
+  }
+  for (let i = 0; i < 20; i++) { a = tap(a, 0); b = tap(b, 0); }
+  const pa = a.payload.player, pb = b.payload.player;
+  assert.deepEqual([pa.x, pa.y, pa.vx, pa.vy, pa.state], [pb.x, pb.y, pb.vx, pb.vy, pb.state]); // no stall, no loss
+  // and a hook is still possible after the empty press: add an anchor, press again
+  a.payload.anchors = [{ id: 'a', x: pa.x + 2000, y: 4500, overPit: false }];
+  a = tap(a, 1);
+  assert.equal(a.payload.player.state, 'swinging');
+});
+
+test('a fast double tap on the ground next to an anchor jumps, then hooks', () => {
+  let state = flat(solo());
+  state.payload.anchors = [{ id: 'a', x: state.payload.player.x + 2500, y: 4500, overPit: false }];
+  for (const jump of [1, 0, 1]) state = tap(state, jump);
+  assert.equal(state.payload.player.state, 'swinging');
+  assert.equal(state.payload.player.wire.anchorId, 'a');
+  let none = flat(solo()); // the same taps with no anchor: just a jump, then the landing buffer
+  for (const jump of [1, 0, 1]) none = tap(none, jump);
+  assert.equal(none.payload.player.state, 'jumping');
+});
+
+test('a press that found nothing leaves no buffered jump once a wire was fired later', () => {
+  let state = flat(solo());
+  for (const jump of [1, 0, 1, 0]) state = tap(state, jump); // empty press: buffered
+  assert.ok(state.payload.player.jumpBuffer > 0);
+  state.payload.anchors = [{ id: 'a', x: state.payload.player.x + 2000, y: 4500, overPit: false }];
+  state = tap(state, 1);
+  assert.equal(state.payload.player.jumpBuffer, 0);
+});
+
+test('seats never cross: p2 inputs do not move p1, and p1 inputs do not move p2', () => {
+  const run = (p2Jumps: boolean, p1Jumps: boolean) => {
+    let state = versus(8);
+    state.payload.obstacles = [];
+    for (let i = 0; i < 30; i++) {
+      const actions = [control(state, 'p1', p1Jumps && i % 7 === 0 ? 1 : 0, 0, i),
+        control(state, 'p2', p2Jumps && i % 5 === 0 ? 1 : 0, 0, i)];
+      state = stepWith(state, actions);
+    }
+    return state.payload.runners.map(r => [r.x, r.y, r.vx, r.vy, r.state]);
+  };
+  assert.deepEqual(run(true, false)[0], run(false, false)[0]); // p2 jumping does not touch p1
+  assert.deepEqual(run(false, true)[1], run(false, false)[1]); // p1 jumping does not touch p2
+  assert.notDeepEqual(run(true, false)[1], run(false, false)[1]);
+});
