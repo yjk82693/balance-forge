@@ -113,3 +113,44 @@ test("outcomes are worded and coloured: an overshoot is a warning, never a succe
   assert.equal(targetWords(null, 0.65), "target 65%");
   assert.equal(targetWords(null, null), null);
 });
+
+import {
+  DEFAULT_META,
+  RUNNER_SLOTS,
+  buildingSlot,
+  feetOrigin,
+  hookDisplay,
+  runFrameIndex,
+  sepiaSlot,
+  spriteDisplay,
+} from "../src/lib/runnerArt.ts";
+
+test("the run cycle follows the distance travelled and the right sprite is chosen for each state", () => {
+  assert.equal(runFrameIndex(0), 0);
+  assert.equal(runFrameIndex(699), 0);
+  assert.equal(runFrameIndex(700), 1);
+  assert.equal(runFrameIndex(700 * 6), 0);
+  assert.equal(runFrameIndex(700 * 13), 1);
+  const s = { state: "running", vy: 0, x: 1400, hooking: false, down: false };
+  assert.equal(sepiaSlot(s), "sepia_run_3");
+  assert.equal(sepiaSlot({ ...s, state: "jumping", vy: 5 }), "sepia_jump_up");
+  assert.equal(sepiaSlot({ ...s, state: "jumping", vy: -5 }), "sepia_jump_fall");
+  assert.equal(sepiaSlot({ ...s, state: "jumping", hooking: true }), "sepia_hook_throw");
+  assert.equal(sepiaSlot({ ...s, state: "sliding" }), "sepia_slide");
+  assert.equal(sepiaSlot({ ...s, state: "swinging" }), "sepia_swing");
+  assert.equal(sepiaSlot({ ...s, down: true }), "sepia_down");
+  for (const slot of ["sepia_run_1", "sepia_run_6", "sepia_swing", "bg_near", "btn_slide_pressed"]) {
+    assert.ok(RUNNER_SLOTS.includes(slot), slot);
+  }
+});
+
+test("hook buildings are stable per anchor and drawn so the ring sits on the anchor", () => {
+  assert.equal(buildingSlot("a1"), buildingSlot("a1"));
+  assert.ok(["hook_building_1", "hook_building_2", "hook_building_3"].includes(buildingSlot("anchor-7")));
+  // the ring is 80 of 1024 below the top: a cell 1024 tall puts it 944 above the ground
+  assert.equal(Math.round(hookDisplay(944)), 1024);
+  assert.ok(hookDisplay(0) > 0);
+  assert.equal(DEFAULT_META.feetY, 472);
+  assert.equal(feetOrigin(), 472 / 512);
+  assert.equal(spriteDisplay(400), 512);
+});

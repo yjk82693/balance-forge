@@ -316,10 +316,12 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
       </section>
       {!isTentacle && <Stick pipeline={pipeline} disabled={!online} />}
       <div className={`pad${online ? "" : " dim"}`}>
-        <div className="stick-idle" aria-hidden="true">
-          <div className="stick-ring" />
-          <div className="stick-knob" />
-        </div>
+        {!isTentacle && (
+          <div className="stick-idle" aria-hidden="true">
+            <div className="stick-ring" />
+            <div className="stick-knob" />
+          </div>
+        )}
         {isTentacle ? (
           <div className="runner-cluster">
             <SlideButton disabled={!online} onHold={(down) => press("slide", down)} />

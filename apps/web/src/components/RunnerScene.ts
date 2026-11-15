@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { Observation } from "../lib/contract";
 import { groundSegments, progress, sectionLabel, toScreenX, type RunnerPayload } from "../lib/runner";
 import { segmentCount } from "../lib/tentacle";
+import { buildingSlot, feetOrigin, hookDisplay, sepiaSlot, spriteDisplay, type RunnerMeta } from "../lib/runnerArt";
 
 export const RUN_W = 1152;
 export const RUN_H = 648;
@@ -17,11 +18,15 @@ export interface RunnerAssets {
   segment: string;
   sharkPortrait: string;
   sepia: string;
+  /** the delivered art slots that exist (slot name to url) and the slicer's meta */
+  art: Record<string, string>;
+  meta: RunnerMeta;
 }
 
 /**
  * Sepia Tentacle Run as a side-scroller: a sky and city parallax from the rooftop art, the ground with its pits,
- * walls and low bars, the anchor posts, Sepia (running, jumping, sliding, swinging) and the wire to the anchor, the section label
+ * walls and low bars, the anchor posts, Sepia (running, jumping, sliding, swinging) and the wire to the anchor, the
+ * section label
  * and course progress, and the Man-Shark chasing in the last section. Reads Observations only.
  */
 export class RunnerScene extends Phaser.Scene {
@@ -43,9 +48,24 @@ export class RunnerScene extends Phaser.Scene {
     this.load.image("segment", a.segment);
     this.load.image("shark-portrait", a.sharkPortrait);
     this.load.image("sepia", a.sepia);
+    for (const [slot, url] of Object.entries(a.art)) this.load.image(`art:${slot}`, url);
   }
 
+  private bg: Partial<Record<"far" | "mid" | "near", Phaser.GameObjects.TileSprite>> = {};
+  private art = (slot: string) => `art:${slot}`;
+  private has = (slot: string) => this.textures.exists(`art:${slot}`);
+  private meta!: RunnerMeta;
+
   create() {
+    this.meta = (this.registry.get("assets") as RunnerAssets).meta;
+    // the three parallax layers (2048x1024 art scaled to the view height), far and mid behind the scene, near in front
+    const layers = [["far", -30, "bg_far"], ["mid", -20, "bg_mid"], ["near", 10, "bg_near"]] as const;
+    for (const [key, depth, name] of layers) {
+      if (!this.has(name)) continue;
+      const t = this.add.tileSprite(0, 0, RUN_W, RUN_H, this.art(name)).setOrigin(0, 0).setDepth(depth);
+      t.setTileScale(RUN_H / 1024, RUN_H / 1024);
+      this.bg[key] = t;
+    }
     this.layer = this.add.container(0, 0);
     this.ready = true;
     this.registry.events.on("changedata", this.onData);
@@ -69,23 +89,28 @@ export class RunnerScene extends Phaser.Scene {
     const k = RUN_W / p.viewWidth; // world unit to pixel, the same up and across
     const sx = (wx: number) => toScreenX(wx, p.cameraX, p.viewWidth, RUN_W);
     const sy = (wy: number) => GROUND_Y - wy * k;
-    this.parallax(p.cameraX * k);
+    this.scrollBackgrounds(p.cameraX * k);
     this.ground(p, sx, k);
     for (const o of p.obstacles) this.obstacle(o, sx, sy, k);
     const wire = p.player.wire;
-    for (const a of p.anchors) {
-      const x = sx(a.x);
-      if (x < -60 || x > RUN_W + 60) continue;
-      const key = a.id === wire?.anchorId ? "post-target" : "post";
-      this.layer.add(this.add.image(x, sy(a.y), key).setDisplaySize(52, 52));
-    }
+    for (const a of p.anchors) this.anchor(a, sx(a.x), sy(a.y), a.id === wire?.anchorId);
     if (p.shark) this.shark(sx(p.shark.x));
     const me = { x: sx(p.player.x), y: sy(p.player.y) };
-    if (wire && p.player.state === "swinging") {
+    if (wire && p.player.state === "swinging" && !this.has("sepia_swing")) {
       this.wire(me, { x: sx(wire.anchorX), y: sy(wire.anchorY) }, p.player.height * k);
     }
-    this.sepia(me, p, k);
+    this.sepia(me, p, k, wire ? { x: sx(wire.anchorX), y: sy(wire.anchorY) } : undefined);
     this.hud(p);
+  }
+
+  /** the delivered layers scroll at three speeds; with none delivered the drawn sky and skylines stand in */
+  private scrollBackgrounds(scrolled: number) {
+    const scale = RUN_H / 1024;
+    const { far, mid, near } = this.bg;
+    if (far) far.tilePositionX = (scrolled * 0.1) / scale;
+    if (mid) mid.tilePositionX = (scrolled * 0.3) / scale;
+    if (near) near.tilePositionX = (scrolled * 0.7) / scale;
+    if (!far) this.parallax(scrolled);
   }
 
   /** sky gradient, the rooftop art far away and slow, and two skylines of code-drawn blocks */
@@ -123,11 +148,31 @@ export class RunnerScene extends Phaser.Scene {
     const to = p.cameraX + p.viewWidth + 500;
     const pits = p.obstacles.filter((o) => o.kind === "pit");
     const g = this.add.graphics();
+    const tile = this.has("ground_tile");
+    const TILE = 0.25; // a 512 tile drawn 128 px wide
     for (const [a, b] of groundSegments(pits, from, to)) {
+      if (tile) {
+        const t = this.add.tileSprite(sx(a), GROUND_Y, (b - a) * k, RUN_H - GROUND_Y, this.art("ground_tile"));
+        t.setOrigin(0, 0).setTileScale(TILE, TILE);
+        t.tilePositionX = (a * k) / TILE;
+        this.layer.add(t);
+        continue;
+      }
       g.fillStyle(0x1c2233, 1);
       g.fillRect(sx(a), GROUND_Y, (b - a) * k, RUN_H - GROUND_Y);
       g.fillStyle(0x58e6a9, 0.9);
       g.fillRect(sx(a), GROUND_Y, (b - a) * k, 4);
+    }
+    if (this.has("pit_edge")) {
+      for (const pit of pits) {
+        const left = sx(pit.x);
+        const right = sx(pit.x + pit.w);
+        if (right < -140 || left > RUN_W + 140) continue;
+        this.layer.add(this.add.image(left, GROUND_Y, this.art("pit_edge")).setOrigin(1, 0).setDisplaySize(128, 128));
+        this.layer.add(
+          this.add.image(right, GROUND_Y, this.art("pit_edge")).setOrigin(1, 0).setFlipX(true).setDisplaySize(128, 128),
+        );
+      }
     }
     // the finish line
     const fx = sx(p.finishX);
@@ -147,6 +192,16 @@ export class RunnerScene extends Phaser.Scene {
     const x = sx(o.x);
     const w = o.w * k;
     if (x > RUN_W + 40 || x + w < -40) return;
+    const art = o.kind === "lowBar" ? "low_bar" : o.kind === "wall" ? "wall" : "";
+    if (art && this.has(art)) {
+      const top = sy(o.y + o.h);
+      const t = this.add.tileSprite(x, top, w, o.h * k, this.art(art)).setOrigin(0, 0);
+      // a single block of art, repeated along whichever side is longer
+      const scale = o.kind === "lowBar" ? (o.h * k) / 512 : w / 512;
+      t.setTileScale(scale, scale);
+      this.layer.add(t);
+      return;
+    }
     const g = this.add.graphics();
     if (o.kind === "pit") {
       g.fillStyle(0x05070d, 0.92);
@@ -188,8 +243,40 @@ export class RunnerScene extends Phaser.Scene {
     }
   }
 
-  private sepia(c: { x: number; y: number }, p: RunnerPayload, k: number) {
+  /** a hook building under the anchor with its ring at the anchor point; the post sprite when none is delivered */
+  private anchor(a: RunnerPayload["anchors"][number], x: number, y: number, hooked: boolean) {
+    if (x < -300 || x > RUN_W + 300) return;
+    const slot = buildingSlot(a.id);
+    if (this.has(slot)) {
+      const size = hookDisplay(GROUND_Y - y, this.meta);
+      const img = this.add.image(x, GROUND_Y, this.art(slot)).setOrigin(0.5, 1).setDisplaySize(size, size);
+      if (hooked) img.setTint(0xcfffee);
+      this.layer.add(img);
+      return;
+    }
+    this.layer.add(this.add.image(x, y, hooked ? "post-target" : "post").setDisplaySize(52, 52));
+  }
+
+  private sepia(c: { x: number; y: number }, p: RunnerPayload, k: number, anchor?: { x: number; y: number }) {
     const state = p.player.state;
+    const slot = sepiaSlot({
+      state,
+      vy: p.player.vy,
+      x: p.player.x,
+      hooking: !!p.player.wire && state !== "swinging",
+      down: !!p.outcome && p.outcome.status !== "running" && p.outcome.reason !== "finish",
+    });
+    const bodyPx = 1200 * k; // a standing body, in screen pixels
+    if (this.has(slot)) {
+      const size = spriteDisplay(bodyPx, this.meta);
+      if (slot === "sepia_swing" && anchor) {
+        this.swingSprite(slot, c, anchor, size);
+        return;
+      }
+      const img = this.add.image(c.x, c.y, this.art(slot)).setOrigin(0.5, feetOrigin(this.meta));
+      this.layer.add(img.setDisplaySize(size, size));
+      return;
+    }
     const h = p.player.height * k; // 86 px standing, 36 px sliding
     const r = Math.max(18, h / 2);
     const cy = c.y - h / 2;
@@ -198,6 +285,19 @@ export class RunnerScene extends Phaser.Scene {
     if (state === "swinging") img.setRotation(0.4);
     this.layer.add(img);
     this.layer.add(this.add.circle(c.x, cy, r).setStrokeStyle(3, 0xb08af0));
+  }
+
+  /** the hanging pose, turned so she hangs from the anchor; the tentacle segments run from the anchor to her hand */
+  private swingSprite(slot: string, c: { x: number; y: number }, anchor: { x: number; y: number }, size: number) {
+    const dx = c.x - anchor.x;
+    const dy = c.y - anchor.y;
+    const theta = -Math.atan2(dx, Math.max(1, dy));
+    const origin = 0.85; // the body hangs at this fraction down the cell
+    const img = this.add.image(c.x, c.y, this.art(slot)).setOrigin(0.5, origin);
+    img.setDisplaySize(size, size).setRotation(theta);
+    this.layer.add(img);
+    const reach = origin * size; // from her to the top of the cell, where the tentacle leaves it
+    this.wire(anchor, { x: c.x + Math.sin(theta) * reach, y: c.y - Math.cos(theta) * reach }, 0);
   }
 
   private hud(p: RunnerPayload) {

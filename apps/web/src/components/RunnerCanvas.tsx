@@ -2,10 +2,27 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import type { Observation } from "../lib/contract";
 import { assetUrl, heroThumbPath, loadManifest, preferWebp } from "../lib/assets";
+import { DEFAULT_META, RUNNER_SLOTS, probeSlot, slotPath, type RunnerMeta } from "../lib/runnerArt";
 import type { RunnerPayload } from "../lib/runner";
 import { RUN_H, RUN_W, RunnerScene, type RunnerAssets } from "./RunnerScene";
 
-/** The Sepia Tentacle Run view of a match: Phaser on the rooftop, fed Observations. */
+/** The slot files that exist (each probed once), and meta.json of the slicer when there is one. */
+async function loadArt(): Promise<{ art: Record<string, string>; meta: RunnerMeta }> {
+  const probe = async (s: string) => [s, await probeSlot(s, assetUrl(slotPath(s)))] as const;
+  const found = await Promise.all(RUNNER_SLOTS.map(probe));
+  const art = Object.fromEntries(found.filter((f): f is readonly [string, string] => !!f[1]));
+  let meta = DEFAULT_META;
+  try {
+    const res = await fetch(assetUrl("assets/sepia_tentacle_run/runner/meta.json"));
+    const m = res.ok ? ((await res.json()) as Partial<RunnerMeta>) : {};
+    meta = { ...DEFAULT_META, ...m };
+  } catch {
+    /* no meta: the defaults of the GPT sheet spec */
+  }
+  return { art, meta };
+}
+
+/** The Sepia Tentacle Run side view: Phaser, fed Observations; the art slots that exist replace the drawn ones. */
 export function RunnerCanvas({ observation }: { observation: Observation<RunnerPayload> | null }) {
   const host = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
@@ -14,17 +31,18 @@ export function RunnerCanvas({ observation }: { observation: Observation<RunnerP
 
   useEffect(() => {
     let cancelled = false;
-    loadManifest().then(() => {
+    Promise.all([loadManifest(), loadArt()]).then(([, { art, meta }]) => {
       if (cancelled || !host.current) return;
       const base = "assets/sepia_tentacle_run";
-      const u = (f: string) => assetUrl(`${base}/ui/${f}.png`);
       const assets: RunnerAssets = {
         rooftop: assetUrl(preferWebp(`${base}/backgrounds/rooftop.png`)),
         post: assetUrl(`${base}/sprites/anchor_post.png`),
         postTarget: assetUrl(`${base}/sprites/anchor_post_target.png`),
         segment: assetUrl(`${base}/sprites/tentacle_segment.png`),
-        sharkPortrait: u("man_shark_portrait"),
+        sharkPortrait: assetUrl(`${base}/ui/man_shark_portrait.png`),
         sepia: assetUrl(heroThumbPath("sepia")),
+        art,
+        meta,
       };
       game.current = new Phaser.Game({
         type: Phaser.AUTO,

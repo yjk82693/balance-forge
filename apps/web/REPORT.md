@@ -653,3 +653,16 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   the engine's call, the message stays `{jump, slide}` on change.
 - A tab that was open before a server rebuild reloads itself when the server's entry script differs from its own
   (`lib/staleBuild.ts`: on coming to the front and every minute; never on `#/play` or `#/arena`; not in dev or static).
+
+### Runner art slots and the slicer
+
+- `apps/web/scripts/slice_runner_art.py` cuts the seven GPT sheets from `~/Downloads` (sepia_run_sheet, sepia_actions_sheet,
+  bg_far/mid/near, hooks_sheet, tiles_ui_sheet) into `public/assets/sepia_tentacle_run/runner/` (rescaling a sheet whose
+  size is off, keeping the feet baseline, no per-cell trimming; writes `meta.json` with the measured body height and says
+  what looks wrong: feet off the baseline, cropped sides, a visible seam).
+- The scene and buttons use a slot when its file exists (`lib/runnerArt.ts`): run frame from the distance travelled
+  (700 units per frame), jump/fall/slide/hook/swing/down sprites, the three parallax layers, a hook building under each
+  anchor with its ring at the anchor point, ground/pit-edge/bar/wall tiles, and the button art with its pressed state.
+  Without a file the drawn fallback stays. Tried with synthetic sheets (not committed).
+- The phone route renders the runner pad for `tentacle_run` (checked with the mock room: the QR carries the game, the form
+  offers Sepia, the pad shows SLIDE and JUMP); a leftover stick ring on the pad was removed.

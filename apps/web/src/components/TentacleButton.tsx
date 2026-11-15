@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { manifestUrl } from "../lib/assets";
+import { useSlotUrl } from "../lib/useRunnerArt";
 
 interface Props {
   disabled?: boolean;
@@ -14,6 +15,8 @@ interface Props {
 export function TentacleButton({ disabled, onHold }: Props) {
   const [down, setDown] = useState(false);
   const icon = manifestUrl("assets/sepia_tentacle_run/ui/icon_tentacle.png");
+  const art = useSlotUrl("btn_jump");
+  const artDown = useSlotUrl("btn_jump_pressed");
   const set = (next: boolean) => {
     if (down === next) return;
     setDown(next);
@@ -23,7 +26,7 @@ export function TentacleButton({ disabled, onHold }: Props) {
     <div className="pad-btn-wrap runner-jump">
       <button
         type="button"
-        className={`pad-btn runner-btn${down ? " pressed" : ""}`}
+        className={`pad-btn runner-btn${down ? " pressed" : ""}${art ? " art" : ""}`}
         disabled={disabled}
         aria-label="Jump: press again in the air to hook the wire"
         aria-pressed={down}
@@ -37,7 +40,11 @@ export function TentacleButton({ disabled, onHold }: Props) {
         onPointerCancel={() => set(false)}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {icon && <img src={icon} width={48} height={48} alt="" draggable={false} />}
+        {art ? (
+          <img className="runner-art" src={down && artDown ? artDown : art} alt="" draggable={false} />
+        ) : (
+          icon && <img src={icon} width={48} height={48} alt="" draggable={false} />
+        )}
       </button>
       <span className="pad-label">Jump · press again in the air to hook</span>
     </div>

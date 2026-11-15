@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSlotUrl } from "../lib/useRunnerArt";
 
 interface Props {
   disabled?: boolean;
@@ -9,6 +10,8 @@ interface Props {
 /** SLIDE: held while the finger is on it. */
 export function SlideButton({ disabled, onHold }: Props) {
   const [down, setDown] = useState(false);
+  const art = useSlotUrl("btn_slide");
+  const artDown = useSlotUrl("btn_slide_pressed");
   const set = (next: boolean) => {
     if (down === next) return;
     setDown(next);
@@ -18,7 +21,7 @@ export function SlideButton({ disabled, onHold }: Props) {
     <div className="pad-btn-wrap runner-slide">
       <button
         type="button"
-        className={`pad-btn runner-btn slide-btn${down ? " pressed" : ""}`}
+        className={`pad-btn runner-btn slide-btn${down ? " pressed" : ""}${art ? " art" : ""}`}
         disabled={disabled}
         aria-label="Slide: hold to slide under low bars"
         aria-pressed={down}
@@ -32,9 +35,13 @@ export function SlideButton({ disabled, onHold }: Props) {
         onPointerCancel={() => set(false)}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <span className="slide-glyph" aria-hidden="true">
-          ⤓
-        </span>
+        {art ? (
+          <img className="runner-art" src={down && artDown ? artDown : art} alt="" draggable={false} />
+        ) : (
+          <span className="slide-glyph" aria-hidden="true">
+            ⤓
+          </span>
+        )}
       </button>
       <span className="pad-label">Hold: slide</span>
     </div>
