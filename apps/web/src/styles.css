@@ -2649,3 +2649,6 @@ button.intent-btn { cursor: pointer; }
   color: #fff;
   background: var(--team);
 }
+
+/* A small human sample: the record, with "too few" on its own line so it fits the narrow column. */
+.viz-sub { display: block; font-size: 11px; line-height: 12px; color: var(--text-2); }

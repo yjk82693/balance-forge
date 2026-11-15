@@ -739,3 +739,4 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Runner Phaser game capped at 30 fps (smoothStep off, low-power GPU hint, no antialias); the scene already redraws only when a new observation arrived (dirty flag), and has no interpolation.
 - The runner scene draws inside try/catch (one console.warn, the next frame draws again).
 - Dashboard human players are live: GET /v1/humans/<gameId> ({ rows, humanMatches }) on mount and on game change; the report's own human rows if the fetch fails. The server route is not part of this commit.
+- Small human samples: the record ("9–3 · n=12") with "too few" on its own line under it, so it fits the narrow column.
