@@ -68,10 +68,24 @@ export class RunnerScene extends Phaser.Scene {
     if (key === "obs") this.dirty = true;
   };
 
+  private warned = false;
+
   override update() {
     if (!this.dirty) return;
     this.dirty = false;
-    this.draw();
+    this.safeDraw();
+  }
+
+  /** A bad observation must never stop the loop: log it once and draw the next one. The latest always wins. */
+  private safeDraw() {
+    try {
+      this.draw();
+    } catch (e) {
+      if (!this.warned) {
+        this.warned = true;
+        console.warn("runner scene: a frame failed to draw", e instanceof Error ? e.message : e);
+      }
+    }
   }
 
   /** the pixel size of a delivered art slot's texture */
@@ -117,7 +131,7 @@ export class RunnerScene extends Phaser.Scene {
     this.ready = true;
     this.registry.events.on("changedata", this.onData);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.registry.events.off("changedata", this.onData));
-    this.draw();
+    this.safeDraw();
   }
 
   private text(x: number, y: number, s: string, size = 16, color = "#E6EBF1") {
