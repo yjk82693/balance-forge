@@ -11,7 +11,7 @@ import {
   type TrailPoint,
 } from "../lib/runner";
 import { segmentCount } from "../lib/tentacle";
-import { barFill, versusOf, type VersusInfo, type VersusRunner } from "../lib/runnerVersus";
+import { barFill, laneLabel, versusOf, type VersusInfo, type VersusRunner } from "../lib/runnerVersus";
 import {
   buildingSlot,
   feetOrigin,
@@ -117,6 +117,8 @@ export class RunnerScene extends Phaser.Scene {
     return t;
   }
 
+  private laneName = (id: string) => laneLabel(id, this.registry.get("names") as Record<string, string> | undefined);
+
   private draw() {
     if (!this.ready) return;
     const obs = this.registry.get("obs") as Observation<RunnerPayload> | undefined;
@@ -148,7 +150,8 @@ export class RunnerScene extends Phaser.Scene {
     if (vs) {
       for (const r of vs.runners) if (r.id !== vs.leader) this.rival(r, sx, sy, k);
     }
-    this.runner(mine, p, sx, sy, k, vs ? { label: laneName(vs.leader), tint: laneTint(vs.leader) } : undefined);
+    const who = (id: string) => ({ label: this.laneName(id), color: laneColor(id), tint: laneTint(id) });
+    this.runner(mine, p, sx, sy, k, vs ? who(vs.leader) : undefined);
     if (vs) this.versusHud(p, vs);
     else this.hud(p);
   }
@@ -160,7 +163,7 @@ export class RunnerScene extends Phaser.Scene {
     sx: (x: number) => number,
     sy: (y: number) => number,
     k: number,
-    style?: { label: string; tint: number },
+    style?: { label: string; color: number; tint: number },
     atX?: number,
   ) {
     const at = { x: atX ?? sx(r.x), y: sy(r.y) };
@@ -170,7 +173,8 @@ export class RunnerScene extends Phaser.Scene {
     this.sepia(at, r, p, k, anchor, style?.tint);
     if (style) {
       const top = at.y - r.height * k - 14;
-      this.text(at.x, top, style.label, 20, hexColor(style.tint)).setOrigin(0.5, 1);
+      this.text(at.x, top, style.label, 20, hexColor(style.color)).setOrigin(0.5, 1);
+      this.layer.add(this.add.ellipse(at.x, at.y, 90, 18).setStrokeStyle(4, style.color, 0.9));
     }
   }
 
@@ -193,10 +197,10 @@ export class RunnerScene extends Phaser.Scene {
     const edge = 40;
     const want = sx(r.x);
     const at = Math.max(edge, Math.min(RUN_W - edge, want));
-    const name = laneName(r.id);
+    const name = this.laneName(r.id);
     const label = want < edge ? `◀ ${name}` : want > RUN_W - edge ? `${name} ▶` : name;
     const p = this.registry.get("obs").payload as RunnerPayload;
-    this.runner(pose, p, sx, sy, k, { label, tint: laneTint(r.id) }, at);
+    this.runner(pose, p, sx, sy, k, { label, color: laneColor(r.id), tint: laneTint(r.id) }, at);
   }
 
   /** the delivered layers scroll at three speeds; with none delivered the drawn sky and skylines stand in */
@@ -483,13 +487,13 @@ export class RunnerScene extends Phaser.Scene {
   /** a versus match: one progress bar per runner (P1 above P2) with the finish flag */
   private versusHud(p: RunnerPayload, vs: VersusInfo) {
     this.text(RUN_W / 2, 14, sectionLabel(p), 22).setOrigin(0.5, 0);
-    const x0 = 100;
-    const w = RUN_W - 160;
+    const x0 = 200; // room for a name of 16 characters
+    const w = RUN_W - 260;
     vs.runners.forEach((r, i) => {
       const y = 62 + i * 26;
       const f = barFill(r.x, p.finishX);
-      const tint = laneTint(r.id);
-      this.text(24, y, laneName(r.id), 18, hexColor(tint)).setOrigin(0, 0.5);
+      const tint = laneColor(r.id);
+      this.text(24, y, this.laneName(r.id), 18, hexColor(tint)).setOrigin(0, 0.5);
       this.layer.add(this.add.rectangle(x0, y, w, 8, 0x0d1219, 0.7).setOrigin(0, 0.5));
       this.layer.add(this.add.rectangle(x0, y, w * f, 8, tint).setOrigin(0, 0.5));
       this.layer.add(this.add.circle(x0 + w * f, y, 9, tint).setStrokeStyle(2, 0xe6ebf1));
@@ -510,7 +514,9 @@ interface Pose {
   down?: boolean;
 }
 
-const laneName = (id: string) => id.toUpperCase();
-const LANE_TINTS: Record<string, number> = { p1: 0xffffff, p2: 0x8fd0ff };
+/** Team colours: P1 red, P2 blue. The sprite gets only a light tint so the art reads; the ring shows the colour. */
+const LANE_COLORS: Record<string, number> = { p1: 0xff5c5c, p2: 0x5ca8ff };
+const LANE_TINTS: Record<string, number> = { p1: 0xffd6d6, p2: 0xd6e8ff };
+const laneColor = (id: string) => LANE_COLORS[id] ?? 0xffffff;
 const laneTint = (id: string) => LANE_TINTS[id] ?? 0xffffff;
 const hexColor = (n: number) => `#${n.toString(16).padStart(6, "0")}`;

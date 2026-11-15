@@ -1,5 +1,5 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { stubObservation } from "../lib/runnerStub";
 import { saveJustPlayed } from "../lib/justPlayed";
 import { go } from "../lib/router";
@@ -115,6 +115,11 @@ export function Arena({ gameId }: { gameId: string }) {
       ? (observation as Observation<RunnerPayload>)
       : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
+  // the names typed on the phones (no fallback to a hero name: the versus labels fall back to P1 and P2)
+  const typedNames = useMemo(
+    () => Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name])),
+    [room?.seats],
+  );
   const heroes = Object.fromEntries((room?.seats ?? []).flatMap((s) => (s.hero ? [[s.seat, s.hero]] : [])));
   // Remember the finished match so the dashboard can show "you just played this".
   useEffect(() => {
@@ -150,7 +155,7 @@ export function Arena({ gameId }: { gameId: string }) {
       <main className="arena-screen">
         <div className="arena-stage">
           {tentacle ? (
-            <RunnerCanvas observation={tentObs} />
+            <RunnerCanvas observation={tentObs} names={typedNames} />
           ) : gameId === "hero_cards" ? (
             <>
               <CardsCanvas observation={cardsObs} names={names} heroes={heroes} />
@@ -206,7 +211,7 @@ export function Arena({ gameId }: { gameId: string }) {
               <p className="eyebrow">{tentacle ? (versusEnded ? "Versus over" : "Run over") : "Match over"}</p>
               <p className="h2">
                 {versusEnded
-                  ? versusHeadline(result.outcome.winners)
+                  ? versusHeadline(result.outcome.winners, typedNames)
                   : tentacle
                   ? result.outcome.status === "win"
                     ? "The Man-Shark is down"

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { barFill, versusEnd, versusEndWords, versusHeadline, versusOf } from "../src/lib/runnerVersus.ts";
+import { barFill, laneLabel, versusEnd, versusEndWords, versusHeadline, versusOf } from "../src/lib/runnerVersus.ts";
 
 test("versus block is read, or null", () => {
   assert.equal(versusOf({}), null);
@@ -31,6 +31,10 @@ test("end of match from the seat's side", () => {
 
 test("big screen headline and bars", () => {
   assert.equal(versusHeadline(["p2"]), "P2 WINS");
+  assert.equal(versusHeadline(["p2"], { p1: "Ana", p2: "  Bo " }), "BO WINS");
+  assert.equal(versusHeadline(["p1"], { p1: "" }), "P1 WINS");
+  assert.equal(laneLabel("p1", { p1: "Ana" }), "Ana");
+  assert.equal(laneLabel("p2", {}), "P2");
   assert.equal(versusHeadline([]), "DRAW");
   assert.equal(barFill(5000, 20000), 0.25);
   assert.equal(barFill(-5, 20000), 0);

@@ -70,11 +70,15 @@ export function versusEnd(winners: readonly string[], seat: string | undefined):
 
 export const versusEndWords = (e: VersusEnd): string => (e === "win" ? "YOU WIN" : e === "lose" ? "YOU LOSE" : "DRAW");
 
-/** The big screen's headline: "P1 WINS", "P2 WINS", "DRAW". Seat ids look like p1, p2. */
-export function versusHeadline(winners: readonly string[]): string {
+/** What a runner is called on the big screen: the name typed on the phone, else "P1", "P2" (the seat id). */
+export function laneLabel(id: string, names?: Readonly<Record<string, string>>): string {
+  return names?.[id]?.trim() || id.toUpperCase();
+}
+
+/** The big screen's headline: "<name> WINS", or "DRAW" when nobody won (or both did). */
+export function versusHeadline(winners: readonly string[], names?: Readonly<Record<string, string>>): string {
   if (winners.length !== 1) return "DRAW";
-  const n = /(\d+)$/.exec(winners[0])?.[1];
-  return n ? `P${n} WINS` : "WINNER";
+  return `${laneLabel(winners[0], names).toUpperCase()} WINS`;
 }
 
 /** A progress bar fill (0..1) from an x on a course that ends at finishX. */
