@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { ActionInput, Envelope, RoomStatusPayload } from "./contract";
+import type { ActionInput, Envelope, Observation, RoomStatusPayload } from "./contract";
 import { InputPipeline } from "./input.ts";
 import { CONTROL_ACTION, NO_CONTROL, controlParams, withButton, type RunnerControl } from "./runnerInput.ts";
 import { createTransport, type ConnStatus, type Transport } from "../mock/transport";
@@ -15,6 +15,8 @@ export interface PcState {
   joinCode: string | null;
   gameId: string;
   hero: string;
+  /** the latest state.view of this seat (Hero Cards: the hand, which the big screen's view does not carry) */
+  observation: Observation<unknown> | null;
 }
 
 class PcSession {
@@ -25,7 +27,7 @@ class PcSession {
   private control: RunnerControl = NO_CONTROL;
   private want: { code: string; hero: string; gameId: string } | null = null;
   private listeners = new Set<() => void>();
-  state: PcState = { status: "off", seat: null, joinCode: null, gameId: "", hero: "" };
+  state: PcState = { status: "off", seat: null, joinCode: null, gameId: "", hero: "", observation: null };
 
   subscribe = (l: () => void) => (this.listeners.add(l), () => this.listeners.delete(l));
   private set(patch: Partial<PcState>) {
@@ -73,8 +75,11 @@ class PcSession {
       }
       if (p.seatToken) this.token = p.seatToken;
     } else if (env.type === "state.view") {
-      const o = (env.payload as { observation?: { tick?: number } })?.observation;
-      if (typeof o?.tick === "number") this.tick = o.tick;
+      const o = (env.payload as { observation?: Observation<unknown> })?.observation;
+      if (typeof o?.tick === "number") {
+        this.tick = o.tick;
+        this.set({ observation: o });
+      }
     }
   }
 
@@ -84,6 +89,11 @@ class PcSession {
     if (!next || !this.pipeline) return;
     this.control = next;
     this.pipeline.action(CONTROL_ACTION, controlParams(next));
+  }
+
+  /** Any ActionInput of this seat (Hero Cards plays and end-turn go through here). */
+  send(input: ActionInput) {
+    this.transport?.send("input.submit", input);
   }
 
   /** Hero Arena: the keyboard's stick, and a button. */
@@ -102,7 +112,7 @@ class PcSession {
     this.token = null;
     this.want = null;
     this.control = NO_CONTROL;
-    this.set({ status: "off", seat: null, joinCode: null });
+    this.set({ status: "off", seat: null, joinCode: null, observation: null });
   }
 }
 

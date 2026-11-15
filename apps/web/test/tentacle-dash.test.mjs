@@ -241,6 +241,7 @@ test("the play mode is remembered per browser, survives blocked storage, and onl
   assert.equal(getPlayMode(), "mobile");
   assert.equal(hasPcMode("hero_arena"), true);
   assert.equal(hasPcMode("tentacle_run"), true);
-  assert.equal(hasPcMode("hero_cards"), false);
+  assert.equal(hasPcMode("hero_cards"), true); // the highlight moves, Enter plays
+  assert.equal(hasPcMode("sepia_unknown"), false);
   delete globalThis.localStorage;
 });

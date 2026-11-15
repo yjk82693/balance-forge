@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CardDef, CardsPayload } from "../lib/contract";
 import { CARDS_RULES, cardArtPath, cardEffect, cardName, summonArtName, summonArtPath } from "../lib/cards";
 import { manifestUrl, preferWebp } from "../lib/assets";
@@ -13,6 +13,8 @@ interface Props {
   names: Record<string, string>;
   online: boolean;
   send: (input: ActionInput) => void;
+  /** PC mode: the keyboard drives the hand (arrows or A/D move the highlight, Space or Enter plays, E ends the turn) */
+  keys?: boolean;
 }
 
 function unitLabel(u: { kind?: string; power: number; sleepUntil: number }, turnId: number): string {
@@ -37,7 +39,7 @@ function Orbs({ n }: { n: number }) {
 }
 
 /** Phone hand: five cards, energy, summon slots, turn counter, end-turn. Sends `play` / `end_turn` ActionInputs. */
-export function CardsHand({ seat, hero, payload, tick, names, online, send }: Props) {
+export function CardsHand({ seat, hero, payload, tick, names, online, send, keys = false }: Props) {
   const [picked, setPicked] = useState<number | null>(null);
   const seq = useRef(0);
   const me = payload?.entities.find((e) => e.id === seat);
@@ -74,8 +76,32 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
     emit("end_turn", {});
   };
 
+  // The keyboard: the highlight is the picked card. Left/Right (A/D) move it, Space or Enter plays it, E ends the turn,
+  // Esc cancels.
+  const keyState = useRef({ picked, hand: hand.length, play, endTurn });
+  keyState.current = { picked, hand: hand.length, play, endTurn };
+  useEffect(() => {
+    if (!keys) return;
+    const onKey = (e: KeyboardEvent) => {
+      const k = keyState.current;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (e.metaKey || e.ctrlKey || e.altKey || k.hand === 0) return;
+      if (key === "ArrowLeft" || key === "a") setPicked((p) => (p == null ? 0 : Math.max(0, p - 1)));
+      else if (key === "ArrowRight" || key === "d") setPicked((p) => (p == null ? 0 : Math.min(k.hand - 1, p + 1)));
+      else if (key === " " || key === "Enter") {
+        if (k.picked == null) setPicked(0);
+        else k.play();
+      } else if (key === "e") k.endTurn();
+      else if (key === "Escape") setPicked(null);
+      else return;
+      e.preventDefault();
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [keys]);
+
   return (
-    <div className="hand">
+    <div className={`hand${keys ? " keys" : ""}`}>
       <section className="hand-top" aria-live="polite">
         <p className="caption">
           {payload ? `Round ${payload.round} of ${CARDS_RULES.rounds}` : "Waiting for the host to start"}
@@ -137,7 +163,8 @@ export function CardsHand({ seat, hero, payload, tick, names, online, send }: Pr
       </ul>
 
       <p className="caption hand-reason" aria-live="polite">
-        {!mine || over ? "" : blocked || (card ? "" : "Tap a card to pick it.")}
+        {!mine || over ? "" : blocked || (card ? "" : keys ? "Choose a card." : "Tap a card to pick it.")}
+        {keys && " Keyboard: ←/→ choose · Space or Enter play · E end turn · Esc cancel"}
       </p>
       <div className="hand-actions">
         <button className="btn primary touch" aria-disabled={!mine || !card || !!blocked} onClick={play}>

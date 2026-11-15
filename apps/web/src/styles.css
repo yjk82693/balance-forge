@@ -2601,3 +2601,20 @@ button.intent-btn { cursor: pointer; }
 
 /* Runner phone page on a PC: the one-line keyboard hint under the buttons. */
 .keyboard-hint { text-align: center; margin: var(--space-2) 0 0; }
+
+/* Hero Cards in PC mode: the player's hand over the lower part of the table, with a clear focus ring on the highlight. */
+.pc-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(960px, 94%);
+  z-index: 5;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg, 16px);
+  background: rgba(13, 18, 25, 0.82);
+  backdrop-filter: blur(6px);
+}
+.pc-hand .slots { display: none; }
+.pc-hand .hand-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); }
+.hand.keys .hcard.sel { outline: 4px solid var(--accent); outline-offset: 3px; transform: translateY(-8px); }

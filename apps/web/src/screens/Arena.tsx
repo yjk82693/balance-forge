@@ -11,7 +11,8 @@ import { CardsCanvas } from "../components/CardsCanvas";
 import { RunnerCanvas } from "../components/RunnerCanvas";
 import { ARENA_KEY_HINT, MoveKeys, actionKey } from "../lib/pcKeys";
 import { hasPcMode, usePlayMode } from "../lib/playMode";
-import { pcSession } from "../lib/pcSession";
+import { pcSession, usePcSession } from "../lib/pcSession";
+import { CardsHand } from "../components/CardsHand";
 import { HeldKeys, KEYBOARD_HINT } from "../lib/runnerKeys";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
@@ -52,7 +53,15 @@ export function Arena({ gameId }: { gameId: string }) {
   const tentacle = gameId === TENTACLE_GAME_ID;
   // PC mode: this tab holds the player seat (see the lobby) and the keyboard drives it.
   const pc = usePlayMode() === "pc" && hasPcMode(gameId);
+  const pcState = usePcSession();
+  const pcCards = pc && gameId === "hero_cards";
+  const myCards =
+    pcState.observation && isCardsPayload(pcState.observation.payload)
+      ? (pcState.observation as Observation<CardsPayload>)
+      : null;
   useEffect(() => {
+    if (gameId === "hero_cards") return; // the hand handles its own keys
+
     if (!pc) return;
     const scrolling = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "];
     const stop = (e: KeyboardEvent) => scrolling.includes(e.key) && e.preventDefault(); // no page scroll
@@ -149,10 +158,24 @@ export function Arena({ gameId }: { gameId: string }) {
             <ArenaCanvas observation={arenaObs} events={events} views={views} bufferStats={bufferStats} />
           )}
           <DebugReadout stats={net} buffer={bufferStats} />
+          {pcCards && (
+            <div className="pc-hand">
+              <CardsHand
+                keys
+                seat={pcState.seat ?? "p1"}
+                hero={pcState.hero || "bari"}
+                payload={myCards?.payload ?? null}
+                tick={myCards?.tick ?? 0}
+                names={names}
+                online={pcState.status === "online"}
+                send={(input) => pcSession.send(input)}
+              />
+            </div>
+          )}
           <div className="arena-overlay">
             {gameId === "hero_arena" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
             {tentObs && <span className="caption">{sectionLabel(tentObs.payload)}</span>}
-            {pc && <span className="caption">{tentacle ? KEYBOARD_HINT : ARENA_KEY_HINT}</span>}
+            {pc && !pcCards && <span className="caption">{tentacle ? KEYBOARD_HINT : ARENA_KEY_HINT}</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
           {srv === "unreachable" && !stub ? (

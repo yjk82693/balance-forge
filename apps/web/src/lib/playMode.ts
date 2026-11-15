@@ -3,8 +3,8 @@ import { useSyncExternalStore } from "react";
 /** How a lobby player joins: Mobile = the phone over the QR code; PC = this browser tab plays with the keyboard. */
 export type PlayMode = "mobile" | "pc";
 
-/** The games that have keyboard controls (Hero Cards needs card taps, so it stays on the phone). */
-export const PC_GAMES = ["hero_arena", "tentacle_run"];
+/** The games that can be played from a keyboard in this tab (Hero Cards: the highlight moves, Enter plays). */
+export const PC_GAMES = ["hero_arena", "hero_cards", "tentacle_run"];
 export const hasPcMode = (gameId: string): boolean => PC_GAMES.includes(gameId);
 
 const KEY = "bf-play-mode";
