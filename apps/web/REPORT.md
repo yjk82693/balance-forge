@@ -733,3 +733,4 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Phones stay controllers; when a versus match ends the whole phone screen is YOU WIN / YOU LOSE / DRAW (nothing else).
 - Checked only against the dev stub (`?stub=1&versus=1|far`), not the live engine or real phones.
 - Names and team colours: the typed name (room.seats[].name, else P1/P2) on the tag, bar and end text; P1 red, P2 blue (tag, bar, ring, light tint).
+- Race a bot: with Versus on, one seat can start against the bot (`versus:true, bot:true`); a runner without a seat is named Bot (blue). Versus also works in PC mode: this tab takes one seat, a phone joins by the QR/code for the other.

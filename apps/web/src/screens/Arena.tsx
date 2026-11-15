@@ -16,7 +16,7 @@ import { CardsHand } from "../components/CardsHand";
 import { HeldKeys, KEYBOARD_HINT } from "../lib/runnerKeys";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
-import { isVersusMatch, versusHeadline } from "../lib/runnerVersus";
+import { isVersusMatch, versusHeadline, versusOf, withBotNames } from "../lib/runnerVersus";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { isMockMode } from "../mock/types";
@@ -116,9 +116,15 @@ export function Arena({ gameId }: { gameId: string }) {
       : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
   // the names typed on the phones (no fallback to a hero name: the versus labels fall back to P1 and P2)
+  const runnersNow = versusOf(tentObs?.payload)?.runners;
   const typedNames = useMemo(
-    () => Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name])),
-    [room?.seats],
+    () =>
+      withBotNames(
+        Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name])),
+        room ? (runnersNow ?? []) : [], // a runner without a seat is the bot
+        (room?.seats ?? []).map((s) => s.seat),
+      ),
+    [room, runnersNow],
   );
   const heroes = Object.fromEntries((room?.seats ?? []).flatMap((s) => (s.hero ? [[s.seat, s.hero]] : [])));
   // Remember the finished match so the dashboard can show "you just played this".
@@ -131,7 +137,7 @@ export function Arena({ gameId }: { gameId: string }) {
       heroes: Object.fromEntries(seats.flatMap((s) => (s.hero ? [[s.seat, s.hero]] : []))),
     });
   }, [result, room, gameId]);
-  const versusEnded = tentacle && !!result && isVersusMatch(result.config.players);
+  const versusEnded = tentacle && !!result && (isVersusMatch(result.config.players) || !!runnersNow);
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
   const winnerEntity = isArenaPayload(observation?.payload)

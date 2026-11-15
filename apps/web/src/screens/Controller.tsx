@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel } from "../lib/runner";
-import { isVersusMatch, versusEnd, versusEndWords } from "../lib/runnerVersus";
+import { isVersusMatch, versusEnd, versusEndWords, versusOf } from "../lib/runnerVersus";
 import { CONTROL_ACTION, NO_CONTROL, controlParams, withButton, type RunnerControl } from "../lib/runnerInput";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
@@ -248,7 +248,8 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   const run = isRunnerPayload(observation?.payload) ? observation.payload : null;
   const ended = !!result || room?.phase === "ended";
   // A versus match is over: the phone shows only the verdict, full screen.
-  const versusDone = !!result && isTentacle && isVersusMatch(result.config.players);
+  const sawVersus = !!versusOf(observation?.payload);
+  const versusDone = !!result && isTentacle && (isVersusMatch(result.config.players) || sawVersus);
   const verdict = result && versusDone ? versusEnd(result.outcome.winners, seat) : null;
   const gameOn = room?.phase === "playing";
 
