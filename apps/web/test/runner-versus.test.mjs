@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as v from "../src/lib/runnerVersus.ts";
 
-const { withBotNames, barFill, laneLabel, versusEnd, versusEndWords, versusHeadline, versusOf } = v;
+const { versusCause, withBotNames, barFill, laneLabel, versusEnd, versusEndWords, versusHeadline, versusOf } = v;
 
 test("versus block is read, or null", () => {
   assert.equal(versusOf({}), null);
@@ -48,4 +48,18 @@ test("a runner without a seat is the bot", () => {
   const runners = [{ id: "p1" }, { id: "p2" }];
   assert.deepEqual(withBotNames({ p1: "Ana" }, runners, ["p1"]), { p1: "Ana", p2: "Bot" });
   assert.deepEqual(withBotNames({ p1: "Ana", p2: "Bo" }, runners, ["p1", "p2"]), { p1: "Ana", p2: "Bo" });
+});
+
+test("the cause line", () => {
+  const ids = ["p1", "p2"];
+  const names = { p1: "Ana", p2: "Bo" };
+  const down = { reason: "opponent_down", winners: ["p1"] };
+  assert.equal(versusCause(down, ids, "p1", names), "Bo fell");
+  assert.equal(versusCause(down, ids, "p2", names), "You fell");
+  assert.equal(versusCause(down, ids, null, names), "Bo fell");
+  const fin = { reason: "finish", winners: ["p2"] };
+  assert.equal(versusCause(fin, ids, "p2", names), "You crossed the finish first");
+  assert.equal(versusCause(fin, ids, "p1", names), "Bo crossed the finish first");
+  assert.equal(versusCause({ reason: "draw", winners: [] }, ids, "p1", names), "Both fell together");
+  assert.match(versusCause({ reason: "max_ticks", winners: ["p1"] }, ids, null, names), /^Ana got further/);
 });

@@ -98,3 +98,26 @@ export function withBotNames(
   for (const r of runners) if (!seatIds.includes(r.id)) out[r.id] = "Bot";
   return out;
 }
+
+/** How long the last frame stays before the end card: long enough to see the fall. */
+export const END_HOLD_MS = 1000;
+
+/**
+ * One small line saying why the match ended. `viewer` is the seat of a phone ("you"), null for the big screen.
+ * The engine's reason says finish, opponent_down (the other runner fell), max_ticks or draw; it does not say whether
+ * a pit or a wall did it, so the line says "fell".
+ */
+export function versusCause(
+  end: { reason: string; winners: readonly string[] },
+  runnerIds: readonly string[],
+  viewer: string | null,
+  names?: Readonly<Record<string, string>>,
+): string {
+  const winner = end.winners[0];
+  if (winner === undefined) return end.reason === "draw" ? "Both fell together" : "No one got ahead";
+  const who = (id: string, you: string, other: string) => (id === viewer ? you : `${laneLabel(id, names)} ${other}`);
+  if (end.reason === "finish") return who(winner, "You crossed the finish first", "crossed the finish first");
+  if (end.reason === "max_ticks") return who(winner, "Time ran out. You got further", "got further when time ran out");
+  const loser = runnerIds.find((id) => id !== winner) ?? "";
+  return loser ? who(loser, "You fell", "fell") : "A runner fell";
+}

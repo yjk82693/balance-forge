@@ -1,4 +1,5 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
+import { useDelayed } from "../lib/useDelayed";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { stubObservation } from "../lib/runnerStub";
 import { saveJustPlayed } from "../lib/justPlayed";
@@ -16,7 +17,7 @@ import { CardsHand } from "../components/CardsHand";
 import { HeldKeys, KEYBOARD_HINT } from "../lib/runnerKeys";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
-import { isVersusMatch, versusHeadline, versusOf, withBotNames } from "../lib/runnerVersus";
+import { END_HOLD_MS, isVersusMatch, versusCause, versusHeadline, versusOf, withBotNames } from "../lib/runnerVersus";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { isMockMode } from "../mock/types";
@@ -138,6 +139,8 @@ export function Arena({ gameId }: { gameId: string }) {
     });
   }, [result, room, gameId]);
   const versusEnded = tentacle && !!result && (isVersusMatch(result.config.players) || !!runnersNow);
+  // A versus match holds its last frame for a moment (the fall stays on screen) before the card.
+  const shown = useDelayed(result, versusEnded ? END_HOLD_MS : 0);
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
   const winnerEntity = isArenaPayload(observation?.payload)
@@ -212,24 +215,29 @@ export function Arena({ gameId }: { gameId: string }) {
               </div>
             )
           )}
-          {result && (
+          {shown && (
             <div className="result-card panel" role="status">
               <p className="eyebrow">{tentacle ? (versusEnded ? "Versus over" : "Run over") : "Match over"}</p>
               <p className="h2">
                 {versusEnded
-                  ? versusHeadline(result.outcome.winners, typedNames)
+                  ? versusHeadline(shown.outcome.winners, typedNames)
                   : tentacle
-                  ? result.outcome.status === "win"
+                  ? shown.outcome.status === "win"
                     ? "The Man-Shark is down"
                     : "Sepia went down"
-                  : result.outcome.status === "win"
+                  : shown.outcome.status === "win"
                     ? `${winner?.name ?? heroName(winnerHero)} wins`
                     : "A draw"}
               </p>
               <p className="text-2">
                 {tentacle && tentObs ? `${sectionLabel(tentObs.payload)} · ` : `${heroName(winnerHero)} · `}
-                {fmtTime(result.statistics.durationTicks)}
+                {fmtTime(shown.statistics.durationTicks)}
               </p>
+              {versusEnded && (
+                <p className="small">
+                  {versusCause(shown.outcome, (runnersNow ?? []).map((r) => r.id), null, typedNames)}
+                </p>
+              )}
               <div className="result-actions">
                 <button className="btn primary" onClick={() => go("/dashboard")}>
                   See the report
