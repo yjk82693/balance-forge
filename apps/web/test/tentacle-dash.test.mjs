@@ -19,7 +19,7 @@ test("the /full body of the engine is read: wave table, flagged wave, per-wave v
   assert.ok(r);
   assert.deepEqual(r.waves.map((w) => w.wave), [1, 2, 3, 4, 5, 6]);
   assert.equal(r.waves[3].outlier, true);
-  assert.equal(r.waves[3].deaths, 50);
+  assert.equal(r.waves[3].deaths, body.baseline.waves[3].deaths);
   assert.equal(r.flagged.wave, 4);
   assert.equal(r.patchedWaves.length, 6);
   assert.equal(r.targets[0].wave, 4);
