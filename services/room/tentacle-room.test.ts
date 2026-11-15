@@ -70,3 +70,31 @@ test('Tentacle Run needs exactly one seat; Hero Arena and Hero Cards rooms are u
   const cardsRoom = connect('?role=display&gameId=hero_cards');
   assert.equal(cardsRoom.take('room.status').payload.gameId, 'hero_cards');
 });
+
+test('Tentacle Run versus: two phones keep p1/p2 as Sepia, one course, the first death ends it', async t => {
+  const { server, connect } = await setup(t);
+  const host = connect('?role=display&gameId=tentacle_run');
+  const room = server.rooms.get(host.take('room.status').roomId);
+  const one = connect(), two = connect(), three = connect();
+  one.request('room.join', { joinCode: room.code, name: 'A', hero: 'bari' });
+  two.request('room.join', { joinCode: room.code, name: 'B', hero: 'daewi' });
+  three.request('room.join', { joinCode: room.code, name: 'C', hero: 'sepia' });
+  assert.equal(three.messages.filter(m => m.type === 'error').length, 1); // a third phone: room full
+  host.request('match.start', { seed: 5, maxTicks: 1800 }); // two seats without versus: still solo-only
+  assert.equal(room.phase, 'lobby');
+  host.request('match.start', { seed: 5, maxTicks: 1800, versus: true });
+  assert.equal(room.phase, 'playing');
+  assert.deepEqual(room.authority.config.players, ['p1', 'p2']);
+  assert.deepEqual(room.authority.config.options.assignments, { p1: 'sepia', p2: 'sepia' });
+  one.request('input.submit', { playerId: 'p1', seq: 0, tick: 1, turnId: 0, actionId: 'control',
+    params: { jump: 0, slide: 1 } });
+  for (let i = 0; i < 1800 && room.phase === 'playing'; i++) server.advance(room);
+  const result = host.take('match.ended').payload.result;
+  validate('MatchResult', result);
+  assert.equal(result.valid, true);
+  assert.equal(result.outcome.reason, 'opponent_down');
+  assert.equal(result.outcome.winners.length, 1);
+  const view = two.take('state.view').payload.observation.payload;
+  assert.equal(view.versus.you, 'p2');
+  assert.equal(view.versus.runners.length, 2);
+});

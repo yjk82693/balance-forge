@@ -300,4 +300,20 @@ export type TentacleObservationPayload = {
   anchors: TentacleAnchor[]; // likewise
   shark: null | { x: number }; // the Man-Shark chasing in the last section (drawn behind Sepia), else null
   outcome: Outcome;
+  versus?: TentacleVersus; // only in a 1v1 match
+};
+// 1v1 (versus): two seats p1 and p2 (both Sepia) run the same course from the same seed and never interact. Each
+// seat's view is its OWN runner (its camera, player, obstacles, anchors) plus `versus`. The viewer 'display' gets the
+// leader's view (the one further right, p1 on a tie). The first death ends the match: the survivor wins
+// ('opponent_down');
+// both dead on the same tick: the one further right wins, an exact tie is a draw ('draw', winners []). A match is
+// versus when config.players has two seats; match.start { gameId: 'tentacle_run', versus: true } with 2 phones.
+export type TentacleVersus = {
+  you: string | null; // 'p1' | 'p2' for a seat, null for the display
+  opponent: null | { id: string; x: number; state: TentaclePlayerState; alive: boolean }; // null for the display
+  // both, p1 first; everything needed to draw each runner (the laptop shows both on one screen)
+  runners: Array<{ id: string; x: number; y: number; vx: number; vy: number; state: TentaclePlayerState;
+    height: number; wire: null | { anchorId: string; anchorX: number; anchorY: number; length: number };
+    alive: boolean; section: number }>;
+  leader: string; // the id of the runner further right (p1 on a tie)
 };
