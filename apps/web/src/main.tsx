@@ -9,8 +9,10 @@ import "./styles.css";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { installStaticGuards } from "./lib/staticMode";
+import { watchForNewBuild } from "./lib/staleBuild";
 
 installStaticGuards();
+watchForNewBuild();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

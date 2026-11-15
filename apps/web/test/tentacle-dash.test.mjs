@@ -34,10 +34,11 @@ test("the /full body of the engine is read: wave table, flagged wave, per-wave v
   assert.equal(r.flagged.wave, 4);
   assert.equal(r.patchedWaves.length, 6);
   assert.equal(r.targets[0].wave, 4);
-  // the recorded example is an overshoot: the patch made wave 4 too easy and the verdict is rejected
-  assert.equal(r.targets[0].outcome, "overshot");
-  assert.deepEqual(r.targets[0].band, [0.6, 0.7]);
-  assert.equal(body.verdict.verdict, "rejected");
+  // the outcome and band are the example's own (the engine regenerates it: on target / accepted today)
+  assert.equal(r.targets[0].outcome, body.verdict.targets[0].outcome);
+  assert.deepEqual(r.targets[0].band, body.verdict.targets[0].band);
+  assert.ok(["improved", "on target", "overshot", "unchanged", "worse"].includes(r.targets[0].outcome));
+  assert.equal(r.flagged.wave, body.flaggedWave.wave);
   assert.equal(r.runs, body.runs);
   assert.equal(tentacleResultFrom({ baseline: {} }), null);
   assert.equal(tentacleResultFrom(null), null);
@@ -89,15 +90,16 @@ test("the solo action scene comes after the card scene and before the history, o
   assert.ok(ids({ solo: true }).indexOf("solo") > ids({ solo: true }).indexOf("verdict"));
 });
 
-import { RING_MS, chargeFraction } from "../src/lib/tentacleButton.ts";
+import { entryScript, isNewBuild } from "../src/lib/staleBuild.ts";
 
-test("the jump ring fills over the engine's tap length", () => {
-  assert.equal(RING_MS, 200);
-  assert.equal(chargeFraction(0), 0);
-  assert.equal(chargeFraction(100), 0.5);
-  assert.equal(chargeFraction(200), 1);
-  assert.equal(chargeFraction(900), 1);
-  assert.equal(chargeFraction(-5), 0);
+test("a tab reloads only when the server's entry script differs from its own", () => {
+  const page = (h) => `<script type="module" crossorigin src="./assets/index-${h}.js"></script>`;
+  assert.equal(entryScript(page("AbC-123")), "assets/index-AbC-123.js");
+  assert.equal(entryScript("<html></html>"), null);
+  assert.equal(isNewBuild(page("new"), "./assets/index-old.js"), true);
+  assert.equal(isNewBuild(page("same"), "./assets/index-same.js"), false);
+  assert.equal(isNewBuild("<html></html>", "./assets/index-old.js"), false);
+  assert.equal(isNewBuild(page("new"), null), false);
 });
 
 test("outcomes are worded and coloured: an overshoot is a warning, never a success; bands read as a range", () => {
@@ -111,4 +113,69 @@ test("outcomes are worded and coloured: an overshoot is a warning, never a succe
   assert.equal(targetWords([0.6, 0.7], 0.65), "target 60–70%");
   assert.equal(targetWords(null, 0.65), "target 65%");
   assert.equal(targetWords(null, null), null);
+});
+
+import {
+  DEFAULT_META,
+  RUNNER_SLOTS,
+  buildingSlot,
+  feetOrigin,
+  hookDisplay,
+  runFrameIndex,
+  sepiaSlot,
+  spriteDisplay,
+} from "../src/lib/runnerArt.ts";
+
+test("the run cycle follows the distance travelled and the right sprite is chosen for each state", () => {
+  assert.equal(runFrameIndex(0), 0);
+  assert.equal(runFrameIndex(699), 0);
+  assert.equal(runFrameIndex(700), 1);
+  assert.equal(runFrameIndex(700 * 6), 0);
+  assert.equal(runFrameIndex(700 * 13), 1);
+  const s = { state: "running", vy: 0, x: 1400, hooking: false, down: false };
+  assert.equal(sepiaSlot(s), "sepia_run_3");
+  assert.equal(sepiaSlot({ ...s, state: "jumping", vy: 5 }), "sepia_jump_up");
+  assert.equal(sepiaSlot({ ...s, state: "jumping", vy: -5 }), "sepia_jump_fall");
+  assert.equal(sepiaSlot({ ...s, state: "jumping", hooking: true }), "sepia_hook_throw");
+  assert.equal(sepiaSlot({ ...s, state: "sliding" }), "sepia_slide");
+  assert.equal(sepiaSlot({ ...s, state: "swinging" }), "sepia_swing");
+  assert.equal(sepiaSlot({ ...s, down: true }), "sepia_down");
+  for (const slot of ["sepia_run_1", "sepia_run_6", "sepia_swing", "bg_near", "btn_slide_pressed"]) {
+    assert.ok(RUNNER_SLOTS.includes(slot), slot);
+  }
+});
+
+test("hook buildings are stable per anchor and drawn so the ring sits on the anchor", () => {
+  assert.equal(buildingSlot("a1"), buildingSlot("a1"));
+  assert.ok(["hook_building_1", "hook_building_2", "hook_building_3"].includes(buildingSlot("anchor-7")));
+  // the ring is 80 of 1024 below the top: a cell 1024 tall puts it 944 above the ground
+  assert.equal(Math.round(hookDisplay(944)), 1024);
+  assert.ok(hookDisplay(0) > 0);
+  assert.equal(DEFAULT_META.feetY, 472);
+  assert.equal(feetOrigin(), 472 / 512);
+  assert.equal(spriteDisplay(400), 512);
+});
+
+test("an overshoot with its band is read from the verdict, whatever the example holds", () => {
+  const file = new URL("../../../packages/games/tentacle/example-full.json", import.meta.url);
+  const body = JSON.parse(readFileSync(file, "utf8"));
+  const target = { ...body.verdict.targets[0], outcome: "overshot", band: [0.6, 0.7] };
+  const r = tentacleResultFrom({ ...body, verdict: { ...body.verdict, verdict: "rejected", targets: [target] } });
+  assert.equal(r.targets[0].outcome, "overshot");
+  assert.deepEqual(r.targets[0].band, [0.6, 0.7]);
+  assert.equal(outcomeClass(r.targets[0].outcome), "status warn");
+});
+
+import { hookPlacement } from "../src/lib/runnerArt.ts";
+
+test("a measured hook building is placed with its ring on the anchor and its base on the ground", () => {
+  const meta = { ...DEFAULT_META, hooks: { hook_building_1: { w: 544, h: 688, ringX: 272, ringY: 36 } } };
+  const p = hookPlacement("hook_building_1", 326, meta); // 326 px from the anchor down to the ground
+  assert.equal(Math.round(p.height), Math.round((688 / (688 - 36)) * 326));
+  assert.equal(p.originX, 0.5);
+  assert.equal(p.originY, 36 / 688);
+  // the ring is p.originY of the height below the top, so the base is (1 - originY) * height below the ring = ground
+  assert.equal(Math.round((1 - p.originY) * p.height), 326);
+  assert.equal(hookPlacement("hook_building_2", 100, meta), null);
+  assert.equal(hookPlacement("hook_building_1", 100, DEFAULT_META), null);
 });

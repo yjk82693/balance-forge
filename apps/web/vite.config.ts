@@ -28,10 +28,24 @@ function staticTrim(outDir: string): Plugin {
   };
 }
 
+/** The artist's originals under runner/src are for the slicer, not for the page: they stay out of every build. */
+function dropArtSources(outDir: string): Plugin {
+  return {
+    name: "drop-art-sources",
+    closeBundle() {
+      rmSync(resolve(outDir, "assets/sepia_tentacle_run/runner/src"), { recursive: true, force: true });
+    },
+  };
+}
+
 // Relative base + hash routing: works from any static host, no server rewrites.
 export default defineConfig({
   base: "./",
-  plugins: [react(), ...(STATIC ? [staticTrim(resolve(__dirname, "dist-static"))] : [])],
+  plugins: [
+    react(),
+    dropArtSources(resolve(__dirname, STATIC ? "dist-static" : "dist")),
+    ...(STATIC ? [staticTrim(resolve(__dirname, "dist-static"))] : []),
+  ],
   server: { host: true, fs: { allow: ["../.."] } },
   build: { chunkSizeWarningLimit: 2000, ...(STATIC ? { outDir: "dist-static", emptyOutDir: true } : {}) },
 });

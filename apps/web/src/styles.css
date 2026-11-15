@@ -2581,10 +2581,20 @@ button.intent-btn { cursor: pointer; }
 .skill-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .exploratory-list { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
 
-/* Sepia Tentacle Run phone: the one tentacle button with its rope-charge ring. */
-.tentacle-btn { position: relative; }
-.tentacle-ring { position: absolute; inset: 0; transform: rotate(-90deg); pointer-events: none; }
-.tentacle-ring circle { fill: none; stroke-width: 6; }
-.tentacle-ring .ring-track { stroke: var(--line-strong); opacity: 0.5; }
-.tentacle-ring .ring-fill { stroke: var(--accent, #4cc9f0); stroke-linecap: round; }
-.tentacle-btn.ready .ring-fill { stroke: var(--success); }
+
+/* Sepia Tentacle Run phone: two big thumb buttons, SLIDE on the left and JUMP on the right. */
+.runner-cluster {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+  width: 100%;
+  padding: 0 var(--space-4);
+}
+.runner-cluster .pad-btn-wrap { position: static; display: flex; flex-direction: column; align-items: center; }
+.runner-btn { width: 136px; height: 136px; }
+.slide-glyph { font-size: 48px; line-height: 1; }
+
+/* The delivered button art replaces the drawn circle; the pressed art is the smaller one. */
+.runner-btn.art { background: none; border: 0; box-shadow: none; padding: 0; }
+.runner-art { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }

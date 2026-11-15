@@ -647,3 +647,41 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   `/gameRules/sections/N/(length|pits|lowBars|walls|anchorSpacing|runSpeed)`.
 - A dev-only stub (`#/arena/tentacle_run?stub=1`, `npm run dev`) was used to look at the scene. Not tested against the
   live room or a real phone. `TENTACLE_RUN_ENABLED` in `lib/featureFlags.ts` hides the game.
+
+- Runner phone, as the Chairman changed it: two big thumb buttons only, SLIDE on the left and JUMP on the right, no ring.
+  JUMP's hint reads "Jump · press again in the air to hook"; the wire (second press hooks, hold swings, release lets go) is
+  the engine's call, the message stays `{jump, slide}` on change.
+- A tab that was open before a server rebuild reloads itself when the server's entry script differs from its own
+  (`lib/staleBuild.ts`: on coming to the front and every minute; never on `#/play` or `#/arena`; not in dev or static).
+
+### Runner art slots and the slicer
+
+- `apps/web/scripts/slice_runner_art.py` cuts the seven GPT sheets from `~/Downloads` (sepia_run_sheet, sepia_actions_sheet,
+  bg_far/mid/near, hooks_sheet, tiles_ui_sheet) into `public/assets/sepia_tentacle_run/runner/` (rescaling a sheet whose
+  size is off, keeping the feet baseline, no per-cell trimming; writes `meta.json` with the measured body height and says
+  what looks wrong: feet off the baseline, cropped sides, a visible seam).
+- The scene and buttons use a slot when its file exists (`lib/runnerArt.ts`): run frame from the distance travelled
+  (700 units per frame), jump/fall/slide/hook/swing/down sprites, the three parallax layers, a hook building under each
+  anchor with its ring at the anchor point, ground/pit-edge/bar/wall tiles, and the button art with its pressed state.
+  Without a file the drawn fallback stays. Tried with synthetic sheets (not committed).
+- The phone route renders the runner pad for `tentacle_run` (checked with the mock room: the QR carries the game, the form
+  offers Sepia, the pad shows SLIDE and JUMP); a leftover stick ring on the pad was removed.
+
+### Real runner art (two GPT sets)
+
+- Originals are copied (not edited) to `public/assets/sepia_tentacle_run/runner/src/` as `setA_*` (GPT names, painted
+  checker) and `setB_*` (our names, RGBA); the build leaves that folder out of `dist`. `scripts/slice_runner_art.py` keys
+  the checker of set A to alpha, splits by connected components, and writes the pieces next to `meta.json`.
+- Per piece the cleaner source: run frames and the three backgrounds from B; action poses, hook structures, tiles and the
+  four buttons from A (B's action cells are cut at the cell borders, its hook alpha is dithered, its tile cells straddle,
+  the buttons exist only in A's atlas). Backgrounds are mirrored into a seamless double-width tile.
+- All character frames share a scale (body 400 of 512) with the feet on one baseline (472); the hanging pose hangs from
+  the top edge. Each hook building's ring centre is measured and the scene places it with the ring on the anchor.
+- `RunnerScene` now looks like the art: three parallax layers, a hook structure under every anchor, ground tile with
+  broken pit edges, the pipe bar and wall blocks, Sepia's run cycle by distance, jump/fall/slide/hook/swing/down poses.
+  The phone buttons use the delivered button art with its pressed version.
+
+- Runner camera zoom 1.7x on the web side (about 9400 of the 16000 units across, Sepia ~150 px tall, ground at y=610 so the
+  4500-high anchors still fit); Sepia keeps the engine's lead from the left. The ground tile loses its faint edge columns
+  in the slicer (no seams). The originals under runner/src are git-ignored (kept locally), only the pieces, meta.json
+  and the slicer are committed.
