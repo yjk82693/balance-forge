@@ -1,5 +1,5 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { stubObservation } from "../lib/runnerStub";
 import { saveJustPlayed } from "../lib/justPlayed";
 import { go } from "../lib/router";
@@ -16,6 +16,7 @@ import { CardsHand } from "../components/CardsHand";
 import { HeldKeys, KEYBOARD_HINT } from "../lib/runnerKeys";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
+import { isVersusMatch, versusHeadline } from "../lib/runnerVersus";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { isMockMode } from "../mock/types";
@@ -114,6 +115,11 @@ export function Arena({ gameId }: { gameId: string }) {
       ? (observation as Observation<RunnerPayload>)
       : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
+  // the names typed on the phones (no fallback to a hero name: the versus labels fall back to P1 and P2)
+  const typedNames = useMemo(
+    () => Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name])),
+    [room?.seats],
+  );
   const heroes = Object.fromEntries((room?.seats ?? []).flatMap((s) => (s.hero ? [[s.seat, s.hero]] : [])));
   // Remember the finished match so the dashboard can show "you just played this".
   useEffect(() => {
@@ -125,6 +131,7 @@ export function Arena({ gameId }: { gameId: string }) {
       heroes: Object.fromEntries(seats.flatMap((s) => (s.hero ? [[s.seat, s.hero]] : []))),
     });
   }, [result, room, gameId]);
+  const versusEnded = tentacle && !!result && isVersusMatch(result.config.players);
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
   const winnerEntity = isArenaPayload(observation?.payload)
@@ -148,7 +155,7 @@ export function Arena({ gameId }: { gameId: string }) {
       <main className="arena-screen">
         <div className="arena-stage">
           {tentacle ? (
-            <RunnerCanvas observation={tentObs} />
+            <RunnerCanvas observation={tentObs} names={typedNames} />
           ) : gameId === "hero_cards" ? (
             <>
               <CardsCanvas observation={cardsObs} names={names} heroes={heroes} />
@@ -201,9 +208,11 @@ export function Arena({ gameId }: { gameId: string }) {
           )}
           {result && (
             <div className="result-card panel" role="status">
-              <p className="eyebrow">{tentacle ? "Run over" : "Match over"}</p>
+              <p className="eyebrow">{tentacle ? (versusEnded ? "Versus over" : "Run over") : "Match over"}</p>
               <p className="h2">
-                {tentacle
+                {versusEnded
+                  ? versusHeadline(result.outcome.winners, typedNames)
+                  : tentacle
                   ? result.outcome.status === "win"
                     ? "The Man-Shark is down"
                     : "Sepia went down"

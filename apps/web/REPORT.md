@@ -723,3 +723,13 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   violet glow and teal walls. A guide trail of small glowing dots shows an arc over each chasm (toward its anchor, down on the
   far side) and the jump arc over each narrow pit; visual only. Observations without `overPit` still draw (only the narrow-pit
   arcs). The ground line moved up to y=590 to leave the chasm some depth.
+
+## Runner Versus (flag RUNNER_VERSUS_ENABLED)
+- Lobby (Mobile mode, Sepia Tentacle Run): a Solo | Versus switch; Versus waits for two phones and sends
+  `match.start { gameId, versus: true }`. PC mode stays solo.
+- Big screen: both runners in one course, camera on the leader (the engine's view), "P1"/"P2" labels, P2 tinted, a runner
+  behind the left edge is held at the edge with an arrow, two progress bars from `versus.runners`, "P1 WINS" / "P2 WINS" /
+  "DRAW" at the end. A rival's pose uses `y`, `height`, `wire` of `versus.runners` when the engine sends them.
+- Phones stay controllers; when a versus match ends the whole phone screen is YOU WIN / YOU LOSE / DRAW (nothing else).
+- Checked only against the dev stub (`?stub=1&versus=1|far`), not the live engine or real phones.
+- Names and team colours: the typed name (room.seats[].name, else P1/P2) on the tag, bar and end text; P1 red, P2 blue (tag, bar, ring, light tint).

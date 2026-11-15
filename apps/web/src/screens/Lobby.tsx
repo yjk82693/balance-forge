@@ -11,6 +11,8 @@ import { useRoom } from "../mock/useRoom";
 import { LobbyVersion } from "../components/LobbyVersion";
 import { PcPanel, PlayModeSwitch } from "../components/PcPlay";
 import { hasPcMode, usePlayMode } from "../lib/playMode";
+import { RUNNER_VERSUS_ENABLED } from "../lib/featureFlags";
+import type { VersusSide } from "../lib/runnerVersus";
 import { ServerDown, useServerState } from "../components/ServerDown";
 
 const SLOTS = 2;
@@ -64,6 +66,8 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
   const [refusal, setRefusal] = useState("");
   const srv = useServerState(status);
   const [left, setLeft] = useState<string | null>(null);
+  const [side, setSide] = useState<VersusSide>("solo"); // Sepia Tentacle Run: alone, or 1v1 on two phones
+  const mode = usePlayMode();
   const prev = useRef(new Map<string, { name: string; connected: boolean }>());
 
   // Lobby always starts clean: a finished or running match from earlier is reset. The server needs the room's
@@ -129,14 +133,16 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
       </div>
     );
   }
-  const solo = SOLO_GAMES.includes(gameId);
-  const mode = usePlayMode();
+  const runner = SOLO_GAMES.includes(gameId);
   const pc = mode === "pc" && hasPcMode(gameId);
+  const canVersus = RUNNER_VERSUS_ENABLED && runner && !pc; // versus is played on two phones
+  const versus = canVersus && side === "versus";
+  const solo = runner && !versus;
   const slots = solo ? 1 : SLOTS;
   const needed = solo ? 1 : PLAYERS_TO_START;
   const connecting = !room;
   const code = room?.joinCode ?? "····";
-  const url = joinUrl(code, solo ? gameId : undefined);
+  const url = joinUrl(code, runner ? gameId : undefined);
   const seats = room?.seats ?? [];
   const here = seats.filter((s) => s.connected).length;
   const arena = game.status === "ready";
@@ -151,7 +157,10 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
     if (bot ? !canBot : !canStart) return;
     setRefusal("");
     setStarting(bot ? "bot" : "match");
-    transport?.send("match.start", bot ? { gameId: game.id, bot: true } : { gameId: game.id });
+    transport?.send(
+      "match.start",
+      bot ? { gameId: game.id, bot: true } : versus ? { gameId: game.id, versus: true } : { gameId: game.id },
+    );
   };
 
   return (
@@ -249,10 +258,30 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
               );
             })}
           </ul>
+          {canVersus && (
+            <div className="seg versus-switch" role="radiogroup" aria-label="Solo or versus">
+              {(["solo", "versus"] as const).map((m) => (
+                <button
+                  key={m}
+                  role="radio"
+                  aria-checked={side === m}
+                  className={`seg-btn${side === m ? " on" : ""}`}
+                  onClick={() => setSide(m)}
+                >
+                  {m === "solo" ? "Solo" : "Versus"}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="caption lobby-note" aria-live="polite">
             {connecting
               ? "Getting the room ready…"
-              : (left ?? (solo ? "One player starts the run." : "Two players start a match."))}
+              : (left ??
+                (versus
+                  ? "Two phones, two runs. The first to the end wins."
+                  : solo
+                    ? "One player starts the run."
+                    : "Two players start a match."))}
           </p>
           <button
             className="btn primary touch"
@@ -260,9 +289,9 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
             aria-busy={starting === "match"}
             onClick={() => begin(false)}
           >
-            {solo ? "Start run" : "Start match"}
+            {solo ? "Start run" : versus ? "Start versus" : "Start match"}
           </button>
-          {!solo && (
+          {!runner && (
             <button
               className="btn secondary touch"
               aria-disabled={!canBot || !!starting}

@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel } from "../lib/runner";
+import { isVersusMatch, versusEnd, versusEndWords } from "../lib/runnerVersus";
 import { CONTROL_ACTION, NO_CONTROL, controlParams, withButton, type RunnerControl } from "../lib/runnerInput";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
@@ -246,7 +247,18 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   const mine = myArenaEntity(observation?.payload, seat);
   const run = isRunnerPayload(observation?.payload) ? observation.payload : null;
   const ended = !!result || room?.phase === "ended";
+  // A versus match is over: the phone shows only the verdict, full screen.
+  const versusDone = !!result && isTentacle && isVersusMatch(result.config.players);
+  const verdict = result && versusDone ? versusEnd(result.outcome.winners, seat) : null;
   const gameOn = room?.phase === "playing";
+
+  if (verdict) {
+    return (
+      <div className={`verdict ${verdict}`} role="status" aria-live="assertive">
+        <p className="verdict-word">{versusEndWords(verdict)}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="phone" style={{ ["--hero" as string]: heroColorVar(hero) }}>

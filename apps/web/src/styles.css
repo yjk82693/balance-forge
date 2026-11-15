@@ -2618,3 +2618,20 @@ button.intent-btn { cursor: pointer; }
 .pc-hand .slots { display: none; }
 .pc-hand .hand-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-4); }
 .hand.keys .hcard.sel { outline: 4px solid var(--accent); outline-offset: 3px; transform: translateY(-8px); }
+
+/* Runner Versus: the phone's whole screen is the verdict once the match is over. */
+.verdict {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+.verdict.win { background: var(--ok, #1f7a55); color: #fff; }
+.verdict.lose { background: var(--bad, #8a2b35); color: #fff; }
+.verdict-word { font-size: clamp(48px, 18vw, 96px); font-weight: 800; letter-spacing: 0.02em; margin: 0; }
+.versus-switch { align-self: flex-start; margin-bottom: var(--space-2); }

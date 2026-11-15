@@ -23,11 +23,20 @@ async function loadArt(): Promise<{ art: Record<string, string>; meta: RunnerMet
 }
 
 /** The Sepia Tentacle Run side view: Phaser, fed Observations; the art slots that exist replace the drawn ones. */
-export function RunnerCanvas({ observation }: { observation: Observation<RunnerPayload> | null }) {
+export function RunnerCanvas({
+  observation,
+  names,
+}: {
+  observation: Observation<RunnerPayload> | null;
+  /** seat id to the name typed on the phone, for a versus match */
+  names?: Record<string, string>;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
   const latest = useRef(observation);
   latest.current = observation;
+  const namesNow = useRef(names);
+  namesNow.current = names;
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +66,7 @@ export function RunnerCanvas({ observation }: { observation: Observation<RunnerP
         callbacks: {
           preBoot: (gm) => {
             gm.registry.set("assets", assets);
+            gm.registry.set("names", namesNow.current);
             if (latest.current) gm.registry.set("obs", latest.current);
           },
         },
@@ -70,8 +80,9 @@ export function RunnerCanvas({ observation }: { observation: Observation<RunnerP
   }, []);
 
   useEffect(() => {
+    game.current?.registry.set("names", names);
     if (observation) game.current?.registry.set("obs", observation);
-  }, [observation]);
+  }, [observation, names]);
 
   return <div ref={host} className="arena-host" role="img" aria-label="Sepia Tentacle Run side view" />;
 }
