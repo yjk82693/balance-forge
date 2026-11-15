@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { tentacleResultFrom, waveChangeLabel, waveName } from "../src/lib/tentacleDash.ts";
+import {
+  outcomeClass,
+  outcomeWords,
+  targetWords,
+  tentacleResultFrom,
+  waveChangeLabel,
+  waveName,
+} from "../src/lib/tentacleDash.ts";
 import { activePips, isTentaclePayload, segmentCount, toCanvas, waveLabel } from "../src/lib/tentacle.ts";
 
 test("a patch path is said in words, counting waves from 1", () => {
@@ -23,7 +30,10 @@ test("the /full body of the engine is read: wave table, flagged wave, per-wave v
   assert.equal(r.flagged.wave, 4);
   assert.equal(r.patchedWaves.length, 6);
   assert.equal(r.targets[0].wave, 4);
-  assert.equal(r.targets[0].outcome, "improved");
+  // the recorded example is an overshoot: the patch made wave 4 too easy and the verdict is rejected
+  assert.equal(r.targets[0].outcome, "overshot");
+  assert.deepEqual(r.targets[0].band, [0.6, 0.7]);
+  assert.equal(body.verdict.verdict, "rejected");
   assert.equal(r.runs, body.runs);
   assert.equal(tentacleResultFrom({ baseline: {} }), null);
   assert.equal(tentacleResultFrom(null), null);
@@ -67,4 +77,17 @@ test("one tentacle button: a tap whips, a hold of 250 ms or more throws the rope
   assert.equal(chargeFraction(250), 1);
   assert.equal(chargeFraction(900), 1);
   assert.equal(chargeFraction(-5), 0);
+});
+
+test("outcomes are worded and coloured: an overshoot is a warning, never a success; bands read as a range", () => {
+  assert.equal(outcomeWords("overshot"), "overshot (too easy)");
+  assert.equal(outcomeWords("on target"), "on target");
+  assert.equal(outcomeClass("overshot"), "status warn");
+  assert.equal(outcomeClass("on target"), "status ok");
+  assert.equal(outcomeClass("improved"), "status ok");
+  assert.equal(outcomeClass("worse"), "status bad");
+  assert.equal(outcomeClass("unchanged"), "badge");
+  assert.equal(targetWords([0.6, 0.7], 0.65), "target 60–70%");
+  assert.equal(targetWords(null, 0.65), "target 65%");
+  assert.equal(targetWords(null, null), null);
 });

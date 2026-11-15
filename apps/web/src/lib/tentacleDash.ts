@@ -34,7 +34,29 @@ export interface WaveTarget {
   wave: number;
   before: { rate: number; ci95: [number, number] | null; games: number };
   after: { rate: number; ci95: [number, number] | null; games: number };
-  outcome: "improved" | "unchanged" | "worse";
+  outcome: WaveOutcome;
+  /** the clear rates that count as on target for this wave (0..1), when the analysis says */
+  band: [number, number] | null;
+}
+
+export type WaveOutcome = "improved" | "on target" | "overshot" | "unchanged" | "worse";
+const OUTCOMES: WaveOutcome[] = ["improved", "on target", "overshot", "unchanged", "worse"];
+
+/** The outcome in words; an overshoot is the patch making the wave too easy. */
+export const outcomeWords = (o: WaveOutcome): string => (o === "overshot" ? "overshot (too easy)" : o);
+
+/** The look of an outcome: on target and improved are good, an overshoot is a warning, worse is bad. */
+export const outcomeClass = (o: WaveOutcome): string => {
+  if (o === "on target" || o === "improved") return "status ok";
+  if (o === "overshot") return "status warn";
+  return o === "worse" ? "status bad" : "badge";
+};
+
+/** "target 60–70%" for a band, or "target 65%" for a single target; null when neither is known. */
+export function targetWords(band: [number, number] | null, target: number | null): string | null {
+  const p = (x: number) => Math.round(x * 100);
+  if (band) return `target ${p(band[0])}–${p(band[1])}%`;
+  return target === null ? null : `target ${p(target)}%`;
 }
 
 /** What the dashboard shows of a /full body for tentacle_run (the wire shape: packages/games/tentacle/SPEC.md). */
@@ -96,8 +118,9 @@ function targetsFrom(raw: unknown): WaveTarget[] {
   return raw.flatMap((t) => {
     if (!isObject(t)) return [];
     const [before, after, wave] = [rateOf(t.before), rateOf(t.after), num(t.wave)];
-    const outcome = t.outcome === "improved" || t.outcome === "unchanged" || t.outcome === "worse" ? t.outcome : null;
-    return before && after && wave !== undefined && outcome ? [{ wave, before, after, outcome }] : [];
+    const outcome = OUTCOMES.find((o) => o === t.outcome) ?? null;
+    if (!before || !after || wave === undefined || !outcome) return [];
+    return [{ wave, before, after, outcome, band: pair(t.band) }];
   });
 }
 

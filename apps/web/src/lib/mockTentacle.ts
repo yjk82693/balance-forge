@@ -83,6 +83,7 @@ export function mockTentacleRun(): PlaytestRun {
           before: { rate: 17 / 101, ci95: flagged.ci95, games: 101 },
           after: { rate: 0.63, ci95: PATCHED[3].ci95, games: 100 },
           outcome: "improved",
+          band: [0.5, 0.7],
         },
       ],
       elapsedMs: null,

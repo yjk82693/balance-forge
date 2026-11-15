@@ -4,7 +4,7 @@ import { originLabel } from "../lib/fullRun";
 import { shownPhase } from "../lib/runPhase";
 import { fallbackNote } from "../lib/resultCard";
 import { pct } from "../lib/stats";
-import { waveChangeLabel, waveName, type WaveRow } from "../lib/tentacleDash";
+import { outcomeClass, outcomeWords, targetWords, waveChangeLabel, waveName, type WaveRow } from "../lib/tentacleDash";
 import { useRunner } from "../lib/useRunner";
 import { isMockMode } from "../mock/types";
 import { Collapsible } from "./Collapsible";
@@ -20,7 +20,6 @@ import { Plot } from "./WinRateChart";
 
 const MARGIN = 0.1; // a wave is flagged when its whole interval is below the target minus this
 const place = (x: number) => `${Math.max(0, Math.min(1, x)) * 100}%`;
-const OUTCOME_CLASS = { improved: "status ok", worse: "status bad", unchanged: "badge" } as const;
 const rate = (x: number | null) => (x === null ? "—" : `${pct(x)}%`);
 
 /** One wave on a 0-100% track: the clear rate with its interval, the intended band, and the patched rate as a ring. */
@@ -136,6 +135,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
       {result ? ` · ${result.runs} runs` : ""}
     </span>
   );
+  const flaggedBand = result?.targets.find((t) => t.wave === flagged?.wave)?.band ?? null;
   const target = flagged?.target ?? 0.6;
   const band: [number, number] = [Math.max(0, target - MARGIN), Math.min(1, target + MARGIN)];
   const sections: { id: string; title: string; note?: string; body: ReactNode; open?: boolean }[] = result
@@ -162,22 +162,31 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
           id: "verdict",
           title: "Verdict",
           note: result.targets.length ? String(result.targets.length) : undefined,
-          body:
-            result.targets.length > 0 ? (
-              <ul className="target-rows" aria-label="Per-wave verdict">
-                {result.targets.map((t) => (
-                  <li key={t.wave} className="target-row">
-                    <span className="small">{waveName(t.wave)}</span>
-                    <span className="caption">
-                      {pct(t.before.rate)}% → {pct(t.after.rate)}%
-                    </span>
-                    <span className={OUTCOME_CLASS[t.outcome]}>{t.outcome}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-2">This verdict has no per-wave rows.</p>
-            ),
+          body: (
+            <>
+              {result.targets.length > 0 ? (
+                <ul className="target-rows" aria-label="Per-wave verdict">
+                  {result.targets.map((t) => (
+                    <li key={t.wave} className="target-row">
+                      <span className="small">{waveName(t.wave)}</span>
+                      <span className="caption">
+                        {pct(t.before.rate)}% → {pct(t.after.rate)}%
+                        {targetWords(t.band, null) ? ` · ${targetWords(t.band, null)}` : ""}
+                      </span>
+                      <span className={outcomeClass(t.outcome)}>{outcomeWords(t.outcome)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-2">This verdict has no per-wave rows.</p>
+              )}
+              {(run?.verdict?.reasons ?? []).map((r) => (
+                <p key={r} className="small">
+                  {r}
+                </p>
+              ))}
+            </>
+          ),
         },
       ]
     : [];
@@ -255,7 +264,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
                     <span className="rate-dot" style={{ left: place(flagged.clearRate) }} />
                   </div>
                 )}
-                {flagged && <p>target clear rate {pct(target)}%</p>}
+                {flagged && <p>{targetWords(flaggedBand, flagged.target)}</p>}
               </div>
               <div className="strip-verdict">
                 {verdict ? (
