@@ -1,33 +1,22 @@
 import { hash, validate, validateConfig, validateFrame, registerGame,
   validateGamePayload } from '../../contracts/index.ts';
-import { xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta, clamp } from '../../sim/index.ts';
+import { xorshift32, pinData, assertPinned, emptyStatistics, statisticsDelta } from '../../sim/index.ts';
 import { schemas, actions } from './schemas.ts';
 import type { ActionSpec, GameData, InputFrame, MatchConfig, Observation, Outcome, State, Statistics, StepResult,
   TentacleRules } from '../../contracts/types.ts';
 export { data } from './data.ts';
 export { hash };
-export const simVersion = 'tentacle-0.1.0';
+export const simVersion = 'tentacle-0.2.0';
 registerGame('tentacle_run', 1, schemas);
 
-// Sepia Tentacle Run: one seat (p1), 60 Hz, integer math. Positions are integers in the 16000 x 9000 arena.
-// Per tick, in this order: the seat's inputs (latch, whip, move), the enemies, the projectiles, then the wave logic.
+// Sepia Tentacle Run, a side-scrolling wire runner. One seat (p1), 60 Hz, integer math. x grows right, y grows UP with
+// the ground at y = 0. Per tick, in this order: the control input, Sepia's movement (running, jumping, sliding or
+// swinging on the wire), collisions, then section bookkeeping and the outcome.
 const SEAT = 'p1';
-const WHIP_ARC_ACTIVE_TICKS = 8;
-const LATCH_TICKS_MAX = 90;
-const CONTACT_RANGE = 900;
-const CONTACT_INTERVAL = 30;
-const BOSS_CONTACT_RANGE = 1500;
-const BOSS_CONTACT_INTERVAL = 40;
-const PROJECTILE_RADIUS = 500;
-const PROJECTILE_LIFE = 240;
-const DRONE_SHOT_SPEED = 40;
-const SENTRY_SHOT_SPEED = 70;
-const BOSS_SHOT_SPEED = 50;
-const LINE_TOLERANCE = 500;
-const SENTRY_SPOTS = [[1000, 1000], [15000, 1000], [1000, 8000], [15000, 8000], [8000, 500], [8000, 8500],
-  [500, 4500], [15500, 4500]];
-// cos and sin of 15 degrees times 1000, for the boss's three-shot spread
-const COS15 = 966, SIN15 = 259;
+const FALL_DEATH_Y = -3000;
+const SPAWN_LEAD = 4000; // free run at the start of every section before its first obstacle
+const ATTACH_MIN_RISE = 1500; // the anchor must be at least this far above Sepia's head to take the wire
+const ATTACH_BEHIND = 1000; // an anchor up to this far behind Sepia can still be taken
 
 export const describe = () => ({
   gameId: 'tentacle_run',
@@ -59,20 +48,46 @@ export function isqrt(n: number): number {
   }
   return x;
 }
-const dist = (dx: number, dy: number) => isqrt(dx * dx + dy * dy);
-/** The vector (dx, dy) scaled to `length` units, truncated. */
-const toward = (dx: number, dy: number, length: number): [number, number] => {
-  const d = dist(dx, dy) || 1;
-  return [Math.trunc(dx * length / d) || 0, Math.trunc(dy * length / d) || 0]; // `|| 0`: never -0
-};
 const roll = (state: State, modulus: number): number => {
   state.rng = xorshift32(state.rng);
   return state.rng % modulus;
 };
-const waveRules = (rules: TentacleRules, wave: number) => rules.waves[Math.min(wave, rules.waves.length) - 1];
 
-const statNames = (): string[] => ['move', 'latch', 'whip', ...[1, 2, 3, 4, 5, 6].flatMap(n =>
-  [`wave:${n}:reached`, `wave:${n}:cleared`, `wave:${n}:damage`])];
+const statNames = (): string[] => ['control',
+  ...[1, 2, 3, 4, 5, 6].flatMap(n => [`wave:${n}:reached`, `wave:${n}:cleared`])];
+
+/** The course: obstacles and anchors of every section, generated once from the seed and the section data. */
+function buildCourse(state: State, rules: TentacleRules) {
+  const obstacles = [], anchors = [], bounds = [];
+  let start = rules.leadIn;
+  rules.sections.forEach((section, index) => {
+    const n = index + 1, end = start + section.length;
+    bounds.push({ start, end });
+    const kinds = [...Array(section.pits).fill('pit'), ...Array(section.lowBars).fill('lowBar'),
+      ...Array(section.walls).fill('wall')];
+    for (let i = kinds.length - 1; i > 0; i--) { // seeded shuffle
+      const j = roll(state, i + 1);
+      [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
+    }
+    const room = section.length - SPAWN_LEAD - 3000;
+    const gap = kinds.length ? Math.trunc(room / kinds.length) : 0;
+    kinds.forEach((kind, i) => {
+      const x = start + SPAWN_LEAD + i * gap + roll(state, Math.max(1, Math.trunc(gap / 3)));
+      const o = rules.obstacles;
+      if (kind === 'pit') {
+        obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.pitWidth, y: 0, h: 0, section: n });
+      }
+      else if (kind === 'lowBar') obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.lowBarWidth,
+        y: o.lowBarBottom, h: o.lowBarTop - o.lowBarBottom, section: n });
+      else obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.wallWidth, y: 0, h: o.wallHeight, section: n });
+    });
+    for (let x = start + 1000 + roll(state, 400); x < end; x += section.anchorSpacing) {
+      anchors.push({ id: `a${anchors.length}`, x, y: rules.obstacles.anchorHeight, section: n });
+    }
+    start = end;
+  });
+  return { obstacles, anchors, bounds, finishX: start };
+}
 
 export function initial(config: MatchConfig, data: GameData): State {
   validateConfig(config, data, describe(), simVersion);
@@ -84,51 +99,49 @@ export function initial(config: MatchConfig, data: GameData): State {
     turnId: 0,
     payload: {
       config: structuredClone(config),
-      wave: 1,
-      fighting: false, // true from the spawn of a wave until its last enemy falls
-      waveTick: 0,
-      nextWaveTick: rules.betweenWavesTicks,
-      nextId: 0,
-      posts: structuredClone(rules.posts),
-      bossPhases: rules.boss.phases,
-      player: { id: SEAT, kind: 'player', x: 8000, y: 4500, hp: rules.player.health, maxHp: rules.player.health,
-        facingX: 1000, facingY: 0, latch: null, latchReadyTick: 0, whipReadyTick: 0, invulnerableUntilTick: 0,
-        whipUntilTick: 0 },
-      enemies: [],
-      projectiles: [],
+      input: { jump: 0, slide: 0 },
+      player: { x: 0, y: 0, vx: rules.sections[0].runSpeed, vy: 0, state: 'running', height: rules.player.height,
+        jumpHeldTicks: 0, wire: null },
       outcome: { status: 'running', winners: [], reason: 'in_progress' },
       statistics: emptyStatistics([SEAT], statNames())
     }
   };
+  Object.assign(state.payload, buildCourse(state, rules));
   validateGamePayload('tentacle_run', 1, 'state', state.payload);
   return state;
 }
 
+const sectionAt = (bounds: Array<{ start: number; end: number }>, x: number): number => {
+  for (let i = 0; i < bounds.length; i++) if (x < bounds[i].end) return i;
+  return bounds.length - 1;
+};
+
 export const observationCheck = { every: 30 };
 export function observe(state: State, viewerId: string): Observation {
   const p = state.payload;
-  const boss = p.enemies.find(e => e.kind === 'boss');
-  const phases = p.bossPhases;
+  const cameraX = Math.max(0, p.player.x - 4000), width = 16000;
+  const near = (o: { x: number; w?: number }) => o.x + (o.w ?? 0) >= cameraX - 1000 && o.x <= cameraX + width + 1000;
+  const index = sectionAt(p.bounds, p.player.x);
   const view = {
     tick: state.tick,
     viewerId,
     payload: {
-      wave: p.wave,
-      waveCount: 5,
-      waveTick: p.waveTick,
-      breakTicks: !p.fighting && p.outcome.status === 'running' ? Math.max(0, p.nextWaveTick - state.tick) : 0,
-      entities: [structuredClone(p.player), ...p.enemies.map(e => ({ id: e.id, kind: e.kind, x: e.x, y: e.y, hp: e.hp,
-        maxHp: e.maxHp, facingX: e.facingX, facingY: e.facingY, latch: null, latchReadyTick: 0, whipReadyTick: 0,
-        invulnerableUntilTick: 0, whipUntilTick: 0 }))],
-      posts: structuredClone(p.posts),
-      projectiles: structuredClone(p.projectiles),
-      boss: boss ? { hp: boss.hp, maxHp: boss.maxHp, phase: Math.min(phases - 1, Math.trunc((boss.maxHp - boss.hp) *
-        phases / boss.maxHp)), phases } : null,
+      section: index + 1,
+      sectionCount: 6,
+      sectionStartX: p.bounds[index].start,
+      sectionEndX: p.bounds[index].end,
+      cameraX,
+      viewWidth: width,
+      finishX: p.finishX,
+      player: structuredClone(p.player),
+      obstacles: p.obstacles.filter(near).map(o => ({ ...o })),
+      anchors: p.anchors.filter(near).map(a => ({ ...a })),
+      shark: index === 5 ? { x: Math.max(0, p.player.x - 5000) } : null,
       outcome: structuredClone(p.outcome)
     }
   };
-  // Checking the schema costs more than the rest of a tick, so a view is validated every `observationCheckEvery` ticks
-  // (every tick in the tests): a shape error shows within half a second of play, and runs stay fast.
+  // Checking the schema costs more than the rest of a tick, so a view is validated every `observationCheck.every`
+  // ticks (every tick in the tests): a shape error shows within half a second of play, and runs stay fast.
   if (state.tick % observationCheck.every === 0) {
     validate('Observation', view);
     validateGamePayload('tentacle_run', 1, 'observation', view.payload);
@@ -137,14 +150,9 @@ export function observe(state: State, viewerId: string): Observation {
 }
 
 export function legalActions(view: Observation): ActionSpec[] {
-  validateGamePayload('tentacle_run', 1, 'observation', view.payload);
   const p = view.payload;
   if (view.viewerId !== SEAT || p.outcome.status !== 'running') return [];
-  const me = p.entities[0];
-  const specs = [structuredClone(actions[0])];
-  if (me.latchReadyTick <= view.tick + 1 && !me.latch) specs.push(structuredClone(actions[1]));
-  if (me.whipReadyTick <= view.tick + 1) specs.push(structuredClone(actions[2]));
-  return specs;
+  return [structuredClone(actions[0])];
 }
 export const outcome = (state: State): Outcome => structuredClone(state.payload.outcome);
 export const statistics = (state: State): Statistics => structuredClone(state.payload.statistics);
@@ -160,203 +168,126 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
   const events: StepResult['events'] = [];
   const event = (kind: string, payload: Record<string, any>) => events.push({ eventId: `${tick}:${events.length}`,
     audience: [], kind, payload });
-  const me = q.player;
   const mine = q.statistics.players[0];
   const stat = (id: string) => mine.actions.find(a => a.actionId === id);
-  const wave: number = q.wave;
-  const hurt = (amount: number) => {
-    if (tick < me.invulnerableUntilTick || me.hp <= 0) return;
-    const taken = Math.min(amount, me.hp);
-    me.hp -= taken;
-    stat(`wave:${wave}:damage`).uses += taken;
-    event('player.hit', { amount: taken });
-  };
-  const spawn = (kind: string, x: number, y: number, hp: number, fire: number) => {
-    q.enemies.push({ id: kind === 'boss' ? 'boss' : `e${q.nextId++}`, kind, x, y, hp, maxHp: hp, facingX: -1000,
-      facingY: 0, nextFireTick: tick + fire, nextHitTick: tick + CONTACT_INTERVAL });
-  };
-  const shoot = (from: string, e: any, dx: number, dy: number, speed: number, damage: number) => {
-    const [vx, vy] = toward(dx, dy, speed);
-    q.projectiles.push({ id: `p${q.nextId++}`, x: e.x, y: e.y, vx, vy, life: PROJECTILE_LIFE, damage, from });
-  };
+  const ph = rules.physics, p = q.player;
 
-  // 1. the seat's inputs
-  let move: { moveX: number; moveY: number } | null = null;
+  // 1. the control input (the last one stays until a new one arrives)
   for (const a of frame.actions) {
-    const ready = a.actionId === 'latch' ? me.latchReadyTick <= tick && !me.latch : a.actionId === 'whip' &&
-      me.whipReadyTick <= tick;
-    if (a.actionId === 'move') {
-      move = { moveX: a.params.moveX, moveY: a.params.moveY };
-      stat('move').opportunities++;
-      stat('move').uses++;
-      if (a.params.moveX || a.params.moveY) [me.facingX, me.facingY] = toward(a.params.moveX, a.params.moveY, 1000);
-    } else if (a.actionId === 'latch') {
-      stat('latch').opportunities++;
-      if (!ready) continue;
-      const { aimX, aimY } = a.params;
-      let best = -1, bestD = Infinity;
-      for (const post of q.posts) {
-        const dx = post.x - me.x, dy = post.y - me.y, d2 = dx * dx + dy * dy;
-        const dot = dx * aimX + dy * aimY;
-        // within 45 degrees of the aim: dot > 0 and 2 dot^2 >= |d|^2 |aim|^2
-        if (d2 === 0 || d2 > rules.player.latchRange ** 2 || dot <= 0) continue;
-        if (2 * dot * dot < d2 * (aimX * aimX + aimY * aimY)) continue;
-        if (d2 < bestD) {
-          best = post.id;
-          bestD = d2;
+    q.input = { jump: a.params.jump, slide: a.params.slide };
+    stat('control').uses++;
+    stat('control').opportunities++;
+  }
+  const jump = q.input.jump === 1, slide = q.input.slide === 1;
+  p.jumpHeldTicks = jump ? p.jumpHeldTicks + 1 : 0;
+  const index = sectionAt(q.bounds, p.x);
+  const speed = rules.sections[index].runSpeed;
+  const supported = (x: number) => !q.obstacles.some(o => o.kind === 'pit' && x >= o.x && x < o.x + o.w);
+
+  // 2. movement
+  if (p.state === 'swinging') {
+    const wire = p.wire;
+    if (!jump) { // let go: keep the momentum, with a small upward kick
+      p.wire = null;
+      p.state = 'jumping';
+      p.vy += ph.releaseBoost;
+      event('wire.release', {});
+    } else {
+      wire.length = Math.max(ph.wireMinLength, wire.length - ph.reelSpeed);
+      p.vy -= ph.swingGravity;
+      p.x += p.vx;
+      p.y += p.vy;
+      let dx = p.x - wire.anchorX, dy = p.y - wire.anchorY;
+      const d = isqrt(dx * dx + dy * dy);
+      if (d > wire.length) { // the rope is taut: put Sepia back on the circle and drop the outward speed
+        const nx = Math.trunc(dx * wire.length / d), ny = Math.trunc(dy * wire.length / d);
+        const radial = Math.trunc((p.vx * dx + p.vy * dy) / d); // speed along the rope, outward is positive
+        p.x = wire.anchorX + nx;
+        p.y = wire.anchorY + ny;
+        if (radial > 0) {
+          p.vx -= Math.trunc(radial * dx / d);
+          p.vy -= Math.trunc(radial * dy / d);
+        }
+        dx = nx;
+        dy = ny;
+      }
+      if (p.y <= 0) { // swung into the ground: land and run on
+        p.y = 0;
+        p.vy = 0;
+        p.vx = speed;
+        p.wire = null;
+        p.state = 'running';
+      }
+    }
+  } else if (p.state === 'jumping' || !supported(p.x) || p.y > 0) {
+    p.state = 'jumping';
+    p.vx = p.vx === 0 ? speed : p.vx;
+    p.vy = Math.max(p.vy - ph.gravity, -ph.maxFall);
+    p.x += p.vx;
+    p.y += p.vy;
+    if (jump && p.jumpHeldTicks >= ph.tapTicks && !p.wire) { // jump held in the air: look for an anchor to hook
+      let best = null, bestD = Infinity;
+      const headY = p.y + rules.player.height;
+      for (const a of q.anchors) {
+        const dx = a.x - p.x, dy = a.y - headY;
+        if (dx < -ATTACH_BEHIND || dx > ph.wireRange || dy < ATTACH_MIN_RISE) continue;
+        const d = isqrt(dx * dx + dy * dy);
+        if (d <= ph.wireRange && d < bestD) {
+          best = a;
+          bestD = d;
         }
       }
-      if (best < 0) continue;
-      me.latch = { post: best, untilTick: tick + LATCH_TICKS_MAX };
-      me.latchReadyTick = tick + rules.player.latchCooldownTicks;
-      me.invulnerableUntilTick = tick + rules.player.latchInvulnerableTicks;
-      [me.facingX, me.facingY] = toward(aimX, aimY, 1000);
-      stat('latch').uses++;
-      event('player.latch', { post: best });
-    } else if (a.actionId === 'whip') {
-      stat('whip').opportunities++;
-      if (!ready) continue;
-      const { aimX, aimY } = a.params;
-      me.whipReadyTick = tick + rules.player.whipCooldownTicks;
-      me.whipUntilTick = tick + WHIP_ARC_ACTIVE_TICKS;
-      if (aimX || aimY) [me.facingX, me.facingY] = toward(aimX, aimY, 1000);
-      stat('whip').uses++;
-      let hits = 0;
-      for (const e of q.enemies) {
-        const dx = e.x - me.x, dy = e.y - me.y;
-        if (dx * aimX + dy * aimY <= 0 || dx * dx + dy * dy > rules.player.whipRange ** 2) continue;
-        e.hp = Math.max(0, e.hp - rules.player.whipDamage);
-        mine.damage += rules.player.whipDamage;
-        hits++;
+      if (best) {
+        p.wire = { anchorId: best.id, anchorX: best.x, anchorY: best.y, length: Math.max(ph.wireMinLength, bestD) };
+        p.state = 'swinging';
+        p.height = rules.player.height;
+        event('wire.attach', { anchor: best.id });
       }
-      event('player.whip', { hits });
-      q.enemies = q.enemies.filter(e => e.hp > 0);
     }
-  }
-  // movement: a latch pulls Sepia to the post (and overrides the stick), otherwise the stick moves her
-  if (me.latch) {
-    const post = q.posts[me.latch.post];
-    const dx = post.x - me.x, dy = post.y - me.y;
-    if (dist(dx, dy) <= rules.player.latchSpeed || tick >= me.latch.untilTick) {
-      if (dist(dx, dy) <= rules.player.latchSpeed) [me.x, me.y] = [post.x, post.y];
-      me.latch = null;
-    } else {
-      const [vx, vy] = toward(dx, dy, rules.player.latchSpeed);
-      me.x += vx;
-      me.y += vy;
+    if (p.state === 'jumping' && p.y <= 0 && supported(p.x)) { // landed
+      p.y = 0;
+      p.vy = 0;
+      p.vx = speed;
+      p.state = 'running';
     }
-  } else if (move) {
-    me.x = clamp(me.x + Math.trunc(move.moveX * rules.player.speed / 1000), 0, rules.arena.w);
-    me.y = clamp(me.y + Math.trunc(move.moveY * rules.player.speed / 1000), 0, rules.arena.h);
+  } else { // on the ground: running or sliding
+    p.vx = speed;
+    p.x += p.vx;
+    p.y = 0;
+    if (jump && p.jumpHeldTicks === 1 && !slide) {
+      p.vy = ph.jumpVelocity;
+      p.state = 'jumping';
+      event('jump', {});
+    } else p.state = slide ? 'sliding' : 'running';
   }
+  p.height = p.state === 'sliding' ? rules.player.slideHeight : rules.player.height;
 
-  // 2. wave start
-  if (!q.fighting && tick >= q.nextWaveTick) {
-    q.fighting = true;
-    const w = waveRules(rules, q.wave);
-    q.waveTick = 0;
-    stat(`wave:${q.wave}:reached`).uses = 1;
-    stat(`wave:${q.wave}:cleared`).opportunities = 1;
-    const edge = () => {
-      const side = roll(next, 4);
-      return side < 2 ? [roll(next, rules.arena.w + 1), side ? rules.arena.h : 0] :
-        [side === 2 ? 0 : rules.arena.w, roll(next, rules.arena.h + 1)];
-    };
-    if (q.wave <= 5) {
-      for (let i = 0; i < w.walkers; i++) {
-        spawn('walker', ...(edge() as [number, number]), rules.enemies.walker.health, 0);
-      }
-      for (let i = 0; i < w.drones; i++) spawn('drone', ...(edge() as [number, number]), rules.enemies.drone.health,
-        w.fireIntervalTicks);
-      for (let i = 0; i < w.sentries; i++) {
-        const [x, y] = SENTRY_SPOTS[i % SENTRY_SPOTS.length];
-        spawn('sentry', x, y, rules.enemies.sentry.health, w.fireIntervalTicks);
-      }
-    } else spawn('boss', 14000, 4500, rules.boss.health, rules.boss.fireIntervalTicks);
-    event('wave.start', { wave: q.wave });
-  } else if (q.fighting) q.waveTick++;
-
-  // 3. enemies
-  const w = waveRules(rules, q.wave);
-  for (const e of q.enemies) {
-    const dx = me.x - e.x, dy = me.y - e.y, d = dist(dx, dy);
-    if (e.kind === 'walker') {
-      const [vx, vy] = toward(dx, dy, Math.min(w.enemySpeed, d));
-      e.x += vx;
-      e.y += vy;
-      [e.facingX, e.facingY] = toward(dx, dy, 1000);
-      if (d <= CONTACT_RANGE && tick >= e.nextHitTick) {
-        hurt(w.enemyDamage);
-        e.nextHitTick = tick + CONTACT_INTERVAL;
-      }
-    } else if (e.kind === 'drone') {
-      const speed = Math.trunc(w.enemySpeed * 3 / 4);
-      if (d > 5200) [e.x, e.y] = [e.x + toward(dx, dy, speed)[0], e.y + toward(dx, dy, speed)[1]];
-      else if (d < 4000) [e.x, e.y] = [e.x - toward(dx, dy, speed)[0], e.y - toward(dx, dy, speed)[1]];
-      e.x = clamp(e.x, 0, rules.arena.w);
-      e.y = clamp(e.y, 0, rules.arena.h);
-      [e.facingX, e.facingY] = toward(dx, dy, 1000);
-      if (tick >= e.nextFireTick) {
-        shoot('drone', e, dx, dy, DRONE_SHOT_SPEED, w.enemyDamage);
-        e.nextFireTick = tick + w.fireIntervalTicks;
-      }
-    } else if (e.kind === 'sentry') {
-      [e.facingX, e.facingY] = toward(dx, dy, 1000);
-      const inLine = Math.abs(dx) <= LINE_TOLERANCE || Math.abs(dy) <= LINE_TOLERANCE ||
-        Math.abs(Math.abs(dx) - Math.abs(dy)) <= LINE_TOLERANCE;
-      if (inLine && tick >= e.nextFireTick) {
-        shoot('sentry', e, dx, dy, SENTRY_SHOT_SPEED, w.enemyDamage);
-        e.nextFireTick = tick + w.fireIntervalTicks;
-      }
-    } else {
-      const [vx, vy] = toward(dx, dy, Math.min(rules.boss.speed, d));
-      e.x += vx;
-      e.y += vy;
-      [e.facingX, e.facingY] = toward(dx, dy, 1000);
-      if (d <= BOSS_CONTACT_RANGE && tick >= e.nextHitTick) {
-        hurt(rules.boss.contactDamage);
-        e.nextHitTick = tick + BOSS_CONTACT_INTERVAL;
-      }
-      if (tick >= e.nextFireTick) {
-        for (const [c, sn] of [[1000, 0], [COS15, SIN15], [COS15, -SIN15]]) {
-          shoot('boss', e, Math.trunc((dx * c - dy * sn) / 1000), Math.trunc((dx * sn + dy * c) / 1000),
-            BOSS_SHOT_SPEED, rules.boss.shotDamage);
-        }
-        e.nextFireTick = tick + rules.boss.fireIntervalTicks;
-      }
+  // 3. collisions
+  const half = Math.trunc(rules.player.width / 2);
+  let died = '';
+  // below the ground over a pit: Sepia fell in (a jumper over the pit is above y = 0)
+  if (p.y < FALL_DEATH_Y || (p.y <= 0 && p.state !== 'swinging' && !supported(p.x))) died = 'pit';
+  else for (const o of q.obstacles) {
+    if (o.kind === 'pit') continue;
+    if (p.x + half > o.x && p.x - half < o.x + o.w && p.y < o.y + o.h && p.y + p.height > o.y) {
+      died = 'obstacle';
+      break;
     }
   }
 
-  // 4. projectiles
-  q.projectiles = q.projectiles.filter(shot => {
-    shot.x += shot.vx;
-    shot.y += shot.vy;
-    shot.life--;
-    const dx = me.x - shot.x, dy = me.y - shot.y;
-    if (dx * dx + dy * dy <= PROJECTILE_RADIUS ** 2) {
-      hurt(shot.damage);
-      return false;
+  // 4. sections and the outcome
+  const here = sectionAt(q.bounds, p.x);
+  for (let i = 0; i < 6; i++) {
+    if (p.x >= q.bounds[i].start) stat(`wave:${i + 1}:reached`).uses = 1;
+    if (p.x >= q.bounds[i].end) {
+      stat(`wave:${i + 1}:cleared`).uses = 1;
     }
-    const inside = shot.x > -1000 && shot.x < rules.arena.w + 1000 && shot.y > -1000 && shot.y < rules.arena.h + 1000;
-    return shot.life > 0 && inside;
-  });
-
-  // 5. wave clear, death, time
-  if (me.hp <= 0) q.outcome = { status: 'draw', winners: [], reason: 'death' };
-  else if (q.fighting && q.enemies.length === 0 && q.waveTick > 0) {
-    q.fighting = false;
-    stat(`wave:${q.wave}:cleared`).uses = 1;
-    event('wave.clear', { wave: q.wave });
-    if (q.wave >= 6) q.outcome = { status: 'win', winners: [SEAT], reason: 'boss_down' };
-    else {
-      q.wave++;
-      q.waveTick = 0;
-      q.nextWaveTick = tick + rules.betweenWavesTicks;
-      me.hp = Math.min(me.maxHp, me.hp + rules.healOnClear);
-    }
+    if (p.x >= q.bounds[i].start) stat(`wave:${i + 1}:cleared`).opportunities = 1;
   }
-  if (q.outcome.status === 'running' && tick >= q.config.maxTicks) q.outcome = { status: 'draw', winners: [],
-    reason: 'max_ticks' };
+  void here;
+  if (died) q.outcome = { status: 'draw', winners: [], reason: died };
+  else if (p.x >= q.finishX) q.outcome = { status: 'win', winners: [SEAT], reason: 'finish' };
+  else if (tick >= q.config.maxTicks) q.outcome = { status: 'draw', winners: [], reason: 'max_ticks' };
   q.statistics.durationTicks = tick;
   if (q.outcome.status !== 'running') {
     mine.wins = q.outcome.status === 'win' ? 1 : 0;

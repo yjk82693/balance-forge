@@ -59,7 +59,7 @@ test('schema extends normative bundle only with approved addendum fields and tra
   // (indexes without leading zeros: "01" and "1" would be two paths for one move)
   assert.equal(path.pattern, '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|' +
     'characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power)|' +
-    'gameRules/waves/[0-4]/(walkers|drones|sentries|enemySpeed|enemyDamage|fireIntervalTicks))$');
+    'gameRules/sections/[0-5]/(pits|lowBars|walls|anchorSpacing|runSpeed))$');
   path.pattern = '^/(tuning/damageScalePermille|moves/[0-9]+/power)$';
   assert.deepEqual(JSON.parse(spec.match(/```json\n([\s\S]*?)```/)[1]), extended);
   for (const message of fixture('ws_messages')) {

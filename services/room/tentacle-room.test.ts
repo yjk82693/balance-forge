@@ -41,20 +41,22 @@ test('Tentacle Run in a room: Sepia only, any hero joins as Sepia, solo seat is 
   assert.equal(room.phase, 'playing');
   assert.deepEqual(room.authority.config.options.assignments, { p1: 'sepia' });
   assert.equal(room.authority.config.gameId, 'tentacle_run');
-  phone.request('input.submit', { playerId: 'p1', seq: 0, tick: 1, turnId: 0, actionId: 'move',
-    params: { moveX: 1000, moveY: 0 } });
+  phone.request('input.submit', { playerId: 'p1', seq: 0, tick: 1, turnId: 0, actionId: 'control',
+    params: { jump: 0, slide: 1 } });
   for (let i = 0; i < 120; i++) server.advance(room);
   const result = host.take('match.ended').payload.result;
   validate('MatchResult', result);
   assert.equal(result.valid, true);
   assert.equal(result.outcome.reason, 'max_ticks');
   assert.ok(result.statistics.players[0].actions.some(a => a.actionId === 'wave:1:reached'));
+  assert.ok(result.statistics.players[0].actions.find(a => a.actionId === 'control').uses >= 1);
   assert.equal('botSeats' in result, false);
-  assert.ok(room.authority.state.payload.player.x > 8000); // the held move kept Sepia walking
+  assert.ok(room.authority.state.payload.player.x > 3000); // Sepia ran on her own
+  assert.equal(room.authority.state.payload.player.state, 'sliding'); // the control stayed until changed
   assert.equal(server.storage.humans.at(-1).matchId, result.matchId);
   const view = phone.take('state.view').payload.observation.payload;
-  assert.equal(view.waveCount, 5);
-  assert.equal(view.posts.length, 15);
+  assert.equal(view.sectionCount, 6);
+  assert.ok(Array.isArray(view.obstacles) && Array.isArray(view.anchors));
 });
 
 test('Tentacle Run needs exactly one seat; Hero Arena and Hero Cards rooms are unchanged', async t => {

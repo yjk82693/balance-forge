@@ -60,7 +60,7 @@ export function waveReport(table: ReturnType<typeof waveTable>, meta: any) {
     simVersion: meta.simVersion, dataHash: meta.dataHash, botPolicyVersion: meta.botPolicyVersion,
     seedSetId: meta.seedSetId, validMatches: table.validRuns, invalidMatches: table.invalidRuns, draws: 0,
     humanMatches: 0,
-    rows: table.waves.map((w) => ({ dimension: `wave ${w.wave}`, wins: w.cleared, games: w.reached,
+    rows: table.waves.map((w) => ({ dimension: `section ${w.wave}`, wins: w.cleared, games: w.reached,
       winRate: w.clearRate ?? 0, ci95: w.ci95 ?? [0, 1], uses: 0, opportunities: 0, outlier: w.outlier,
       target: w.target,
       deltaToTarget: w.deltaToTarget ?? 0 })) };
@@ -101,17 +101,17 @@ export function judgeWaves(before: ReturnType<typeof waveTable>, after: ReturnTy
   for (const b of before.waves.filter((w) => w.outlier)) {
     const a = after.waves[b.wave - 1];
     if (a.reached < minReached) {
-      reasons.push(`wave ${b.wave}: holdout reached it ${a.reached} times; ${minReached} needed`);
+      reasons.push(`section ${b.wave}: holdout reached it ${a.reached} times; ${minReached} needed`);
       thin = true;
       continue;
     }
     const outcome = waveOutcome(b, a);
     const [low, high] = bandOf(b.target);
-    targets.push({ wave: b.wave, matchup: `wave ${b.wave}`, before: side(b), after: side(a), outcome,
+    targets.push({ wave: b.wave, matchup: `section ${b.wave}`, before: side(b), after: side(a), outcome,
       band: [low, high] });
-    reasons.push(`wave ${b.wave}: ${outcome} (${pct(b.clearRate)} -> ${pct(a.clearRate)} cleared, `
+    reasons.push(`section ${b.wave}: ${outcome} (${pct(b.clearRate)} -> ${pct(a.clearRate)} cleared, `
       + `n=${b.reached} -> ${a.reached}; band ${pct(low)}-${pct(high)})`);
-    if (outcome === 'overshot') reasons.push(`wave ${b.wave}: overshot its band, the patch made it too easy: needs `
+    if (outcome === 'overshot') reasons.push(`section ${b.wave}: overshot its band, the patch made it too easy: needs `
       + 'another round or the designer');
   }
   const others = after.waves.filter((a) => {
@@ -122,15 +122,15 @@ export function judgeWaves(before: ReturnType<typeof waveTable>, after: ReturnTy
     return leftUpward || a.ci95[1] < b.ci95[0];
   });
   const newlyFlagged = after.waves.filter((a) => a.outlier && !before.waves[a.wave - 1].outlier);
-  for (const w of others) reasons.push(`wave ${w.wave}: left its band or got worse beyond noise`);
-  for (const w of newlyFlagged) reasons.push(`wave ${w.wave}: newly flagged`);
+  for (const w of others) reasons.push(`section ${w.wave}: left its band or got worse beyond noise`);
+  for (const w of newlyFlagged) reasons.push(`section ${w.wave}: newly flagged`);
   const good = targets.some((t) => t.outcome === 'on target' || t.outcome === 'improved');
   const bad = targets.some((t) => t.outcome === 'overshot' || t.outcome === 'worse') || others.length > 0 ||
     newlyFlagged.length > 0;
   const verdict = good && !bad ? 'accepted' : bad ? 'rejected' : 'inconclusive';
   if (verdict === 'accepted') {
     reasons.push(`${targets.filter((t) => t.outcome === 'on target' || t.outcome === 'improved').length} of `
-      + `${targets.length} flagged wave(s) on target or improved; nothing overshot or got worse`);
+      + `${targets.length} flagged section(s) on target or improved; nothing overshot or got worse`);
   } else if (thin && !good) reasons.push('the holdout was too thin to judge');
   return { verdict, reasons, targets };
 }

@@ -37,5 +37,5 @@ them.)
 
 ## Data (`GameData.gameRules`)
 `TentacleRules`. `gameRules.sections[N] = { length, pits, lowBars, walls, anchorSpacing, runSpeed, flaw? }`.
-Patch paths (contract v0.1.5): `/gameRules/sections/N/(length|pits|lowBars|walls|anchorSpacing|runSpeed)`, integers,
+Patch paths (contract v0.1.5): `/gameRules/sections/N/(pits|lowBars|walls|anchorSpacing|runSpeed)`, integers,
 N 0..5; bounds are listed in `packages/contracts/semantics.ts` and the analysis validator agrees (cross-check test).

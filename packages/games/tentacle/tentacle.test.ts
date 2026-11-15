@@ -6,138 +6,169 @@ import { Authority } from '../../sim/index.ts';
 import { hash } from '../../contracts/index.ts';
 
 game.observationCheck.every = 1; // validate every view in the tests
-const play = (seed: number, maxTicks = 7200, data = game.data) => {
+const control = (state, jump, slide, seq = 0) => ({ playerId: 'p1', seq, tick: state.tick + 1, turnId: 0,
+  actionId: 'control', params: { jump, slide } });
+const stepWith = (state, actions = []) =>
+  game.step(state, { tick: state.tick + 1, actions, systemInputs: [] }, game.data).state;
+const fresh = (seed = 1, maxTicks = 9000) =>
+  game.initial(game.makeConfig(game.data, seed, ['p1'], maxTicks), game.data);
+const play = (seed: number, maxTicks = 9000, data = game.data) => {
   const config = game.makeConfig(data, seed, ['p1'], maxTicks);
   let state = game.initial(config, data);
   const v = bot.deriveBotSeed(seed, 0);
+  let seq = 0;
   while (game.outcome(state).status === 'running') {
-    const actions = bot.chooseActions(game.observe(state, 'p1'), state.tick * 2, v);
+    const actions = bot.chooseActions(game.observe(state, 'p1'), seq++, v);
     state = game.step(state, { tick: state.tick + 1, actions, systemInputs: [] }, data).state;
   }
   return state;
 };
-const act = (state, actionId, params, seq = 0) =>
-  ({ playerId: 'p1', seq, tick: state.tick + 1, turnId: 0, actionId, params });
-const stepWith = (state, actions = []) =>
-  game.step(state, { tick: state.tick + 1, actions, systemInputs: [] }, game.data).state;
-const fresh = (seed = 1, maxTicks = 7200) =>
-  game.initial(game.makeConfig(game.data, seed, ['p1'], maxTicks), game.data);
+const runTo = (state, x: number) => {
+  let s = state;
+  while (s.payload.player.x < x && game.outcome(s).status === 'running') s = stepWith(s);
+  return s;
+};
 
-test('the data shape: 5 waves, 15 posts, one flawed wave', () => {
+test('the data shape: six sections, one flawed section, a generated course', () => {
   const rules = game.data.gameRules;
-  assert.equal(rules.waves.length, 5);
-  assert.equal(rules.posts.length, 15);
-  assert.deepEqual(rules.waves.map((w, i) => (w.flaw ? i + 1 : 0)).filter(Boolean), [4]);
+  assert.equal(rules.sections.length, 6);
+  assert.deepEqual(rules.sections.map((s, i) => (s.flaw ? i + 1 : 0)).filter(Boolean), [4]);
+  const state = fresh();
+  const kinds = state.payload.obstacles.reduce((n, o) => ({ ...n, [o.kind]: (n[o.kind] ?? 0) + 1 }), {});
+  assert.deepEqual(kinds, { pit: 15, lowBar: 12, wall: 9 }); // the sum over the six sections
+  assert.ok(state.payload.anchors.length > 20);
+  assert.equal(state.payload.finishX, rules.leadIn + 6 * 30000);
   assert.equal(game.describe().maxPlayers, 1);
 });
 
-test('a run is deterministic: same seed, same final state hash; another seed differs', () => {
-  const a = play(3, 1200), b = play(3, 1200), c = play(4, 1200);
+test('a run is deterministic: same seed same final state; another seed another course', () => {
+  const a = play(3, 600), b = play(3, 600), c = play(4, 600);
   assert.equal(hash(a), hash(b));
   assert.notEqual(hash(a), hash(c));
-  assert.equal(game.outcome(a).reason, a.payload.outcome.reason);
+  assert.notDeepEqual(fresh(1).payload.obstacles, fresh(2).payload.obstacles);
 });
 
-test('the break, the first wave spawns on time, observation shape and breakTicks', () => {
+test('observation: camera, the visible window, player state and the shark in the last section', () => {
   let state = fresh();
-  assert.equal(game.observe(state, 'p1').payload.breakTicks, game.data.gameRules.betweenWavesTicks);
-  assert.equal(game.observe(state, 'p1').payload.entities.length, 1);
-  for (let i = 0; i < 60; i++) state = stepWith(state);
+  for (let i = 0; i < 100; i++) state = stepWith(state);
   const view = game.observe(state, 'p1').payload;
-  assert.equal(view.wave, 1);
-  assert.equal(view.breakTicks, 0);
-  assert.equal(view.entities.length, 1 + game.data.gameRules.waves[0].walkers);
-  assert.equal(view.posts.length, 15);
-  assert.equal(view.boss, null);
-  assert.equal(state.payload.statistics.players[0].actions.find(a => a.actionId === 'wave:1:reached').uses, 1);
+  assert.equal(view.section, 1);
+  assert.equal(view.cameraX, Math.max(0, view.player.x - 4000));
+  assert.equal(view.player.state, 'running');
+  assert.ok(view.obstacles.every(o => o.x + o.w >= view.cameraX - 1000 && o.x <= view.cameraX + 17000));
+  assert.equal(view.shark, null);
+  state.payload.player.x = state.payload.bounds[5].start + 100;
+  assert.deepEqual(game.observe(state, 'p1').payload.shark, { x: state.payload.player.x - 5000 });
 });
 
-test('latch pulls Sepia to the nearest post in the aimed cone, with a cooldown and invulnerability', () => {
+test('jump: a tap leaves the ground and lands; slide: held on the ground lowers Sepia', () => {
   let state = fresh();
-  state.payload.player.x = 7000;
-  state.payload.player.y = 4500; // post 7 is at (8000, 4500) (row 1, column 2)
-  state = stepWith(state, [act(state, 'latch', { aimX: 1000, aimY: 0 })]);
-  assert.equal(state.payload.player.latch.post, 7);
-  assert.ok(state.payload.player.invulnerableUntilTick > state.tick);
-  for (let i = 0; i < 10 && state.payload.player.latch; i++) state = stepWith(state);
-  assert.deepEqual([state.payload.player.x, state.payload.player.y], [8000, 4500]);
-  // cooling down: a second latch is ignored
-  const again = stepWith(state, [act(state, 'latch', { aimX: 1000, aimY: 0 }, 5)]);
-  assert.equal(again.payload.player.latch, null);
-  // no post in the cone: nothing happens and no cooldown starts
-  let empty = fresh();
-  empty.payload.player.x = 8000;
-  empty.payload.player.y = 4500;
-  empty = stepWith(empty, [act(empty, 'latch', { aimX: 0, aimY: 0 })]);
-  assert.equal(empty.payload.player.latch, null);
+  state.payload.obstacles = [];
+  state = stepWith(state, [control(state, 1, 0)]);
+  assert.equal(state.payload.player.state, 'jumping');
+  state = stepWith(state, [control(state, 0, 0, 1)]);
+  let apex = 0;
+  for (let i = 0; i < 80; i++) {
+    state = stepWith(state);
+    apex = Math.max(apex, state.payload.player.y);
+  }
+  assert.ok(apex > 900 && apex < 1100, `apex ${apex}`);
+  assert.equal(state.payload.player.state, 'running');
+  state = stepWith(state, [control(state, 0, 1, 2)]);
+  assert.equal(state.payload.player.state, 'sliding');
+  assert.equal(state.payload.player.height, 500);
+  state = stepWith(state, [control(state, 0, 0, 3)]);
+  assert.equal(state.payload.player.state, 'running');
 });
 
-test('whip damages enemies in the aimed half plane within range, and has a cooldown', () => {
+test('obstacles: a pit kills a runner, a low bar kills a runner but not a slider, a wall kills a runner', () => {
+  const at = (kind, x, slide = 0) => {
+    let state = fresh();
+    const o = state.payload.obstacles.find(item => item.kind === kind);
+    state.payload.obstacles = [o];
+    state.payload.player.x = o.x - 600;
+    if (slide) state = stepWith(state, [control(state, 0, 1)]);
+    return runTo(state, o.x + o.w + 1000);
+  };
+  assert.equal(at('pit', 0).payload.outcome.reason, 'pit');
+  assert.equal(at('lowBar', 0).payload.outcome.reason, 'obstacle');
+  assert.equal(at('lowBar', 0, 1).payload.outcome.status, 'running'); // slid under it
+  assert.equal(at('wall', 0).payload.outcome.reason, 'obstacle');
+});
+
+test('the wire: jump held in the air near an anchor attaches and swings, release lets go with momentum', () => {
   let state = fresh();
-  for (let i = 0; i < 60; i++) state = stepWith(state);
-  const target = state.payload.enemies[0];
-  state.payload.player.x = target.x - 1000;
-  state.payload.player.y = target.y;
-  const before = target.hp;
-  state = stepWith(state, [act(state, 'whip', { aimX: 1000, aimY: 0 })]);
-  const after = state.payload.enemies.find(e => e.id === target.id);
-  assert.ok(!after || after.hp < before);
-  const stat = state.payload.statistics.players[0].actions.find(a => a.actionId === 'whip');
-  assert.deepEqual([stat.uses, stat.opportunities], [1, 1]);
-  const second = stepWith(state, [act(state, 'whip', { aimX: 1000, aimY: 0 }, 3)]);
-  assert.equal(second.payload.statistics.players[0].actions.find(a => a.actionId === 'whip').uses, 1); // cooling down
+  state.payload.obstacles = [];
+  state.payload.anchors = [{ id: 'a0', x: 6000, y: 4500, section: 1 }];
+  state.payload.player.x = 4400;
+  state = stepWith(state, [control(state, 1, 0)]); // jump and keep holding
+  let attached = false;
+  for (let i = 0; i < 40 && !attached; i++) {
+    state = stepWith(state);
+    attached = state.payload.player.state === 'swinging';
+  }
+  assert.equal(attached, true);
+  assert.equal(state.payload.player.wire.anchorId, 'a0');
+  for (let i = 0; i < 5; i++) state = stepWith(state);
+  const before = state.payload.player.vx;
+  state = stepWith(state, [control(state, 0, 0, 1)]); // release
+  assert.equal(state.payload.player.state, 'jumping');
+  assert.equal(state.payload.player.wire, null);
+  assert.ok(Math.abs(state.payload.player.vx - before) < 60);
+  // without an anchor in reach nothing attaches
+  let bare = fresh();
+  bare.payload.obstacles = [];
+  bare.payload.anchors = [];
+  bare = stepWith(bare, [control(bare, 1, 0)]);
+  for (let i = 0; i < 40; i++) bare = stepWith(bare);
+  assert.notEqual(bare.payload.player.state, 'swinging');
 });
 
-test('a full bot run: statistics per wave are consistent, the outcome is a win or a loss', () => {
+test('statistics: reached and cleared per section, consistent with the outcome', () => {
   const state = play(2);
   const stats = state.payload.statistics.players[0].actions;
   const of = id => stats.find(a => a.actionId === id);
   for (let w = 1; w <= 6; w++) {
     const reached = of(`wave:${w}:reached`).uses, cleared = of(`wave:${w}:cleared`).uses;
     assert.ok(cleared <= reached);
-    // a wave is reached after the one before fell
     if (w > 1 && reached) assert.equal(of(`wave:${w - 1}:cleared`).uses, 1);
   }
   const outcome = game.outcome(state);
-  assert.ok(['death', 'boss_down', 'max_ticks'].includes(outcome.reason));
-  assert.equal(outcome.status === 'win', outcome.reason === 'boss_down');
+  assert.ok(['pit', 'obstacle', 'finish', 'max_ticks'].includes(outcome.reason));
+  assert.equal(outcome.status === 'win', outcome.reason === 'finish');
   assert.equal(state.payload.statistics.durationTicks, state.tick);
-  const damage = [1, 2, 3, 4, 5, 6].reduce((sum, w) => sum + of(`wave:${w}:damage`).uses, 0);
-  // hit points taken are never fewer than the hit points missing (healing between waves only adds)
-  assert.ok(damage >= state.payload.player.maxHp - state.payload.player.hp);
 });
 
-test('the designed flaw: the bot almost never clears wave 4, and waves 1 to 3 are cleared', () => {
-  let reached4 = 0, cleared4 = 0, early = 0;
+test('the designed flaw: the bot clears sections 1 to 3 mostly and almost never section 4', () => {
+  const tally = Array.from({ length: 7 }, () => [0, 0]);
   for (let seed = 1; seed <= 12; seed++) {
     const stats = play(seed).payload.statistics.players[0].actions;
-    const of = id => stats.find(a => a.actionId === id).uses;
-    early += of('wave:1:cleared') + of('wave:2:cleared') + of('wave:3:cleared');
-    reached4 += of('wave:4:reached');
-    cleared4 += of('wave:4:cleared');
+    for (let w = 1; w <= 6; w++) {
+      tally[w][0] += stats.find(a => a.actionId === `wave:${w}:reached`).uses;
+      tally[w][1] += stats.find(a => a.actionId === `wave:${w}:cleared`).uses;
+    }
   }
-  assert.equal(early, 36);
-  assert.ok(reached4 >= 10);
-  assert.ok(cleared4 / reached4 < 0.5, `wave 4 cleared ${cleared4}/${reached4}`);
+  assert.equal(tally[1][1], 12);
+  assert.ok(tally[2][1] >= 9 && tally[3][1] >= 6, JSON.stringify(tally));
+  assert.ok(tally[4][0] > 0 && tally[4][1] / tally[4][0] < 0.4, JSON.stringify(tally));
 });
 
-test('through the Authority: a held move keeps Sepia walking, and bad inputs are refused', () => {
+test('through the Authority: the control input is kept until a new one arrives', () => {
   const config = game.makeConfig(game.data, 5, ['p1'], 600);
   const authority = new Authority(game.adapter as any, config, game.data);
-  authority.holdMoves = new Set(['p1']);
-  authority.submit({ playerId: 'p1', seq: 0, tick: 1, turnId: 0, actionId: 'move', params: { moveX: 1000, moveY: 0 } });
-  authority.advance();
-  const x1 = authority.state.payload.player.x;
+  authority.state.payload.obstacles = [];
+  authority.submit({ playerId: 'p1', seq: 0, tick: 1, turnId: 0, actionId: 'control', params: { jump: 0, slide: 1 } });
   authority.advance();
   authority.advance();
-  assert.ok(authority.state.payload.player.x > x1 + 100); // kept moving with no new input
-  assert.throws(() => authority.submit({ playerId: 'p2', seq: 0, tick: 4, turnId: 0, actionId: 'move',
-    params: { moveX: 0, moveY: 0 } }), /ILLEGAL_ACTION/);
-  assert.throws(() => authority.submit({ playerId: 'p1', seq: 5, tick: 4, turnId: 0, actionId: 'melee',
-    params: { aimX: 0, aimY: 0 } }), /ILLEGAL_ACTION|INVALID_SCHEMA/);
+  authority.advance();
+  assert.equal(authority.state.payload.player.state, 'sliding'); // kept sliding with no new input
+  assert.throws(() => authority.submit({ playerId: 'p2', seq: 0, tick: 4, turnId: 0, actionId: 'control',
+    params: { jump: 0, slide: 0 } }), /ILLEGAL_ACTION/);
+  assert.throws(() => authority.submit({ playerId: 'p1', seq: 5, tick: 4, turnId: 0, actionId: 'control',
+    params: { jump: 2, slide: 0 } }), /ILLEGAL_ACTION|INVALID_SCHEMA/);
 });
 
-test('the bot is deterministic per seed variant and has a personality', () => {
+test('the bot is deterministic per seed variant', () => {
   const view = game.observe(fresh(), 'p1');
   assert.deepEqual(bot.chooseActions(view, 0, 5), bot.chooseActions(view, 0, 5));
   assert.match(bot.botPolicyVersion, /^tentacle-bot-/);

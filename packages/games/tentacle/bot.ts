@@ -1,109 +1,70 @@
-// Scripted solo bot for Sepia Tentacle Run (policy tentacle-bot-0.1.0). Inputs only: observation in, ActionInputs out,
-// deterministic given (observation, seq, variant). The seed variant gives it a personality per run:
-//   aggression 0..99: how close it likes to fight (high = in whip range, low = kites from far away);
-//   latchBias 0..99: how readily it uses the tentacle to dodge incoming shots.
+// Scripted solo bot for the Sepia Tentacle Run wire runner (policy tentacle-bot-0.2.0). Inputs only: observation in,
+// the `control` action out, deterministic given (observation, variant). The seed variant gives a personality per run:
+//   sloppiness: the chance (per mille) that it ignores an obstacle completely;
+//   jitter: how many ticks early or late it acts, per obstacle (a fixed draw per obstacle id, so it does not flicker).
 import { xorshift32 } from '../../sim/index.ts';
 import { deriveBotSeed } from '../action/bot.ts';
 import type { ActionInput, Observation, TentacleObservationPayload } from '../../contracts/types.ts';
 export { deriveBotSeed };
-export const botPolicyVersion = 'tentacle-bot-0.1.0';
+export const botPolicyVersion = 'tentacle-bot-0.2.0';
 
-const isqrt = (n: number): number => Math.floor(Math.sqrt(n)); // decisions only, never state
+const PLAYER_HALF = 300;
+const PIT_WIDTH = 1400;
+const AIR_TICKS = 64; // 2 * jumpVelocity / gravity of the data
+const TAP_TICKS = 3;
+const SLIDE_LEAD_TICKS = 6;
+const WALL_LEAD = 1900; // distance from the wall at which the bot jumps to take the wire
+const RELEASE_PAST = 300;
+
 function personality(variant: number) {
   let rng = (variant >>> 0) || 1;
   const draw = (m: number) => {
     rng = xorshift32(rng);
     return rng % m;
   };
-  return { aggression: 30 + draw(70), latchBias: draw(100) };
+  return { sloppiness: draw(18), jitter: 1 + draw(5), salt: draw(1000003) + 1 };
 }
-const unit = (dx: number, dy: number, n = 1000): [number, number] => {
-  const d = isqrt(dx * dx + dy * dy) || 1;
-  return [Math.trunc(dx * n / d) || 0, Math.trunc(dy * n / d) || 0]; // never -0 (the schema refuses it)
+const hashOf = (salt: number, id: string): number => {
+  let h = salt >>> 0 || 1;
+  for (let i = 0; i < id.length; i++) h = xorshift32(((h ^ id.charCodeAt(i)) >>> 0) || 1);
+  return h;
 };
 
 export function chooseActions(view: Observation, seq: number, variant = 0): ActionInput[] {
   const p = view.payload as TentacleObservationPayload;
   if (p.outcome.status !== 'running') return [];
-  const [me, ...others] = p.entities;
-  const tick = view.tick + 1;
-  const { aggression, latchBias } = personality(variant);
-  const base = { playerId: view.viewerId, tick, turnId: 0 };
-  const out: ActionInput[] = [];
-  const enemies = others.filter(e => e.hp > 0);
-  const latchReady = me.latchReadyTick <= tick && !me.latch;
+  const me = p.player;
+  const { sloppiness, jitter, salt } = personality(variant);
+  const speed = Math.max(1, me.vx);
+  let jump = 0, slide = 0;
 
-  // nearest enemy
-  let target = null, targetD2 = Infinity;
-  for (const e of enemies) {
-    const d2 = (e.x - me.x) ** 2 + (e.y - me.y) ** 2;
-    if (d2 < targetD2) {
-      target = e;
-      targetD2 = d2;
-    }
-  }
-  // incoming shot: the closest approach within 30 ticks
-  let danger = null;
-  for (const shot of p.projectiles) {
-    for (let t = 1; t <= 30 && t <= shot.life; t++) {
-      const dx = shot.x + shot.vx * t - me.x, dy = shot.y + shot.vy * t - me.y;
-      if (dx * dx + dy * dy <= 900 * 900) {
-        danger = { shot, t };
-        break;
-      }
-    }
-    if (danger) break;
-  }
-  const rollBase = ((variant >>> 0) ^ Math.imul(tick + 1, 0x9e3779b1)) >>> 0 || 1;
-  const roll = xorshift32(xorshift32(rollBase)) % 100;
+  // the nearest obstacle that is still ahead (or under us) and that the bot has not decided to ignore
+  const ahead = p.obstacles.filter(o => o.x + o.w > me.x - PLAYER_HALF - 200)
+    .filter(o => hashOf(salt, o.id) % 1000 >= sloppiness).sort((a, b) => a.x - b.x);
+  const o = ahead[0];
+  const shift = o ? ((hashOf(salt, `${o.id}:j`) % (2 * jitter + 1)) - jitter) * speed : 0;
 
-  let attack: ActionInput | null = null;
-  if (danger && latchReady && !me.latch && roll < latchBias + 30) {
-    // latch to the post that is farthest from the shot's line, within range
-    let best = null, bestScore = -1;
-    for (const post of p.posts) {
-      const dx = post.x - me.x, dy = post.y - me.y, d2 = dx * dx + dy * dy;
-      if (d2 === 0 || d2 > 7000 * 7000) continue;
-      const sx = danger.shot.x + danger.shot.vx * danger.t - post.x;
-      const sy = danger.shot.y + danger.shot.vy * danger.t - post.y;
-      const score = sx * sx + sy * sy;
-      if (score > bestScore) {
-        best = post;
-        bestScore = score;
-      }
-    }
-    if (best) {
-      const [ax, ay] = unit(best.x - me.x, best.y - me.y);
-      attack = { ...base, seq: seq + 1, actionId: 'latch', params: { aimX: ax, aimY: ay } };
-    }
-  }
-  if (!attack && target && targetD2 <= 2000 * 2000 && me.whipReadyTick <= tick) {
-    const [ax, ay] = unit(target.x - me.x, target.y - me.y);
-    attack = { ...base, seq: seq + 1, actionId: 'whip', params: { aimX: ax || 1, aimY: ay } };
-  }
-
-  // movement: close in to the preferred distance, step off sentry lines, dodge sideways when a shot comes
-  let mx = 0, my = 0;
-  if (target) {
-    const want = 1000 + (100 - aggression) * 6; // 1000..1420: inside whip range (2200), outside contact (900)
-    const d = isqrt(targetD2);
-    const [ux, uy] = unit(target.x - me.x, target.y - me.y);
-    if (d > want + 200) [mx, my] = [ux, uy];
-    else if (d < 900 && target.kind !== 'sentry') [mx, my] = [-ux, -uy];
-    // step off the line of any sentry that can see us
-    for (const e of enemies.filter(x => x.kind === 'sentry')) {
-      const dx = me.x - e.x, dy = me.y - e.y;
-      if (Math.abs(dx) <= 900 || Math.abs(dy) <= 900) {
-        [mx, my] = Math.abs(dx) <= 900 ? [dx >= 0 ? 1000 : -1000, my] : [mx, dy >= 0 ? 1000 : -1000];
-      }
+  if (me.state === 'swinging') {
+    jump = 1;
+    const wall = p.obstacles.filter(w => w.kind === 'wall' && w.x + w.w > me.x - PLAYER_HALF - 600)
+      .sort((a, b) => a.x - b.x)[0];
+    const releaseX = wall ? wall.x + wall.w + PLAYER_HALF + RELEASE_PAST : me.wire.anchorX + 1200;
+    // let go once Sepia is past the anchor and rising (the best forward momentum), or when she is clear of the wall
+    if (me.x >= releaseX || (me.x >= me.wire.anchorX && me.vy >= 0)) jump = 0;
+  } else if (o) {
+    const front = o.x - (me.x + PLAYER_HALF) - shift;
+    if (o.kind === 'pit') {
+      const lead = Math.trunc((AIR_TICKS * speed - PIT_WIDTH) / 2);
+      const dc = o.x - me.x - shift;
+      if (me.state === 'running' && dc <= lead && dc > -400) jump = 1;
+      else if (me.jumpHeldTicks > 0 && me.jumpHeldTicks < TAP_TICKS) jump = 1;
+    } else if (o.kind === 'lowBar') {
+      if (front <= speed * SLIDE_LEAD_TICKS && me.x - PLAYER_HALF < o.x + o.w + 100) slide = 1;
+    } else if (o.kind === 'wall') {
+      if (me.state === 'running' && front <= WALL_LEAD) jump = 1;
+      else if (me.state === 'jumping' && front <= WALL_LEAD + 800) jump = 1; // keep holding to reach the anchor
     }
   }
-  if (danger && !attack) {
-    const [vx, vy] = unit(danger.shot.vx, danger.shot.vy);
-    [mx, my] = [-vy, vx]; // sideways to the shot
-  }
-  out.push({ ...base, seq, actionId: 'move', params: { moveX: Math.max(-1000, Math.min(1000, mx)) || 0,
-    moveY: Math.max(-1000, Math.min(1000, my)) || 0 } });
-  if (attack) out.push(attack);
-  return out;
+  return [{ playerId: view.viewerId, seq, tick: view.tick + 1, turnId: 0, actionId: 'control',
+    params: { jump, slide } }];
 }

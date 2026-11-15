@@ -93,17 +93,19 @@ test('card patches: bounds, indexes and the peek card', async () => {
   assert.throws(() => applyPatch(data, propose('/gameRules/health', 2)), /INVALID_SCHEMA/);
 });
 
-// Tentacle Run (contract v0.1.5): wave numbers, absolute bounds; both validators agree.
-test('wave patches: paths, bounds and agreement with the analysis validator', async () => {
+// Tentacle Run (contract v0.1.5): section numbers, absolute bounds; both validators agree.
+test('section patches: paths, bounds and agreement with the analysis validator', async () => {
   const { data } = await import('../games/tentacle/index.ts');
   const { validatePatch } = await import('../analysis/src/validator.ts');
   const propose = (path: string, value: number) => ({ baseDataHash: hash(data), replacements: [{ path, value }],
     rationale: 'test' });
-  const cases: Array<[string, number]> = [['/gameRules/waves/3/enemyDamage', 18], ['/gameRules/waves/3/enemyDamage', 0],
-    ['/gameRules/waves/3/enemyDamage', 61], ['/gameRules/waves/3/fireIntervalTicks', 14],
-    ['/gameRules/waves/3/fireIntervalTicks', 300], ['/gameRules/waves/3/sentries', 8],
-    ['/gameRules/waves/3/sentries', 9], ['/gameRules/waves/0/walkers', 0], ['/gameRules/waves/0/enemySpeed', 4],
-    ['/gameRules/waves/5/walkers', 3], ['/gameRules/waves/03/walkers', 3], ['/gameRules/waves/1/hp', 3]];
+  const cases: Array<[string, number]> = [['/gameRules/sections/3/anchorSpacing', 4000],
+    ['/gameRules/sections/3/anchorSpacing', 1499], ['/gameRules/sections/3/anchorSpacing', 10000],
+    ['/gameRules/sections/3/anchorSpacing', 10001], ['/gameRules/sections/3/walls', 6],
+    ['/gameRules/sections/3/walls', 7], ['/gameRules/sections/0/pits', 0], ['/gameRules/sections/0/runSpeed', 14],
+    ['/gameRules/sections/0/runSpeed', 60], ['/gameRules/sections/5/lowBars', 3], ['/gameRules/sections/6/pits', 3],
+    ['/gameRules/sections/03/pits', 3], ['/gameRules/sections/1/hp', 3], ['/gameRules/sections/2/length', 11999],
+    ['/gameRules/sections/2/length', 9000]];
   for (const [path, value] of cases) {
     const proposal = propose(path, value);
     let engine = true;
@@ -114,5 +116,6 @@ test('wave patches: paths, bounds and agreement with the analysis validator', as
     }
     assert.equal(validatePatch(proposal, { rootData: data }).ok, engine, `${path}=${value}`);
   }
-  assert.equal(applyPatch(data, propose('/gameRules/waves/3/enemyDamage', 18)).gameRules.waves[3].enemyDamage, 18);
+  assert.equal(applyPatch(data, propose('/gameRules/sections/3/anchorSpacing', 4000)).gameRules.sections[3]
+    .anchorSpacing, 4000);
 });
