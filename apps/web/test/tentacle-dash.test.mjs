@@ -201,3 +201,46 @@ test("keyboard: a press sends once, key repeat and a second key of a held button
   assert.deepEqual(k.releaseAll(), ["slide"]);
   assert.equal(k.change("x", true), null);
 });
+
+import { MoveKeys, actionKey, moveKey } from "../src/lib/pcKeys.ts";
+
+test("PC mode, Hero Arena keys: arrows or WASD move, Space/J attack, Z/K skill, X/L guard", () => {
+  assert.equal(actionKey(" "), "melee");
+  assert.equal(actionKey("J"), "melee");
+  assert.equal(actionKey("z"), "projectile");
+  assert.equal(actionKey("x"), "guard");
+  assert.equal(actionKey("q"), null);
+  assert.equal(moveKey("ArrowLeft"), "left");
+  assert.equal(moveKey("w"), "up");
+  assert.equal(moveKey("Enter"), null);
+  const k = new MoveKeys();
+  assert.deepEqual(k.change("ArrowRight", true), [1, 0]);
+  assert.equal(k.change("ArrowRight", true), null); // repeat
+  const diag = k.change("w", true);
+  assert.ok(Math.abs(diag[0] - 0.7071) < 1e-3 && Math.abs(diag[1] + 0.7071) < 1e-3);
+  assert.deepEqual(k.change("w", false), [1, 0]);
+  assert.deepEqual(k.change("d", true), null); // d and ArrowRight both mean right: no change
+  k.clear();
+  assert.deepEqual(k.vector(), [0, 0]);
+});
+
+import { getPlayMode, hasPcMode, setPlayMode } from "../src/lib/playMode.ts";
+
+test("the play mode is remembered per browser, survives blocked storage, and only some games have PC mode", () => {
+  assert.equal(getPlayMode(), "mobile"); // today's flow by default
+  const store = new Map();
+  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  setPlayMode("pc");
+  assert.equal(getPlayMode(), "pc");
+  assert.equal(store.get("bf-play-mode"), "pc");
+  const blocked = () => {
+    throw new Error("blocked");
+  };
+  globalThis.localStorage = { getItem: blocked, setItem: blocked };
+  setPlayMode("mobile"); // must not throw
+  assert.equal(getPlayMode(), "mobile");
+  assert.equal(hasPcMode("hero_arena"), true);
+  assert.equal(hasPcMode("tentacle_run"), true);
+  assert.equal(hasPcMode("hero_cards"), false);
+  delete globalThis.localStorage;
+});

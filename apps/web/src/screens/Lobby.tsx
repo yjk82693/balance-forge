@@ -9,6 +9,8 @@ import { useManifest } from "../lib/assets";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 import { LobbyVersion } from "../components/LobbyVersion";
+import { PcPanel, PlayModeSwitch } from "../components/PcPlay";
+import { hasPcMode, usePlayMode } from "../lib/playMode";
 import { ServerDown, useServerState } from "../components/ServerDown";
 
 const SLOTS = 2;
@@ -128,6 +130,8 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
     );
   }
   const solo = SOLO_GAMES.includes(gameId);
+  const mode = usePlayMode();
+  const pc = mode === "pc" && hasPcMode(gameId);
   const slots = solo ? 1 : SLOTS;
   const needed = solo ? 1 : PLAYERS_TO_START;
   const connecting = !room;
@@ -167,10 +171,14 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
           ready={status === "online" && !!room}
           fixed={!!dataHash}
         />
+        <PlayModeSwitch gameId={gameId} />
         <MockStatus online={status === "online"} />
       </TopBar>
       <div className="lobby-bar" />
       <main className="lobby">
+        {pc ? (
+          <PcPanel gameId={gameId} code={room?.joinCode ?? null} />
+        ) : (
         <section className="lobby-join" aria-labelledby="join-title">
           <h1 id="join-title" className="display">
             Scan to join
@@ -196,6 +204,7 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
             </div>
           </div>
         </section>
+        )}
 
         <section className="panel lobby-players" aria-labelledby="players-title">
           <div className="panel-head">

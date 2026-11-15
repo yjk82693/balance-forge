@@ -699,3 +699,15 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Runner phone page on a PC: Space/ArrowUp = JUMP, ArrowDown/Shift = SLIDE through the same press() path (keydown press,
   keyup release, key repeat ignored, released when the window loses focus); the hint "Keyboard: Space jump · ↓ slide"
   shows only on non-touch devices (`lib/runnerKeys.ts`). Checked: Space sends control {jump:1}, keyup {jump:0}, Shift slide.
+
+### PC | Mobile mode in the lobby
+
+- A Mobile | PC switch in the lobby top bar for Hero Arena and Sepia Tentacle Run (Hero Cards needs taps, so it stays on
+  the phone); the choice is remembered in this browser (localStorage, guarded). Mobile is today's flow.
+- PC mode hides the QR code: the lobby tab takes the player seat itself through a second connection as a controller
+  (`lib/pcSession.ts`, a module-level session so it survives lobby to arena; same messages as a phone: room.join,
+  reconnect, input.submit). Hero Arena: pick a hero in the lobby. Start with the usual buttons.
+- The arena screen takes the keyboard in PC mode. Runner: Space/Up jump, Down/Shift slide (the same HeldKeys as the phone
+  page). Hero Arena: arrows or WASD move, Space or J attack, Z or K skill, X or L guard (`lib/pcKeys.ts`); aim is the
+  last move direction. Checked in a browser with the mock room (QR hidden, seat joined, a match started, keys sent as
+  move/attack); the runner path is the same session but was not played (the game is hidden by its flag).
