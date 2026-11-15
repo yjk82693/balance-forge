@@ -18,7 +18,7 @@ test('human replay endpoint persists seed and only accepted frames, playable on 
   host.request('input.submit', {
     playerId: 'p1',
     seq: 1,
-    tick: 0,
+    tick: 5,
     turnId: 0,
     actionId: 'move',
     params: {

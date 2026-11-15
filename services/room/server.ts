@@ -26,6 +26,7 @@ import { messages } from './errors.ts';
 const directory = fileURLToPath(new URL('./', import.meta.url));
 const defaultStatic = fileURLToPath(new URL('../../apps/web/dist', import.meta.url));
 const STEP_MS = 1000 / 60;
+const LATE_INPUT_GRACE_TICKS = 30;
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -520,8 +521,13 @@ export class RoomServer {
     const authority = room.authority,
       key = JSON.stringify([session.seat, env.payload.seq]);
     if (room.phase !== 'playing' && !authority.receipts.has(key)) throw Error('ILLEGAL_ACTION');
+    // Real-time games: a phone's input aims at the tick after the last view it saw, so it lands a few ticks late over
+    // a real network. Up to half a second late, it is applied on the next tick instead of being dropped.
+    const next = authority.state.tick + 1, late = next - env.payload.tick;
+    const input = authority.config.mode !== 'turn' && late > 0 && late <= LATE_INPUT_GRACE_TICKS ?
+      { ...env.payload, tick: next } : env.payload;
     const previous = authority.receipts.has(key),
-      receipt = authority.submit(env.payload);
+      receipt = authority.submit(input);
     this.send(session, 'input.ack', receipt, env, env.payload.seq);
     if (authority.config.mode === 'turn' && !previous) this.advance(room);
   }
