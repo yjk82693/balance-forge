@@ -1,5 +1,5 @@
 import type { ReportRow } from "../lib/contract";
-import { humanLabel, isHumanDimension } from "../lib/groups";
+import { humanLabel, isHumanDimension, recordText } from "../lib/groups";
 import { heroName } from "../lib/heroes";
 import { targetFor, targetFromRate, type Target } from "../lib/intent";
 import { pct, wilson } from "../lib/stats";
@@ -168,7 +168,11 @@ export function WinRateChart({ rows, dense = false, foot = true, rowAction }: Ch
             <Interval s={s} />
           </Plot>
           <span className="viz-value small" title={ciText(s)}>
-            {s.small ? "Too few games yet" : `${pct(s.rate)}%`}
+            {s.small
+              ? isHumanDimension(s.row.dimension)
+                ? `Too few games yet · ${recordText(s.row.wins, s.row.games)}`
+                : "Too few games yet"
+              : `${pct(s.rate)}%`}
           </span>
           {s.outlier && rowAction && <div className="viz-action">{rowAction(s)}</div>}
         </div>

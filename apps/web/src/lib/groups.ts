@@ -6,6 +6,10 @@ const HUMAN_PREFIX = /^human:\s*/i;
 export const isHumanDimension = (dimension: string) => HUMAN_PREFIX.test(dimension);
 export const humanLabel = (dimension: string) => dimension.replace(HUMAN_PREFIX, "");
 
+/** "9–3 (n=12)": wins, losses (every other game) and games, so a small sample still shows its numbers. */
+export const recordText = (wins: number, games: number): string =>
+  `${wins}–${Math.max(0, games - wins)} (n=${games})`;
+
 /** "bari vs bari": a hero against itself. */
 export const isMirror = (dimension: string) => {
   const [a, b] = dimension.split(" vs ");
