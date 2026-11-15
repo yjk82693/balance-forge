@@ -5,6 +5,7 @@ import * as bot from './bot.ts';
 import { Authority } from '../../sim/index.ts';
 import { hash } from '../../contracts/index.ts';
 
+game.observationCheck.every = 1; // validate every view in the tests
 const play = (seed: number, maxTicks = 7200, data = game.data) => {
   const config = game.makeConfig(data, seed, ['p1'], maxTicks);
   let state = game.initial(config, data);

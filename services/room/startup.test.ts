@@ -80,7 +80,7 @@ test('game catalog is ready within one second of the listening transition', asyn
   const response = await http(server, '/v1/games');
   const elapsedMs = performance.now() - listeningAt;
   assert.equal(response.status, 200);
-  assert.deepEqual(response.json().map(game => game.gameId), ['hero_arena', 'hero_cards']);
+  assert.deepEqual(response.json().map(game => game.gameId), ['hero_arena', 'hero_cards', 'tentacle_run']);
   assert.ok(elapsedMs < 1000, `Catalog response after listening: ${elapsedMs.toFixed(2)} ms`);
   t.diagnostic(`Catalog response after in-memory listening: ${elapsedMs.toFixed(2)} ms (no TCP listener).`);
   assert.equal(processState.exitCode, 0);

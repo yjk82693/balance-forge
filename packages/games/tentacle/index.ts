@@ -104,6 +104,7 @@ export function initial(config: MatchConfig, data: GameData): State {
   return state;
 }
 
+export const observationCheck = { every: 30 };
 export function observe(state: State, viewerId: string): Observation {
   const p = state.payload;
   const boss = p.enemies.find(e => e.kind === 'boss');
@@ -126,8 +127,12 @@ export function observe(state: State, viewerId: string): Observation {
       outcome: structuredClone(p.outcome)
     }
   };
-  validate('Observation', view);
-  validateGamePayload('tentacle_run', 1, 'observation', view.payload);
+  // Checking the schema costs more than the rest of a tick, so a view is validated every `observationCheckEvery` ticks
+  // (every tick in the tests): a shape error shows within half a second of play, and runs stay fast.
+  if (state.tick % observationCheck.every === 0) {
+    validate('Observation', view);
+    validateGamePayload('tentacle_run', 1, 'observation', view.payload);
+  }
   return view;
 }
 
