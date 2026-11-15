@@ -11,3 +11,4 @@ recordings/
 services/room/data/
 services/room/playtests/
 services/room/replays/
+services/room/human-results.json
