@@ -254,50 +254,47 @@ export type Receipt = { seq: number; status: 'accepted'; acceptedTick: number };
 export type Recording = { matchId: string; seed: number; config: MatchConfig; frames: InputFrame[];
   finalStateHash: string; botSeats?: string[] };
 
-// ---- Game 3: Sepia Tentacle Run (gameId "tentacle_run"), solo, 60 Hz, integer math -----------------------------
-// Coordinates are integers in the 16000 x 9000 arena (origin top-left, y grows downwards). One tick = 1/60 s.
-// The seat is always "p1" (Sepia). Actions: move {moveX, moveY} (-1000..1000), latch {aimX, aimY} (-1000..1000, the
-// direction to the post to latch onto), whip {aimX, aimY}. See packages/games/tentacle/SPEC.md.
-export type TentacleWave = {
-  walkers: number; drones: number; sentries: number; // how many of each spawn
-  enemySpeed: number; // units per tick of walkers (drones fly at 3/4 of it)
-  enemyDamage: number; // hit points taken per walker touch, drone shot or sentry shot
-  fireIntervalTicks: number; // ticks between shots of one drone or sentry
-  flaw?: string; // set on the wave that is designed to be nearly unbeatable (a note, not a rule)
+// ---- Game 3: Sepia Tentacle Run (gameId "tentacle_run"), a 2D side-scrolling wire runner ----------------------
+// Solo, 60 Hz, integer math, seeded. Side view: x grows to the right (the course runs from x = 0 to finishX), y
+// grows UP with the ground at y = 0 (a pit is a gap in the ground). Sepia auto-runs right at the section's
+// runSpeed. The only
+// input is the action "control" { jump: 0 | 1, slide: 0 | 1 } (held flags; the game keeps the last one until a new
+// one arrives). Tap jump (< tapTicks) = jump; keep it held in the air near an anchor = attach the wire and swing
+// (a pendulum); release = let go with the momentum. Slide held on the ground = slide. See
+// packages/games/tentacle/SPEC.md.
+export type TentacleSection = {
+  length: number; pits: number; lowBars: number; walls: number; // how long, and how many of each obstacle
+  anchorSpacing: number; // distance between overhead anchor posts (the wire reaches `wireRange`)
+  runSpeed: number; // units per tick
+  flaw?: string; // set on the section designed to be nearly unbeatable (a note, not a rule)
 };
 export type TentacleRules = {
-  arena: { w: number; h: number };
-  posts: Array<{ id: number; x: number; y: number }>; // the fixed grid of anchor posts (15: 5 columns x 3 rows)
-  player: { health: number; speed: number; latchRange: number; latchSpeed: number; latchCooldownTicks: number;
-    latchInvulnerableTicks: number; whipRange: number; whipDamage: number; whipCooldownTicks: number };
-  enemies: { walker: { health: number }; drone: { health: number }; sentry: { health: number } };
-  waves: TentacleWave[]; // 5 waves; the Man-Shark boss follows
-  boss: { health: number; speed: number; contactDamage: number; shotDamage: number; fireIntervalTicks: number;
-    phases: number }; // phase = which third of the health bar the boss is in (0..phases-1), for the HP bar pips
-  betweenWavesTicks: number;
-  healOnClear: number;
+  viewWidth: number; // the camera shows [cameraX, cameraX + viewWidth]
+  leadIn: number; // x where the first section starts
+  player: { width: number; height: number; slideHeight: number };
+  physics: { gravity: number; jumpVelocity: number; maxFall: number; tapTicks: number; wireRange: number;
+    wireMinLength: number; swingGravity: number; reelSpeed: number; // the rope shortens by this per tick while attached
+    releaseBoost: number }; // extra upward speed when the wire is let go
+  obstacles: { pitWidth: number; lowBarWidth: number; lowBarBottom: number; lowBarTop: number; wallWidth: number;
+    wallHeight: number; anchorHeight: number };
+  sections: TentacleSection[]; // 6 sections; the last is the Man-Shark chase
 };
-export type TentacleEntityKind = 'player' | 'walker' | 'drone' | 'sentry' | 'boss';
-export type TentacleEntity = {
-  id: string; // "p1", "e<N>", "boss"
-  kind: TentacleEntityKind;
-  x: number; y: number; hp: number; maxHp: number;
-  facingX: number; facingY: number; // last aim direction, -1000..1000 (the scene turns the sprite)
-  // player only (null on the others):
-  latch: null | { post: number; untilTick: number }; // while latched the tentacle goes from the player to posts[post]
-  latchReadyTick: number; whipReadyTick: number; invulnerableUntilTick: number; whipUntilTick: number;
-};
-export type TentacleProjectile = { id: string; x: number; y: number; vx: number; vy: number; life: number;
-  damage: number; from: 'drone' | 'sentry' | 'boss' };
-/** The payload of state.view (Observation.payload) and of the state itself, the same shape for the one seat. */
+export type TentaclePlayerState = 'running' | 'jumping' | 'sliding' | 'swinging';
+// a pit has y = 0, h = 0 (a gap in the ground); a lowBar spans y..y+h in the air; a wall stands on the ground
+export type TentacleObstacle = { id: string; kind: 'pit' | 'lowBar' | 'wall'; x: number; w: number; y: number;
+  h: number; section: number };
+export type TentacleAnchor = { id: string; x: number; y: number; section: number };
+/** The payload of state.view (Observation.payload); the state itself carries the same fields plus the full course. */
 export type TentacleObservationPayload = {
-  wave: number; // 1..5 = the waves, 6 = the boss: the wave being fought, or the one about to start during a break
-  waveCount: number; // 5 (the boss is wave 6)
-  waveTick: number; // ticks since this wave started (0 during a break)
-  breakTicks: number; // ticks until the wave spawns (0 while it is being fought); the first break is the start
-  entities: TentacleEntity[]; // the player first, then the enemies in spawn order; the boss has kind "boss"
-  posts: Array<{ id: number; x: number; y: number }>;
-  projectiles: TentacleProjectile[];
-  boss: null | { hp: number; maxHp: number; phase: number; phases: number }; // null until the boss wave
+  section: number; // 1..6: the section Sepia is in (6 = the Man-Shark chase)
+  sectionCount: number; // 6
+  sectionStartX: number; sectionEndX: number; // of the current section
+  cameraX: number; viewWidth: number; // the camera: [cameraX, cameraX + viewWidth]; cameraX = max(0, player.x - 4000)
+  finishX: number;
+  player: { x: number; y: number; vx: number; vy: number; state: TentaclePlayerState; height: number;
+    jumpHeldTicks: number; wire: null | { anchorId: string; anchorX: number; anchorY: number; length: number } };
+  obstacles: TentacleObstacle[]; // only those inside [cameraX - 1000, cameraX + viewWidth + 1000]
+  anchors: TentacleAnchor[]; // likewise
+  shark: null | { x: number }; // the Man-Shark chasing in the last section (drawn behind Sepia), else null
   outcome: Outcome;
 };

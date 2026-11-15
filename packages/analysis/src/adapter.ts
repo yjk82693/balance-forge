@@ -22,22 +22,20 @@ function cardsProposal(report, context) {
 }
 
 /**
- * Tentacle Run, offline: the flagged wave gets milder damage and a longer fire interval, sized by how far below its
- * target it is, so the stand-in lands near the target band instead of past it (measured on wave 4: damage x0.75 and
- * fire interval x2 take 15-20% to about 63%). A stand-in for a model, not a balance method.
+ * Tentacle Run, offline: the flagged section gets its anchors closer together (the wire reaches them), sized by how far
+ * below its target it is, so the stand-in lands near the target band instead of past it (measured on the designed
+ * flaw: anchorSpacing 6000 -> 4000 takes about 5% to about 70%). A stand-in for a model, not a balance method.
  */
 function wavesProposal(report, context) {
   const flagged = context.flaggedWave;
   const index = (flagged?.wave ?? 1) - 1;
-  const wave = context.rootData.gameRules.waves[index];
+  const section = context.rootData.gameRules.sections[index];
   const gap = flagged ? flagged.target - flagged.clearRate : 0.5;
-  const [damage, fire] = gap > 0.4 ? [0.75, 2] : gap > 0.2 ? [0.85, 1.5] : [0.92, 1.25];
-  const replacements = [
-    { path: `/gameRules/waves/${index}/enemyDamage`, value: Math.max(1, Math.round(wave.enemyDamage * damage)) },
-    { path: `/gameRules/waves/${index}/fireIntervalTicks`,
-      value: Math.min(300, Math.round(wave.fireIntervalTicks * fire)) }];
+  const factor = gap > 0.4 ? 0.7 : gap > 0.2 ? 0.8 : 0.9;
+  const replacements = [{ path: `/gameRules/sections/${index}/anchorSpacing`,
+    value: Math.max(1500, Math.round(section.anchorSpacing * factor)) }];
   return { baseDataHash: report.dataHash, replacements,
-    rationale: `Offline stand-in: wave ${index + 1} is below target; damage x${damage}, fire interval x${fire}.` };
+    rationale: `Offline stand-in: section ${index + 1} is below target; anchor spacing x${factor}.` };
 }
 
 /** Returns a canned proposal (e.g. fixtures/patch_proposal.json). Deterministic, offline. */
@@ -48,7 +46,7 @@ export class FakePatchAdapter {
   }
   async proposePatch(report, context: any = {}) {
     assertReport(report);
-    if (context.rootData?.gameRules?.waves) return wavesProposal(report, context);
+    if (context.rootData?.gameRules?.sections) return wavesProposal(report, context);
     if (context.rootData?.gameRules?.cards) return cardsProposal(report, context);
     // Keep the pin honest: the proposal must be based on the report's data.
     return { ...structuredClone(this.#proposal), baseDataHash: report.dataHash };

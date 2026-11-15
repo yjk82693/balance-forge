@@ -12,7 +12,7 @@ export const RETRIES = 1;
 
 export const PATH_PATTERN = '^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|'
   + 'characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power)|'
-  + 'gameRules/waves/[0-4]/(walkers|drones|sentries|enemySpeed|enemyDamage|fireIntervalTicks))$';
+  + 'gameRules/sections/[0-5]/(pits|lowBars|walls|anchorSpacing|runSpeed))$';
 
 /** JSON Schema for PatchProposal (spec/contract-v0.1.md plus the v0.1.2 hero stat paths). */
 export const PATCH_JSON_SCHEMA = {
@@ -99,29 +99,31 @@ function cardContext(rootData, diagnosis) {
   return lines;
 }
 
-/** The instruction for the flagged wave: the target band is explicit, and so is the rule against overshooting. */
+/** The instruction for the flagged section: the target band is explicit, and so is the rule against overshooting. */
 function flaggedAdvice(flagged) {
   const low = Math.round((flagged.target - 0.05) * 100), high = Math.round((flagged.target + 0.05) * 100);
-  return `The flagged wave is ${JSON.stringify(flagged)}. Aim for a clear rate of ${low}-${high}% on wave `
+  return `The flagged section is ${JSON.stringify(flagged)}. Aim for a clear rate of ${low}-${high}% on section `
     + `${flagged.wave} (target ${Math.round(flagged.target * 100)}% plus or minus 5 points): do not make it trivial, `
-    + 'a patch that lands above that band is rejected. Touch only the flagged wave unless necessary; lower '
-    + 'enemyDamage, a longer fireIntervalTicks, fewer sentries, drones or walkers all make it easier. Reference '
-    + 'point measured on a similar wave: damage x0.75 with a fire interval x2 moved 15% to about 63%.';
+    + 'a patch that lands above that band is rejected. Touch only the flagged section unless necessary; a smaller '
+    + 'anchorSpacing (anchors closer together, so the wire reaches them), fewer walls, pits or lowBars, or a lower '
+    + 'runSpeed all make it easier. Reference point measured on the designed flaw: anchorSpacing 6000 -> 4000 moved '
+    + 'it from about 5% to about 70%.';
 }
 
-/** Tentacle Run: the wave table, the flagged wave and the wave numbers a patch may change. */
+/** Tentacle Run: the section table, the flagged section and the numbers a patch may change. */
 function wavesContext(rootData, context) {
-  const waves = rootData.gameRules.waves.map((w, index) => ({ wave: index + 1, index, ...w }));
+  const sections = rootData.gameRules.sections.map((w, index) => ({ section: index + 1, index, ...w }));
   const table = context.waveTable?.waves.map(({ wave, reached, cleared, clearRate, ci95, target, deaths, outlier }) =>
-    ({ wave, reached, cleared, clearRate, ci95, target, deaths, outlier }));
+    ({ section: wave, reached, cleared, clearRate, ci95, target, deaths, outlier }));
   return [
-    'Sepia Tentacle Run: five waves and the Man-Shark boss (wave 6, not patchable). Each row is a wave: clearRate is '
-      + 'the share of runs that cleared it given they reached it, target is the designer\'s intended clear rate. '
-      + 'Wave data (index = the N in the paths): ' + JSON.stringify(waves) + '.',
-    ...(table ? ['Per-wave results of the scripted bot: ' + JSON.stringify(table)] : []),
+    'Sepia Tentacle Run, a side-scrolling wire runner: six sections (the last is the Man-Shark chase) with pits '
+      + '(jump), low bars (slide), walls (swing over them on the wire) and overhead anchor posts. Each row is a '
+      + 'section: clearRate is the share of runs that cleared it given they reached it, target is the designer\'s '
+      + 'intended clear rate. Section data (index = the N in the paths): ' + JSON.stringify(sections) + '.',
+    ...(table ? ['Per-section results of the scripted bot: ' + JSON.stringify(table)] : []),
     ...(context.flaggedWave ? [flaggedAdvice(context.flaggedWave)] : []),
-    'Allowed: /gameRules/waves/<0..4>/(walkers 0..12 | drones 0..10 | sentries 0..8 | enemySpeed 5..60 | '
-      + 'enemyDamage 1..60 | fireIntervalTicks 15..300), integers.'];
+    'Allowed: /gameRules/sections/<0..5>/(pits 0..8 | lowBars 0..8 | walls 0..6 | '
+      + 'anchorSpacing 1500..10000 | runSpeed 15..60), integers.'];
 }
 
 export function buildPrompt(report, context: any = {}) {
@@ -143,10 +145,9 @@ export function buildPrompt(report, context: any = {}) {
       max: boundsFor('/gameRules/cards/0/cost')[1], cards_only: true },
     { path: '/gameRules/cards/<N>/power', min: boundsFor('/gameRules/cards/0/power')[0],
       max: boundsFor('/gameRules/cards/0/power')[1], cards_only: true },
-    { path: '/gameRules/waves/<N>/<field>', fields: ['walkers', 'drones', 'sentries', 'enemySpeed', 'enemyDamage',
-      'fireIntervalTicks'], min: 0, max: 300, waves_only: true },
+    { path: '/gameRules/sections/<N>/<field>', fields: ['pits', 'lowBars', 'walls', 'anchorSpacing', 'runSpeed'], waves_only: true },
   ];
-  const isWaves = Boolean(context.rootData?.gameRules?.waves);
+  const isWaves = Boolean(context.rootData?.gameRules?.sections);
   const isCards = Boolean(context.rootData?.gameRules?.cards);
   return [
     'You tune a multiplayer game. Below are aggregate bot-playtest results (win rate of the first-named side).',
