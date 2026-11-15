@@ -647,3 +647,9 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   `/gameRules/sections/N/(length|pits|lowBars|walls|anchorSpacing|runSpeed)`.
 - A dev-only stub (`#/arena/tentacle_run?stub=1`, `npm run dev`) was used to look at the scene. Not tested against the
   live room or a real phone. `TENTACLE_RUN_ENABLED` in `lib/featureFlags.ts` hides the game.
+
+- Runner phone, as the Chairman changed it: two big thumb buttons only, SLIDE on the left and JUMP on the right, no ring.
+  JUMP's hint reads "Jump · press again in the air to hook"; the wire (second press hooks, hold swings, release lets go) is
+  the engine's call, the message stays `{jump, slide}` on change.
+- A tab that was open before a server rebuild reloads itself when the server's entry script differs from its own
+  (`lib/staleBuild.ts`: on coming to the front and every minute; never on `#/play` or `#/arena`; not in dev or static).

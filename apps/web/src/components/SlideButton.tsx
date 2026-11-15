@@ -15,11 +15,10 @@ export function SlideButton({ disabled, onHold }: Props) {
     onHold(next);
   };
   return (
-    <div className="pad-btn-wrap b-guard">
+    <div className="pad-btn-wrap runner-slide">
       <button
         type="button"
-        className={`pad-btn slide-btn${down ? " pressed" : ""}`}
-        style={{ width: 112, height: 112 }}
+        className={`pad-btn runner-btn slide-btn${down ? " pressed" : ""}`}
         disabled={disabled}
         aria-label="Slide: hold to slide under low bars"
         aria-pressed={down}

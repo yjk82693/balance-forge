@@ -89,15 +89,16 @@ test("the solo action scene comes after the card scene and before the history, o
   assert.ok(ids({ solo: true }).indexOf("solo") > ids({ solo: true }).indexOf("verdict"));
 });
 
-import { RING_MS, chargeFraction } from "../src/lib/tentacleButton.ts";
+import { entryScript, isNewBuild } from "../src/lib/staleBuild.ts";
 
-test("the jump ring fills over the engine's tap length", () => {
-  assert.equal(RING_MS, 200);
-  assert.equal(chargeFraction(0), 0);
-  assert.equal(chargeFraction(100), 0.5);
-  assert.equal(chargeFraction(200), 1);
-  assert.equal(chargeFraction(900), 1);
-  assert.equal(chargeFraction(-5), 0);
+test("a tab reloads only when the server's entry script differs from its own", () => {
+  const page = (h) => `<script type="module" crossorigin src="./assets/index-${h}.js"></script>`;
+  assert.equal(entryScript(page("AbC-123")), "assets/index-AbC-123.js");
+  assert.equal(entryScript("<html></html>"), null);
+  assert.equal(isNewBuild(page("new"), "./assets/index-old.js"), true);
+  assert.equal(isNewBuild(page("same"), "./assets/index-same.js"), false);
+  assert.equal(isNewBuild("<html></html>", "./assets/index-old.js"), false);
+  assert.equal(isNewBuild(page("new"), null), false);
 });
 
 test("outcomes are worded and coloured: an overshoot is a warning, never a success; bands read as a range", () => {
