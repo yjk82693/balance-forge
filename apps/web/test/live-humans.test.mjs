@@ -12,6 +12,6 @@ test("live human rows: only human rows, null for a bad body", () => {
 });
 
 test("a small human sample shows its record", () => {
-  assert.equal(recordText(9, 12), "9–3 (n=12)");
-  assert.equal(recordText(1, 1), "1–0 (n=1)");
+  assert.equal(recordText(9, 12), "9–3 · n=12");
+  assert.equal(recordText(1, 1), "1–0 · n=1");
 });

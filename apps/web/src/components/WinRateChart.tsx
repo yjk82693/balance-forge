@@ -167,10 +167,15 @@ export function WinRateChart({ rows, dense = false, foot = true, rowAction }: Ch
             />
             <Interval s={s} />
           </Plot>
-          <span className="viz-value small" title={ciText(s)}>
+          <span className="viz-value small" title={s.small ? `Too few games yet. ${ciText(s)}` : ciText(s)}>
             {s.small
               ? isHumanDimension(s.row.dimension)
-                ? `Too few games yet · ${recordText(s.row.wins, s.row.games)}`
+                ? (
+                    <>
+                      {recordText(s.row.wins, s.row.games)}
+                      <span className="viz-sub">too few</span>
+                    </>
+                  )
                 : "Too few games yet"
               : `${pct(s.rate)}%`}
           </span>
