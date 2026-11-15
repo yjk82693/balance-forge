@@ -87,3 +87,14 @@ export const barFill = (x: number, finishX: number): number =>
 
 /** A match is versus when two seats played it. */
 export const isVersusMatch = (players: readonly string[]): boolean => players.length === 2;
+
+/** The runners of a versus match that no seat of the room belongs to are the bot: they are named "Bot". */
+export function withBotNames(
+  names: Readonly<Record<string, string>>,
+  runners: readonly { id: string }[],
+  seatIds: readonly string[],
+): Record<string, string> {
+  const out = { ...names };
+  for (const r of runners) if (!seatIds.includes(r.id)) out[r.id] = "Bot";
+  return out;
+}

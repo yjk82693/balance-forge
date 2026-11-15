@@ -135,7 +135,7 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
   }
   const runner = SOLO_GAMES.includes(gameId);
   const pc = mode === "pc" && hasPcMode(gameId);
-  const canVersus = RUNNER_VERSUS_ENABLED && runner && !pc; // versus is played on two phones
+  const canVersus = RUNNER_VERSUS_ENABLED && runner; // two seats: two phones, or a phone and this PC tab
   const versus = canVersus && side === "versus";
   const solo = runner && !versus;
   const slots = solo ? 1 : SLOTS;
@@ -152,15 +152,13 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
     : here < needed
       ? `Waiting for ${needed - here} more ${needed - here === 1 ? "player" : "players"}`
       : "";
-  const canBot = here >= 1 && arena && status === "online";
+  const canBot = here >= 1 && arena && status === "online"; // versus: one seat races the bot
   const begin = (bot: boolean) => {
     if (bot ? !canBot : !canStart) return;
     setRefusal("");
     setStarting(bot ? "bot" : "match");
-    transport?.send(
-      "match.start",
-      bot ? { gameId: game.id, bot: true } : versus ? { gameId: game.id, versus: true } : { gameId: game.id },
-    );
+    const options = { gameId: game.id, ...(versus ? { versus: true } : {}), ...(bot ? { bot: true } : {}) };
+    transport?.send("match.start", options);
   };
 
   return (
@@ -185,9 +183,8 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
       </TopBar>
       <div className="lobby-bar" />
       <main className="lobby">
-        {pc ? (
-          <PcPanel gameId={gameId} code={room?.joinCode ?? null} />
-        ) : (
+        {pc && <PcPanel gameId={gameId} code={room?.joinCode ?? null} />}
+        {(!pc || versus) && (
         <section className="lobby-join" aria-labelledby="join-title">
           <h1 id="join-title" className="display">
             Scan to join
@@ -278,7 +275,7 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
               ? "Getting the room ready…"
               : (left ??
                 (versus
-                  ? "Two phones, two runs. The first to the end wins."
+                  ? "Two players, one course. The first to the end wins. One player can race a bot."
                   : solo
                     ? "One player starts the run."
                     : "Two players start a match."))}
@@ -291,14 +288,14 @@ export function Lobby({ gameId, dataHash }: { gameId: string; dataHash?: string 
           >
             {solo ? "Start run" : versus ? "Start versus" : "Start match"}
           </button>
-          {!runner && (
+          {(!runner || versus) && (
             <button
               className="btn secondary touch"
               aria-disabled={!canBot || !!starting}
               aria-busy={starting === "bot"}
               onClick={() => begin(true)}
             >
-              Play vs bot
+              {runner ? "Race a bot" : "Play vs bot"}
             </button>
           )}
           {(refusal || reason) && (

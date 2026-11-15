@@ -517,6 +517,6 @@ interface Pose {
 /** Team colours: P1 red, P2 blue. The sprite gets only a light tint so the art reads; the ring shows the colour. */
 const LANE_COLORS: Record<string, number> = { p1: 0xff5c5c, p2: 0x5ca8ff };
 const LANE_TINTS: Record<string, number> = { p1: 0xffd6d6, p2: 0xd6e8ff };
-const laneColor = (id: string) => LANE_COLORS[id] ?? 0xffffff;
-const laneTint = (id: string) => LANE_TINTS[id] ?? 0xffffff;
+const laneColor = (id: string) => LANE_COLORS[id] ?? LANE_COLORS.p2; // anything but p1 (the bot) is blue
+const laneTint = (id: string) => LANE_TINTS[id] ?? LANE_TINTS.p2;
 const hexColor = (n: number) => `#${n.toString(16).padStart(6, "0")}`;

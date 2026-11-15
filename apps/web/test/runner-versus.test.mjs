@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { barFill, laneLabel, versusEnd, versusEndWords, versusHeadline, versusOf } from "../src/lib/runnerVersus.ts";
+import * as v from "../src/lib/runnerVersus.ts";
+
+const { withBotNames, barFill, laneLabel, versusEnd, versusEndWords, versusHeadline, versusOf } = v;
 
 test("versus block is read, or null", () => {
   assert.equal(versusOf({}), null);
@@ -40,4 +42,10 @@ test("big screen headline and bars", () => {
   assert.equal(barFill(-5, 20000), 0);
   assert.equal(barFill(30000, 20000), 1);
   assert.equal(barFill(1, 0), 0);
+});
+
+test("a runner without a seat is the bot", () => {
+  const runners = [{ id: "p1" }, { id: "p2" }];
+  assert.deepEqual(withBotNames({ p1: "Ana" }, runners, ["p1"]), { p1: "Ana", p2: "Bot" });
+  assert.deepEqual(withBotNames({ p1: "Ana", p2: "Bo" }, runners, ["p1", "p2"]), { p1: "Ana", p2: "Bo" });
 });
