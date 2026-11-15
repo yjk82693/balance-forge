@@ -2,7 +2,7 @@ import type { GameData, TentacleRules } from '../../contracts/types.ts';
 import { deepFreeze } from '../../sim/index.ts';
 
 // Original event rules: a side-scrolling course of six sections with pits, low bars, walls and overhead anchor posts.
-// Section 4 is the designed flaw: three walls and anchors 6,000 units apart, so the wire almost never reaches one.
+// Section 4 is the designed flaw: three walls and anchors 5,800 units apart, so the wire almost never reaches one.
 export const rules: TentacleRules = {
   viewWidth: 16000,
   leadIn: 2000,
@@ -14,9 +14,9 @@ export const rules: TentacleRules = {
   sections: [
     { length: 30000, pits: 2, lowBars: 1, walls: 0, anchorSpacing: 4000, runSpeed: 30 },
     { length: 30000, pits: 2, lowBars: 2, walls: 1, anchorSpacing: 4000, runSpeed: 30 },
-    { length: 30000, pits: 3, lowBars: 2, walls: 1, anchorSpacing: 4500, runSpeed: 32 },
-    { length: 30000, pits: 2, lowBars: 1, walls: 3, anchorSpacing: 6000, runSpeed: 32,
-      flaw: 'designed flaw: three walls and anchors 6,000 units apart, out of reach of the wire' },
+    { length: 30000, pits: 3, lowBars: 2, walls: 1, anchorSpacing: 4000, runSpeed: 32 },
+    { length: 30000, pits: 2, lowBars: 1, walls: 3, anchorSpacing: 5800, runSpeed: 32,
+      flaw: 'designed flaw: three walls and anchors 5,800 units apart, out of reach of the wire' },
     { length: 30000, pits: 3, lowBars: 3, walls: 2, anchorSpacing: 4500, runSpeed: 34 },
     { length: 30000, pits: 3, lowBars: 3, walls: 2, anchorSpacing: 4500, runSpeed: 36 }
   ]

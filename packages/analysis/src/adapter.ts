@@ -24,14 +24,14 @@ function cardsProposal(report, context) {
 /**
  * Tentacle Run, offline: the flagged section gets its anchors closer together (the wire reaches them), sized by how far
  * below its target it is, so the stand-in lands near the target band instead of past it (measured on the designed
- * flaw: anchorSpacing 6000 -> 4000 takes about 5% to about 70%). A stand-in for a model, not a balance method.
+ * flaw: anchorSpacing 5800 -> 3800 takes about 5% to about 65%). A stand-in for a model, not a balance method.
  */
 function wavesProposal(report, context) {
   const flagged = context.flaggedWave;
   const index = (flagged?.wave ?? 1) - 1;
   const section = context.rootData.gameRules.sections[index];
   const gap = flagged ? flagged.target - flagged.clearRate : 0.5;
-  const factor = gap > 0.4 ? 0.7 : gap > 0.2 ? 0.8 : 0.9;
+  const factor = gap > 0.4 ? 0.65 : gap > 0.2 ? 0.8 : 0.9;
   const replacements = [{ path: `/gameRules/sections/${index}/anchorSpacing`,
     value: Math.max(1500, Math.round(section.anchorSpacing * factor)) }];
   return { baseDataHash: report.dataHash, replacements,

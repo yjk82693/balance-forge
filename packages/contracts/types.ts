@@ -259,7 +259,7 @@ export type Recording = { matchId: string; seed: number; config: MatchConfig; fr
 // grows UP with the ground at y = 0 (a pit is a gap in the ground). Sepia auto-runs right at the section's
 // runSpeed. The only
 // input is the action "control" { jump: 0 | 1, slide: 0 | 1 } (held flags; the game keeps the last one until a new
-// one arrives). Tap jump (< tapTicks) = jump; keep it held in the air near an anchor = attach the wire and swing
+// one arrives). First jump press = jump; a second press in the air = fire the hook at the nearest anchor and swing
 // (a pendulum); release = let go with the momentum. Slide held on the ground = slide. See
 // packages/games/tentacle/SPEC.md.
 export type TentacleSection = {
