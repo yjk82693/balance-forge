@@ -7,6 +7,8 @@ import { botRows, humanRows } from "../lib/groups";
 import { headlineFor, outliersFirst, pickTargetDimension } from "../lib/dashboardData";
 import { loadDesigner } from "../lib/designer";
 import { IS_STATIC } from "../lib/staticMode";
+import { useLiveHumans } from "../lib/liveHumans";
+import { useDashGame } from "../lib/dashGame";
 import type { Matchup } from "../lib/matchup";
 import type { ResultFacts } from "../lib/resultCard";
 import type { ReplaySource } from "../lib/replaySource";
@@ -230,7 +232,9 @@ export function DashboardView({ ctx }: { ctx: DashCtx }) {
   const { run, facts } = ctx;
   const report = run ? (ctx.showPatched && run.patched ? run.patched : run.baseline) : null;
   const bots = report ? botRows(report.rows) : [];
-  const humans = report ? humanRows(report.rows) : [];
+  // Human players as they are now; the report's own rows (taken at the last Run) if the live ones are not there.
+  const liveHumans = useLiveHumans(useDashGame(), !ctx.mock && !IS_STATIC);
+  const humans = liveHumans ?? (report ? humanRows(report.rows) : []);
   const stats = bots.map(rowStats);
   const shown = stats.find((s) => s.row.dimension === pickTargetDimension(stats));
   const trend = shown && shown.matchup.b ? <TrendSection a={shown.matchup.a} b={shown.matchup.b} /> : null;
