@@ -473,8 +473,10 @@ export class RoomServer {
       }];
     }
     const solo = gameId === 'tentacle_run';
-    if (seats.length !== (solo ? 1 : 2)) throw Error('ILLEGAL_ACTION');
-    if (solo) { // the game's one seat is always p1
+    const versus = solo && options.versus === true; // two phones race one course, both Sepia, seats stay p1/p2
+    if (seats.length !== (solo && !versus ? 1 : 2)) throw Error('ILLEGAL_ACTION');
+    if (versus) for (const s of seats) s.hero = 'sepia';
+    else if (solo) { // the game's one seat is always p1
       for (const session of this.sessions) if (session.seat === seats[0].seat) session.seat = 'p1';
       seats[0].seat = 'p1';
       seats[0].hero = 'sepia';

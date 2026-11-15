@@ -46,8 +46,11 @@ N 0..5; bounds are listed in `packages/contracts/semantics.ts` and the analysis 
 `room.join` accepts a second phone). The match config has two players. Both run the same course (generated from the
 match seed) in their own runner state and never interact; each seat sends the same `control {jump, slide}` action.
 `state.view` for a seat is that runner's own view (its camera, player, obstacles and anchors, section) plus
-`versus: { you, opponent: { id, x, state, alive }, runners: [{ id, x, state, alive, section }, ...], leader }`; the
-`display` viewer gets the leader's view with `versus.you = null` and both runners listed. The first death ends the match
+`versus: { you, opponent: { id, x, state, alive }, runners: [{ id, x, y, vx, vy, state, height,
+wire: null | { anchorId, anchorX, anchorY, length }, alive, section }, ...], leader }` (everything needed to draw each
+runner on one shared screen); the
+`display` viewer gets the leader's view (obstacles and anchors from the trailing runner minus 1000 up to the camera
+window) with `versus.you = null` and both runners listed. The first death ends the match
 (`outcome.reason` `opponent_down`, `winners` = the survivor); if both die on the same tick the one further right wins,
 and an exact tie is a draw (`draw`, no winners); reaching the finish first wins (`finish`). Statistics per player:
 `distance` (x reached) and `section` (the section reached), plus the usual per-section ids.

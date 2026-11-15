@@ -31,7 +31,7 @@ export const describe = () => ({
   titleKey: 'game.tentacle_run',
   mode: 'realtime',
   minPlayers: 1,
-  maxPlayers: 1,
+  maxPlayers: 2, // 2 = a versus match (two seats, one shared course)
   actions: structuredClone(actions)
 });
 export const makeConfig = (data: GameData, seed = 1, players: string[] = [SEAT], maxTicks = 7200): MatchConfig => ({
@@ -111,6 +111,12 @@ function buildCourse(state: State, rules: TentacleRules) {
   return { obstacles, anchors, bounds, finishX: start };
 }
 
+const PLAYER_FIELDS = ['x', 'y', 'vx', 'vy', 'state', 'height', 'jumpHeldTicks', 'airTicks', 'jumpBuffer', 'jumped',
+  'wire'];
+const newPlayer = (rules: TentacleRules) => ({ x: 0, y: 0, vx: rules.sections[0].runSpeed, vy: 0, state: 'running',
+  height: rules.player.height, jumpHeldTicks: 0, airTicks: 0, jumpBuffer: 0, jumped: false, wire: null });
+const playerOf = (runner: any) => Object.fromEntries(PLAYER_FIELDS.map(key => [key, structuredClone(runner[key])]));
+
 export function initial(config: MatchConfig, data: GameData): State {
   validateConfig(config, data, describe(), simVersion);
   pinData(data);
@@ -121,11 +127,12 @@ export function initial(config: MatchConfig, data: GameData): State {
     turnId: 0,
     payload: {
       config: structuredClone(config),
-      input: { jump: 0, slide: 0 },
-      player: { x: 0, y: 0, vx: rules.sections[0].runSpeed, vy: 0, state: 'running', height: rules.player.height,
-        jumpHeldTicks: 0, airTicks: 0, jumpBuffer: 0, jumped: false, wire: null },
+      ...(config.players.length === 2 ? { // versus: one runner per seat, the same course
+        runners: config.players.map(id => ({ id, ...newPlayer(rules), input: { jump: 0, slide: 0 }, alive: true }))
+      } : { input: { jump: 0, slide: 0 }, player: newPlayer(rules) }),
       outcome: { status: 'running', winners: [], reason: 'in_progress' },
-      statistics: emptyStatistics([SEAT], statNames())
+      statistics: emptyStatistics(config.players, config.players.length === 2 ?
+        [...statNames(), 'distance', 'section'] : statNames())
     }
   };
   Object.assign(state.payload, buildCourse(state, rules));
@@ -140,10 +147,19 @@ const sectionAt = (bounds: Array<{ start: number; end: number }>, x: number): nu
 
 export const observationCheck = { every: 30 };
 export function observe(state: State, viewerId: string): Observation {
-  const p = state.payload;
-  const cameraX = Math.max(0, p.player.x - 4000), width = 16000;
-  const near = (o: { x: number; w?: number }) => o.x + (o.w ?? 0) >= cameraX - 1000 && o.x <= cameraX + width + 1000;
-  const index = sectionAt(p.bounds, p.player.x);
+  const p = state.payload, width = 16000;
+  const versus = Array.isArray(p.runners);
+  // the runner this view follows: the seat's own, or (display and others) the leader
+  const leader = versus ? (p.runners[1].x > p.runners[0].x ? p.runners[1] : p.runners[0]) : null;
+  const mine = versus ? (p.runners.find((r: any) => r.id === viewerId) ?? leader) : p.player;
+  const you = versus && p.runners.some((r: any) => r.id === viewerId) ? viewerId : null;
+  const cameraX = Math.max(0, mine.x - 4000);
+  // the display shows both runners: its window reaches back to the one who is behind
+  const lowX = versus && !you ? Math.min(...p.runners.map((r: any) => r.x)) - 1000 : cameraX - 1000;
+  const near = (o: { x: number; w?: number }) => o.x + (o.w ?? 0) >= lowX && o.x <= cameraX + width + 1000;
+  const index = sectionAt(p.bounds, mine.x);
+  const runnerView = (r: any) => ({ id: r.id, x: r.x, y: r.y, vx: r.vx, vy: r.vy, state: r.state, height: r.height,
+    wire: structuredClone(r.wire), alive: r.alive, section: sectionAt(p.bounds, r.x) + 1 });
   const view = {
     tick: state.tick,
     viewerId,
@@ -155,11 +171,15 @@ export function observe(state: State, viewerId: string): Observation {
       cameraX,
       viewWidth: width,
       finishX: p.finishX,
-      player: structuredClone(p.player),
+      player: versus ? playerOf(mine) : structuredClone(p.player),
       obstacles: p.obstacles.filter(near).map(o => ({ ...o })),
       anchors: p.anchors.filter(near).map(a => ({ ...a })),
-      shark: index === 5 ? { x: Math.max(0, p.player.x - 5000) } : null,
-      outcome: structuredClone(p.outcome)
+      shark: index === 5 ? { x: Math.max(0, mine.x - 5000) } : null,
+      outcome: structuredClone(p.outcome),
+      ...(versus ? { versus: { you,
+        opponent: you ? (({ id, x, state: st, alive }) => ({ id, x, state: st, alive }))(p.runners.find((r: any) =>
+          r.id !== you)) : null,
+        runners: p.runners.map(runnerView), leader: leader.id } } : {})
     }
   };
   // Checking the schema costs more than the rest of a tick, so a view is validated every `observationCheck.every`
@@ -173,34 +193,21 @@ export function observe(state: State, viewerId: string): Observation {
 
 export function legalActions(view: Observation): ActionSpec[] {
   const p = view.payload;
-  if (view.viewerId !== SEAT || p.outcome.status !== 'running') return [];
+  const seated = p.versus ? p.versus.you !== null : view.viewerId === SEAT;
+  if (!seated || p.outcome.status !== 'running') return [];
   return [structuredClone(actions[0])];
 }
 export const outcome = (state: State): Outcome => structuredClone(state.payload.outcome);
 export const statistics = (state: State): Statistics => structuredClone(state.payload.statistics);
 
-export function step(state: State, frame: InputFrame, data: GameData): StepResult {
-  assertPinned(state, data);
-  if (state.payload.outcome.status !== 'running') throw Error('ILLEGAL_ACTION');
-  const rules = data.gameRules as TentacleRules;
-  validateFrame(state, frame, state.payload.config.players, actions, a => a.playerId === SEAT, true);
-  if (frame.systemInputs.length) throw Error('ILLEGAL_ACTION');
-  const next = structuredClone(state), q = next.payload, tick = frame.tick;
-  next.tick = tick;
-  const events: StepResult['events'] = [];
-  const event = (kind: string, payload: Record<string, any>) => events.push({ eventId: `${tick}:${events.length}`,
-    audience: [], kind, payload });
-  const mine = q.statistics.players[0];
-  const stat = (id: string) => mine.actions.find(a => a.actionId === id);
-  const ph = rules.physics, p = q.player;
-
-  // 1. the control input (the last one stays until a new one arrives)
-  for (const a of frame.actions) {
-    q.input = { jump: a.params.jump, slide: a.params.slide };
-    stat('control').uses++;
-    stat('control').opportunities++;
-  }
-  const jump = q.input.jump === 1, slide = q.input.slide === 1;
+/**
+ * One runner for one tick: movement (running, jumping, sliding or swinging), then collisions. `p` is the runner's
+ * player state, `input` its held control. Returns '' while alive, else the death reason ('pit' or 'obstacle').
+ */
+function advanceRunner(q: any, p: any, input: { jump: number; slide: number }, rules: TentacleRules, tick: number,
+  event: (kind: string, payload: Record<string, any>) => unknown): string {
+  const ph = rules.physics;
+  const jump = input.jump === 1, slide = input.slide === 1;
   p.jumpHeldTicks = jump ? p.jumpHeldTicks + 1 : 0;
   const index = sectionAt(q.bounds, p.x);
   const speed = rules.sections[index].runSpeed;
@@ -321,6 +328,93 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
       break;
     }
   }
+  return died;
+}
+
+/**
+ * A versus tick: both runners advance on the shared course and never interact. The first death ends the match (the
+ * survivor wins); both dying on the same tick: the one further right wins, an exact tie is a draw. Reaching the finish
+ * first wins; at the time limit the one further right wins (a tie is a draw).
+ */
+function stepVersus(state: State, next: State, frame: InputFrame, rules: TentacleRules, event: any, events: any[]) {
+  const q = next.payload, tick = frame.tick;
+  const stats = (id: string) => q.statistics.players.find(pl => pl.playerId === id);
+  for (const a of frame.actions) {
+    q.runners.find((r: any) => r.id === a.playerId).input = { jump: a.params.jump, slide: a.params.slide };
+    const control = stats(a.playerId).actions.find(x => x.actionId === 'control');
+    control.uses++;
+    control.opportunities++;
+  }
+  const died: Array<[any, string]> = [];
+  for (const r of q.runners) {
+    if (!r.alive) continue;
+    const reason = advanceRunner(q, r, r.input, rules, tick, event);
+    if (reason) {
+      r.alive = false;
+      died.push([r, reason]);
+      event('runner.down', { id: r.id, reason });
+    }
+  }
+  for (const r of q.runners) {
+    const own = stats(r.id).actions, stat = (id: string) => own.find(x => x.actionId === id);
+    for (let i = 0; i < 6; i++) {
+      if (r.x >= q.bounds[i].start) {
+        stat(`wave:${i + 1}:reached`).uses = 1;
+        stat(`wave:${i + 1}:cleared`).opportunities = 1;
+      }
+      if (r.x >= q.bounds[i].end) stat(`wave:${i + 1}:cleared`).uses = 1;
+    }
+    stat('distance').uses = Math.max(0, Math.trunc(r.x));
+    stat('section').uses = sectionAt(q.bounds, r.x) + 1;
+  }
+  const [a, b] = q.runners;
+  const further = a.x === b.x ? null : a.x > b.x ? a : b; // null on an exact tie
+  const decide = (winner: any, reason: string) => ({ status: 'win', winners: [winner.id], reason });
+  if (died.length === 2) {
+    q.outcome = further ? decide(further, 'opponent_down') : { status: 'draw', winners: [], reason: 'draw' };
+  } else if (died.length === 1) {
+    q.outcome = decide(q.runners.find((r: any) => r.alive), 'opponent_down');
+  } else if (q.runners.some((r: any) => r.x >= q.finishX)) {
+    const finishers = q.runners.filter((r: any) => r.x >= q.finishX);
+    q.outcome = decide(finishers.length === 2 ? (further ?? a) : finishers[0], 'finish');
+  } else if (tick >= q.config.maxTicks) {
+    q.outcome = further ? decide(further, 'max_ticks') : { status: 'draw', winners: [], reason: 'draw' };
+  }
+  q.statistics.durationTicks = tick;
+  if (q.outcome.status !== 'running') {
+    for (const pl of q.statistics.players) {
+      pl.wins = q.outcome.winners.includes(pl.playerId) ? 1 : 0;
+      pl.draws = q.outcome.status === 'draw' ? 1 : 0;
+    }
+  }
+  return { state: next, events, outcome: outcome(next), statisticsDelta: statisticsDelta(state.payload.statistics,
+    q.statistics) };
+}
+
+export function step(state: State, frame: InputFrame, data: GameData): StepResult {
+  assertPinned(state, data);
+  if (state.payload.outcome.status !== 'running') throw Error('ILLEGAL_ACTION');
+  const rules = data.gameRules as TentacleRules;
+  const players = state.payload.config.players;
+  validateFrame(state, frame, players, actions, a => players.includes(a.playerId), true);
+  if (frame.systemInputs.length) throw Error('ILLEGAL_ACTION');
+  const next = structuredClone(state), q = next.payload, tick = frame.tick;
+  next.tick = tick;
+  const events: StepResult['events'] = [];
+  const event = (kind: string, payload: Record<string, any>) => events.push({ eventId: `${tick}:${events.length}`,
+    audience: [], kind, payload });
+  if (Array.isArray(q.runners)) return stepVersus(state, next, frame, rules, event, events);
+  const mine = q.statistics.players[0];
+  const stat = (id: string) => mine.actions.find(a => a.actionId === id);
+  const p = q.player;
+
+  // 1. the control input (the last one stays until a new one arrives)
+  for (const a of frame.actions) {
+    q.input = { jump: a.params.jump, slide: a.params.slide };
+    stat('control').uses++;
+    stat('control').opportunities++;
+  }
+  let died = advanceRunner(q, p, q.input, rules, tick, event);
 
   // 4. sections and the outcome
   const here = sectionAt(q.bounds, p.x);

@@ -311,7 +311,9 @@ export type TentacleObservationPayload = {
 export type TentacleVersus = {
   you: string | null; // 'p1' | 'p2' for a seat, null for the display
   opponent: null | { id: string; x: number; state: TentaclePlayerState; alive: boolean }; // null for the display
-  runners: Array<{ id: string; x: number; state: TentaclePlayerState; alive: boolean; section: number }>; //
-// both, p1 first
+  // both, p1 first; everything needed to draw each runner (the laptop shows both on one screen)
+  runners: Array<{ id: string; x: number; y: number; vx: number; vy: number; state: TentaclePlayerState;
+    height: number; wire: null | { anchorId: string; anchorX: number; anchorY: number; length: number };
+    alive: boolean; section: number }>;
   leader: string; // the id of the runner further right (p1 on a tie)
 };

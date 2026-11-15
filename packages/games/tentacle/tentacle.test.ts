@@ -45,7 +45,7 @@ test('the data shape: six sections, one flawed section, a generated course', () 
     .every(a => chasms.some(c => a.x >= c.x - 800 && a.x < c.x + c.w)));
   assert.ok(state.payload.obstacles.every(o => o.x + o.w < state.payload.finishX));
   assert.equal(state.payload.finishX, rules.leadIn + 6 * 30000);
-  assert.equal(game.describe().maxPlayers, 1);
+  assert.equal(game.describe().maxPlayers, 2); // 2 = a versus match
 });
 
 test('a run is deterministic: same seed same final state; another seed another course', () => {

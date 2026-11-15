@@ -16,6 +16,15 @@ const wire = { anyOf: [{ type: 'null' }, object({ anchorId: text(), anchorX: coo
 const playerState = { enum: ['running', 'jumping', 'sliding', 'swinging'] };
 const player = object({ x: coord, y: coord, vx: int(-1000, 1000), vy: int(-1000, 1000), state: playerState,
   height: int(1, 5000), jumpHeldTicks: int(), airTicks: int(), jumpBuffer: int(), jumped: { type: 'boolean' }, wire });
+const runnerView = object({ id: text(), x: coord, y: coord, vx: int(-1000, 1000), vy: int(-1000, 1000),
+  state: playerState, height: int(1, 5000), wire, alive: { type: 'boolean' }, section: int(1, 6) });
+// a runner of a versus match: the player fields plus its id, its held input and whether it is still running
+const runner = object({ id: text(), x: coord, y: coord, vx: int(-1000, 1000), vy: int(-1000, 1000), state: playerState,
+  height: int(1, 5000), jumpHeldTicks: int(), airTicks: int(), jumpBuffer: int(), jumped: { type: 'boolean' }, wire,
+  input: object({ jump: int(0, 1), slide: int(0, 1) }), alive: { type: 'boolean' } });
+const versus = object({ you: { anyOf: [{ type: 'null' }, text()] },
+  opponent: { anyOf: [{ type: 'null' }, object({ id: text(), x: coord, state: playerState,
+    alive: { type: 'boolean' } })] }, runners: array(runnerView, 2, 2), leader: text() });
 export const schemas = {
   ...Object.fromEntries(actions.map(a => [`action:${a.actionId}`, a.paramsSchema])),
   rules: object({
@@ -33,6 +42,7 @@ export const schemas = {
   state: object({
     config: ref('MatchConfig'),
     input: object({ jump: int(0, 1), slide: int(0, 1) }),
+    runners: array(runner, 2, 2),
     finishX: int(),
     bounds: array(object({ start: int(), end: int() }), 6, 6),
     obstacles: array(obstacle, 200),
@@ -40,7 +50,7 @@ export const schemas = {
     player,
     outcome: ref('Outcome'),
     statistics: ref('Statistics')
-  }),
+  }, ['config', 'finishX', 'bounds', 'obstacles', 'anchors', 'outcome', 'statistics']), // solo: input, player
   observation: object({
     section: int(1, 6),
     sectionCount: { const: 6 },
@@ -50,6 +60,8 @@ export const schemas = {
     obstacles: array(obstacle, 200),
     anchors: array(anchor, 400),
     shark: { anyOf: [{ type: 'null' }, object({ x: coord })] },
-    outcome: ref('Outcome')
-  })
+    outcome: ref('Outcome'),
+    versus
+  }, ['section', 'sectionCount', 'sectionStartX', 'sectionEndX', 'cameraX', 'viewWidth', 'finishX', 'player',
+    'obstacles', 'anchors', 'shark', 'outcome'])
 };
