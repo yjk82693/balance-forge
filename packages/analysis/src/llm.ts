@@ -99,6 +99,16 @@ function cardContext(rootData, diagnosis) {
   return lines;
 }
 
+/** The instruction for the flagged wave: the target band is explicit, and so is the rule against overshooting. */
+function flaggedAdvice(flagged) {
+  const low = Math.round((flagged.target - 0.05) * 100), high = Math.round((flagged.target + 0.05) * 100);
+  return `The flagged wave is ${JSON.stringify(flagged)}. Aim for a clear rate of ${low}-${high}% on wave `
+    + `${flagged.wave} (target ${Math.round(flagged.target * 100)}% plus or minus 5 points): do not make it trivial, `
+    + 'a patch that lands above that band is rejected. Touch only the flagged wave unless necessary; lower '
+    + 'enemyDamage, a longer fireIntervalTicks, fewer sentries, drones or walkers all make it easier. Reference '
+    + 'point measured on a similar wave: damage x0.75 with a fire interval x2 moved 15% to about 63%.';
+}
+
 /** Tentacle Run: the wave table, the flagged wave and the wave numbers a patch may change. */
 function wavesContext(rootData, context) {
   const waves = rootData.gameRules.waves.map((w, index) => ({ wave: index + 1, index, ...w }));
@@ -109,9 +119,7 @@ function wavesContext(rootData, context) {
       + 'the share of runs that cleared it given they reached it, target is the designer\'s intended clear rate. '
       + 'Wave data (index = the N in the paths): ' + JSON.stringify(waves) + '.',
     ...(table ? ['Per-wave results of the scripted bot: ' + JSON.stringify(table)] : []),
-    ...(context.flaggedWave ? ['The flagged wave is ' + JSON.stringify(context.flaggedWave) + ': make it easier '
-      + 'toward its target (lower enemyDamage, a longer fireIntervalTicks, fewer sentries, drones or walkers) and '
-      + 'change little else.'] : []),
+    ...(context.flaggedWave ? [flaggedAdvice(context.flaggedWave)] : []),
     'Allowed: /gameRules/waves/<0..4>/(walkers 0..12 | drones 0..10 | sentries 0..8 | enemySpeed 5..60 | '
       + 'enemyDamage 1..60 | fireIntervalTicks 15..300), integers.'];
 }
