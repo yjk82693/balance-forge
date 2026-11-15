@@ -62,6 +62,9 @@ export function RunnerCanvas({
         scale: { mode: Phaser.Scale.NONE },
         scene: RunnerScene,
         audio: { noAudio: true },
+        // Light on the CPU: the runner changes with the server's snapshots, so 30 frames a second is plenty
+        fps: { target: 30, min: 10, forceSetTimeOut: false, smoothStep: false },
+        render: { powerPreference: "low-power", antialias: false },
         banner: false,
         callbacks: {
           preBoot: (gm) => {

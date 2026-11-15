@@ -736,3 +736,4 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Race a bot: with Versus on, one seat can start against the bot (`versus:true, bot:true`); a runner without a seat is named Bot (blue). Versus also works in PC mode: this tab takes one seat, a phone joins by the QR/code for the other.
 - Versus end: 1 s hold before the card (laptop and phone), a small cause line ("Bo fell", "You crossed the finish first", ...). The engine reason has no pit/wall split, so it says "fell". The phone loads no scene art: only the two button art files.
 - Versus: the phone wears the player colour with a "You are RED/BLUE · name" banner; the laptop camera frames both runners while the gap fits 80% of the view, else follows the leader (eased) with the arrow.
+- Runner Phaser game capped at 30 fps (smoothStep off, low-power GPU hint, no antialias); the scene already redraws only when a new observation arrived (dirty flag), and has no interpolation.
