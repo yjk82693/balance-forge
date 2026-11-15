@@ -794,3 +794,15 @@ without Tiger Data.
 
 Human play uses a gentler bot (scripted-0.2.1-gentle); balance measurements never use it. A room match against the bot
 records `botPolicyVersion` in its human MatchResult, and the analysis keeps such matches out of the bot rows.
+
+### Sepia Tentacle Run (`tentacle_run`)
+The third game: solo, one seat (`p1`, always Sepia). `room.create`, `match.start { gameId: 'tentacle_run' }` and the
+HTTP routes accept the new gameId. `playableHeroes` is `["sepia"]` and any hero sent in `room.join` or `room.hero` is
+accepted and played as Sepia. `match.start` needs exactly one seated phone. Actions: `move {moveX, moveY}`, `latch
+{aimX, aimY}`, `whip {aimX, aimY}` (see packages/games/tentacle/SPEC.md); the stick is held like Hero Arena's.
+`POST /v1/playtest/full {gameId: 'tentacle_run', runs?: 100, holdoutRuns?}` runs the scripted bot `tentacle-bot-0.1.0`
+for `runs` runs, builds the per-wave table (reach rate, clear rate given reached with a Wilson interval, deaths), flags
+the wave whose whole interval sits below its target minus 10 points (targets 70, 70, 65, 65, 60 and 50% for the boss),
+asks the proposer for a patch on `/gameRules/waves/N/...`, validates it, runs fresh holdout seeds and judges each
+flagged wave. The body shape is in packages/games/tentacle/example-full.json (a recorded run). Patches are listed in
+`/v1/versions/tentacle_run` like the other games.

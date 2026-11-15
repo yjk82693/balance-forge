@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { runBatch, pairedJobs, rosterJobs } from '../runner/index.ts';
+import { runBatch, pairedJobs, rosterJobs, soloJobs } from '../runner/index.ts';
 import { games, scriptedVersionOf } from '../runner/match.ts';
 import { learnedBot } from '../runner/learn/load.ts';
 import { applyPatch, hash, validateSchema } from '../../packages/contracts/index.ts';
@@ -19,7 +19,7 @@ export class PipelineError extends Error {
   }
 }
 const gameId = {
-  enum: ['hero_arena', 'hero_cards']
+  enum: ['hero_arena', 'hero_cards', 'tentacle_run']
 };
 const digest = {
   type: 'string',
@@ -45,6 +45,8 @@ export const fullRequest = object({
   },
   pairs: integer(1, 1000),
   holdoutPairs: integer(1, 1000),
+  runs: integer(1, 1000), // Tentacle Run: the number of runs (default 100)
+  holdoutRuns: integer(1, 1000),
   heroes: array(text(64), 2, 2),
   diagnose: {
     type: 'boolean'
@@ -107,7 +109,8 @@ export async function matchBatch(server: RoomServer, {
   }, (_, index) => index + 1);
   const dataHash = server.storage.addVersion(data);
   const policy = botPolicy === 'learned' ? { botPolicy } : {};
-  const jobs = matchups ? matchups.flatMap(matchup => pairedJobs({
+  const jobs = gameId === 'tentacle_run' ? soloJobs({ gameId, data, seeds }) : matchups ?
+    matchups.flatMap(matchup => pairedJobs({
     gameId, data, seeds, heroes: matchup.split(' vs '), ...policy
   })) : (roster ? rosterJobs : pairedJobs)({ gameId, data, seeds, ...(heroes ? { heroes } : {}), ...policy });
   batchId ??= runId;
@@ -168,6 +171,7 @@ export async function runPlaytest(server, body) {
 export async function fullPlaytest(server, body) {
   const start = performance.now();
   validateSchema(fullRequest, body);
+  if (body.gameId === 'tentacle_run') return fullTentacle(server, body, start);
   let pipeline;
   try {
     pipeline = await import('../../packages/analysis/pipeline/full.ts');
@@ -338,4 +342,45 @@ function recordFullVersion(server, baseData, result) {
       matchup: row.dimension, before: summary(row), after: summary(after)
     } : null, verdict: result.verdict, approved: false
   });
+}
+
+// Tentacle Run: baseline runs -> per-wave table -> flagged wave -> proposal -> holdout runs -> per-wave verdict.
+async function fullTentacle(server: RoomServer, body: any, start: number) {
+  const { runFullWaves } = await import('../../packages/analysis/pipeline/full-waves.ts');
+  const { createAdapter } = await import('../../packages/analysis/src/adapters.ts');
+  const runId = randomUUID(), runs = body.runs ?? 100, holdoutRuns = body.holdoutRuns ?? runs;
+  const seeds = Array.from({ length: runs }, (_, index) => index + 1);
+  const holdoutSeeds = Array.from({ length: holdoutRuns }, (_, index) => 1000001 + index);
+  const { data } = server.storage.get(body.gameId, body.dataHash);
+  const policy = resolveBotPolicy(body.gameId, body);
+  const adapter = createAdapter(server.analysisEnv.GEMINI_API_KEY ? 'gemini' : 'fake', server.analysisEnv);
+  const baseline = await matchBatch(server, { gameId: body.gameId, data, seeds, phase: 'baseline', runId });
+  const result: any = await runFullWaves({
+    baselineResults: baseline.results, baseData: data, rootData: structuredClone(games[body.gameId].data), adapter,
+    holdoutSeeds, hashData: hash, botPolicyVersion: policy.botPolicyVersion, simVersion: games[body.gameId].simVersion,
+    seedSetId: `runs-1-${runs}`, holdoutSeedSetId: `holdout-1000001-${1000000 + holdoutRuns}`,
+    elapsedMs: Math.round(baseline.metrics.elapsedMs), createdAt: new Date().toISOString(),
+    runHoldout: async (patched, holdoutList) => (await matchBatch(server, { gameId: body.gameId, data: patched,
+      seeds: holdoutList, phase: 'holdout', runId })).results });
+  if (!result.ok) throw new PipelineError(result.error);
+  const value = result.value;
+  if (value.patchedDataHash && value.validation.ok) {
+    const { data: patched } = server.storage.get(body.gameId, value.patchedDataHash);
+    const target = value.verdict.targets?.[0];
+    server.storage.recordVersion({ dataHash: value.patchedDataHash, parentHash: hash(data), gameId: body.gameId,
+      createdAt: new Date().toISOString(), origin: value.proposal.origin,
+      changes: value.proposal.changes.length ? value.proposal.changes : patchChanges(data, patched,
+        { replacements: value.proposal.replacements }),
+      rationale: value.proposal.rationale, approved: false,
+      target: target ? { matchup: target.matchup, before: target.before, after: target.after } : null,
+      verdict: { verdict: value.verdict.verdict, reasons: value.verdict.reasons,
+        targets: (value.verdict.targets ?? []).map(({ matchup, before, after, outcome }) =>
+          ({ matchup, before, after, outcome })) } });
+  }
+  const output = { ...value, runId, gameId: body.gameId, botPolicy: policy.botPolicy,
+    elapsedMs: Math.round(performance.now() - start) };
+  const folder = join(server.storage.directory, 'playtests');
+  writeJson(join(folder, `${runId}-full.json`), output);
+  server.sinks.emit('report', output);
+  return output;
 }

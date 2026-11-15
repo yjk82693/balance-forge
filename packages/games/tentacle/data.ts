@@ -13,13 +13,13 @@ export const rules: TentacleRules = {
   enemies: { walker: { health: 40 }, drone: { health: 30 }, sentry: { health: 60 } },
   waves: [
     { walkers: 3, drones: 0, sentries: 0, enemySpeed: 20, enemyDamage: 8, fireIntervalTicks: 120 },
-    { walkers: 3, drones: 2, sentries: 0, enemySpeed: 22, enemyDamage: 8, fireIntervalTicks: 110 },
-    { walkers: 4, drones: 2, sentries: 2, enemySpeed: 25, enemyDamage: 12, fireIntervalTicks: 100 },
+    { walkers: 4, drones: 3, sentries: 0, enemySpeed: 24, enemyDamage: 9, fireIntervalTicks: 100 },
+    { walkers: 5, drones: 3, sentries: 3, enemySpeed: 26, enemyDamage: 14, fireIntervalTicks: 90 },
     { walkers: 2, drones: 2, sentries: 5, enemySpeed: 26, enemyDamage: 40, fireIntervalTicks: 30,
       flaw: 'designed flaw: the sentries hit for 40 and fire every 30 ticks' },
     { walkers: 6, drones: 4, sentries: 3, enemySpeed: 30, enemyDamage: 12, fireIntervalTicks: 80 }
   ],
-  boss: { health: 400, speed: 22, contactDamage: 15, shotDamage: 8, fireIntervalTicks: 80, phases: 3 },
+  boss: { health: 320, speed: 22, contactDamage: 15, shotDamage: 8, fireIntervalTicks: 80, phases: 3 },
   betweenWavesTicks: 60,
   healOnClear: 20
 };

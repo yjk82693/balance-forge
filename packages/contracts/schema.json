@@ -1025,7 +1025,7 @@
             "properties": {
               "path": {
                 "type": "string",
-                "pattern": "^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power))$"
+                "pattern": "^/(tuning/damageScalePermille|moves/(0|[1-9][0-9]*)/power|characters/(0|[1-9][0-9]*)/(health|speed)|gameRules/cards/(0|[1-9][0-9]*)/(cost|power)|gameRules/waves/[0-4]/(walkers|drones|sentries|enemySpeed|enemyDamage|fireIntervalTicks))$"
               },
               "value": {
                 "type": "integer",

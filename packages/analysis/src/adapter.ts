@@ -21,6 +21,21 @@ function cardsProposal(report, context) {
     rationale: `Offline stand-in: ${change.why}.` };
 }
 
+/**
+ * Tentacle Run, offline: the flagged wave gets its enemy damage halved and its fire interval doubled (within the
+ * allowed bounds): a stand-in for a model, not a balance method.
+ */
+function wavesProposal(report, context) {
+  const flagged = context.flaggedWave;
+  const index = (flagged?.wave ?? 1) - 1;
+  const wave = context.rootData.gameRules.waves[index];
+  const replacements = [
+    { path: `/gameRules/waves/${index}/enemyDamage`, value: Math.max(1, Math.round(wave.enemyDamage / 2)) },
+    { path: `/gameRules/waves/${index}/fireIntervalTicks`, value: Math.min(300, wave.fireIntervalTicks * 2) }];
+  return { baseDataHash: report.dataHash, replacements,
+    rationale: `Offline stand-in: wave ${index + 1} is far below target; damage halved, fire interval doubled.` };
+}
+
 /** Returns a canned proposal (e.g. fixtures/patch_proposal.json). Deterministic, offline. */
 export class FakePatchAdapter {
   #proposal;
@@ -29,6 +44,7 @@ export class FakePatchAdapter {
   }
   async proposePatch(report, context: any = {}) {
     assertReport(report);
+    if (context.rootData?.gameRules?.waves) return wavesProposal(report, context);
     if (context.rootData?.gameRules?.cards) return cardsProposal(report, context);
     // Keep the pin honest: the proposal must be based on the report's data.
     return { ...structuredClone(this.#proposal), baseDataHash: report.dataHash };

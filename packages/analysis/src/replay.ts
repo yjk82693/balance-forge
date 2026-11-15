@@ -22,9 +22,13 @@ export function applyPatchToData(data, proposal, { hashData, rootData = data }: 
   for (const { path, value } of proposal.replacements) {
     const stat = /^\/characters\/(\d+)\/(health|speed)$/.exec(path);
     const card = /^\/gameRules\/cards\/(\d+)\/(cost|power)$/.exec(path);
+    const wave = /^\/gameRules\/waves\/(\d+)\/(\w+)$/.exec(path);
     if (path === '/tuning/damageScalePermille') {
       if (!out.tuning) fail('PATCH_PATH_MISSING', 'data has no tuning section');
       out.tuning.damageScalePermille = value;
+    } else if (wave) {
+      if (!out.gameRules?.waves?.[Number(wave[1])]) fail('PATCH_PATH_MISSING', `data has no wave ${wave[1]}`);
+      out.gameRules.waves[Number(wave[1])][wave[2]] = value;
     } else if (card) {
       if (!out.gameRules?.cards?.[Number(card[1])]) fail('PATCH_PATH_MISSING', `data has no card ${card[1]}`);
       out.gameRules.cards[Number(card[1])][card[2]] = value;

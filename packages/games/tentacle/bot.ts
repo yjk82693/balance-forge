@@ -64,7 +64,8 @@ export function chooseActions(view: Observation, seq: number, variant = 0): Acti
     for (const post of p.posts) {
       const dx = post.x - me.x, dy = post.y - me.y, d2 = dx * dx + dy * dy;
       if (d2 === 0 || d2 > 7000 * 7000) continue;
-      const sx = danger.shot.x + danger.shot.vx * danger.t - post.x, sy = danger.shot.y + danger.shot.vy * danger.t - post.y;
+      const sx = danger.shot.x + danger.shot.vx * danger.t - post.x;
+      const sy = danger.shot.y + danger.shot.vy * danger.t - post.y;
       const score = sx * sx + sy * sy;
       if (score > bestScore) {
         best = post;

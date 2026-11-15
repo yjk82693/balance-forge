@@ -107,6 +107,16 @@ function cardPatch(result: GameData, path: string, value: number): void {
   if (!card || value < low || value > high || (field === 'power' && card.kind === 'peek')) fail('PATCH_REJECTED');
   card[field] = value;
 }
+// Tentacle Run (contract v0.1.5): wave numbers, integers, absolute bounds.
+const WAVE_BOUNDS: Record<string, [number, number]> = { walkers: [0, 12], drones: [0, 10], sentries: [0, 8],
+  enemySpeed: [5, 60], enemyDamage: [1, 60], fireIntervalTicks: [15, 300] };
+function wavePatch(result: GameData, path: string, value: number): void {
+  const [, , , index, field] = path.split('/');
+  const wave = result.gameRules?.waves?.[Number(index)];
+  const bounds = WAVE_BOUNDS[field];
+  if (!wave || !bounds || value < bounds[0] || value > bounds[1]) fail('PATCH_REJECTED');
+  wave[field] = value;
+}
 export function applyPatch(data: GameData, proposal: PatchProposal, root: GameData = data): GameData {
   validate('PatchProposal', proposal);
   if (proposal.baseDataHash !== hash(data)) fail('PATCH_REJECTED');
@@ -121,6 +131,8 @@ export function applyPatch(data: GameData, proposal: PatchProposal, root: GameDa
     if (path === '/tuning/damageScalePermille') {
       if (value < 100 || value > 3000) fail('PATCH_REJECTED');
       result.tuning.damageScalePermille = value;
+    } else if (path.startsWith('/gameRules/waves/')) {
+      wavePatch(result, path, value);
     } else if (path.startsWith('/gameRules/cards/')) {
       cardPatch(result, path, value);
     } else if (path.startsWith('/characters/')) {
