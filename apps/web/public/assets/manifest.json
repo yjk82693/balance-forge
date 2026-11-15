@@ -756,6 +756,12 @@
       "role": "backgrounds"
     },
     {
+      "path": "assets/sepia_tentacle_run/backgrounds/runner_tile.webp",
+      "width": 960,
+      "height": 540,
+      "role": "backgrounds"
+    },
+    {
       "path": "assets/sepia_tentacle_run/ui/icon_tentacle.png",
       "width": 128,
       "height": 128,
