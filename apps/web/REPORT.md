@@ -738,3 +738,4 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Versus: the phone wears the player colour with a "You are RED/BLUE · name" banner; the laptop camera frames both runners while the gap fits 80% of the view, else follows the leader (eased) with the arrow.
 - Runner Phaser game capped at 30 fps (smoothStep off, low-power GPU hint, no antialias); the scene already redraws only when a new observation arrived (dirty flag), and has no interpolation.
 - The runner scene draws inside try/catch (one console.warn, the next frame draws again).
+- Dashboard human players are live: GET /v1/humans/<gameId> ({ rows, humanMatches }) on mount and on game change; the report's own human rows if the fetch fails. The server route is not part of this commit.
