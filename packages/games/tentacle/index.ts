@@ -280,6 +280,7 @@ function advanceRunner(q: any, p: any, input: { jump: number; slide: number }, r
       }
       if (best) {
         p.wire = { anchorId: best.id, anchorX: best.x, anchorY: best.y, length: Math.max(ph.wireMinLength, bestD) };
+        p.jumpBuffer = 0; // an earlier press that found nothing must not fire a phantom jump after the swing
         p.state = 'swinging';
         p.height = rules.player.height;
         event('wire.attach', { anchor: best.id });
