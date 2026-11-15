@@ -796,13 +796,31 @@ Human play uses a gentler bot (scripted-0.2.1-gentle); balance measurements neve
 records `botPolicyVersion` in its human MatchResult, and the analysis keeps such matches out of the bot rows.
 
 ### Sepia Tentacle Run (`tentacle_run`)
-The third game: solo, one seat (`p1`, always Sepia). `room.create`, `match.start { gameId: 'tentacle_run' }` and the
-HTTP routes accept the new gameId. `playableHeroes` is `["sepia"]` and any hero sent in `room.join` or `room.hero` is
-accepted and played as Sepia. `match.start` needs exactly one seated phone. Actions: `move {moveX, moveY}`, `latch
-{aimX, aimY}`, `whip {aimX, aimY}` (see packages/games/tentacle/SPEC.md); the stick is held like Hero Arena's.
-`POST /v1/playtest/full {gameId: 'tentacle_run', runs?: 100, holdoutRuns?}` runs the scripted bot `tentacle-bot-0.1.0`
-for `runs` runs, builds the per-wave table (reach rate, clear rate given reached with a Wilson interval, deaths), flags
-the wave whose whole interval sits below its target minus 10 points (targets 70, 70, 65, 65, 60 and 50% for the boss),
-asks the proposer for a patch on `/gameRules/waves/N/...`, validates it, runs fresh holdout seeds and judges each
-flagged wave. The body shape is in packages/games/tentacle/example-full.json (a recorded run). Patches are listed in
-`/v1/versions/tentacle_run` like the other games.
+The third game: a 2D side-scrolling wire runner for one player (seat `p1`, always Sepia). Sepia runs to the right on her
+own through six sections (the last is the Man-Shark chase) with pits, low bars, walls and overhead anchor posts.
+`room.create`, `match.start { gameId: 'tentacle_run' }` and the HTTP routes accept the gameId. `playableHeroes` is
+`["sepia"]`; any hero sent in `room.join` or `room.hero` is accepted and played as Sepia. `match.start` needs exactly
+one seated phone.
+
+Controls: one action, `control { jump: 0|1, slide: 0|1 }`, sent through `input.submit` whenever a button changes (the
+game keeps the last one). The first jump press jumps (a press up to 6 ticks after leaving the ground still jumps). A
+second press in the air fires the hook up and forward at the nearest anchor and Sepia swings on it while jump stays
+held; releasing lets go with the momentum. Pressing again in the air hooks again, and a press just before landing
+jumps on landing. Slide held on the ground slides under low bars. Pits need a jump, low bars a slide, walls the wire.
+Falling into a pit or hitting an obstacle ends the run; reaching the end of section 6 wins it.
+
+The view (`state.view` payload) carries the section, the camera, the visible obstacles and anchors, Sepia's state
+(`running`, `jumping`, `sliding`, `swinging`) with the wire anchor, and the shark in the last section; the shapes are
+in packages/games/tentacle/SPEC.md. Statistics per run: for each section 1 to 6 whether it was reached and cleared.
+
+`POST /v1/playtest/full {gameId: 'tentacle_run', runs?: 100, holdoutRuns?}` plays the scripted bot for `runs` runs and
+builds the per-section table (reach rate, clear rate given reached with a Wilson interval, deaths). A section is flagged
+when its whole interval sits below its target minus 10 points (targets 70, 70, 65, 65, 60 and 50% for the last). The
+proposer (Gemini through the server, or an offline stand-in) may change
+`/gameRules/sections/N/(pits|lowBars|walls|anchorSpacing|runSpeed)`; the patch is validated, run on fresh holdout seeds and
+judged against the target band (target plus or minus 5 points): "on target", "improved", "overshot" (too easy: not accepted), "unchanged" or "worse".
+Section 4 is the designed flaw: three walls and anchors 9,500 units apart, out of reach of the wire. In the recorded
+example (packages/games/tentacle/example-full.json, 100 runs per phase, offline stand-in) it is cleared by 6.8% of the
+runs that reach it against a target of 65%; the proposal "Section 4 · Anchor spacing 9500 → 6175" gives 55.7% on the
+holdout (44 of 79): on target, verdict accepted. The other sections of that run clear 95%, 83% and 92% (sections 1 to 3).
+Patches are listed in `/v1/versions/tentacle_run` like the other games.
