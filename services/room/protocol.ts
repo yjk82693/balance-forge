@@ -67,6 +67,9 @@ export const payloadSchemas = {
     maxTicks: integer(1, 1800),
     bot: {
       type: 'boolean'
+    },
+    versus: { // Tentacle Run 1v1: two seated phones, one shared course
+      type: 'boolean'
     }
   }, []),
   'match.reset': object({}),

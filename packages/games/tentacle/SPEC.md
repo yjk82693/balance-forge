@@ -40,3 +40,14 @@ them.)
 `TentacleRules`. `gameRules.sections[N] = { length, pits, lowBars, walls, anchorSpacing, runSpeed, flaw? }`.
 Patch paths (contract v0.1.5): `/gameRules/sections/N/(pits|lowBars|walls|anchorSpacing|runSpeed)`, integers,
 N 0..5; bounds are listed in `packages/contracts/semantics.ts` and the analysis validator agrees (cross-check test).
+
+## Versus (1v1)
+`match.start { gameId: 'tentacle_run', versus: true }` with exactly two seated phones (seats `p1` and `p2`, both Sepia;
+`room.join` accepts a second phone). The match config has two players. Both run the same course (generated from the
+match seed) in their own runner state and never interact; each seat sends the same `control {jump, slide}` action.
+`state.view` for a seat is that runner's own view (its camera, player, obstacles and anchors, section) plus
+`versus: { you, opponent: { id, x, state, alive }, runners: [{ id, x, state, alive, section }, ...], leader }`; the
+`display` viewer gets the leader's view with `versus.you = null` and both runners listed. The first death ends the match
+(`outcome.reason` `opponent_down`, `winners` = the survivor); if both die on the same tick the one further right wins,
+and an exact tie is a draw (`draw`, no winners); reaching the finish first wins (`finish`). Statistics per player:
+`distance` (x reached) and `section` (the section reached), plus the usual per-section ids.
