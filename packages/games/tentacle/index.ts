@@ -72,7 +72,7 @@ function buildCourse(state: State, rules: TentacleRules) {
     const room = section.length - SPAWN_LEAD - 3000;
     const gap = kinds.length ? Math.trunc(room / kinds.length) : 0;
     kinds.forEach((kind, i) => {
-      const x = start + SPAWN_LEAD + i * gap + roll(state, Math.max(1, Math.trunc(gap / 3)));
+      const x = start + SPAWN_LEAD + i * gap + roll(state, Math.max(1, Math.trunc(gap / 4)));
       const o = rules.obstacles;
       if (kind === 'pit') {
         obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.pitWidth, y: 0, h: 0, section: n });
@@ -225,12 +225,12 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
     p.vy = Math.max(p.vy - ph.gravity, -ph.maxFall);
     p.x += p.vx;
     p.y += p.vy;
-    if (jump && p.jumpHeldTicks >= ph.tapTicks && !p.wire) { // jump held in the air: look for an anchor to hook
+    if (jump && p.jumpHeldTicks === 1 && !p.wire) { // a jump press in the air: fire the hook at the nearest anchor
       let best = null, bestD = Infinity;
       const headY = p.y + rules.player.height;
       for (const a of q.anchors) {
         const dx = a.x - p.x, dy = a.y - headY;
-        if (dx < -ATTACH_BEHIND || dx > ph.wireRange || dy < ATTACH_MIN_RISE) continue;
+        if (dx < -ATTACH_BEHIND || dx > ph.wireRange || dy < ATTACH_MIN_RISE) continue; // up and forward
         const d = isqrt(dx * dx + dy * dy);
         if (d <= ph.wireRange && d < bestD) {
           best = a;

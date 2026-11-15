@@ -168,77 +168,27 @@
             "maxPlayers": 1,
             "actions": [
               {
-                "actionId": "move",
-                "labelKey": "action.move",
+                "actionId": "control",
+                "labelKey": "action.control",
                 "control": "axes",
                 "paramsSchema": {
                   "type": "object",
                   "additionalProperties": false,
                   "properties": {
-                    "moveX": {
+                    "jump": {
                       "type": "integer",
-                      "minimum": -1000,
-                      "maximum": 1000
+                      "minimum": 0,
+                      "maximum": 1
                     },
-                    "moveY": {
+                    "slide": {
                       "type": "integer",
-                      "minimum": -1000,
-                      "maximum": 1000
+                      "minimum": 0,
+                      "maximum": 1
                     }
                   },
                   "required": [
-                    "moveX",
-                    "moveY"
-                  ]
-                }
-              },
-              {
-                "actionId": "latch",
-                "labelKey": "action.latch",
-                "control": "button",
-                "paramsSchema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "aimX": {
-                      "type": "integer",
-                      "minimum": -1000,
-                      "maximum": 1000
-                    },
-                    "aimY": {
-                      "type": "integer",
-                      "minimum": -1000,
-                      "maximum": 1000
-                    }
-                  },
-                  "required": [
-                    "aimX",
-                    "aimY"
-                  ]
-                }
-              },
-              {
-                "actionId": "whip",
-                "labelKey": "action.whip",
-                "control": "button",
-                "paramsSchema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "aimX": {
-                      "type": "integer",
-                      "minimum": -1000,
-                      "maximum": 1000
-                    },
-                    "aimY": {
-                      "type": "integer",
-                      "minimum": -1000,
-                      "maximum": 1000
-                    }
-                  },
-                  "required": [
-                    "aimX",
-                    "aimY"
+                    "jump",
+                    "slide"
                   ]
                 }
               }
@@ -256,8 +206,8 @@
       "response": {
         "status": 201,
         "body": {
-          "roomId": "9ab9be19-8529-440f-adf9-ee8cd783e428",
-          "joinCode": "54JH",
+          "roomId": "5dc2f60a-e9bb-409f-957c-7531edde1238",
+          "joinCode": "67SJ",
           "hostToken": "REDACTED_PRIVATE_HOST_TOKEN_00000000",
           "epoch": 1
         }
@@ -506,11 +456,11 @@
     },
     "replay": {
       "method": "GET",
-      "path": "/v1/replay/human-2ae84e06-78b4-49fb-9bf4-9b9980a4dd49",
+      "path": "/v1/replay/human-001bef59-4634-4e45-a4c3-8b3782472e73",
       "response": {
         "status": 200,
         "body": {
-          "matchId": "human-2ae84e06-78b4-49fb-9bf4-9b9980a4dd49",
+          "matchId": "human-001bef59-4634-4e45-a4c3-8b3782472e73",
           "seed": 1,
           "config": {
             "contractVersion": "0.1",
@@ -574,11 +524,11 @@
     },
     "views": {
       "method": "GET",
-      "path": "/v1/replay/human-2ae84e06-78b4-49fb-9bf4-9b9980a4dd49/views?every=6",
+      "path": "/v1/replay/human-001bef59-4634-4e45-a4c3-8b3782472e73/views?every=6",
       "response": {
         "status": 200,
         "body": {
-          "matchId": "human-2ae84e06-78b4-49fb-9bf4-9b9980a4dd49",
+          "matchId": "human-001bef59-4634-4e45-a4c3-8b3782472e73",
           "gameId": "hero_arena",
           "seed": 1,
           "sourceDataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
@@ -817,8 +767,8 @@
             ],
             "intentVersion": "2026-11-14-v1",
             "humanMatches": 1,
-            "elapsedMs": 168,
-            "createdAt": "2026-11-15T00:01:18.419Z"
+            "elapsedMs": 165,
+            "createdAt": "2026-11-15T00:43:23.656Z"
           },
           "evidence": {
             "missing": [
@@ -840,10 +790,10 @@
             ]
           },
           "humanMatches": 1,
-          "runId": "ba687050-a30a-486d-9362-f933cee305d2",
+          "runId": "54737ef7-b3c4-4dcd-917c-4710866d3c5f",
           "gameId": "hero_arena",
           "botPolicy": "scripted",
-          "elapsedMs": 202,
+          "elapsedMs": 198,
           "seatWins": {
             "baseline": 1,
             "holdout": null
@@ -935,8 +885,8 @@
             ],
             "intentVersion": "2026-11-14-v1",
             "humanMatches": 1,
-            "elapsedMs": 815,
-            "createdAt": "2026-11-15T00:01:19.302Z"
+            "elapsedMs": 823,
+            "createdAt": "2026-11-15T00:43:24.562Z"
           },
           "evidence": {
             "missing": [
@@ -1271,7 +1221,7 @@
               }
             ],
             "intentVersion": "2026-11-14-v1",
-            "createdAt": "2026-11-15T00:01:19.302Z"
+            "createdAt": "2026-11-15T00:43:24.562Z"
           },
           "verdict": {
             "verdict": "inconclusive",
@@ -1302,10 +1252,10 @@
               }
             ]
           },
-          "runId": "6d8c8b33-403b-4f06-9618-447b02e22bd5",
+          "runId": "89364d43-90fe-4ab4-a114-28b090757b08",
           "gameId": "hero_arena",
           "botPolicy": "scripted",
-          "elapsedMs": 9611,
+          "elapsedMs": 9196,
           "seatWins": {
             "baseline": 15,
             "holdout": 15
@@ -1607,7 +1557,7 @@
               "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "parentHash": null,
               "gameId": "hero_arena",
-              "createdAt": "2026-11-15T00:01:18.199Z",
+              "createdAt": "2026-11-15T00:43:23.439Z",
               "origin": "base",
               "changes": [],
               "rationale": "Original game data.",
@@ -1619,7 +1569,7 @@
               "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
               "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "gameId": "hero_arena",
-              "createdAt": "2026-11-15T00:01:28.030Z",
+              "createdAt": "2026-11-15T00:43:32.853Z",
               "origin": "fake",
               "changes": [
                 {
@@ -1694,7 +1644,7 @@
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
           "gameId": "hero_arena",
-          "createdAt": "2026-11-15T00:01:28.030Z",
+          "createdAt": "2026-11-15T00:43:32.853Z",
           "origin": "fake",
           "changes": [
             {
@@ -1775,7 +1725,7 @@
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
           "gameId": "hero_arena",
-          "createdAt": "2026-11-15T00:01:28.030Z",
+          "createdAt": "2026-11-15T00:43:32.853Z",
           "origin": "fake",
           "changes": [
             {
@@ -1865,8 +1815,8 @@
         "body": {
           "botPolicy": "scripted",
           "botPolicyVersion": "scripted-0.2.1",
-          "resultsPath": "/v1/playtest/results/c763114d-5e35-4a7e-a43a-decc92885661.json",
-          "elapsedMs": 220.38216699999975,
+          "resultsPath": "/v1/playtest/results/d2a5699c-bc43-4fd2-9796-2cc988119414.json",
+          "elapsedMs": 183.78895799999918,
           "matchCount": 2,
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "recorded": true,
@@ -1876,12 +1826,12 @@
     },
     "results": {
       "method": "GET",
-      "path": "/v1/playtest/results/c763114d-5e35-4a7e-a43a-decc92885661.json",
+      "path": "/v1/playtest/results/d2a5699c-bc43-4fd2-9796-2cc988119414.json",
       "response": {
         "status": 200,
         "body": [
           {
-            "matchId": "bot-c763114d-5e35-4a7e-a43a-decc92885661-run-1",
+            "matchId": "bot-d2a5699c-bc43-4fd2-9796-2cc988119414-run-1",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -1965,7 +1915,7 @@
             "errorCode": ""
           },
           {
-            "matchId": "bot-c763114d-5e35-4a7e-a43a-decc92885661-run-2",
+            "matchId": "bot-d2a5699c-bc43-4fd2-9796-2cc988119414-run-2",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -2065,7 +2015,7 @@
               "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "parentHash": null,
               "gameId": "hero_arena",
-              "createdAt": "2026-11-15T00:01:18.199Z",
+              "createdAt": "2026-11-15T00:43:23.439Z",
               "origin": "base",
               "changes": [],
               "rationale": "Original game data.",
@@ -2077,7 +2027,7 @@
               "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
               "parentHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
               "gameId": "hero_arena",
-              "createdAt": "2026-11-15T00:01:28.030Z",
+              "createdAt": "2026-11-15T00:43:32.853Z",
               "origin": "fake",
               "changes": [
                 {
@@ -2165,13 +2115,13 @@
       "room.join": {
         "protocolVersion": "0.1",
         "type": "room.join",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "abcc3b71-7354-41f1-a870-7ab0cf73c596",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "4dcaa3ed-df4b-43a4-8b67-3d66f1ceefc0",
         "requestId": "r2",
         "seq": 2,
         "epoch": 1,
         "payload": {
-          "joinCode": "T6CT",
+          "joinCode": "MPVT",
           "name": "Two",
           "hero": "real_armor"
         }
@@ -2179,8 +2129,8 @@
       "room.hero": {
         "protocolVersion": "0.1",
         "type": "room.hero",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "abcc3b71-7354-41f1-a870-7ab0cf73c596",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "4dcaa3ed-df4b-43a4-8b67-3d66f1ceefc0",
         "requestId": "r3",
         "seq": 3,
         "epoch": 1,
@@ -2191,8 +2141,8 @@
       "game.select": {
         "protocolVersion": "0.1",
         "type": "game.select",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r5",
         "seq": 5,
         "epoch": 1,
@@ -2204,8 +2154,8 @@
       "ping": {
         "protocolVersion": "0.1",
         "type": "ping",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r6",
         "seq": 6,
         "epoch": 1,
@@ -2214,8 +2164,8 @@
       "match.start": {
         "protocolVersion": "0.1",
         "type": "match.start",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r7",
         "seq": 7,
         "epoch": 1,
@@ -2228,20 +2178,20 @@
         "protocolVersion": "0.1",
         "type": "reconnect",
         "roomId": "",
-        "sessionId": "7b6f8f2b-dd95-47b7-955b-ffbbf2cc264e",
+        "sessionId": "538628ab-fdab-43ba-a016-c0f19034432f",
         "requestId": "r1",
         "seq": 1,
         "epoch": 1,
         "payload": {
-          "joinCode": "T6CT",
+          "joinCode": "MPVT",
           "seatToken": "REDACTED_PRIVATE_SEAT_TOKEN_00000000"
         }
       },
       "input.submit": {
         "protocolVersion": "0.1",
         "type": "input.submit",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r13",
         "seq": 13,
         "epoch": 2,
@@ -2260,10 +2210,10 @@
       "match.reset": {
         "protocolVersion": "0.1",
         "type": "match.reset",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
-        "requestId": "r115",
-        "seq": 115,
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
+        "requestId": "r111",
+        "seq": 111,
         "epoch": 2,
         "payload": {}
       },
@@ -2271,7 +2221,7 @@
         "protocolVersion": "0.1",
         "type": "room.create",
         "roomId": "",
-        "sessionId": "d48ac234-8f9c-40c5-bab3-1f9c23111929",
+        "sessionId": "8ac3a0dd-90dd-415a-aadb-6b7b546443e3",
         "requestId": "r1",
         "seq": 1,
         "epoch": 1,
@@ -2284,13 +2234,13 @@
       "room.status": {
         "protocolVersion": "0.1",
         "type": "room.status",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "abcc3b71-7354-41f1-a870-7ab0cf73c596",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "4dcaa3ed-df4b-43a4-8b67-3d66f1ceefc0",
         "requestId": "r2",
         "seq": 2,
         "epoch": 1,
         "payload": {
-          "joinCode": "T6CT",
+          "joinCode": "MPVT",
           "phase": "lobby",
           "gameId": "hero_arena",
           "playableHeroes": [
@@ -2321,8 +2271,8 @@
       "pong": {
         "protocolVersion": "0.1",
         "type": "pong",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r6",
         "seq": 6,
         "epoch": 1,
@@ -2331,8 +2281,8 @@
       "match.started": {
         "protocolVersion": "0.1",
         "type": "match.started",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r7",
         "seq": 8,
         "epoch": 2,
@@ -2362,8 +2312,8 @@
       "input.ack": {
         "protocolVersion": "0.1",
         "type": "input.ack",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "r13",
         "seq": 0,
         "epoch": 2,
@@ -2376,8 +2326,8 @@
       "state.view": {
         "protocolVersion": "0.1",
         "type": "state.view",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "",
         "seq": 13,
         "epoch": 2,
@@ -2461,8 +2411,8 @@
       "actions.available": {
         "protocolVersion": "0.1",
         "type": "actions.available",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "",
         "seq": 14,
         "epoch": 2,
@@ -2577,14 +2527,14 @@
       "match.ended": {
         "protocolVersion": "0.1",
         "type": "match.ended",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "",
         "seq": 17,
         "epoch": 2,
         "payload": {
           "result": {
-            "matchId": "human-2ae84e06-78b4-49fb-9bf4-9b9980a4dd49",
+            "matchId": "human-001bef59-4634-4e45-a4c3-8b3782472e73",
             "config": {
               "contractVersion": "0.1",
               "schemaVersion": 1,
@@ -2670,34 +2620,34 @@
       "error": {
         "protocolVersion": "0.1",
         "type": "error",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
-        "requestId": "r116",
-        "seq": 115,
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
+        "requestId": "r112",
+        "seq": 111,
         "epoch": 3,
         "payload": {
           "code": "INVALID_SCHEMA",
           "message": "Invalid message shape or parameter. Check actions.available for the current action domain.",
-          "requestId": "r116",
+          "requestId": "r112",
           "retryable": false
         }
       },
       "playtest.progress": {
         "protocolVersion": "0.1",
         "type": "playtest.progress",
-        "roomId": "73f9bd13-8bd5-473b-86bf-1e151c4e7ad7",
-        "sessionId": "b6bc78c2-4d58-4608-a501-9a7ae08bb449",
+        "roomId": "60065934-97f4-4a0e-9152-fe3b1b359b23",
+        "sessionId": "33101ffd-2177-4393-91b5-14517f65622d",
         "requestId": "",
-        "seq": 119,
+        "seq": 114,
         "epoch": 3,
         "payload": {
-          "runId": "c763114d-5e35-4a7e-a43a-decc92885661",
+          "runId": "d2a5699c-bc43-4fd2-9796-2cc988119414",
           "gameId": "hero_arena",
           "dataHash": "9fc13bd06787c053adc2db4ef47b1ef65adf465657b3e462e7e4cffd627226c2",
           "matchesDone": 2,
           "totalMatches": 2,
           "seatWins": 1,
-          "elapsedMs": 220,
+          "elapsedMs": 183,
           "matchups": [
             {
               "matchup": "bari vs real_armor",

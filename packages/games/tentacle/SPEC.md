@@ -20,8 +20,9 @@ envelope
 (`playerId: 'p1'`, `tick = view.tick + 1`, `turnId: 0`, increasing `seq`). The game keeps the last control until a new
 one
 arrives, so the phone sends it only when a button changes: jump pressed/released, slide pressed/released.
-- jump pressed on the ground (a tap): jump. Jump still held for `tapTicks` (12) in the air with an anchor in
-  `wireRange` ahead: the wire attaches and Sepia swings like a pendulum; releasing jump lets go with the momentum.
+- the first jump press (on the ground) jumps. A SECOND jump press while in the air fires the hook up and forward at
+  the nearest anchor in `wireRange`; Sepia swings like a pendulum while jump stays held; releasing jump lets go with
+  the momentum (and a small upward kick). Air re-hook: release and press again.
 - slide held on the ground: Sepia slides (low enough for a lowBar).
 
 ## state.view payload
