@@ -73,6 +73,8 @@ export class RoomServer {
   declare failures: string[];
   declare storage: Storage;
   declare sinks: any;
+  // Real-time inputs that arrived when the seat already had one for the coming tick, per room and seat.
+  deferred = new WeakMap<Room, Map<string, any[]>>();
   declare staticDir: string;
   declare turnTimeoutMs: number;
   declare workers: number;
@@ -535,10 +537,41 @@ export class RoomServer {
     const next = authority.state.tick + 1, late = next - env.payload.tick;
     const input = authority.config.mode !== 'turn' && late > 0 && late <= LATE_INPUT_GRACE_TICKS ?
       { ...env.payload, tick: next } : env.payload;
-    const previous = authority.receipts.has(key),
-      receipt = authority.submit(input);
+    const previous = authority.receipts.has(key);
+    // Real-time: a press and its release can reach the server inside one tick; the second would be RATE_LIMITED and
+    // lost (a jump that stays held). It waits for the next tick instead.
+    const waiting = this.deferredOf(room), deferred = waiting.get(session.seat) ?? [];
+    if (authority.config.mode !== 'turn' && !previous && (deferred.length || this.queuedThisTick(authority, input))) {
+      waiting.set(session.seat, [...deferred, input]);
+      return;
+    }
+    const receipt = authority.submit(input);
     this.send(session, 'input.ack', receipt, env, env.payload.seq);
     if (authority.config.mode === 'turn' && !previous) this.advance(room);
+  }
+  queuedThisTick(authority: any, input: any): boolean {
+    const queued = authority.pending.get(input.playerId) ?? [];
+    const category = (a: any) => authority.holdsMoves() && a.actionId === 'move' ? 'move' : 'attack';
+    return queued.some((a: any) => category(a) === category(input));
+  }
+  deferredOf(room: Room): Map<string, any[]> {
+    let waiting = this.deferred.get(room);
+    if (!waiting) this.deferred.set(room, waiting = new Map());
+    return waiting;
+  }
+  drainDeferred(room: Room): void {
+    const authority = room.authority, waiting = this.deferredOf(room);
+    for (const [seat, list] of [...waiting]) {
+      if (!room.seats.some(s => s.seat === seat) || !list.length) continue;
+      const [first, ...rest] = list;
+      try {
+        authority.submit({ ...first, tick: authority.state.tick + 1 });
+      } catch {
+        // a stale or illegal input is dropped, as it would have been on arrival
+      }
+      if (rest.length) waiting.set(seat, rest);
+      else waiting.delete(seat);
+    }
   }
   view(session: Session, events: any[] = []): void {
     const room = session.room,
@@ -588,6 +621,7 @@ export class RoomServer {
       const turn = room.authority.state.turnId;
       this.submitBots(room, systemInputs);
       const result = room.authority.advance(systemInputs);
+      this.drainDeferred(room);
       if (room.authority.state.turnId !== turn) room.deadline = this.now() + this.turnTimeoutMs;
       this.views(room, result.events);
       if (room.game.outcome(room.authority.state).status !== 'running') this.finish(room);
