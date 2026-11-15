@@ -9,12 +9,12 @@
     "dataHash": "e05e29e1ed753b2c0f56658e3f1428295e97a9cbd445e5d1f59ec7de127098a7",
     "validRuns": 100,
     "invalidRuns": 0,
-    "winRate": 0.04,
+    "winRate": 0.01,
     "winCi95": [
-      0.015663,
-      0.098372
+      0.001767,
+      0.054488
     ],
-    "meanTicks": 3273,
+    "meanTicks": 3070,
     "waves": [
       {
         "wave": 1,
@@ -37,74 +37,74 @@
         "kind": "wave",
         "reached": 95,
         "reachRate": 0.95,
-        "cleared": 79,
-        "clearRate": 0.831579,
+        "cleared": 83,
+        "clearRate": 0.873684,
         "ci95": [
-          0.743795,
-          0.893588
+          0.792077,
+          0.926244
         ],
         "target": 0.7,
-        "deltaToTarget": 0.131579,
+        "deltaToTarget": 0.173684,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 3,
         "kind": "wave",
-        "reached": 79,
-        "reachRate": 0.79,
-        "cleared": 72,
-        "clearRate": 0.911392,
+        "reached": 83,
+        "reachRate": 0.83,
+        "cleared": 69,
+        "clearRate": 0.831325,
         "ci95": [
-          0.828215,
-          0.956415
+          0.736557,
+          0.89678
         ],
         "target": 0.65,
-        "deltaToTarget": 0.261392,
+        "deltaToTarget": 0.181325,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 4,
         "kind": "wave",
-        "reached": 72,
-        "reachRate": 0.72,
-        "cleared": 6,
-        "clearRate": 0.083333,
+        "reached": 69,
+        "reachRate": 0.69,
+        "cleared": 2,
+        "clearRate": 0.028986,
         "ci95": [
-          0.038752,
-          0.170126
+          0.007985,
+          0.099668
         ],
         "target": 0.65,
-        "deltaToTarget": -0.566667,
+        "deltaToTarget": -0.621014,
         "deaths": 0,
         "outlier": true
       },
       {
         "wave": 5,
         "kind": "wave",
-        "reached": 6,
-        "reachRate": 0.06,
-        "cleared": 4,
-        "clearRate": 0.666667,
+        "reached": 2,
+        "reachRate": 0.02,
+        "cleared": 1,
+        "clearRate": 0.5,
         "ci95": [
-          0.299988,
-          0.903231
+          0.094529,
+          0.905471
         ],
         "target": 0.6,
-        "deltaToTarget": 0.066667,
+        "deltaToTarget": -0.1,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 6,
         "kind": "boss",
-        "reached": 4,
-        "reachRate": 0.04,
-        "cleared": 4,
+        "reached": 1,
+        "reachRate": 0.01,
+        "cleared": 1,
         "clearRate": 1,
         "ci95": [
-          0.5101,
+          0.206543,
           1
         ],
         "target": 0.5,
@@ -113,20 +113,20 @@
         "outlier": false
       }
     ],
-    "elapsedMs": 15782,
-    "createdAt": "2026-11-15T01:15:10.025Z"
+    "elapsedMs": 17202,
+    "createdAt": "2026-11-15T01:37:59.838Z"
   },
   "humanRuns": 0,
   "fair": false,
   "flaggedWave": {
     "wave": 4,
-    "clearRate": 0.083333,
+    "clearRate": 0.028986,
     "ci95": [
-      0.038752,
-      0.170126
+      0.007985,
+      0.099668
     ],
     "target": 0.65,
-    "deltaToTarget": -0.566667
+    "deltaToTarget": -0.621014
   },
   "proposal": {
     "baseDataHash": "e05e29e1ed753b2c0f56658e3f1428295e97a9cbd445e5d1f59ec7de127098a7",
@@ -156,12 +156,12 @@
     "dataHash": "852bc76abba6b7bf38f89655365d03034ba36bd608828394b7793d032e223abe",
     "validRuns": 100,
     "invalidRuns": 0,
-    "winRate": 0.29,
+    "winRate": 0.21,
     "winCi95": [
-      0.210147,
-      0.385391
+      0.141655,
+      0.299801
     ],
-    "meanTicks": 4449,
+    "meanTicks": 3787,
     "waves": [
       {
         "wave": 1,
@@ -184,88 +184,88 @@
         "kind": "wave",
         "reached": 98,
         "reachRate": 0.98,
-        "cleared": 84,
-        "clearRate": 0.857143,
+        "cleared": 87,
+        "clearRate": 0.887755,
         "ci95": [
-          0.774386,
-          0.912956
+          0.810099,
+          0.936158
         ],
         "target": 0.7,
-        "deltaToTarget": 0.157143,
+        "deltaToTarget": 0.187755,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 3,
         "kind": "wave",
-        "reached": 84,
-        "reachRate": 0.84,
-        "cleared": 80,
-        "clearRate": 0.952381,
+        "reached": 87,
+        "reachRate": 0.87,
+        "cleared": 73,
+        "clearRate": 0.83908,
         "ci95": [
-          0.883865,
-          0.981329
+          0.747828,
+          0.901654
         ],
         "target": 0.65,
-        "deltaToTarget": 0.302381,
+        "deltaToTarget": 0.18908,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 4,
         "kind": "wave",
-        "reached": 80,
-        "reachRate": 0.8,
-        "cleared": 44,
-        "clearRate": 0.55,
+        "reached": 73,
+        "reachRate": 0.73,
+        "cleared": 35,
+        "clearRate": 0.479452,
         "ci95": [
-          0.441193,
-          0.654225
+          0.368773,
+          0.592186
         ],
         "target": 0.65,
-        "deltaToTarget": -0.1,
+        "deltaToTarget": -0.170548,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 5,
         "kind": "wave",
-        "reached": 44,
-        "reachRate": 0.44,
-        "cleared": 33,
-        "clearRate": 0.75,
+        "reached": 35,
+        "reachRate": 0.35,
+        "cleared": 22,
+        "clearRate": 0.628571,
         "ci95": [
-          0.605592,
-          0.854259
+          0.463366,
+          0.768344
         ],
         "target": 0.6,
-        "deltaToTarget": 0.15,
+        "deltaToTarget": 0.028571,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 6,
         "kind": "boss",
-        "reached": 33,
-        "reachRate": 0.33,
-        "cleared": 29,
-        "clearRate": 0.878788,
+        "reached": 22,
+        "reachRate": 0.22,
+        "cleared": 21,
+        "clearRate": 0.954545,
         "ci95": [
-          0.726742,
-          0.951839
+          0.782015,
+          0.991931
         ],
         "target": 0.5,
-        "deltaToTarget": 0.378788,
+        "deltaToTarget": 0.454545,
         "deaths": 0,
         "outlier": false
       }
     ],
-    "createdAt": "2026-11-15T01:15:10.025Z"
+    "createdAt": "2026-11-15T01:37:59.838Z"
   },
   "verdict": {
     "verdict": "accepted",
     "reasons": [
-      "section 4: on target (8.3% -> 55.0% cleared, n=72 -> 80; band 60.0%-70.0%)",
+      "section 4: improved (2.9% -> 47.9% cleared, n=69 -> 73; band 60.0%-70.0%)",
       "1 of 1 flagged section(s) on target or improved; nothing overshot or got worse"
     ],
     "targets": [
@@ -273,22 +273,22 @@
         "wave": 4,
         "matchup": "section 4",
         "before": {
-          "rate": 0.083333,
+          "rate": 0.028986,
           "ci95": [
-            0.038752,
-            0.170126
+            0.007985,
+            0.099668
           ],
-          "games": 72
+          "games": 69
         },
         "after": {
-          "rate": 0.55,
+          "rate": 0.479452,
           "ci95": [
-            0.441193,
-            0.654225
+            0.368773,
+            0.592186
           ],
-          "games": 80
+          "games": 73
         },
-        "outcome": "on target",
+        "outcome": "improved",
         "band": [
           0.6,
           0.7
@@ -299,7 +299,7 @@
   "runId": "00000000-0000-4000-8000-000000000000",
   "gameId": "tentacle_run",
   "botPolicy": "scripted",
-  "elapsedMs": 40979,
+  "elapsedMs": 41762,
   "note": "Recorded run: 100 runs per phase, offline stand-in proposer, scripted bot tentacle-bot-0.2.0",
   "recorded": true
 }

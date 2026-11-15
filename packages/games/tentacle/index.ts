@@ -21,6 +21,8 @@ const COYOTE_TICKS = 6; // a jump still works this long after Sepia left the gro
 const JUMP_BUFFER_TICKS = 7; // a jump pressed this long before landing fires on landing
 const PIT_GRACE = 500; // how far below the ground over a pit before it is a fall (room for a coyote jump)
 const SWING_MAX_SPEED = 40; // per axis, so a swing never gets too fast
+const SWING_PUSH = 0; // forward push per tick while swinging (the pump)
+const RELEASE_SPEED_PERMILLE = 1600; // on release Sepia flies at least this share of the run speed (x1.6)
 
 export const describe = () => ({
   gameId: 'tentacle_run',
@@ -194,11 +196,13 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
     if (!jump) { // let go: keep the momentum, with a small upward kick
       p.wire = null;
       p.state = 'jumping';
+      p.vx = Math.max(p.vx, Math.trunc(speed * RELEASE_SPEED_PERMILLE / 1000)); // the swing carries her forward
       p.vy += ph.releaseBoost;
       event('wire.release', {});
     } else {
       wire.length = Math.max(ph.wireMinLength, wire.length - ph.reelSpeed);
       p.vy -= ph.swingGravity;
+      p.vx += SWING_PUSH;
       p.x += p.vx;
       p.y += p.vy;
       let dx = p.x - wire.anchorX, dy = p.y - wire.anchorY;
@@ -228,6 +232,7 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
   } else if (p.state === 'jumping' || !supported(p.x) || p.y > 0) {
     p.state = 'jumping';
     p.vx = p.vx === 0 ? speed : p.vx;
+    if (p.vx > speed && p.airTicks % 3 === 2) p.vx--; // the swing's extra speed fades out slowly in flight
     p.vy = Math.max(p.vy - ph.gravity, -ph.maxFall);
     p.x += p.vx;
     p.y += p.vy;
@@ -285,7 +290,8 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
       event('jump', {});
     } else p.state = slide ? 'sliding' : 'running';
   }
-  p.height = p.state === 'sliding' ? rules.player.slideHeight : rules.player.height;
+  // slide held in the air tucks Sepia in (low enough for a low bar), so a long flight after a swing can still pass one
+  p.height = p.state === 'sliding' || (slide && p.state === 'jumping') ? rules.player.slideHeight : rules.player.height;
 
   // 3. collisions
   const half = Math.trunc(rules.player.width / 2);

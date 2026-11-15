@@ -213,3 +213,22 @@ test('forgiving feel: coyote time lets a late jump work; a press just before lan
   }
   assert.ok(jump.payload.player.vy > 0, 'jumped again on landing');
 });
+
+test('the swing carries Sepia forward: on release she flies faster than she runs, and the extra speed fades', () => {
+  let state = fresh();
+  state.payload.obstacles = [];
+  state.payload.anchors = [{ id: 'a0', x: 6000, y: 4500, section: 1 }];
+  state.payload.player.x = 4400;
+  state = stepWith(state, [control(state, 1, 0)]);
+  state = stepWith(state, [control(state, 0, 0, 1)]);
+  for (let i = 0; i < 3; i++) state = stepWith(state);
+  state = stepWith(state, [control(state, 1, 0, 2)]);
+  assert.equal(state.payload.player.state, 'swinging');
+  for (let i = 0; i < 8; i++) state = stepWith(state);
+  state = stepWith(state, [control(state, 0, 0, 3)]);
+  const run = game.data.gameRules.sections[0].runSpeed;
+  assert.ok(state.payload.player.vx >= Math.trunc(run * 1.6) - 1, `vx ${state.payload.player.vx}`);
+  const fast = state.payload.player.vx;
+  for (let i = 0; i < 30; i++) state = stepWith(state);
+  assert.ok(state.payload.player.vx < fast && state.payload.player.vx >= run);
+});
