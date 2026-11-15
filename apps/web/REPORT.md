@@ -632,3 +632,18 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Tentacle verdict outcomes: improved, on target, overshot (too easy: a warning, never a success), unchanged, worse. The
   per-wave verdict, the headline and the present scene show the target band ("target 60-70%") and the reasons. The test
   reads the recorded example-full.json (an overshoot, rejected).
+
+### Sepia Tentacle Run is a side-scrolling wire runner (replaces the top-down scene above)
+
+- Arena screen: `RunnerScene.ts` draws the TentacleObservationPayload of the runner (x right, y up, camera at `cameraX`,
+  16000 units across): the rooftop art's city strip as a slow sky with two skylines, the ground with dark gaps at pits,
+  walls and low bars as plain shapes, anchor posts, Sepia (running, jumping, sliding at 500 high, swinging), the tentacle
+  from her to `wire.anchorX/Y` while swinging, the section label, course progress with the finish line, and the Man-Shark
+  chasing in the last section. Only assets already in the repo.
+- Phone: two big buttons, no stick. JUMP (tap = jump, hold = wire, a ring fills while holding) and SLIDE (held). Both only
+  report held/released: `input.submit` `{actionId: "control", params: {jump, slide}}`, sent when a button state changes
+  (`lib/runnerInput.ts`); the engine tells tap from hold.
+- Dashboard tab, present scene and patch labels say "Section N" (the wire still says `wave`); paths are
+  `/gameRules/sections/N/(length|pits|lowBars|walls|anchorSpacing|runSpeed)`.
+- A dev-only stub (`#/arena/tentacle_run?stub=1`, `npm run dev`) was used to look at the scene. Not tested against the
+  live room or a real phone. `TENTACLE_RUN_ENABLED` in `lib/featureFlags.ts` hides the game.

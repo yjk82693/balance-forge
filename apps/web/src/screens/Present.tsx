@@ -416,7 +416,7 @@ function SoloScene({ run }: { run: PlaytestRun | null }) {
   return (
     <section className="present-card">
       <p className="present-sub">Same platform, a solo action game</p>
-      <p className="present-names">{f ? waveName(f.wave) : "Every wave"}</p>
+      <p className="present-names">{f ? waveName(f.wave) : "Every section"}</p>
       <p className="present-big">
         {f ? `${pct(f.clearRate)}%` : t.winRate === null ? "—" : `${pct(t.winRate)}%`}
         {f && after != null && (

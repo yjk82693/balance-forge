@@ -59,7 +59,7 @@ function WaveTable({ rows, after }: { rows: WaveRow[]; after: WaveRow[] }) {
     <table className="card-grid wave-table">
       <thead>
         <tr>
-          <th className="small text-2">Wave</th>
+          <th className="small text-2">Section</th>
           <th className="small text-2">Reached</th>
           <th className="small text-2">Cleared</th>
           <th className="small text-2">Clear rate</th>
@@ -142,7 +142,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
     ? [
         {
           id: "waves",
-          title: "Waves",
+          title: "Sections",
           note: `${result.waves.length}`,
           open: true,
           body: <WaveTable rows={result.waves} after={result.patchedWaves} />,
@@ -165,7 +165,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
           body: (
             <>
               {result.targets.length > 0 ? (
-                <ul className="target-rows" aria-label="Per-wave verdict">
+                <ul className="target-rows" aria-label="Per-section verdict">
                   {result.targets.map((t) => (
                     <li key={t.wave} className="target-row">
                       <span className="small">{waveName(t.wave)}</span>
@@ -178,7 +178,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
                   ))}
                 </ul>
               ) : (
-                <p className="text-2">This verdict has no per-wave rows.</p>
+                <p className="text-2">This verdict has no per-section rows.</p>
               )}
               {(run?.verdict?.reasons ?? []).map((r) => (
                 <p key={r} className="small">
@@ -225,12 +225,12 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
           ) : !result ? (
             <div className="strip-empty">
               <p className="strip-mid">Sepia Tentacle Run</p>
-              <p>The wave that is too hard, its clear rate against the target and the verdict appear here.</p>
+              <p>The section that is too hard, its clear rate against the target and the verdict appear here.</p>
             </div>
           ) : (
             <>
               <div className="strip-who">
-                <p className="strip-names">{flagged ? waveName(flagged.wave) : "All waves"}</p>
+                <p className="strip-names">{flagged ? waveName(flagged.wave) : "All sections"}</p>
                 <p className="strip-big">{flagged ? `${pct(flagged.clearRate)}%` : rate(result.winRate)}</p>
                 <p>
                   {flagged
@@ -243,7 +243,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
                 <p className="strip-mid">
                   {flagged
                     ? `${waveName(flagged.wave)} is too hard`
-                    : "Every wave is within its target"}
+                    : "Every section is within its target"}
                 </p>
                 {flagged && (
                   <div
@@ -316,8 +316,8 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
               ))
             )}
           </div>
-          <aside className="d2-right panel" aria-label="Clear rate by wave">
-            <p className="eyebrow">Clear rate by wave</p>
+          <aside className="d2-right panel" aria-label="Clear rate by section">
+            <p className="eyebrow">Clear rate by section</p>
             {result ? (
               <div className="viz dense">
                 {result.waves.map((w) => (
@@ -328,7 +328,7 @@ export function TentacleDashboard({ theme, onTheme }: Props) {
                 </p>
               </div>
             ) : (
-              <p className="text-2">The waves appear here once the bot has run.</p>
+              <p className="text-2">The sections appear here once the bot has run.</p>
             )}
           </aside>
         </main>

@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { scenesFor } from "../src/lib/presenter.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
@@ -9,14 +10,17 @@ import {
   waveChangeLabel,
   waveName,
 } from "../src/lib/tentacleDash.ts";
-import { activePips, isTentaclePayload, segmentCount, toCanvas, waveLabel } from "../src/lib/tentacle.ts";
+import { segmentCount } from "../src/lib/tentacle.ts";
+import { groundSegments, isRunnerPayload, progress, sectionLabel, toScreenX } from "../src/lib/runner.ts";
+import { CONTROL_ACTION, NO_CONTROL, controlParams, withButton } from "../src/lib/runnerInput.ts";
 
-test("a patch path is said in words, counting waves from 1", () => {
-  assert.equal(waveChangeLabel("/gameRules/waves/3/enemyDamage"), "Wave 4 · Enemy damage");
-  assert.equal(waveChangeLabel("/gameRules/waves/0/sentries"), "Wave 1 · Sentries");
+test("a patch path is said in words, counting sections from 1", () => {
+  assert.equal(waveChangeLabel("/gameRules/sections/3/pits"), "Section 4 · Pits");
+  assert.equal(waveChangeLabel("/gameRules/sections/0/lowBars"), "Section 1 · Low bars");
+  assert.equal(waveChangeLabel("/gameRules/sections/5/runSpeed"), "Section 6 · Run speed");
   assert.equal(waveChangeLabel("/gameRules/cards/4/cost"), null);
-  assert.equal(waveName(6), "Man-Shark");
-  assert.equal(waveName(4), "Wave 4");
+  assert.equal(waveName(6), "Man-Shark chase");
+  assert.equal(waveName(4), "Section 4");
 });
 
 test("the /full body of the engine is read: wave table, flagged wave, per-wave verdict", () => {
@@ -39,21 +43,42 @@ test("the /full body of the engine is read: wave table, flagged wave, per-wave v
   assert.equal(tentacleResultFrom(null), null);
 });
 
-test("the scene reads the engine payload, and draws arena points on the canvas", () => {
-  const p = { wave: 3, waveCount: 5, entities: [], posts: [], projectiles: [], boss: null };
-  assert.equal(isTentaclePayload(p), true);
-  assert.equal(isTentaclePayload({ wave: 3 }), false);
-  assert.equal(waveLabel({ wave: 0, waveCount: 5 }), "Get ready");
-  assert.equal(waveLabel({ wave: 3, waveCount: 5 }), "Wave 3 of 5");
-  assert.equal(waveLabel({ wave: 6, waveCount: 5 }), "Man-Shark");
-  assert.deepEqual(toCanvas({ x: 8000, y: 4500 }, 1152, 648), { x: 576, y: 324 });
-  assert.equal(segmentCount(0, 28), 1);
-  assert.equal(segmentCount(10000, 28), 24);
-  assert.equal(activePips(0, 3), 3);
-  assert.equal(activePips(2, 3), 1);
+const payload = (over = {}) => ({
+  section: 3, sectionCount: 6, sectionStartX: 0, sectionEndX: 80000, cameraX: 4000, viewWidth: 16000, finishX: 480000,
+  player: { x: 8000, y: 0, vx: 220, vy: 0, state: "running", height: 1200, jumpHeldTicks: 0, wire: null },
+  obstacles: [], anchors: [], shark: null, ...over,
 });
 
-import { scenesFor } from "../src/lib/presenter.ts";
+test("the runner reads the engine payload and draws world points on the screen", () => {
+  assert.equal(isRunnerPayload(payload()), true);
+  assert.equal(isRunnerPayload({ section: 3 }), false);
+  assert.equal(sectionLabel({ section: 3, sectionCount: 6 }), "Section 3 of 6");
+  assert.equal(sectionLabel({ section: 6, sectionCount: 6 }), "Man-Shark chase");
+  assert.equal(toScreenX(4000, 0, 16000, 1152), 288); // the player stays a quarter of the way in
+  assert.equal(toScreenX(8000, 4000, 16000, 1152), 288);
+  assert.equal(progress({ finishX: 480000, player: { x: 240000 } }), 0.5);
+  assert.equal(progress({ finishX: 0, player: { x: 5 } }), 0);
+  assert.equal(segmentCount(0, 28), 1);
+  assert.equal(segmentCount(10000, 28), 24);
+});
+
+test("the ground has a gap at each pit", () => {
+  const pits = [{ x: 1000, w: 500 }, { x: 3000, w: 200 }];
+  assert.deepEqual(groundSegments(pits, 0, 4000), [[0, 1000], [1500, 3000], [3200, 4000]]);
+  assert.deepEqual(groundSegments([], 0, 100), [[0, 100]]);
+  assert.deepEqual(groundSegments([{ x: 0, w: 100 }], 0, 100), []);
+});
+
+test("the phone reports held buttons as one control action, only when a button changes", () => {
+  assert.equal(CONTROL_ACTION, "control");
+  const jump = withButton(NO_CONTROL, "jump", true);
+  assert.deepEqual(controlParams(jump), { jump: 1, slide: 0 });
+  assert.equal(withButton(jump, "jump", true), null); // no change, nothing sent
+  const both = withButton(jump, "slide", true);
+  assert.deepEqual(controlParams(both), { jump: 1, slide: 1 });
+  assert.deepEqual(controlParams(withButton(both, "jump", false)), { jump: 0, slide: 1 });
+  assert.equal(withButton(NO_CONTROL, "slide", false), null);
+});
 
 test("the solo action scene comes after the card scene and before the history, only with a tentacle result", () => {
   const ids = (o) => scenesFor({ intent: false, profile: false, history: true, ...o }).map((s) => s.id);
@@ -64,17 +89,13 @@ test("the solo action scene comes after the card scene and before the history, o
   assert.ok(ids({ solo: true }).indexOf("solo") > ids({ solo: true }).indexOf("verdict"));
 });
 
-import { LONG_PRESS_MS, chargeFraction, pressKind } from "../src/lib/tentacleButton.ts";
+import { RING_MS, chargeFraction } from "../src/lib/tentacleButton.ts";
 
-test("one tentacle button: a tap whips, a hold of 250 ms or more throws the rope, the ring fills in between", () => {
-  assert.equal(LONG_PRESS_MS, 250);
-  assert.equal(pressKind(0), "whip");
-  assert.equal(pressKind(249), "whip");
-  assert.equal(pressKind(250), "latch");
-  assert.equal(pressKind(2000), "latch");
+test("the jump ring fills over the engine's tap length", () => {
+  assert.equal(RING_MS, 200);
   assert.equal(chargeFraction(0), 0);
-  assert.equal(chargeFraction(125), 0.5);
-  assert.equal(chargeFraction(250), 1);
+  assert.equal(chargeFraction(100), 0.5);
+  assert.equal(chargeFraction(200), 1);
   assert.equal(chargeFraction(900), 1);
   assert.equal(chargeFraction(-5), 0);
 });

@@ -73,7 +73,9 @@ export interface TentacleResult {
   elapsedMs: number | null;
 }
 
-export const waveName = (wave: number, waveCount = 5) => (wave > waveCount ? "Man-Shark" : `Wave ${wave}`);
+/** "Section 4"; the last is the Man-Shark chase. (The wire format still says `wave`; only the words changed.) */
+export const waveName = (wave: number, sectionCount = 6) =>
+  wave >= sectionCount ? "Man-Shark chase" : `Section ${wave}`;
 
 const pair = (v: unknown): [number, number] | null =>
   Array.isArray(v) && v.length === 2 && num(v[0]) !== undefined && num(v[1]) !== undefined
@@ -157,16 +159,16 @@ export function tentacleResultFrom(body: unknown): TentacleResult | null {
 }
 
 const FIELD_WORDS: Record<string, string> = {
-  walkers: "Walkers",
-  drones: "Drones",
-  sentries: "Sentries",
-  enemySpeed: "Enemy speed",
-  enemyDamage: "Enemy damage",
-  fireIntervalTicks: "Fire interval (ticks)",
+  length: "Length",
+  pits: "Pits",
+  lowBars: "Low bars",
+  walls: "Walls",
+  anchorSpacing: "Anchor spacing",
+  runSpeed: "Run speed",
 };
 
-/** "Wave 4 · Enemy damage" for /gameRules/waves/3/enemyDamage (the paths count waves from 0); null for other paths. */
+/** "Section 4 · Pits" for /gameRules/sections/3/pits (the paths count sections from 0); null for other paths. */
 export function waveChangeLabel(path: string): string | null {
-  const m = /^\/gameRules\/waves\/(\d+)\/([A-Za-z]+)$/.exec(path);
-  return m ? `Wave ${Number(m[1]) + 1} · ${FIELD_WORDS[m[2]] ?? m[2]}` : null;
+  const m = /^\/gameRules\/sections\/(\d+)\/([A-Za-z]+)$/.exec(path);
+  return m ? `Section ${Number(m[1]) + 1} · ${FIELD_WORDS[m[2]] ?? m[2]}` : null;
 }
