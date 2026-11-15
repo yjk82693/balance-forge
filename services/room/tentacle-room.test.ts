@@ -98,3 +98,25 @@ test('Tentacle Run versus: two phones keep p1/p2 as Sepia, one course, the first
   assert.equal(view.versus.you, 'p2');
   assert.equal(view.versus.runners.length, 2);
 });
+
+test('Tentacle Run versus a bot: one phone is p1, the server bot is p2, it moves, the first death ends it', async t => {
+  const { server, connect } = await setup(t);
+  const host = connect('?role=display&gameId=tentacle_run');
+  const room = server.rooms.get(host.take('room.status').roomId);
+  const phone = connect();
+  phone.request('room.join', { joinCode: room.code, name: 'Chairman', hero: 'bari' });
+  host.request('match.start', { seed: 5, maxTicks: 1800, versus: true, bot: true });
+  assert.equal(room.phase, 'playing');
+  assert.deepEqual(room.authority.config.players, ['p1', 'p2']);
+  assert.deepEqual(room.authority.config.options.assignments, { p1: 'sepia', p2: 'sepia' });
+  assert.deepEqual(room.seats.map(s => !!s.bot), [false, true]);
+  for (let i = 0; i < 60; i++) server.advance(room);
+  assert.ok(room.authority.state.payload.runners[1].x > 1000); // the bot runs
+  for (let i = 0; i < 1800 && room.phase === 'playing'; i++) server.advance(room);
+  const result = host.take('match.ended').payload.result;
+  validate('MatchResult', result);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.botSeats, ['p2']);
+  assert.equal(result.outcome.reason, 'opponent_down'); // the human never pressed: p1 ran into the first obstacle
+  assert.deepEqual(result.outcome.winners, ['p2']);
+});

@@ -15,6 +15,8 @@ const TAP_TICKS = 3;
 const SLIDE_LEAD_TICKS = 6;
 const WALL_LEAD = 1900; // distance from the wall at which the bot jumps to take the wire
 const RELEASE_PAST = 300;
+const GENTLE_MISS = 20; // extra per mille chance of ignoring an obstacle
+const GENTLE_JITTER = 3; // extra ticks of reaction wobble
 
 /** True when a second press would find an anchor (up and forward within the wire range), so it never buffers a jump. */
 function hookable(me: TentacleObservationPayload['player'], anchors: TentacleObservationPayload['anchors']): boolean {
@@ -23,13 +25,16 @@ function hookable(me: TentacleObservationPayload['player'], anchors: TentacleObs
     (a.x - me.x) ** 2 + (a.y - headY) ** 2 <= 5000 ** 2);
 }
 
-function personality(variant: number) {
+function personality(variant: number, gentle: boolean) {
   let rng = (variant >>> 0) || 1;
   const draw = (m: number) => {
     rng = xorshift32(rng);
     return rng % m;
   };
-  return { sloppiness: draw(10), jitter: 1 + draw(5), salt: draw(1000003) + 1 };
+  const sloppiness = draw(10), jitter = 1 + draw(5), salt = draw(1000003) + 1;
+  // the gentle bot of a room match reacts late and now and then misses an obstacle, so a person can beat it
+  return gentle ? { sloppiness: sloppiness + GENTLE_MISS, jitter: jitter + GENTLE_JITTER, salt } :
+    { sloppiness, jitter, salt };
 }
 const hashOf = (salt: number, id: string): number => {
   let h = salt >>> 0 || 1;
@@ -37,11 +42,17 @@ const hashOf = (salt: number, id: string): number => {
   return h;
 };
 
-export function chooseActions(view: Observation, seq: number, variant = 0): ActionInput[] {
+/** The room's opponent for a person: the same policy, slower and less careful. Never used for measurement. */
+export const gentleBotPolicyVersion = 'tentacle-bot-0.2.0-gentle';
+export function chooseActionsGentle(view: Observation, seq: number, variant = 0): ActionInput[] {
+  return chooseActions(view, seq, variant, true);
+}
+
+export function chooseActions(view: Observation, seq: number, variant = 0, gentle = false): ActionInput[] {
   const p = view.payload as TentacleObservationPayload;
   if (p.outcome.status !== 'running') return [];
   const me = p.player;
-  const { sloppiness, jitter, salt } = personality(variant);
+  const { sloppiness, jitter, salt } = personality(variant, gentle);
   const speed = Math.max(1, me.vx);
   let jump = 0, slide = 0;
 
