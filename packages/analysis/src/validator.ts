@@ -9,10 +9,10 @@ const MOVE_POWER_RE = /^\/moves\/(0|[1-9][0-9]*)\/power$/;
 const HERO_STAT_RE = /^\/characters\/(0|[1-9][0-9]*)\/(health|speed)$/;
 const CARD_RE = /^\/gameRules\/cards\/(0|[1-9][0-9]*)\/(cost|power)$/;
 const CARD_BOUNDS = { cost: [1, 3], power: [1, 10] }; // contract v0.1.4: Hero Cards cost and power
-const WAVE_RE = /^\/gameRules\/waves\/([0-4])\/(walkers|drones|sentries|enemySpeed|enemyDamage|fireIntervalTicks)$/;
-// contract v0.1.5: Tentacle Run wave numbers
-const WAVE_BOUNDS = { walkers: [0, 12], drones: [0, 10], sentries: [0, 8], enemySpeed: [5, 60], enemyDamage: [1, 60],
-  fireIntervalTicks: [15, 300] };
+const WAVE_RE = /^\/gameRules\/sections\/([0-5])\/(pits|lowBars|walls|anchorSpacing|runSpeed)$/;
+// contract v0.1.5: Tentacle Run section numbers
+const WAVE_BOUNDS = { pits: [0, 8], lowBars: [0, 8], walls: [0, 6],
+  anchorSpacing: [1500, 10000], runSpeed: [15, 60] };
 const DAMAGE_PATH = '/tuning/damageScalePermille';
 const HERO_STAT_BOUNDS = { health: [100, 3000], speed: [30, 400] };
 

@@ -78,14 +78,13 @@ test('a wave that was not flagged and leaves its band upward counts as worse', (
   const verdict = judgeWaves(before, after);
   assert.equal(verdict.targets[0].outcome, 'on target'); // the flagged wave itself is fine
   assert.equal(verdict.verdict, 'rejected');
-  assert.match(verdict.reasons.join(' '), /wave 2: left its band/);
+  assert.match(verdict.reasons.join(' '), /section 2: left its band/);
 });
 
 test('runFullWaves: baseline, flagged wave, stand-in proposal, holdout, verdict', async () => {
   const baseHash = hash(data);
   const patched = (await importEngine('packages/contracts/index.ts')).applyPatch(data, { baseDataHash: baseHash,
-    rationale: 'x', replacements: [{ path: '/gameRules/waves/3/enemyDamage', value: 30 },
-      { path: '/gameRules/waves/3/fireIntervalTicks', value: 60 }] });
+    rationale: 'x', replacements: [{ path: '/gameRules/sections/3/anchorSpacing', value: 4200 }] });
   const out = await runFullWaves({ baselineResults: runs(100, 15), baseData: data, rootData: data, hashData: hash,
     adapter: new FakePatchAdapter({ baseDataHash: '0'.repeat(64), replacements: [], rationale: '' }),
     holdoutSeeds: Array.from({ length: 100 }, (_, i) => 1001 + i), botPolicyVersion: 'tentacle-bot-0.1.0',
@@ -94,10 +93,9 @@ test('runFullWaves: baseline, flagged wave, stand-in proposal, holdout, verdict'
   const body = out.value;
   assert.equal(body.fair, false);
   assert.equal(body.flaggedWave.wave, 4);
-  assert.deepEqual(body.proposal.replacements, [{ path: '/gameRules/waves/3/enemyDamage', value: 30 },
-    { path: '/gameRules/waves/3/fireIntervalTicks', value: 60 }]);
-  assert.equal(body.proposal.changes[0].label, 'Wave 4 · Enemy damage');
-  assert.equal(body.proposal.changes[0].old, 40);
+  assert.deepEqual(body.proposal.replacements, [{ path: '/gameRules/sections/3/anchorSpacing', value: 4200 }]);
+  assert.equal(body.proposal.changes[0].label, 'Section 4 · Anchor spacing');
+  assert.equal(body.proposal.changes[0].old, 6000);
   assert.equal(body.patchedDataHash, hash(patched));
   assert.equal(body.verdict.verdict, 'accepted');
   assert.equal(body.verdict.targets[0].outcome, 'on target');
@@ -112,10 +110,10 @@ test('the prompt lists wave paths only and both validators agree on wave patches
   const report = waveReport(waveTable(runs(100, 15)), { dataHash: hash(data), botPolicyVersion: 'b', simVersion: 's',
     seedSetId: 'x' });
   const prompt = buildPrompt(report as any, { rootData: data, flaggedWave: { wave: 4 } });
-  assert.match(prompt, /gameRules\/waves\/<N>\/<field>/);
+  assert.match(prompt, /gameRules\/sections\/<N>\/<field>/);
   assert.doesNotMatch(prompt, /characters\/<N>\/health|gameRules\/cards/);
-  const proposal = { baseDataHash: hash(data), rationale: 'x', replacements: [{ path: '/gameRules/waves/3/sentries',
+  const proposal = { baseDataHash: hash(data), rationale: 'x', replacements: [{ path: '/gameRules/sections/3/walls',
     value: 2 }] };
   assert.equal(validatePatch(proposal, { rootData: data }).ok, true);
-  assert.equal(applyPatch(data, proposal).gameRules.waves[3].sentries, 2);
+  assert.equal(applyPatch(data, proposal).gameRules.sections[3].walls, 2);
 });

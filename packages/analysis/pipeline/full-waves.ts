@@ -8,21 +8,20 @@ import { withExtras } from '../src/extras.ts';
 import { fail, safely } from '../src/errors.ts';
 import { proposeStep } from './pipeline.ts';
 
-const CHANGE_FIELD = /^\/gameRules\/waves\/(\d)\/(\w+)$/;
-const LABELS: Record<string, string> = { walkers: 'Walkers', drones: 'Drones', sentries: 'Sentries',
-  enemySpeed: 'Enemy speed',
-  enemyDamage: 'Enemy damage', fireIntervalTicks: 'Fire interval (ticks)' };
+const CHANGE_FIELD = /^\/gameRules\/sections\/(\d)\/(\w+)$/;
+const LABELS: Record<string, string> = { pits: 'Pits', lowBars: 'Low bars', walls: 'Walls',
+  anchorSpacing: 'Anchor spacing', runSpeed: 'Run speed' };
 const describeChange = (baseData: any, { path, value }: { path: string; value: number }) => {
   const m = CHANGE_FIELD.exec(path);
   const wave = m ? Number(m[1]) : -1;
-  return { path, label: m ? `Wave ${wave + 1} · ${LABELS[m[2]] ?? m[2]}` : path,
-    old: m ? baseData.gameRules?.waves?.[wave]?.[m[2]] : undefined, new: value };
+  return { path, label: m ? `Section ${wave + 1} · ${LABELS[m[2]] ?? m[2]}` : path,
+    old: m ? baseData.gameRules?.sections?.[wave]?.[m[2]] : undefined, new: value };
 };
 
 async function runFullWavesUnsafe(input: any) {
   const { baselineResults, baseData, rootData, adapter, runHoldout, holdoutSeeds, hashData, botPolicyVersion, seedSetId,
     holdoutSeedSetId, elapsedMs, createdAt, targets = DEFAULT_WAVE_TARGETS,
-    simVersion = 'tentacle-0.1.0' } = input ?? {};
+    simVersion = 'tentacle-0.2.0' } = input ?? {};
   if (typeof runHoldout !== 'function' || typeof hashData !== 'function') {
     fail('INVALID_INPUT', 'runHoldout and hashData are needed');
   }
@@ -45,7 +44,7 @@ async function runFullWavesUnsafe(input: any) {
   if (!flagged) {
     return { ...head, fair: true, flaggedWave: null, proposal: null, validation: null, patchedDataHash: null,
       patched: null, verdict: { verdict: 'inconclusive',
-        reasons: ['no wave is flagged: every wave is within reach of its target'] } };
+        reasons: ['no section is flagged: every section is within reach of its target'] } };
   }
 
   const report = waveReport(table, { dataHash, botPolicyVersion, simVersion, seedSetId });

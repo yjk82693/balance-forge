@@ -1,27 +1,25 @@
 import type { GameData, TentacleRules } from '../../contracts/types.ts';
 import { deepFreeze } from '../../sim/index.ts';
 
-// Original event rules: the rooftop, a grid of anchor posts, five waves and the Man-Shark boss. Wave 4 is the designed
-// flaw: four sentries that hit hard and fire fast, so almost no run gets past it until the numbers are tuned.
-const posts = Array.from({ length: 15 }, (_, id) => ({ id, x: 2000 + 3000 * (id % 5),
-  y: 1500 + 3000 * Math.floor(id / 5) }));
+// Original event rules: a side-scrolling course of six sections with pits, low bars, walls and overhead anchor posts.
+// Section 4 is the designed flaw: three walls and anchors 6,000 units apart, so the wire almost never reaches one.
 export const rules: TentacleRules = {
-  arena: { w: 16000, h: 9000 },
-  posts,
-  player: { health: 100, speed: 70, latchRange: 7000, latchSpeed: 260, latchCooldownTicks: 90,
-    latchInvulnerableTicks: 30, whipRange: 2200, whipDamage: 30, whipCooldownTicks: 20 },
-  enemies: { walker: { health: 40 }, drone: { health: 30 }, sentry: { health: 60 } },
-  waves: [
-    { walkers: 3, drones: 0, sentries: 0, enemySpeed: 20, enemyDamage: 8, fireIntervalTicks: 120 },
-    { walkers: 4, drones: 3, sentries: 0, enemySpeed: 24, enemyDamage: 9, fireIntervalTicks: 100 },
-    { walkers: 5, drones: 3, sentries: 3, enemySpeed: 26, enemyDamage: 14, fireIntervalTicks: 90 },
-    { walkers: 2, drones: 2, sentries: 5, enemySpeed: 26, enemyDamage: 40, fireIntervalTicks: 30,
-      flaw: 'designed flaw: the sentries hit for 40 and fire every 30 ticks' },
-    { walkers: 6, drones: 4, sentries: 3, enemySpeed: 30, enemyDamage: 12, fireIntervalTicks: 80 }
-  ],
-  boss: { health: 320, speed: 22, contactDamage: 15, shotDamage: 8, fireIntervalTicks: 80, phases: 3 },
-  betweenWavesTicks: 60,
-  healOnClear: 20
+  viewWidth: 16000,
+  leadIn: 2000,
+  player: { width: 600, height: 1200, slideHeight: 500 },
+  physics: { gravity: 2, jumpVelocity: 64, maxFall: 60, tapTicks: 12, wireRange: 5200, wireMinLength: 2600,
+    swingGravity: 2, reelSpeed: 30, releaseBoost: 14 },
+  obstacles: { pitWidth: 1400, lowBarWidth: 900, lowBarBottom: 700, lowBarTop: 1500, wallWidth: 500, wallHeight: 1500,
+    anchorHeight: 4500 },
+  sections: [
+    { length: 30000, pits: 2, lowBars: 1, walls: 0, anchorSpacing: 4000, runSpeed: 30 },
+    { length: 30000, pits: 2, lowBars: 2, walls: 1, anchorSpacing: 4000, runSpeed: 30 },
+    { length: 30000, pits: 3, lowBars: 2, walls: 1, anchorSpacing: 4500, runSpeed: 32 },
+    { length: 30000, pits: 2, lowBars: 1, walls: 3, anchorSpacing: 6000, runSpeed: 32,
+      flaw: 'designed flaw: three walls and anchors 6,000 units apart, out of reach of the wire' },
+    { length: 30000, pits: 3, lowBars: 3, walls: 2, anchorSpacing: 4500, runSpeed: 34 },
+    { length: 30000, pits: 3, lowBars: 3, walls: 2, anchorSpacing: 4500, runSpeed: 36 }
+  ]
 };
 export const data: GameData = deepFreeze({
   v: 1,

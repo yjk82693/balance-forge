@@ -273,7 +273,8 @@ export type TentacleRules = {
   leadIn: number; // x where the first section starts
   player: { width: number; height: number; slideHeight: number };
   physics: { gravity: number; jumpVelocity: number; maxFall: number; tapTicks: number; wireRange: number;
-    wireMinLength: number; swingGravity: number };
+    wireMinLength: number; swingGravity: number; reelSpeed: number; // the rope shortens by this per tick while attached
+    releaseBoost: number }; // extra upward speed when the wire is let go
   obstacles: { pitWidth: number; lowBarWidth: number; lowBarBottom: number; lowBarTop: number; wallWidth: number;
     wallHeight: number; anchorHeight: number };
   sections: TentacleSection[]; // 6 sections; the last is the Man-Shark chase
