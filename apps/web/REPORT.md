@@ -695,3 +695,7 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   Arena effects are WebP (path `.webp` in ArenaCanvas), hero portraits go through `preferWebp`, `arena_floor.png`,
   `full_body.png` and the old top-down Tentacle assets are removed. Before/after (tracked assets): hero_arena 3.5 to 0.44 MB,
   common 1.7 to 0.36 MB, sepia_tentacle_run 18.6 to 0.78 MB (runner pieces 14 MB to 0.5 MB).
+
+- Runner phone page on a PC: Space/ArrowUp = JUMP, ArrowDown/Shift = SLIDE through the same press() path (keydown press,
+  keyup release, key repeat ignored, released when the window loses focus); the hint "Keyboard: Space jump · ↓ slide"
+  shows only on non-touch devices (`lib/runnerKeys.ts`). Checked: Space sends control {jump:1}, keyup {jump:0}, Shift slide.
