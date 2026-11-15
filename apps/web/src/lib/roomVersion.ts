@@ -22,10 +22,17 @@ export type RoomMode = "broken" | "patched";
 const isRoot = (v: RoomVersion) => v.origin === "base" || v.parentHash === null;
 const accepted = (v: RoomVersion) => !isRoot(v) && (v.verdict?.verdict === "accepted" || v.approved);
 
-/** The root version: the one made from the data the game ships with. */
+/**
+ * The root version: the one made from the data the game ships with. When the store holds several roots (the shipped
+ * data changed between restarts), the root of the server's current version wins, else the newest base.
+ */
 export function rootVersion(list: RoomVersionList): RoomVersion | null {
-  const roots = list.versions.filter(isRoot);
-  return roots.find((v) => v.origin === "base") ?? roots[0] ?? null;
+  const byHash = new Map(list.versions.map((v) => [v.dataHash, v]));
+  let v = list.currentHash ? byHash.get(list.currentHash) : undefined;
+  for (let i = 0; v && !isRoot(v) && i < list.versions.length; i++) v = v.parentHash ? byHash.get(v.parentHash) : undefined;
+  if (v && isRoot(v)) return v;
+  const bases = list.versions.filter((r) => r.origin === "base");
+  return bases[bases.length - 1] ?? list.versions.find(isRoot) ?? null;
 }
 
 /**

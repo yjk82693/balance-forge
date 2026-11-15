@@ -76,3 +76,13 @@ test("the version endpoints take the game: detail, approve and select for hero_c
   assert.equal(p.select, "/v1/data/hero_cards/select");
   assert.equal(versionPaths("hero_arena").detail("abc"), "/v1/versions/hero_arena/abc");
 });
+
+test("with several stored roots, Broken is the root of the server's current version", () => {
+  const rec = (h, parent, origin) => ({
+    dataHash: h, parentHash: parent, createdAt: "2026-11-14T00:00:00Z", origin, changes: [], verdict: null, approved: true,
+  });
+  const versions = [rec("old1", null, "base"), rec("old2", null, "base"), rec("new", null, "base"), rec("kid", "new", "auto")];
+  assert.equal(rootVersion({ versions, currentHash: "new" }).dataHash, "new");
+  assert.equal(rootVersion({ versions, currentHash: "kid" }).dataHash, "new");
+  assert.equal(rootVersion({ versions }).dataHash, "new");
+});
