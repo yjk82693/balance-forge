@@ -711,3 +711,9 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   page). Hero Arena: arrows or WASD move, Space or J attack, Z or K skill, X or L guard (`lib/pcKeys.ts`); aim is the
   last move direction. Checked in a browser with the mock room (QR hidden, seat joined, a match started, keys sent as
   move/attack); the runner path is the same session but was not played (the game is hidden by its flag).
+
+- PC mode for Hero Cards too: the switch is on for hero_cards; the lobby tab takes the seat (hero picker), and the cards screen
+  shows the player's hand over the table, fed by the seat's own state.view (the big screen's view has no hand). Keys: Left/Right
+  (or A/D) move the highlight (the picked card, with a thick focus ring), Space or Enter plays it, E ends the turn, Esc
+  cancels; a hint line sits under the hand. There is no target step in this game (a played card hits the opponent, a summon
+  takes the next slot), so up/down are not used. The phone flow is unchanged. Checked with the mock room.
