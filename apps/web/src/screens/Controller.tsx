@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
-import { TENTACLE_GAME_ID, isTentaclePayload, waveLabel } from "../lib/tentacle";
+import { TENTACLE_GAME_ID } from "../lib/tentacle";
+import { isRunnerPayload, sectionLabel } from "../lib/runner";
+import { CONTROL_ACTION, NO_CONTROL, controlParams, withButton, type RunnerControl } from "../lib/runnerInput";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { Stick } from "../components/Stick";
@@ -19,6 +21,7 @@ import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
 import { syncHero } from "../lib/heroSync";
+import { SlideButton } from "../components/SlideButton";
 import { TentacleButton } from "../components/TentacleButton";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -84,7 +87,7 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   const padName = useGamepad(pipeline, playing && online);
   // A cards view means the cards hand, whatever the room status said about the game when this phone joined.
   const isCards = gameId === "hero_cards" || isCardsPayload(observation?.payload);
-  const isTentacle = gameId === TENTACLE_GAME_ID || isTentaclePayload(observation?.payload);
+  const isTentacle = gameId === TENTACLE_GAME_ID || isRunnerPayload(observation?.payload);
   // Sepia is the only hero of Sepia Tentacle Run: whatever the form said, the room is told Sepia.
   useEffect(() => {
     if (isTentacle && joined && joined.hero !== "sepia") setJoined({ ...joined, hero: "sepia" });
@@ -187,6 +190,15 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
     }
   }, [myHp]);
 
+  // Sepia Tentacle Run: the two held buttons are one "control" action, sent whenever either changes.
+  const control = useRef<RunnerControl>(NO_CONTROL);
+  const press = (button: keyof RunnerControl, down: boolean) => {
+    const next = withButton(control.current, button, down);
+    if (!next) return;
+    control.current = next;
+    pipeline?.action(CONTROL_ACTION, controlParams(next));
+  };
+
   if (!playing) {
     return (
       <JoinForm
@@ -206,8 +218,7 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   const me = room?.seats.find((s) => s.seat === seat);
   const hero = me?.hero ?? joined.hero;
   const mine = myArenaEntity(observation?.payload, seat);
-  const run = isTentaclePayload(observation?.payload) ? observation.payload : null;
-  const runner = run?.entities.find((e) => e.kind === "player");
+  const run = isRunnerPayload(observation?.payload) ? observation.payload : null;
   const ended = !!result || room?.phase === "ended";
   const gameOn = room?.phase === "playing";
 
@@ -288,22 +299,22 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
             <span className="text-2">{gameOn ? "Watch the big screen." : "Waiting for the host to start."}</span>
           </p>
         )}
-        {isTentacle && run && <p className="small">{waveLabel(run)}</p>}
-        {(mine ?? runner) && (
-          <div className="hp" aria-label={`HP ${(mine ?? runner)!.hp}`}>
+        {isTentacle && run && <p className="small">{sectionLabel(run)}</p>}
+        {mine && (
+          <div className="hp" aria-label={`HP ${mine!.hp}`}>
             <span className="caption">HP</span>
             <span className="hp-track">
               <span
                 className="hp-fill"
-                style={{ width: `${hpPercent((mine ?? runner)!.hp, (mine ?? runner)!.maxHp)}%` }}
+                style={{ width: `${hpPercent(mine!.hp, mine!.maxHp)}%` }}
               />
             </span>
-            <span className="small">{(mine ?? runner)!.hp}</span>
+            <span className="small">{mine!.hp}</span>
           </div>
         )}
         {padName && <p className="caption">Gamepad connected</p>}
       </section>
-      <Stick pipeline={pipeline} disabled={!online} />
+      {!isTentacle && <Stick pipeline={pipeline} disabled={!online} />}
       <div className={`pad${online ? "" : " dim"}`}>
         <div className="stick-idle" aria-hidden="true">
           <div className="stick-ring" />
@@ -311,7 +322,8 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
         </div>
         {isTentacle ? (
           <div className="btn-cluster">
-            <TentacleButton disabled={!online} onAction={(action) => pipeline?.press(action)} />
+            <SlideButton disabled={!online} onHold={(down) => press("slide", down)} />
+            <TentacleButton disabled={!online} onHold={(down) => press("jump", down)} />
           </div>
         ) : (
         <div className="btn-cluster">

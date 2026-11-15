@@ -91,11 +91,11 @@ export function mockTentacleRun(): PlaytestRun {
     proposal: {
       patch: {
         baseDataHash: "",
-        replacements: [{ path: "/gameRules/waves/3/enemyDamage", value: 18 }],
-        rationale: "Sample: wave 4's sentries hit less hard so it can be cleared about as often as the other waves.",
+        replacements: [{ path: "/gameRules/sections/3/pits", value: 3 }],
+        rationale: "Sample: section 4 has fewer pits so it can be cleared about as often as the other sections.",
       },
       origin: "fake",
-      changes: [{ path: "/gameRules/waves/3/enemyDamage", label: "Wave 4 · Enemy damage", old: 40, new: 18 }],
+      changes: [{ path: "/gameRules/sections/3/pits", label: "Section 4 · Pits", old: 8, new: 3 }],
       validation: { ok: true, errors: [] },
     },
     verdict: { verdict: "accepted", reasons: ["sample verdict; not computed"] },

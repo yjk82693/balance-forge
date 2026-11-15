@@ -18,6 +18,7 @@ import { originLabel } from "../lib/fullRun";
 import { outcomeWords, targetWords, waveChangeLabel, waveName } from "../lib/tentacleDash";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
+import { TENTACLE_RUN_ENABLED } from "../lib/featureFlags";
 import { IS_STATIC } from "../lib/staticMode";
 import { loadStaticRun } from "../lib/staticRun";
 import { shouldStartOnMount } from "../lib/presentStart";
@@ -99,7 +100,10 @@ export function Present({ auto }: { auto: boolean }) {
     [mock, staticCards],
   );
   // And the last Sepia Tentacle Run result of this tab: one more scene, no request.
-  const soloRun = useMemo(() => (IS_STATIC || mock ? null : loadRun("tentacle_run")), [mock]);
+  const soloRun = useMemo(
+    () => (IS_STATIC || mock || !TENTACLE_RUN_ENABLED ? null : loadRun("tentacle_run")),
+    [mock],
+  );
   const scenes = useMemo(
     () =>
       scenesFor({
@@ -412,7 +416,7 @@ function SoloScene({ run }: { run: PlaytestRun | null }) {
   return (
     <section className="present-card">
       <p className="present-sub">Same platform, a solo action game</p>
-      <p className="present-names">{f ? waveName(f.wave) : "Every wave"}</p>
+      <p className="present-names">{f ? waveName(f.wave) : "Every section"}</p>
       <p className="present-big">
         {f ? `${pct(f.clearRate)}%` : t.winRate === null ? "—" : `${pct(t.winRate)}%`}
         {f && after != null && (

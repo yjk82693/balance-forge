@@ -1,6 +1,6 @@
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { useEffect, useRef, useState } from "react";
-import { stubObservation } from "../lib/tentacleStub";
+import { stubObservation } from "../lib/runnerStub";
 import { saveJustPlayed } from "../lib/justPlayed";
 import { go } from "../lib/router";
 import { gameById } from "../lib/games";
@@ -8,8 +8,9 @@ import { heroName } from "../lib/heroes";
 import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardBanner } from "../components/CardBanner";
 import { CardsCanvas } from "../components/CardsCanvas";
-import { TentacleCanvas } from "../components/TentacleCanvas";
-import { TENTACLE_GAME_ID, isTentaclePayload, waveLabel, type TentaclePayload } from "../lib/tentacle";
+import { RunnerCanvas } from "../components/RunnerCanvas";
+import { TENTACLE_GAME_ID } from "../lib/tentacle";
+import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { isMockMode } from "../mock/types";
@@ -55,8 +56,8 @@ export function Arena({ gameId }: { gameId: string }) {
   }, [stub]);
   const tentObs = stub
     ? stubObservation(stubTick)
-    : tentacle && observation && isTentaclePayload(observation.payload)
-      ? (observation as Observation<TentaclePayload>)
+    : tentacle && observation && isRunnerPayload(observation.payload)
+      ? (observation as Observation<RunnerPayload>)
       : null;
   const names = Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name || heroName(s.hero)]));
   const heroes = Object.fromEntries((room?.seats ?? []).flatMap((s) => (s.hero ? [[s.seat, s.hero]] : [])));
@@ -93,7 +94,7 @@ export function Arena({ gameId }: { gameId: string }) {
       <main className="arena-screen">
         <div className="arena-stage">
           {tentacle ? (
-            <TentacleCanvas observation={tentObs} />
+            <RunnerCanvas observation={tentObs} />
           ) : gameId === "hero_cards" ? (
             <>
               <CardsCanvas observation={cardsObs} names={names} heroes={heroes} />
@@ -105,7 +106,7 @@ export function Arena({ gameId }: { gameId: string }) {
           <DebugReadout stats={net} buffer={bufferStats} />
           <div className="arena-overlay">
             {gameId === "hero_arena" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
-            {tentObs && <span className="caption">{waveLabel(tentObs.payload)}</span>}
+            {tentObs && <span className="caption">{sectionLabel(tentObs.payload)}</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
           {srv === "unreachable" && !stub ? (
@@ -142,7 +143,7 @@ export function Arena({ gameId }: { gameId: string }) {
                     : "A draw"}
               </p>
               <p className="text-2">
-                {tentacle && tentObs ? `${waveLabel(tentObs.payload)} · ` : `${heroName(winnerHero)} · `}
+                {tentacle && tentObs ? `${sectionLabel(tentObs.payload)} · ` : `${heroName(winnerHero)} · `}
                 {fmtTime(result.statistics.durationTicks)}
               </p>
               <div className="result-actions">

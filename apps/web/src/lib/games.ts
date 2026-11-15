@@ -1,3 +1,5 @@
+import { TENTACLE_RUN_ENABLED } from "./featureFlags";
+
 export type GameStatus = "ready" | "planned";
 
 export interface GameInfo {
@@ -40,7 +42,7 @@ export const GAMES: GameInfo[] = [
     summary: "solo run · 5 waves and a boss",
     art: "assets/sepia_tentacle_run/backgrounds/rooftop.png",
     portraitHero: "sepia",
-    status: "ready",
+    status: TENTACLE_RUN_ENABLED ? "ready" : "planned",
   },
 ];
 

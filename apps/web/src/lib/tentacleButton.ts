@@ -1,13 +1,8 @@
-// The one tentacle button of the Sepia Tentacle Run phone: a tap whips, a hold of LONG_PRESS_MS or more throws the rope
-// (latch) toward the stick direction (the pipeline aims at the last stick direction: the facing when the stick is
-// idle). Both send the existing `whip` and `latch` actions; nothing else changes.
+// The JUMP button of the Sepia Tentacle Run phone. It only reports held / released (the control flags); the engine
+// tells a tap (< tapTicks, a jump) from a hold in the air near an anchor (the wire). The ring fills while holding, over
+// about the engine's tap length (12 ticks = 200 ms), so the player sees the press turn from a jump into the wire.
 
-export const LONG_PRESS_MS = 250;
+export const RING_MS = 200;
 
-export type TentacleAction = "whip" | "latch";
-
-/** What a press that lasted `heldMs` does when it is let go. */
-export const pressKind = (heldMs: number): TentacleAction => (heldMs >= LONG_PRESS_MS ? "latch" : "whip");
-
-/** How full the rope-charge ring is after `heldMs` (0..1). */
-export const chargeFraction = (heldMs: number): number => Math.max(0, Math.min(1, heldMs / LONG_PRESS_MS));
+/** How full the ring is after `heldMs` (0..1). */
+export const chargeFraction = (heldMs: number): number => Math.max(0, Math.min(1, heldMs / RING_MS));

@@ -90,6 +90,11 @@ export class InputPipeline {
     this.emit("move", { moveX: x, moveY: y });
   }
 
+  /** Any other action of a game with its own buttons (Sepia Tentacle Run: jump, wire, slide). */
+  action(actionId: string, params: Record<string, number> = {}) {
+    this.emit(actionId, params);
+  }
+
   private emit(actionId: string, params: Record<string, number>) {
     this.send({ playerId: this.playerId, seq: ++this.seq, tick: this.getTick(), turnId: 0, actionId, params });
   }

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { RunGame } from "./api";
+import { TENTACLE_RUN_ENABLED } from "./featureFlags";
 
 export type DashGame = RunGame;
 
@@ -19,12 +20,13 @@ const KEY = "bf-game";
 const DECK_KEY = "bf-decks";
 const listeners = new Set<() => void>();
 
-const isGame = (v: unknown): v is DashGame => v === "hero_arena" || v === "hero_cards" || v === "tentacle_run";
+const isGame = (v: unknown): v is DashGame =>
+  v === "hero_arena" || v === "hero_cards" || (v === "tentacle_run" && TENTACLE_RUN_ENABLED);
 
 /** `#/dashboard?game=cards` (or `=hero_cards`) opens the cards dashboard directly. */
 function fromUrl(): DashGame | null {
   const q = new URLSearchParams(location.hash.split("?")[1] ?? "").get("game");
-  if (q === "tentacle" || q === "tentacle_run") return "tentacle_run";
+  if ((q === "tentacle" || q === "tentacle_run") && TENTACLE_RUN_ENABLED) return "tentacle_run";
   return q === "cards" || q === "hero_cards" ? "hero_cards" : q === "arena" || q === "hero_arena" ? "hero_arena" : null;
 }
 
