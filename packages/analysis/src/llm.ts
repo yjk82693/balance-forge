@@ -106,8 +106,8 @@ function flaggedAdvice(flagged) {
     + `${flagged.wave} (target ${Math.round(flagged.target * 100)}% plus or minus 5 points): do not make it trivial, `
     + 'a patch that lands above that band is rejected. Touch only the flagged section unless necessary; a smaller '
     + 'anchorSpacing (anchors closer together, so the wire reaches them), fewer walls, pits or lowBars, or a lower '
-    + 'runSpeed all make it easier. Reference point measured on the designed flaw: anchorSpacing 5800 -> 3800 moved '
-    + 'it from about 5% to about 65%.';
+    + 'runSpeed all make it easier. Reference point measured on the designed flaw: anchorSpacing 9500 -> 4000 moved '
+    + 'it from about 0% to about 60%: a chasm chain needs a second anchor within about 4000 units.';
 }
 
 /** Tentacle Run: the section table, the flagged section and the numbers a patch may change. */
@@ -145,7 +145,8 @@ export function buildPrompt(report, context: any = {}) {
       max: boundsFor('/gameRules/cards/0/cost')[1], cards_only: true },
     { path: '/gameRules/cards/<N>/power', min: boundsFor('/gameRules/cards/0/power')[0],
       max: boundsFor('/gameRules/cards/0/power')[1], cards_only: true },
-    { path: '/gameRules/sections/<N>/<field>', fields: ['pits', 'lowBars', 'walls', 'anchorSpacing', 'runSpeed'], waves_only: true },
+    { path: '/gameRules/sections/<N>/<field>', fields: ['pits', 'lowBars', 'walls', 'anchorSpacing', 'runSpeed'],
+      waves_only: true },
   ];
   const isWaves = Boolean(context.rootData?.gameRules?.sections);
   const isCards = Boolean(context.rootData?.gameRules?.cards);

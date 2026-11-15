@@ -19,6 +19,8 @@ const ATTACH_MIN_RISE = 1000; // the anchor must be at least this far above Sepi
 const ATTACH_BEHIND = 2000; // an anchor up to this far behind Sepia can still be taken (wide hook magnetism)
 const COYOTE_TICKS = 6; // a jump still works this long after Sepia left the ground
 const JUMP_BUFFER_TICKS = 7; // a jump pressed this long before landing fires on landing
+const CHASM_WIDTH = 3600; // a swing chasm: more than 1.5 x the longest jump (64 ticks at 30 units = 1920)
+const CHASM_ANCHOR_BEFORE = 700; // the first anchor of a chasm chain stands this far before its near edge
 const PIT_GRACE = 500; // how far below the ground over a pit before it is a fall (room for a coyote jump)
 const SWING_MAX_SPEED = 40; // per axis, so a swing never gets too fast
 const SWING_PUSH = 0; // forward push per tick while swinging (the pump)
@@ -75,21 +77,35 @@ function buildCourse(state: State, rules: TentacleRules) {
       const j = roll(state, i + 1);
       [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
     }
-    const room = section.length - SPAWN_LEAD - 3000;
-    const gap = kinds.length ? Math.trunc(room / kinds.length) : 0;
+    // Every second pit is a swing chasm: too wide to jump (more than 1.5 x the longest jump), with anchors over it.
+    let pitCount = 0;
+    const widths = kinds.map(kind => (kind === 'pit' ? (pitCount++ % 2 === 1 ? CHASM_WIDTH : rules.obstacles.pitWidth) :
+      kind === 'lowBar' ? rules.obstacles.lowBarWidth : rules.obstacles.wallWidth));
+    const free = section.length - SPAWN_LEAD - 3000 - widths.reduce((sum, w) => sum + w, 0);
+    const gap = kinds.length ? Math.max(1500, Math.trunc(free / kinds.length)) : 0;
+    let cursor = start + SPAWN_LEAD;
     kinds.forEach((kind, i) => {
-      const x = start + SPAWN_LEAD + i * gap + roll(state, Math.max(1, Math.trunc(gap / 4)));
-      const o = rules.obstacles;
+      const x = cursor + roll(state, Math.max(1, Math.trunc(gap / 4)));
+      const o = rules.obstacles, w = widths[i];
+      // after a swing (a chasm or a wall) Sepia flies on before she lands: leave room before the next obstacle
+      cursor = x + w + gap - Math.trunc(gap / 8) + (w === CHASM_WIDTH ? 2800 : kind === 'wall' ? 1800 : 0);
       if (kind === 'pit') {
-        obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.pitWidth, y: 0, h: 0, section: n });
+        obstacles.push({ id: `o${obstacles.length}`, kind, x, w, y: 0, h: 0, section: n });
+        if (w === CHASM_WIDTH) { // a chain of anchors over the chasm, starting just before its edge
+          for (let ax = x - CHASM_ANCHOR_BEFORE; ax < x + w && ax < x - CHASM_ANCHOR_BEFORE + 3 * section.anchorSpacing;
+            ax += section.anchorSpacing) {
+            anchors.push({ id: `a${anchors.length}`, x: ax, y: o.anchorHeight, section: n, overPit: true });
+          }
+        }
+      } else if (kind === 'lowBar') {
+        obstacles.push({ id: `o${obstacles.length}`, kind, x, w, y: o.lowBarBottom, h: o.lowBarTop - o.lowBarBottom,
+          section: n });
+      } else { // a wall has its anchor before it (the further apart the anchors of the section, the further before)
+        obstacles.push({ id: `o${obstacles.length}`, kind, x, w, y: 0, h: o.wallHeight, section: n });
+        anchors.push({ id: `a${anchors.length}`, x: x - Math.trunc(section.anchorSpacing / 2), y: o.anchorHeight,
+          section: n, overPit: false });
       }
-      else if (kind === 'lowBar') obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.lowBarWidth,
-        y: o.lowBarBottom, h: o.lowBarTop - o.lowBarBottom, section: n });
-      else obstacles.push({ id: `o${obstacles.length}`, kind, x, w: o.wallWidth, y: 0, h: o.wallHeight, section: n });
     });
-    for (let x = start + 1000 + roll(state, 400); x < end; x += section.anchorSpacing) {
-      anchors.push({ id: `a${anchors.length}`, x, y: rules.obstacles.anchorHeight, section: n });
-    }
     start = end;
   });
   return { obstacles, anchors, bounds, finishX: start };

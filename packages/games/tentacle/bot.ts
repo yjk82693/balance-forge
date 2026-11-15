@@ -51,16 +51,30 @@ export function chooseActions(view: Observation, seq: number, variant = 0): Acti
   const o = ahead[0];
   const shift = o ? ((hashOf(salt, `${o.id}:j`) % (2 * jitter + 1)) - jitter) * speed : 0;
 
+  const chasm = p.obstacles.find(c => c.kind === 'pit' && c.w > 3000 && me.x >= c.x - 1800 && me.x <= c.x + c.w + 600);
   if (me.state === 'swinging') {
     jump = 1;
-    const wall = p.obstacles.filter(w => w.kind === 'wall' && w.x + w.w > me.x - PLAYER_HALF - 600)
-      .sort((a, b) => a.x - b.x)[0];
-    const releaseX = wall ? wall.x + wall.w + PLAYER_HALF + RELEASE_PAST : me.wire.anchorX + 1200;
-    // let go once Sepia is past the anchor and rising (the best forward momentum), or when she is clear of the wall
-    if (me.x >= releaseX || (me.x >= me.wire.anchorX && me.vy >= 0)) jump = 0;
+    if (chasm) {
+      // cross the chasm on its chain: let go past each anchor to hook the next one, and let go near the far edge
+      const next = p.anchors.find(a => a.overPit && a.x > me.wire.anchorX + 500 && a.x < chasm.x + chasm.w);
+      const farEdge = chasm.x + chasm.w - 900;
+      if (me.x >= me.wire.anchorX && ((next && me.x < farEdge - 1500) || me.x >= farEdge)) jump = 0;
+    } else {
+      const wall = p.obstacles.filter(w => w.kind === 'wall' && w.x + w.w > me.x - PLAYER_HALF - 600)
+        .sort((a, b) => a.x - b.x)[0];
+      const releaseX = wall ? wall.x + wall.w + PLAYER_HALF + RELEASE_PAST : me.wire.anchorX + 1200;
+      // let go once Sepia is past the anchor and rising (the best forward momentum), or when she is clear of the wall
+      if (me.x >= releaseX || (me.x >= me.wire.anchorX && me.vy >= 0)) jump = 0;
+    }
   } else if (o) {
     const front = o.x - (me.x + PLAYER_HALF) - shift;
-    if (o.kind === 'pit') {
+    if (o.kind === 'pit' && o.w > 3000) { // a swing chasm: jump at the edge, then double-press to hook the chain
+      if (me.state === 'running' && o.x - (me.x + PLAYER_HALF) - shift <= 700) jump = 1;
+      else if (me.state === 'jumping') {
+        if (me.jumpHeldTicks > 0 && me.jumpHeldTicks < 3) jump = 1;
+        else if (me.jumpHeldTicks === 0 && hookable(me, p.anchors)) jump = 1;
+      }
+    } else if (o.kind === 'pit') {
       const lead = Math.trunc((AIR_TICKS * speed - PIT_WIDTH) / 2);
       const dc = o.x - me.x - shift;
       if (me.state === 'running' && dc <= lead && dc > -400) jump = 1; // one press: the jump
@@ -73,6 +87,14 @@ export function chooseActions(view: Observation, seq: number, variant = 0): Acti
         if (me.jumpHeldTicks === 0 && me.y > 200 && hookable(me, p.anchors)) jump = 1;
         else if (me.jumpHeldTicks > 0 && me.jumpHeldTicks < 3) jump = 1; // hold the press for 3 ticks
       }
+    }
+  }
+  // any low bar close ahead: slide (on the ground) or tuck (in the air), whatever else the bot is doing
+  for (const bar of p.obstacles) {
+    if (bar.kind !== 'lowBar') continue;
+    const front = bar.x - (me.x + PLAYER_HALF);
+    if (front <= speed * SLIDE_LEAD_TICKS && me.x - PLAYER_HALF < bar.x + bar.w + 100 && me.state !== 'swinging') {
+      slide = 1;
     }
   }
   return [{ playerId: view.viewerId, seq, tick: view.tick + 1, turnId: 0, actionId: 'control',

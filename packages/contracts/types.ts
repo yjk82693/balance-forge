@@ -283,7 +283,8 @@ export type TentaclePlayerState = 'running' | 'jumping' | 'sliding' | 'swinging'
 // a pit has y = 0, h = 0 (a gap in the ground); a lowBar spans y..y+h in the air; a wall stands on the ground
 export type TentacleObstacle = { id: string; kind: 'pit' | 'lowBar' | 'wall'; x: number; w: number; y: number;
   h: number; section: number };
-export type TentacleAnchor = { id: string; x: number; y: number; section: number };
+export type TentacleAnchor = { id: string; x: number; y: number; section: number;
+  overPit: boolean }; // true = a pillar top over a swing chasm (draw it rising from the chasm); false = before a wall
 /** The payload of state.view (Observation.payload); the state itself carries the same fields plus the full course. */
 export type TentacleObservationPayload = {
   section: number; // 1..6: the section Sepia is in (6 = the Man-Shark chase)
