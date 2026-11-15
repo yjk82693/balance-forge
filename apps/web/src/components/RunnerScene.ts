@@ -1,6 +1,15 @@
 import Phaser from "phaser";
 import type { Observation } from "../lib/contract";
-import { groundSegments, progress, sectionLabel, toScreenX, type RunnerPayload } from "../lib/runner";
+import {
+  chasmAnchor,
+  groundSegments,
+  jumpTrail,
+  progress,
+  sectionLabel,
+  toScreenX,
+  type RunnerPayload,
+  type TrailPoint,
+} from "../lib/runner";
 import { segmentCount } from "../lib/tentacle";
 import {
   buildingSlot,
@@ -14,8 +23,8 @@ import {
 
 export const RUN_W = 1152;
 export const RUN_H = 648;
-const GROUND_Y = 610; // screen y of the ground line (y = 0 in the world); the anchors (4500 high) still fit above it
-/** The camera is zoomed on the web side: about 9400 of the engine's 16000 units are drawn across, Sepia ~150 px tall. */
+const GROUND_Y = 590; // screen y of the ground line (y = 0 in the world); the anchors (4500 high) still fit above it
+/** The camera is zoomed on the web side: ~9400 of the engine's 16000 units are drawn across, Sepia ~150 px tall. */
 export const ZOOM = 1.7;
 const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
 const SKY_TOP = 0x0b1020;
@@ -121,6 +130,7 @@ export class RunnerScene extends Phaser.Scene {
     this.scrollBackgrounds(p.player.x * k);
     this.ground(p, sx, k);
     for (const o of p.obstacles) this.obstacle(o, sx, sy, k);
+    this.trails(p, sx, sy);
     const wire = p.player.wire;
     for (const a of p.anchors) this.anchor(a, sx(a.x), sy(a.y), a.id === wire?.anchorId);
     if (p.shark) this.shark(sx(p.shark.x));
@@ -243,8 +253,14 @@ export class RunnerScene extends Phaser.Scene {
     }
     const g = this.add.graphics();
     if (o.kind === "pit") {
-      g.fillStyle(0x05070d, 0.92);
-      g.fillRect(x, GROUND_Y, w, RUN_H - GROUND_Y); // the dark gap in the ground
+      // the chasm: dark depth that glows faintly neon toward the bottom, with a violet-teal glow along its walls
+      g.fillGradientStyle(0x05070d, 0x05070d, 0x2a1050, 0x2a1050, 0.96, 0.96, 0.95, 0.95);
+      g.fillRect(x, GROUND_Y, w, RUN_H - GROUND_Y);
+      g.fillStyle(0x58e6e0, 0.1);
+      g.fillRect(x, GROUND_Y, 6, RUN_H - GROUND_Y);
+      g.fillRect(x + w - 6, GROUND_Y, 6, RUN_H - GROUND_Y);
+      g.fillStyle(0xd050ff, 0.18);
+      g.fillRect(x, RUN_H - 22, w, 22);
       g.fillStyle(0xff5c5c, 0.6);
       g.fillRect(x, GROUND_Y, w, 4); // the warning glow along its mouth
     } else {
@@ -253,6 +269,37 @@ export class RunnerScene extends Phaser.Scene {
       g.fillRect(x, top, w, o.h * k);
       g.lineStyle(3, o.kind === "wall" ? 0xff8a3d : 0xf2b84b, 1);
       g.strokeRect(x, top, w, o.h * k);
+    }
+    this.layer.add(g);
+  }
+
+  /**
+   * A guide trail of small glowing dots: an arc over each chasm (rising toward its anchor, down on the far side) and
+   * the jump arc over each narrow pit. Visual only. A pit counts as a chasm only when an anchor above it says `overPit`.
+   */
+  private trails(p: RunnerPayload, sx: (x: number) => number, sy: (y: number) => number) {
+    const g = this.add.graphics();
+    const dots = (pts: TrailPoint[], color: number) => {
+      pts.forEach((pt, i) => {
+        const x = sx(pt.x);
+        if (x < -20 || x > RUN_W + 20) return;
+        const y = sy(pt.y);
+        const pulse = 0.55 + 0.25 * Math.sin(i * 0.9);
+        g.fillStyle(color, 0.16 * pulse);
+        g.fillCircle(x, y, 11);
+        g.fillStyle(color, 0.9);
+        g.fillCircle(x, y, 4.5);
+        g.fillStyle(0xffffff, 0.9);
+        g.fillCircle(x - 1, y - 1, 1.8);
+      });
+    };
+    const step = 360; // world units between dots
+    for (const pit of p.obstacles.filter((o) => o.kind === "pit")) {
+      if (sx(pit.x + pit.w) < -200 || sx(pit.x) > RUN_W + 200) continue;
+      const anchor = chasmAnchor(pit, p.anchors);
+      // over a chasm the dots rise toward the anchor and come down on the far side (visible above the ground)
+      if (anchor) dots(jumpTrail(pit, 700, Math.min(3000, anchor.y * 0.6), step), 0x58e6e0);
+      else if (pit.w <= 4000) dots(jumpTrail(pit, 500, 1000, step * 0.8), 0xf2d84b);
     }
     this.layer.add(g);
   }
@@ -286,7 +333,9 @@ export class RunnerScene extends Phaser.Scene {
   private anchor(a: RunnerPayload["anchors"][number], x: number, y: number, hooked: boolean) {
     if (x < -300 || x > RUN_W + 300) return;
     const slot = buildingSlot(a.id);
-    const placed = this.has(slot) ? hookPlacement(slot, GROUND_Y - y, this.meta) : null;
+    // over a chasm the structure rises from the bottom of the screen, like a pillar out of the pit
+    const base = a.overPit ? RUN_H + 6 : GROUND_Y;
+    const placed = this.has(slot) ? hookPlacement(slot, base - y, this.meta) : null;
     if (placed) {
       const img = this.add.image(x, y, this.art(slot)).setOrigin(placed.originX, placed.originY);
       img.setDisplaySize(placed.width, placed.height);
@@ -295,8 +344,8 @@ export class RunnerScene extends Phaser.Scene {
       return;
     }
     if (this.has(slot)) {
-      const size = hookDisplay(GROUND_Y - y, this.meta);
-      const img = this.add.image(x, GROUND_Y, this.art(slot)).setOrigin(0.5, 1).setDisplaySize(size, size);
+      const size = hookDisplay(base - y, this.meta);
+      const img = this.add.image(x, base, this.art(slot)).setOrigin(0.5, 1).setDisplaySize(size, size);
       if (hooked) img.setTint(0xcfffee);
       this.layer.add(img);
       return;

@@ -9,7 +9,7 @@ const ob = (id: string, kind: RunnerObstacle["kind"], x: number, w: number, y: n
   id, kind, x, w, y, h, section: 1 + Math.floor(x / 80000),
 });
 const OBSTACLES: RunnerObstacle[] = [
-  ob("p1", "pit", 24000, 6000, 0, 0),
+  ob("p1", "pit", 24000, 3000, 0, 0),
   ob("w1", "wall", 42000, 1200, 0, 3000),
   ob("b1", "lowBar", 58000, 5000, 800, 2200),
   ob("p2", "pit", 84000, 9000, 0, 0),
@@ -17,17 +17,21 @@ const OBSTACLES: RunnerObstacle[] = [
   ob("b2", "lowBar", 130000, 6000, 800, 2200),
   ob("p3", "pit", 156000, 11000, 0, 0), ob("p4", "pit", 200000, 12000, 0, 0), ob("w3", "wall", 230000, 1200, 0, 4000),
 ];
-const ANCHORS: RunnerAnchor[] = [8, 29, 90, 160, 205].map((k, i) => ({
+const ANCHORS: RunnerAnchor[] = [8, 29, 160, 205].map((k, i) => ({
   id: `a${i}`,
   x: k * 1000 + 3000,
   y: 5000,
   section: 1,
 }));
 
+ANCHORS.push({ id: "chasm", x: 88500, y: 4500, section: 2, overPit: true });
+
 export function stubObservation(tick: number): Observation<RunnerPayload> {
-  const x = 4000 + ((tick * 120) % (FINISH - 8000));
+  // #/arena/tentacle_run?stub=1&x=82000 freezes the run at that course position
+  const fixed = Number(new URLSearchParams(location.hash.split("?")[1] ?? "").get("x"));
+  const x = fixed > 0 ? fixed : 76000 + ((tick * 120) % 30000); // starts just before the chasm
   const anchor = ANCHORS.find((a) => x > a.x - 2500 && x < a.x + 2500);
-  const swinging = !!anchor;
+  const swinging = !!anchor && !(fixed > 0 && x < anchor.x - 1000);
   const jumping = !swinging && Math.floor(tick / 40) % 7 === 0;
   const y = swinging ? 3500 + Math.sin(tick / 20) * 1500 : jumping ? 400 + Math.abs(Math.sin(tick / 12)) * 2600 : 0;
   const sliding = !swinging && !jumping && Math.floor(tick / 50) % 9 === 4;
