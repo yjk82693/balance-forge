@@ -31,7 +31,7 @@ export const RUNNER_SLOTS = [
 
 export type RunnerSlot = (typeof RUNNER_SLOTS)[number];
 
-export const slotPath = (slot: string): string => `${RUNNER_ART_DIR}/${slot}.png`;
+export const slotPath = (slot: string): string => `${RUNNER_ART_DIR}/${slot}.webp`;
 
 /** World units of running per frame of the run cycle: the legs follow the distance, so the speed always matches. */
 export const RUN_STRIDE = 700;
@@ -66,8 +66,8 @@ export function buildingSlot(anchorId: string): string {
 }
 
 /**
- * How the sliced sheets are laid out (meta.json, written by scripts/slice_runner_art.py): a 512 cell, the feet baseline
- * 40 px above its bottom, the standing body this high, and the hook ring this far below the top of a 1024 hook cell.
+ * How the sliced sheets are laid out (meta.json, written by scripts/slice_runner_art.py): a 256 cell, the feet baseline
+ * 20 px above its bottom, the standing body this high. (The scene reads the real texture sizes where it can.)
  */
 export interface RunnerMeta {
   canvas: number;
@@ -79,7 +79,7 @@ export interface RunnerMeta {
   /** the size of each tile and button piece */
   tiles?: Record<string, { w: number; h: number }>;
 }
-export const DEFAULT_META: RunnerMeta = { canvas: 512, feetY: 472, bodyHeight: 400, ringFromTop: 80 };
+export const DEFAULT_META: RunnerMeta = { canvas: 256, feetY: 236, bodyHeight: 200, ringFromTop: 40 };
 
 /** Display size of a character cell so the standing body is `bodyPx` high on screen. */
 export const spriteDisplay = (bodyPx: number, m: RunnerMeta = DEFAULT_META): number =>

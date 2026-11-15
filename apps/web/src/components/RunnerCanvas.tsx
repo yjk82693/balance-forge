@@ -36,10 +36,10 @@ export function RunnerCanvas({ observation }: { observation: Observation<RunnerP
       const base = "assets/sepia_tentacle_run";
       const assets: RunnerAssets = {
         rooftop: assetUrl(preferWebp(`${base}/backgrounds/rooftop.png`)),
-        post: assetUrl(`${base}/sprites/anchor_post.png`),
-        postTarget: assetUrl(`${base}/sprites/anchor_post_target.png`),
-        segment: assetUrl(`${base}/sprites/tentacle_segment.png`),
-        sharkPortrait: assetUrl(`${base}/ui/man_shark_portrait.png`),
+        post: assetUrl(`${base}/sprites/anchor_post.webp`),
+        postTarget: assetUrl(`${base}/sprites/anchor_post_target.webp`),
+        segment: assetUrl(`${base}/sprites/tentacle_segment.webp`),
+        sharkPortrait: assetUrl(`${base}/ui/man_shark_portrait.webp`),
         sepia: assetUrl(heroThumbPath("sepia")),
         art,
         meta,

@@ -685,3 +685,13 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   4500-high anchors still fit); Sepia keeps the engine's lead from the left. The ground tile loses its faint edge columns
   in the slicer (no seams). The originals under runner/src are git-ignored (kept locally), only the pieces, meta.json
   and the slicer are committed.
+
+### Lighter assets (runtime weight)
+
+- sepia_tentacle_run, hero_arena and common (hero_cards untouched): every image the code loads is WebP at display size; the
+  PNG duplicates the code never loads are gone (originals kept locally in the git-ignored `apps/web/.art-originals/`).
+  Runner art: Sepia cells 256 (body 200), backgrounds 2048x512 (mirrored seamless), hook buildings 512 high, buttons 128,
+  lossy WebP; the scene reads texture sizes instead of assuming them, and draws once per frame however many views arrive.
+  Arena effects are WebP (path `.webp` in ArenaCanvas), hero portraits go through `preferWebp`, `arena_floor.png`,
+  `full_body.png` and the old top-down Tentacle assets are removed. Before/after (tracked assets): hero_arena 3.5 to 0.44 MB,
+  common 1.7 to 0.36 MB, sepia_tentacle_run 18.6 to 0.78 MB (runner pieces 14 MB to 0.5 MB).

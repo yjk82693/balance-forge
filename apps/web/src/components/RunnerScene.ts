@@ -42,9 +42,23 @@ export interface RunnerAssets {
 export class RunnerScene extends Phaser.Scene {
   private layer!: Phaser.GameObjects.Container;
   private ready = false;
+  /** a new observation only marks the scene dirty; it is drawn once per frame, however many views arrived */
+  private dirty = false;
   private onData = (_p: unknown, key: string) => {
-    if (key === "obs") this.draw();
+    if (key === "obs") this.dirty = true;
   };
+
+  override update() {
+    if (!this.dirty) return;
+    this.dirty = false;
+    this.draw();
+  }
+
+  /** the pixel size of a delivered art slot's texture */
+  private tex(slot: string): { w: number; h: number } {
+    const src = this.textures.get(this.art(slot)).getSourceImage() as { width: number; height: number };
+    return { w: src.width, h: src.height };
+  }
 
   constructor() {
     super("runner");
@@ -62,6 +76,7 @@ export class RunnerScene extends Phaser.Scene {
   }
 
   private bg: Partial<Record<"far" | "mid" | "near", Phaser.GameObjects.TileSprite>> = {};
+  private bgScale: Partial<Record<"far" | "mid" | "near", number>> = {};
   private art = (slot: string) => `art:${slot}`;
   private has = (slot: string) => this.textures.exists(`art:${slot}`);
   private meta!: RunnerMeta;
@@ -73,7 +88,9 @@ export class RunnerScene extends Phaser.Scene {
     for (const [key, depth, name] of layers) {
       if (!this.has(name)) continue;
       const t = this.add.tileSprite(0, 0, RUN_W, RUN_H, this.art(name)).setOrigin(0, 0).setDepth(depth);
-      t.setTileScale(RUN_H / 1024, RUN_H / 1024);
+      const scale = RUN_H / this.tex(name).h; // the art fills the view height, whatever size it was delivered at
+      t.setTileScale(scale, scale);
+      this.bgScale[key] = scale;
       this.bg[key] = t;
     }
     this.layer = this.add.container(0, 0);
@@ -117,11 +134,10 @@ export class RunnerScene extends Phaser.Scene {
 
   /** the delivered layers scroll at three speeds; with none delivered the drawn sky and skylines stand in */
   private scrollBackgrounds(scrolled: number) {
-    const scale = RUN_H / 1024;
     const { far, mid, near } = this.bg;
-    if (far) far.tilePositionX = (scrolled * 0.1) / scale;
-    if (mid) mid.tilePositionX = (scrolled * 0.3) / scale;
-    if (near) near.tilePositionX = (scrolled * 0.7) / scale;
+    if (far) far.tilePositionX = (scrolled * 0.1) / (this.bgScale.far ?? 1);
+    if (mid) mid.tilePositionX = (scrolled * 0.3) / (this.bgScale.mid ?? 1);
+    if (near) near.tilePositionX = (scrolled * 0.7) / (this.bgScale.near ?? 1);
     if (!far) this.parallax(scrolled);
   }
 
@@ -162,7 +178,7 @@ export class RunnerScene extends Phaser.Scene {
     const pits = p.obstacles.filter((o) => o.kind === "pit");
     const g = this.add.graphics();
     const tile = this.has("ground_tile");
-    const tileH = this.meta.tiles?.ground_tile?.h ?? 128;
+    const tileH = tile ? this.tex("ground_tile").h : 128;
     const TILE = (700 * k) / tileH; // the tile is 700 world units tall, so it zooms with the world
     for (const [a, b] of groundSegments(pits, from, to)) {
       if (tile) {
@@ -182,7 +198,7 @@ export class RunnerScene extends Phaser.Scene {
         const left = sx(pit.x);
         const right = sx(pit.x + pit.w);
         if (right < -140 || left > RUN_W + 140) continue;
-        const e = this.meta.tiles?.pit_edge ?? { w: 177, h: 90 };
+        const e = this.tex("pit_edge");
         const w = e.w * TILE;
         const h = e.h * TILE;
         this.layer.add(this.add.image(left, GROUND_Y, this.art("pit_edge")).setOrigin(1, 0).setDisplaySize(w, h));
@@ -218,7 +234,7 @@ export class RunnerScene extends Phaser.Scene {
         return;
       }
       // a wall: the block repeated upward, as wide as the wall
-      const native = this.meta.tiles?.wall ?? { w: 216, h: 133 };
+      const native = this.tex("wall");
       const t = this.add.tileSprite(x, top, w, o.h * k, this.art(art)).setOrigin(0, 0);
       t.setTileScale(w / native.w, w / native.w);
       t.tilePositionY = native.h; // start the repeat from the ground up

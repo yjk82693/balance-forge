@@ -69,7 +69,7 @@ export function ArenaCanvas({
         poses,
         floor: assetUrl(preferWebp("assets/hero_arena/backgrounds/arena_floor.png")),
         heroes,
-        effects: Object.fromEntries(EFFECTS.map((k) => [k, assetUrl(`assets/hero_arena/effects/${k}.png`)])),
+        effects: Object.fromEntries(EFFECTS.map((k) => [k, assetUrl(`assets/hero_arena/effects/${k}.webp`)])),
         hpTrack: assetUrl("assets/hero_arena/ui/player_health_track.png"),
         hpFill: assetUrl("assets/hero_arena/ui/player_health_fill.png"),
       };
