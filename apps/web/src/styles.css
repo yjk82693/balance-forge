@@ -2637,3 +2637,15 @@ button.intent-btn { cursor: pointer; }
 .versus-switch { align-self: flex-start; margin-bottom: var(--space-2); }
 .verdict { flex-direction: column; gap: var(--space-3); }
 .verdict-cause { margin: 0; font-size: 18px; opacity: 0.85; }
+
+/* Runner Versus on a phone: the whole page wears the player's colour. */
+.phone.team { background: color-mix(in srgb, var(--team) 26%, var(--surface-1)); }
+.team-banner {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--team);
+}

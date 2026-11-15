@@ -11,7 +11,17 @@ import {
   type TrailPoint,
 } from "../lib/runner";
 import { segmentCount } from "../lib/tentacle";
-import { barFill, laneLabel, versusOf, type VersusInfo, type VersusRunner } from "../lib/runnerVersus";
+import {
+  barFill,
+  cssColor,
+  laneColor,
+  laneLabel,
+  laneTint,
+  versusCameraLeft,
+  versusOf,
+  type VersusInfo,
+  type VersusRunner,
+} from "../lib/runnerVersus";
 import {
   buildingSlot,
   feetOrigin,
@@ -117,6 +127,8 @@ export class RunnerScene extends Phaser.Scene {
     return t;
   }
 
+  private camLeft: number | null = null;
+  private camTick = 0;
   private laneName = (id: string) => laneLabel(id, this.registry.get("names") as Record<string, string> | undefined);
 
   private draw() {
@@ -128,16 +140,26 @@ export class RunnerScene extends Phaser.Scene {
     const k = (ZOOM * RUN_W) / p.viewWidth; // world unit to pixel, the same up and across
     // Sepia keeps the engine's lead from the left edge (a quarter of the view); the world scrolls around her
     const lead = Math.max(0.1, Math.min(0.5, (p.player.x - p.cameraX) / p.viewWidth));
-    const sx = (wx: number) => toScreenX(wx, p.player.x - lead * (RUN_W / k), RUN_W / k, RUN_W);
+    const span = RUN_W / k;
+    const vs = versusOf(p);
+    // Versus: frame both runners (eased, so the switch to following the leader is not a jump)
+    let left = p.player.x - lead * span;
+    if (vs && vs.runners.length) {
+      const want = versusCameraLeft(vs.runners.map((r) => r.x), span, lead);
+      const far = this.camLeft === null || obs.tick < this.camTick || Math.abs(want - this.camLeft) > 2 * span;
+      this.camLeft = far ? want : this.camLeft! + (want - this.camLeft!) * 0.15;
+      this.camTick = obs.tick;
+      left = this.camLeft;
+    } else this.camLeft = null;
+    const sx = (wx: number) => toScreenX(wx, left, span, RUN_W);
     const sy = (wy: number) => GROUND_Y - wy * k;
-    this.scrollBackgrounds(p.player.x * k);
+    this.scrollBackgrounds(left * k);
     this.ground(p, sx, k);
     for (const o of p.obstacles) this.obstacle(o, sx, sy, k);
     this.trails(p, sx, sy);
     const wire = p.player.wire;
     for (const a of p.anchors) this.anchor(a, sx(a.x), sy(a.y), a.id === wire?.anchorId);
     if (p.shark) this.shark(sx(p.shark.x));
-    const vs = versusOf(p);
     const mine = {
       x: p.player.x,
       y: p.player.y,
@@ -173,7 +195,7 @@ export class RunnerScene extends Phaser.Scene {
     this.sepia(at, r, p, k, anchor, style?.tint);
     if (style) {
       const top = at.y - r.height * k - 14;
-      this.text(at.x, top, style.label, 20, hexColor(style.color)).setOrigin(0.5, 1);
+      this.text(at.x, top, style.label, 20, cssColor(style.color)).setOrigin(0.5, 1);
       this.layer.add(this.add.ellipse(at.x, at.y, 90, 18).setStrokeStyle(4, style.color, 0.9));
     }
   }
@@ -493,7 +515,7 @@ export class RunnerScene extends Phaser.Scene {
       const y = 62 + i * 26;
       const f = barFill(r.x, p.finishX);
       const tint = laneColor(r.id);
-      this.text(24, y, this.laneName(r.id), 18, hexColor(tint)).setOrigin(0, 0.5);
+      this.text(24, y, this.laneName(r.id), 18, cssColor(tint)).setOrigin(0, 0.5);
       this.layer.add(this.add.rectangle(x0, y, w, 8, 0x0d1219, 0.7).setOrigin(0, 0.5));
       this.layer.add(this.add.rectangle(x0, y, w * f, 8, tint).setOrigin(0, 0.5));
       this.layer.add(this.add.circle(x0 + w * f, y, 9, tint).setStrokeStyle(2, 0xe6ebf1));
@@ -513,10 +535,3 @@ interface Pose {
   /** drawn lying down; leave out to follow the outcome (the solo run) */
   down?: boolean;
 }
-
-/** Team colours: P1 red, P2 blue. The sprite gets only a light tint so the art reads; the ring shows the colour. */
-const LANE_COLORS: Record<string, number> = { p1: 0xff5c5c, p2: 0x5ca8ff };
-const LANE_TINTS: Record<string, number> = { p1: 0xffd6d6, p2: 0xd6e8ff };
-const laneColor = (id: string) => LANE_COLORS[id] ?? LANE_COLORS.p2; // anything but p1 (the bot) is blue
-const laneTint = (id: string) => LANE_TINTS[id] ?? LANE_TINTS.p2;
-const hexColor = (n: number) => `#${n.toString(16).padStart(6, "0")}`;

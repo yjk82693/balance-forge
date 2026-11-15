@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as v from "../src/lib/runnerVersus.ts";
 
-const { versusCause, withBotNames, barFill, laneLabel, versusEnd, versusEndWords, versusHeadline, versusOf } = v;
+const { versusCameraLeft, laneColorName, versusCause, withBotNames, barFill, laneLabel } = v;
+const { versusEnd, versusEndWords, versusHeadline, versusOf } = v;
 
 test("versus block is read, or null", () => {
   assert.equal(versusOf({}), null);
@@ -62,4 +63,13 @@ test("the cause line", () => {
   assert.equal(versusCause(fin, ids, "p1", names), "Bo crossed the finish first");
   assert.equal(versusCause({ reason: "draw", winners: [] }, ids, "p1", names), "Both fell together");
   assert.match(versusCause({ reason: "max_ticks", winners: ["p1"] }, ids, null, names), /^Ana got further/);
+});
+
+test("camera frames both runners, or follows the leader", () => {
+  // span 10000: a gap of 4000 fits, so the view is centred between them
+  assert.equal(versusCameraLeft([20000, 24000], 10000, 0.25), 22000 - 5000);
+  // a gap of 9000 does not: the leader keeps a quarter of the view behind them
+  assert.equal(versusCameraLeft([20000, 29000], 10000, 0.25), 29000 - 2500);
+  assert.equal(laneColorName("p1"), "RED");
+  assert.equal(laneColorName("p2"), "BLUE");
 });

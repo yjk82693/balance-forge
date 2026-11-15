@@ -4,6 +4,9 @@ import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel } from "../lib/runner";
 import {
   END_HOLD_MS,
+  cssColor,
+  laneColor,
+  laneColorName,
   isVersusMatch,
   versusCause,
   versusEnd,
@@ -278,6 +281,9 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
         )
       : "";
   const gameOn = room?.phase === "playing";
+  // In a versus match the whole phone wears the player's colour, so each knows which Sepia is theirs.
+  const vsNow = versusOf(observation?.payload);
+  const teamId = vsNow ? (vsNow.you ?? seat ?? "") : "";
 
   if (verdict) {
     return (
@@ -289,7 +295,18 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   }
 
   return (
-    <div className="phone" style={{ ["--hero" as string]: heroColorVar(hero) }}>
+    <div
+      className={`phone${teamId ? " team" : ""}`}
+      style={{
+        ["--hero" as string]: heroColorVar(hero),
+        ...(teamId ? { ["--team" as string]: cssColor(laneColor(teamId)) } : {}),
+      }}
+    >
+      {teamId && (
+        <p className="team-banner" role="status">
+          You are {laneColorName(teamId)} · {me?.name || teamId.toUpperCase()}
+        </p>
+      )}
       <header className="phone-head">
         <HeroPortrait hero={hero} size={32} />
         <span className="phone-name">{me?.name || heroName(hero)}</span>

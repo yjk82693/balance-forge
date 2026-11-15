@@ -121,3 +121,22 @@ export function versusCause(
   const loser = runnerIds.find((id) => id !== winner) ?? "";
   return loser ? who(loser, "You fell", "fell") : "A runner fell";
 }
+
+/** Team colours: P1 red, P2 blue (anything else, the bot, is blue). The tint is the light version for the sprite. */
+const COLORS: Record<string, number> = { p1: 0xff5c5c, p2: 0x5ca8ff };
+const TINTS: Record<string, number> = { p1: 0xffd6d6, p2: 0xd6e8ff };
+export const laneColor = (id: string): number => COLORS[id] ?? COLORS.p2;
+export const laneTint = (id: string): number => TINTS[id] ?? TINTS.p2;
+export const laneColorName = (id: string): "RED" | "BLUE" => (id === "p1" ? "RED" : "BLUE");
+export const cssColor = (n: number): string => `#${n.toString(16).padStart(6, "0")}`;
+
+/**
+ * Where the camera's left edge is, in world units, in a versus match. Both runners stay in view (centred between them)
+ * while the gap fits in 80% of the view; a wider gap follows the leader, who then keeps `lead` of the view behind them.
+ * `span` is the world width shown.
+ */
+export function versusCameraLeft(xs: readonly number[], span: number, lead: number): number {
+  const hi = Math.max(...xs);
+  const lo = Math.min(...xs);
+  return hi - lo <= span * 0.8 ? (hi + lo) / 2 - span / 2 : hi - lead * span;
+}
