@@ -84,7 +84,7 @@ test('a wave that was not flagged and leaves its band upward counts as worse', (
 test('runFullWaves: baseline, flagged wave, stand-in proposal, holdout, verdict', async () => {
   const baseHash = hash(data);
   const patched = (await importEngine('packages/contracts/index.ts')).applyPatch(data, { baseDataHash: baseHash,
-    rationale: 'x', replacements: [{ path: '/gameRules/sections/3/anchorSpacing', value: 3770 }] });
+    rationale: 'x', replacements: [{ path: '/gameRules/sections/3/anchorSpacing', value: 6175 }] });
   const out = await runFullWaves({ baselineResults: runs(100, 15), baseData: data, rootData: data, hashData: hash,
     adapter: new FakePatchAdapter({ baseDataHash: '0'.repeat(64), replacements: [], rationale: '' }),
     holdoutSeeds: Array.from({ length: 100 }, (_, i) => 1001 + i), botPolicyVersion: 'tentacle-bot-0.1.0',
@@ -93,9 +93,9 @@ test('runFullWaves: baseline, flagged wave, stand-in proposal, holdout, verdict'
   const body = out.value;
   assert.equal(body.fair, false);
   assert.equal(body.flaggedWave.wave, 4);
-  assert.deepEqual(body.proposal.replacements, [{ path: '/gameRules/sections/3/anchorSpacing', value: 3770 }]);
+  assert.deepEqual(body.proposal.replacements, [{ path: '/gameRules/sections/3/anchorSpacing', value: 6175 }]);
   assert.equal(body.proposal.changes[0].label, 'Section 4 · Anchor spacing');
-  assert.equal(body.proposal.changes[0].old, 5800);
+  assert.equal(body.proposal.changes[0].old, 9500);
   assert.equal(body.patchedDataHash, hash(patched));
   assert.equal(body.verdict.verdict, 'accepted');
   assert.equal(body.verdict.targets[0].outcome, 'on target');

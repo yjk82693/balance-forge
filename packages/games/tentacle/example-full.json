@@ -1,159 +1,149 @@
 {
-  "botPolicyVersion": "tentacle-bot-0.1.0",
-  "simVersion": "tentacle-0.1.0",
+  "botPolicyVersion": "tentacle-bot-0.2.0",
+  "simVersion": "tentacle-0.2.0",
   "seedSetId": "runs-1-100",
   "holdoutSeedSetId": "holdout-1000001-1000100",
   "runs": 100,
   "holdoutRuns": 100,
   "baseline": {
-    "dataHash": "09617a29acbfff3e7fdd3ae884c929304c62eb0dfa4c086849bbdef0a06412b9",
+    "dataHash": "18b5d8430cfcb2de4d48c29a80581a721b3764f52e2b74ea7e782bc32e93cdfe",
     "validRuns": 100,
     "invalidRuns": 0,
-    "winRate": 0.07,
+    "winRate": 0.04,
     "winCi95": [
-      0.034319,
-      0.137497
+      0.015663,
+      0.098372
     ],
-    "meanTicks": 2593,
+    "meanTicks": 2981,
     "waves": [
       {
         "wave": 1,
         "kind": "wave",
         "reached": 100,
         "reachRate": 1,
-        "cleared": 100,
-        "clearRate": 1,
+        "cleared": 95,
+        "clearRate": 0.95,
         "ci95": [
-          0.963005,
-          1
+          0.888248,
+          0.978457
         ],
         "target": 0.7,
-        "deltaToTarget": 0.3,
+        "deltaToTarget": 0.25,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 2,
         "kind": "wave",
-        "reached": 100,
-        "reachRate": 1,
-        "cleared": 100,
-        "clearRate": 1,
+        "reached": 95,
+        "reachRate": 0.95,
+        "cleared": 79,
+        "clearRate": 0.831579,
         "ci95": [
-          0.963005,
-          1
+          0.743795,
+          0.893588
         ],
         "target": 0.7,
-        "deltaToTarget": 0.3,
+        "deltaToTarget": 0.131579,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 3,
         "kind": "wave",
-        "reached": 100,
-        "reachRate": 1,
-        "cleared": 100,
-        "clearRate": 1,
+        "reached": 79,
+        "reachRate": 0.79,
+        "cleared": 73,
+        "clearRate": 0.924051,
         "ci95": [
-          0.963005,
-          1
+          0.844044,
+          0.964728
         ],
         "target": 0.65,
-        "deltaToTarget": 0.35,
+        "deltaToTarget": 0.274051,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 4,
         "kind": "wave",
-        "reached": 100,
-        "reachRate": 1,
-        "cleared": 15,
-        "clearRate": 0.15,
+        "reached": 73,
+        "reachRate": 0.73,
+        "cleared": 5,
+        "clearRate": 0.068493,
         "ci95": [
-          0.093059,
-          0.232837
+          0.029609,
+          0.150523
         ],
         "target": 0.65,
-        "deltaToTarget": -0.5,
-        "deaths": 85,
+        "deltaToTarget": -0.581507,
+        "deaths": 0,
         "outlier": true
       },
       {
         "wave": 5,
         "kind": "wave",
-        "reached": 15,
-        "reachRate": 0.15,
-        "cleared": 13,
-        "clearRate": 0.866667,
+        "reached": 5,
+        "reachRate": 0.05,
+        "cleared": 4,
+        "clearRate": 0.8,
         "ci95": [
-          0.621175,
-          0.96264
+          0.375528,
+          0.963777
         ],
         "target": 0.6,
-        "deltaToTarget": 0.266667,
-        "deaths": 1,
+        "deltaToTarget": 0.2,
+        "deaths": 0,
         "outlier": false
       },
       {
         "wave": 6,
         "kind": "boss",
-        "reached": 13,
-        "reachRate": 0.13,
-        "cleared": 7,
-        "clearRate": 0.538462,
+        "reached": 4,
+        "reachRate": 0.04,
+        "cleared": 4,
+        "clearRate": 1,
         "ci95": [
-          0.291434,
-          0.767942
+          0.5101,
+          1
         ],
         "target": 0.5,
-        "deltaToTarget": 0.038462,
-        "deaths": 6,
+        "deltaToTarget": 0.5,
+        "deaths": 0,
         "outlier": false
       }
     ],
-    "elapsedMs": 11769,
-    "createdAt": "2026-11-14T23:58:54.416Z"
+    "elapsedMs": 16878,
+    "createdAt": "2026-11-15T00:53:12.743Z"
   },
   "humanRuns": 0,
   "fair": false,
   "flaggedWave": {
     "wave": 4,
-    "clearRate": 0.15,
+    "clearRate": 0.068493,
     "ci95": [
-      0.093059,
-      0.232837
+      0.029609,
+      0.150523
     ],
     "target": 0.65,
-    "deltaToTarget": -0.5
+    "deltaToTarget": -0.581507
   },
   "proposal": {
-    "baseDataHash": "09617a29acbfff3e7fdd3ae884c929304c62eb0dfa4c086849bbdef0a06412b9",
+    "baseDataHash": "18b5d8430cfcb2de4d48c29a80581a721b3764f52e2b74ea7e782bc32e93cdfe",
     "replacements": [
       {
-        "path": "/gameRules/waves/3/enemyDamage",
-        "value": 20
-      },
-      {
-        "path": "/gameRules/waves/3/fireIntervalTicks",
-        "value": 60
+        "path": "/gameRules/sections/3/anchorSpacing",
+        "value": 6175
       }
     ],
-    "rationale": "Offline stand-in: wave 4 is far below target; damage halved, fire interval doubled.",
+    "rationale": "Offline stand-in: section 4 is below target; anchor spacing x0.65.",
     "origin": "fake",
     "changes": [
       {
-        "path": "/gameRules/waves/3/enemyDamage",
-        "label": "Wave 4 \u00b7 Enemy damage",
-        "old": 40,
-        "new": 20
-      },
-      {
-        "path": "/gameRules/waves/3/fireIntervalTicks",
-        "label": "Wave 4 \u00b7 Fire interval (ticks)",
-        "old": 30,
-        "new": 60
+        "path": "/gameRules/sections/3/anchorSpacing",
+        "label": "Section 4 \u00b7 Anchor spacing",
+        "old": 9500,
+        "new": 6175
       }
     ]
   },
@@ -161,144 +151,144 @@
     "ok": true,
     "errors": []
   },
-  "patchedDataHash": "2dcefed5d37ed679049af775b6911a0b6bdd44b79e21007124eea0f6a84696fe",
+  "patchedDataHash": "1d4e61baa147d7b62ccb1b3597b16b17c5b797283cfa165cddeab01ef864d6ac",
   "patched": {
-    "dataHash": "2dcefed5d37ed679049af775b6911a0b6bdd44b79e21007124eea0f6a84696fe",
+    "dataHash": "1d4e61baa147d7b62ccb1b3597b16b17c5b797283cfa165cddeab01ef864d6ac",
     "validRuns": 100,
     "invalidRuns": 0,
-    "winRate": 0.55,
+    "winRate": 0.29,
     "winCi95": [
-      0.452444,
-      0.643856
+      0.210147,
+      0.385391
     ],
-    "meanTicks": 4020,
+    "meanTicks": 4175,
     "waves": [
       {
         "wave": 1,
         "kind": "wave",
         "reached": 100,
         "reachRate": 1,
-        "cleared": 100,
-        "clearRate": 1,
+        "cleared": 98,
+        "clearRate": 0.98,
         "ci95": [
-          0.963005,
-          1
+          0.929987,
+          0.994498
         ],
         "target": 0.7,
-        "deltaToTarget": 0.3,
+        "deltaToTarget": 0.28,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 2,
         "kind": "wave",
-        "reached": 100,
-        "reachRate": 1,
-        "cleared": 100,
-        "clearRate": 1,
+        "reached": 98,
+        "reachRate": 0.98,
+        "cleared": 83,
+        "clearRate": 0.846939,
         "ci95": [
-          0.963005,
-          1
+          0.76271,
+          0.904994
         ],
         "target": 0.7,
-        "deltaToTarget": 0.3,
+        "deltaToTarget": 0.146939,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 3,
         "kind": "wave",
-        "reached": 100,
-        "reachRate": 1,
-        "cleared": 97,
-        "clearRate": 0.97,
+        "reached": 83,
+        "reachRate": 0.83,
+        "cleared": 79,
+        "clearRate": 0.951807,
         "ci95": [
-          0.915479,
-          0.989746
+          0.88254,
+          0.981102
         ],
         "target": 0.65,
-        "deltaToTarget": 0.32,
-        "deaths": 3,
+        "deltaToTarget": 0.301807,
+        "deaths": 0,
         "outlier": false
       },
       {
         "wave": 4,
         "kind": "wave",
-        "reached": 97,
-        "reachRate": 0.97,
-        "cleared": 79,
-        "clearRate": 0.814433,
+        "reached": 79,
+        "reachRate": 0.79,
+        "cleared": 44,
+        "clearRate": 0.556962,
         "ci95": [
-          0.725637,
-          0.879272
+          0.447317,
+          0.661324
         ],
         "target": 0.65,
-        "deltaToTarget": 0.164433,
-        "deaths": 18,
+        "deltaToTarget": -0.093038,
+        "deaths": 0,
         "outlier": false
       },
       {
         "wave": 5,
         "kind": "wave",
-        "reached": 79,
-        "reachRate": 0.79,
-        "cleared": 72,
-        "clearRate": 0.911392,
+        "reached": 44,
+        "reachRate": 0.44,
+        "cleared": 33,
+        "clearRate": 0.75,
         "ci95": [
-          0.828215,
-          0.956415
+          0.605592,
+          0.854259
         ],
         "target": 0.6,
-        "deltaToTarget": 0.311392,
-        "deaths": 5,
+        "deltaToTarget": 0.15,
+        "deaths": 0,
         "outlier": false
       },
       {
         "wave": 6,
         "kind": "boss",
-        "reached": 72,
-        "reachRate": 0.72,
-        "cleared": 55,
-        "clearRate": 0.763889,
+        "reached": 33,
+        "reachRate": 0.33,
+        "cleared": 29,
+        "clearRate": 0.878788,
         "ci95": [
-          0.65401,
-          0.847034
+          0.726742,
+          0.951839
         ],
         "target": 0.5,
-        "deltaToTarget": 0.263889,
-        "deaths": 17,
+        "deltaToTarget": 0.378788,
+        "deaths": 0,
         "outlier": false
       }
     ],
-    "createdAt": "2026-11-14T23:58:54.416Z"
+    "createdAt": "2026-11-15T00:53:12.743Z"
   },
   "verdict": {
-    "verdict": "rejected",
+    "verdict": "accepted",
     "reasons": [
-      "wave 4: overshot (15.0% -> 81.4% cleared, n=100 -> 97; band 60.0%-70.0%)",
-      "wave 4: overshot its band, the patch made it too easy: needs another round or the designer"
+      "section 4: on target (6.8% -> 55.7% cleared, n=73 -> 79; band 60.0%-70.0%)",
+      "1 of 1 flagged section(s) on target or improved; nothing overshot or got worse"
     ],
     "targets": [
       {
         "wave": 4,
-        "matchup": "wave 4",
+        "matchup": "section 4",
         "before": {
-          "rate": 0.15,
+          "rate": 0.068493,
           "ci95": [
-            0.093059,
-            0.232837
+            0.029609,
+            0.150523
           ],
-          "games": 100
+          "games": 73
         },
         "after": {
-          "rate": 0.814433,
+          "rate": 0.556962,
           "ci95": [
-            0.725637,
-            0.879272
+            0.447317,
+            0.661324
           ],
-          "games": 97
+          "games": 79
         },
-        "outcome": "overshot",
+        "outcome": "on target",
         "band": [
           0.6,
           0.7
@@ -309,7 +299,7 @@
   "runId": "00000000-0000-4000-8000-000000000000",
   "gameId": "tentacle_run",
   "botPolicy": "scripted",
-  "elapsedMs": 30856,
-  "note": "Recorded run, 100 runs per phase, first stand-in (damage halved): re-judged against the target band",
+  "elapsedMs": 43896,
+  "note": "Recorded run: 100 runs per phase, offline stand-in proposer, scripted bot tentacle-bot-0.2.0",
   "recorded": true
 }

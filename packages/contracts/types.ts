@@ -292,7 +292,9 @@ export type TentacleObservationPayload = {
   cameraX: number; viewWidth: number; // the camera: [cameraX, cameraX + viewWidth]; cameraX = max(0, player.x - 4000)
   finishX: number;
   player: { x: number; y: number; vx: number; vy: number; state: TentaclePlayerState; height: number;
-    jumpHeldTicks: number; wire: null | { anchorId: string; anchorX: number; anchorY: number; length: number } };
+    jumpHeldTicks: number; airTicks: number; // ticks since the ground (coyote time lets a jump still work for 6)
+    jumpBuffer: number; jumped: boolean; // a jump pressed up to 7 ticks before landing fires on landing
+    wire: null | { anchorId: string; anchorX: number; anchorY: number; length: number } };
   obstacles: TentacleObstacle[]; // only those inside [cameraX - 1000, cameraX + viewWidth + 1000]
   anchors: TentacleAnchor[]; // likewise
   shark: null | { x: number }; // the Man-Shark chasing in the last section (drawn behind Sepia), else null

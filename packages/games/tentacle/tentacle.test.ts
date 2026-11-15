@@ -35,7 +35,7 @@ test('the data shape: six sections, one flawed section, a generated course', () 
   assert.deepEqual(rules.sections.map((s, i) => (s.flaw ? i + 1 : 0)).filter(Boolean), [4]);
   const state = fresh();
   const kinds = state.payload.obstacles.reduce((n, o) => ({ ...n, [o.kind]: (n[o.kind] ?? 0) + 1 }), {});
-  assert.deepEqual(kinds, { pit: 15, lowBar: 12, wall: 9 }); // the sum over the six sections
+  assert.deepEqual(kinds, { pit: 13, lowBar: 10, wall: 8 }); // the sum over the six sections
   assert.ok(state.payload.anchors.length > 20);
   assert.equal(state.payload.finishX, rules.leadIn + 6 * 30000);
   assert.equal(game.describe().maxPlayers, 1);
@@ -185,4 +185,31 @@ test('the bot is deterministic per seed variant', () => {
   const view = game.observe(fresh(), 'p1');
   assert.deepEqual(bot.chooseActions(view, 0, 5), bot.chooseActions(view, 0, 5));
   assert.match(bot.botPolicyVersion, /^tentacle-bot-/);
+});
+
+test('forgiving feel: coyote time lets a late jump work; a press just before landing fires on landing', () => {
+  // coyote: Sepia has just walked off the edge of a pit (3 ticks), a jump press still jumps
+  let state = fresh();
+  const pit = state.payload.obstacles.find(o => o.kind === 'pit');
+  state.payload.obstacles = [pit];
+  state.payload.player.x = pit.x - 20;
+  for (let i = 0; i < 3; i++) state = stepWith(state);
+  assert.ok(state.payload.player.y < 0 && state.payload.player.state === 'jumping');
+  state = stepWith(state, [control(state, 1, 0)]);
+  assert.ok(state.payload.player.vy > 40, `vy ${state.payload.player.vy}`); // jumped out of the fall
+  // buffer: a press 4 ticks before landing (no anchor to hook) jumps again on landing
+  let jump = fresh();
+  jump.payload.obstacles = [];
+  jump.payload.anchors = [];
+  jump = stepWith(jump, [control(jump, 1, 0)]);
+  jump = stepWith(jump, [control(jump, 0, 0, 1)]);
+  while (jump.payload.player.y > 0 || jump.payload.player.vy > 0) {
+    if (jump.payload.player.vy < 0 && jump.payload.player.y < 160) break;
+    jump = stepWith(jump);
+  }
+  jump = stepWith(jump, [control(jump, 1, 0, 2)]); // the press, a few ticks above the ground
+  for (let i = 0; i < 12 && jump.payload.player.state === 'jumping' && jump.payload.player.vy < 0; i++) {
+    jump = stepWith(jump);
+  }
+  assert.ok(jump.payload.player.vy > 0, 'jumped again on landing');
 });

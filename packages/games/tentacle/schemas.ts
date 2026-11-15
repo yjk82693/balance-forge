@@ -15,7 +15,7 @@ const wire = { anyOf: [{ type: 'null' }, object({ anchorId: text(), anchorX: coo
   length: int(1, 100000) })] };
 const playerState = { enum: ['running', 'jumping', 'sliding', 'swinging'] };
 const player = object({ x: coord, y: coord, vx: int(-1000, 1000), vy: int(-1000, 1000), state: playerState,
-  height: int(1, 5000), jumpHeldTicks: int(), wire });
+  height: int(1, 5000), jumpHeldTicks: int(), airTicks: int(), jumpBuffer: int(), jumped: { type: 'boolean' }, wire });
 export const schemas = {
   ...Object.fromEntries(actions.map(a => [`action:${a.actionId}`, a.paramsSchema])),
   rules: object({
