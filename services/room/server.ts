@@ -17,6 +17,7 @@ import type { Envelope, HttpRequest, HttpResponse, HttpServer, Room, RoomServerO
   from './types.ts';
 import { replayViews } from './replay-views.ts';
 import { games, cardAction } from '../runner/match.ts';
+import * as tentacleBot from '../../packages/games/tentacle/bot.ts';
 import { chooseActionsGentle, deriveBotSeed, gentleBotPolicyVersion } from '../../packages/games/action/bot.ts';
 import { Storage } from './storage.ts';
 import { createScheduler } from './scheduler.ts';
@@ -457,7 +458,13 @@ export class RoomServer {
       data
     } = this.storage.get(gameId, gameId === room.gameId ? room.selectedHash : undefined);
     let seats = room.seats.filter(seat => seat.session);
-    if (options.bot && seats.length === 1) {
+    if (options.bot && seats.length === 1 && gameId === 'tentacle_run' && options.versus === true) {
+      // runner versus a bot: the phone is p1 and the server plays p2 (Sepia, the gentle runner bot)
+      for (const session of this.sessions) if (session.seat === seats[0].seat) session.seat = 'p1';
+      seats[0].seat = 'p1';
+      seats = [...seats, { seat: 'p2', name: 'Scripted bot', hero: 'sepia', session: null, bot: true, token: null,
+        expiresAt: 0 }];
+    } else if (options.bot && seats.length === 1) {
       const available = this.playableHeroes({
         gameId,
         selectedHash: gameId === room.gameId ? room.selectedHash : undefined
@@ -563,6 +570,12 @@ export class RoomServer {
       state = authority.state;
     for (const seat of room.seats) {
       if (!seat.bot) continue;
+      if (authority.config.gameId === 'tentacle_run') { // the runner's gentle bot: inputs only, like the arena's
+        const view = room.game.observe(state, seat.seat);
+        const seed = deriveBotSeed(authority.config.seed, authority.config.players.indexOf(seat.seat));
+        for (const input of tentacleBot.chooseActionsGentle(view, state.tick * 2, seed)) authority.submit(input);
+        continue;
+      }
       const inputs = authority.config.mode === 'turn' ? state.payload.activePlayer === seat.seat ? [cardAction(
         room.game, state, state.tick)] : [] : chooseActionsGentle(room.game.observe(state, seat.seat), state.tick * 2,
         deriveBotSeed(authority.config.seed, authority.config.players.indexOf(seat.seat)));
@@ -608,7 +621,8 @@ export class RoomServer {
       ...(room.seats.some(seat => seat.bot) ? {
         botSeats: room.seats.filter(seat => seat.bot).map(seat => seat.seat),
         // Hero Arena's room bot is the gentle policy; Hero Cards plays its first legal card (no policy version)
-        ...(room.game.describe().mode === 'turn' ? {} : { botPolicyVersion: gentleBotPolicyVersion })
+        ...(room.game.describe().mode === 'turn' ? {} : { botPolicyVersion: room.gameId === 'tentacle_run' ?
+          tentacleBot.gentleBotPolicyVersion : gentleBotPolicyVersion })
       } : {})
     } as MatchResult;
     const recording = {
