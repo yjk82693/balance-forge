@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CardsDashboard } from "../components/CardsDashboard";
+import { TentacleDashboard } from "../components/TentacleDashboard";
 import { DashboardView } from "../components/DashboardView";
 import { useDashGame } from "../lib/dashGame";
 import { type MatchRow } from "../components/MatchesTable";
@@ -53,6 +54,7 @@ export function Dashboard() {
     };
   }, [theme]);
   const onTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+  if (game === "tentacle_run") return <TentacleDashboard theme={theme} onTheme={onTheme} />;
   return game === "hero_cards" ? (
     <CardsDashboard theme={theme} onTheme={onTheme} />
   ) : (

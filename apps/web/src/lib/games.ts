@@ -33,14 +33,14 @@ export const GAMES: GameInfo[] = [
     status: "ready",
   },
   {
-    id: "sepia_tentacle_run",
-    title: "Sepia Run",
-    eyebrow: "SEPIA RUN",
+    id: "tentacle_run",
+    title: "Sepia Tentacle Run",
+    eyebrow: "TENTACLE RUN",
     accentVar: "--game-sepia",
-    summary: "endless run · boss phases",
+    summary: "solo run · 5 waves and a boss",
     art: "assets/sepia_tentacle_run/backgrounds/rooftop.png",
     portraitHero: "sepia",
-    status: "planned",
+    status: "ready",
   },
 ];
 

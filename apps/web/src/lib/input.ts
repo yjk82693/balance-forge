@@ -1,6 +1,6 @@
 import type { ActionInput } from "./contract";
 
-export type ButtonAction = "melee" | "projectile" | "guard";
+export type ButtonAction = "melee" | "projectile" | "guard" | "latch" | "whip";
 export type InputSource = "touch" | "gamepad" | "keyboard";
 
 const MOVE_INTERVAL_MS = 33; // ~30 sends/s for small changes, far under the contract's 120/s/seat cap
@@ -13,7 +13,7 @@ const clampInt = (v: number) => Math.max(-1000, Math.min(1000, Math.round(v * 10
  * Every source goes through here, so a phone and a gamepad produce identical messages:
  *   move:       { actionId: "move", params: { moveX, moveY } }          (-1000..1000)
  *   buttons:    { actionId: "melee" | "projectile" | "guard", params: { aimX, aimY } }
- *               (aim = last non-zero stick direction)
+ *               (aim = last non-zero stick direction); Sepia Tentacle Run uses latch and whip the same way
  * The server decides legality; nothing here advances game state.
  */
 export class InputPipeline {

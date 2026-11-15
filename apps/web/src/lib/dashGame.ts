@@ -1,8 +1,13 @@
 import { useSyncExternalStore } from "react";
+import type { RunGame } from "./api";
 
-export type DashGame = "hero_arena" | "hero_cards";
+export type DashGame = RunGame;
 
-export const GAME_LABEL: Record<DashGame, string> = { hero_arena: "Hero Arena", hero_cards: "Hero Cards" };
+export const GAME_LABEL: Record<DashGame, string> = {
+  hero_arena: "Hero Arena",
+  hero_cards: "Hero Cards",
+  tentacle_run: "Tentacle Run",
+};
 
 /** The decks of Hero Cards: the matchup a cards run measures is two of these. */
 export const DECKS = ["nightcrow", "standard"] as const;
@@ -14,11 +19,12 @@ const KEY = "bf-game";
 const DECK_KEY = "bf-decks";
 const listeners = new Set<() => void>();
 
-const isGame = (v: unknown): v is DashGame => v === "hero_arena" || v === "hero_cards";
+const isGame = (v: unknown): v is DashGame => v === "hero_arena" || v === "hero_cards" || v === "tentacle_run";
 
 /** `#/dashboard?game=cards` (or `=hero_cards`) opens the cards dashboard directly. */
 function fromUrl(): DashGame | null {
   const q = new URLSearchParams(location.hash.split("?")[1] ?? "").get("game");
+  if (q === "tentacle" || q === "tentacle_run") return "tentacle_run";
   return q === "cards" || q === "hero_cards" ? "hero_cards" : q === "arena" || q === "hero_arena" ? "hero_arena" : null;
 }
 

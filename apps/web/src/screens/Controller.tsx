@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
+import { TENTACLE_GAME_ID, isTentaclePayload, waveLabel } from "../lib/tentacle";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
 import { Stick } from "../components/Stick";
@@ -18,6 +19,7 @@ import { SoundToggle } from "../components/SoundToggle";
 import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
 import { syncHero } from "../lib/heroSync";
+import { TentacleButton } from "../components/TentacleButton";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
 
@@ -42,12 +44,16 @@ interface Profile {
   hero: string;
 }
 
-export function Controller({ initialCode }: { initialCode: string }) {
+export function Controller({ initialCode, game }: { initialCode: string; game?: string | null }) {
   useManifest();
   const { transport, status } = useTransport("controller");
   const { room, observation, events, config, result, error, lastAckSeq, views } = useRoom(transport);
   const [arenaOn, setArenaOn] = useState(true); // the small arena above the controls; one button turns it off
-  const [profile, setProfile] = useState<Profile>({ code: initialCode.toUpperCase(), name: "", hero: "bari" });
+  const [profile, setProfile] = useState<Profile>({
+    code: initialCode.toUpperCase(),
+    name: "",
+    hero: game === TENTACLE_GAME_ID ? "sepia" : "bari", // a solo game has one hero
+  });
   const [joined, setJoined] = useState<Profile | null>(null);
   const seat = room?.you;
   const tick = useRef(0);
@@ -78,6 +84,11 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const padName = useGamepad(pipeline, playing && online);
   // A cards view means the cards hand, whatever the room status said about the game when this phone joined.
   const isCards = gameId === "hero_cards" || isCardsPayload(observation?.payload);
+  const isTentacle = gameId === TENTACLE_GAME_ID || isTentaclePayload(observation?.payload);
+  // Sepia is the only hero of Sepia Tentacle Run: whatever the form said, the room is told Sepia.
+  useEffect(() => {
+    if (isTentacle && joined && joined.hero !== "sepia") setJoined({ ...joined, hero: "sepia" });
+  }, [isTentacle, joined]);
   usePreventPageGestures(playing && !isCards); // the cards hand scrolls sideways, so it is left alone
 
   useEffect(() => {
@@ -179,7 +190,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
   if (!playing) {
     return (
       <JoinForm
-        gameId={gameId}
+        gameId={game ?? gameId}
         profile={profile}
         onChange={setProfile}
         onJoin={join}
@@ -195,6 +206,8 @@ export function Controller({ initialCode }: { initialCode: string }) {
   const me = room?.seats.find((s) => s.seat === seat);
   const hero = me?.hero ?? joined.hero;
   const mine = myArenaEntity(observation?.payload, seat);
+  const run = isTentaclePayload(observation?.payload) ? observation.payload : null;
+  const runner = run?.entities.find((e) => e.kind === "player");
   const ended = !!result || room?.phase === "ended";
   const gameOn = room?.phase === "playing";
 
@@ -217,7 +230,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
           </button>
         </div>
       )}
-      {room?.phase === "lobby" && (
+      {room?.phase === "lobby" && !isTentacle && (
         <fieldset className="heroes seated-heroes" disabled={!online}>
           <legend className="caption">Change hero</legend>
           {HEROES.map((h) => (
@@ -251,7 +264,7 @@ export function Controller({ initialCode }: { initialCode: string }) {
         />
       ) : (
       <>
-      {arenaOn && (
+      {arenaOn && !isTentacle && (
         <div className="phone-arena">
           <Suspense fallback={null}>
             <ArenaCanvas
@@ -275,13 +288,17 @@ export function Controller({ initialCode }: { initialCode: string }) {
             <span className="text-2">{gameOn ? "Watch the big screen." : "Waiting for the host to start."}</span>
           </p>
         )}
-        {mine && (
-          <div className="hp" aria-label={`HP ${mine.hp}`}>
+        {isTentacle && run && <p className="small">{waveLabel(run)}</p>}
+        {(mine ?? runner) && (
+          <div className="hp" aria-label={`HP ${(mine ?? runner)!.hp}`}>
             <span className="caption">HP</span>
             <span className="hp-track">
-              <span className="hp-fill" style={{ width: `${hpPercent(mine.hp, mine.maxHp)}%` }} />
+              <span
+                className="hp-fill"
+                style={{ width: `${hpPercent((mine ?? runner)!.hp, (mine ?? runner)!.maxHp)}%` }}
+              />
             </span>
-            <span className="small">{mine.hp}</span>
+            <span className="small">{(mine ?? runner)!.hp}</span>
           </div>
         )}
         {padName && <p className="caption">Gamepad connected</p>}
@@ -292,6 +309,11 @@ export function Controller({ initialCode }: { initialCode: string }) {
           <div className="stick-ring" />
           <div className="stick-knob" />
         </div>
+        {isTentacle ? (
+          <div className="btn-cluster">
+            <TentacleButton disabled={!online} onAction={(action) => pipeline?.press(action)} />
+          </div>
+        ) : (
         <div className="btn-cluster">
           <ActionButton
             className="b-guard"
@@ -318,12 +340,13 @@ export function Controller({ initialCode }: { initialCode: string }) {
             onPress={() => pipeline?.press("projectile")}
           />
         </div>
+        )}
       </div>
       </>
       )}
       <DebugReadout stats={net} buffer={bufferStats} />
       <footer className="phone-foot">
-        {!isCards && (
+        {!isCards && !isTentacle && (
           <button className="btn secondary touch" aria-pressed={arenaOn} onClick={() => setArenaOn(!arenaOn)}>
             {arenaOn ? "Arena: on" : "Arena: off"}
           </button>
@@ -398,7 +421,7 @@ function JoinForm(props: {
       </label>
       <fieldset className="heroes">
         <legend className="caption">Hero</legend>
-        {HEROES.map((h) => {
+        {HEROES.filter((h) => gameId !== TENTACLE_GAME_ID || h.id === "sepia").map((h) => {
           const planned = !!h.plannedIn?.includes(gameId);
           return (
             <label

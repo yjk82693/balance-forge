@@ -2580,3 +2580,11 @@ button.intent-btn { cursor: pointer; }
 /* Skill screen: the training panel with the exploratory human-style panel under it. */
 .skill-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
 .exploratory-list { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Sepia Tentacle Run phone: the one tentacle button with its rope-charge ring. */
+.tentacle-btn { position: relative; }
+.tentacle-ring { position: absolute; inset: 0; transform: rotate(-90deg); pointer-events: none; }
+.tentacle-ring circle { fill: none; stroke-width: 6; }
+.tentacle-ring .ring-track { stroke: var(--line-strong); opacity: 0.5; }
+.tentacle-ring .ring-fill { stroke: var(--accent, #4cc9f0); stroke-linecap: round; }
+.tentacle-btn.ready .ring-fill { stroke: var(--success); }

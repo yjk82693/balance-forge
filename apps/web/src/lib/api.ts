@@ -4,12 +4,17 @@ import { heroName } from "./heroes";
 import { mockTimeline } from "./replayGen";
 import { mockReport } from "./mockReport";
 import { mockCardsReport, mockCardsRun } from "./mockCards";
+import { mockTentacleReport, mockTentacleRun } from "./mockTentacle";
+import type { TentacleResult } from "./tentacleDash";
 import { isProgressMsg, mockProgress, type ProgressMsg } from "./progress";
 import { runFromFull } from "./fullRun";
 import type { HpTimeline } from "./replaySource";
 import { reportFromResults, type RunInfo } from "./reportFromResults";
 import { createTransport } from "../mock/transport";
 import { isMockMode } from "../mock/types";
+
+/** The games the dashboard can run. */
+export type RunGame = "hero_arena" | "hero_cards" | "tentacle_run";
 
 export type PatchOrigin = "gemini" | "grok" | "fallback" | "fake" | "manual";
 export type VerdictKind = "accepted" | "rejected" | "inconclusive";
@@ -156,6 +161,8 @@ export interface PlaytestRun {
   diagnosis?: Diagnosis;
   /** Hero Cards: the card table and card levers (the run's diagnosis for that game) */
   cardDiagnosis?: CardDiagnosis;
+  /** Sepia Tentacle Run: the wave table, the flagged wave and the per-wave verdict (instead of matchup rows) */
+  tentacle?: TentacleResult;
   /** per-matchup evidence from the run body (`evidence`), when the server sent it */
   evidence?: RunEvidence;
   /** id of the run, when the server gave one */
@@ -259,8 +266,13 @@ export async function runPlaytest(
   heroes?: [string, string],
   diagnose = false,
   botPolicy?: string,
-  gameId: "hero_arena" | "hero_cards" = "hero_arena",
+  gameId: RunGame = "hero_arena",
 ): Promise<PlaytestRun> {
+  if (isMockMode() && gameId === "tentacle_run") {
+    await playMockPhase(mockTentacleReport("broken"), "baseline", onProgress, signal);
+    await playMockPhase(mockTentacleReport("patched"), "holdout", onProgress, signal);
+    return mockTentacleRun();
+  }
   if (isMockMode() && gameId === "hero_cards") {
     await playMockPhase(mockCardsReport("broken"), "baseline", onProgress, signal);
     await quietPhase(3000, signal); // the card probe sends no progress, like the real engine
@@ -288,6 +300,12 @@ export async function runPlaytest(
         : undefined,
     };
   }
+  if (gameId === "tentacle_run") {
+    // Sepia Tentacle Run: solo runs of the scripted bot, one endpoint, no hero pair, no learned bots.
+    const run = await runFullPlaytest(signal, undefined, false, undefined, gameId);
+    if (!run) throw new ApiError("This server can't run Sepia Tentacle Run yet.", "server");
+    return run;
+  }
   if (gameId === "hero_cards") {
     // Hero Cards has one endpoint only: no plain-run fallback, no learned bots, the card probe is always part of it.
     const cards = await runFullPlaytest(signal, heroes, false, undefined, gameId);
@@ -300,6 +318,8 @@ export async function runPlaytest(
 
 /** Pairs per seat assignment for the live run: Bari vs Real Armor, 400 matches, over the 200-game verdict gate. */
 export const FULL_RUN_PAIRS = 100;
+/** Solo runs of Sepia Tentacle Run for the baseline (and the holdout): the plan's 200. */
+export const TENTACLE_RUNS = 200;
 
 /**
  * POST /v1/playtest/full {gameId, pairs}: baseline run (no roster: Bari vs Real Armor only, about 10 s), proposal,
@@ -312,21 +332,25 @@ async function runFullPlaytest(
   heroes?: [string, string],
   diagnose = false,
   botPolicy?: string,
-  gameId: "hero_arena" | "hero_cards" = "hero_arena",
+  gameId: RunGame = "hero_arena",
 ): Promise<PlaytestRun | null> {
   let res: Response;
   try {
     res = await fetch("/v1/playtest/full", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        gameId,
-        ...(heroes ? { heroes } : {}),
-        ...(diagnose ? { diagnose: true } : {}),
-        ...(botPolicy ? { botPolicy } : {}),
-        pairs: FULL_RUN_PAIRS,
-        holdoutPairs: FULL_RUN_PAIRS, // the holdout needs as many games as the baseline to pass the verdict's gate
-      }),
+      body: JSON.stringify(
+        gameId === "tentacle_run"
+          ? { gameId, runs: TENTACLE_RUNS, holdoutRuns: TENTACLE_RUNS }
+          : {
+              gameId,
+              ...(heroes ? { heroes } : {}),
+              ...(diagnose ? { diagnose: true } : {}),
+              ...(botPolicy ? { botPolicy } : {}),
+              pairs: FULL_RUN_PAIRS,
+              holdoutPairs: FULL_RUN_PAIRS, // the holdout needs as many games as the baseline to pass the gate
+            },
+      ),
       signal,
     });
   } catch (e) {

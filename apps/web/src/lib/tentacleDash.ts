@@ -1,0 +1,149 @@
+// The Sepia Tentacle Run analysis as the dashboard shows it: one row per wave (reached, cleared, clear rate with its
+// interval, deaths), the flagged wave, the per-wave verdict targets and the patch in words. Read from the /full body of
+// packages/games/tentacle/SPEC.md (example: packages/games/tentacle/example-full.json).
+
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object";
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+
+export interface WaveRow {
+  /** 1-based; 6 is the Man-Shark (kind "boss") */
+  wave: number;
+  reached: number;
+  reachRate: number | null;
+  cleared: number;
+  /** cleared / reached; null when nobody reached it */
+  clearRate: number | null;
+  ci95: [number, number] | null;
+  /** the clear rate the designer intends for this wave */
+  target: number | null;
+  deltaToTarget: number | null;
+  deaths: number;
+  /** the whole interval is below the target minus the margin: the wave the headline is about */
+  outlier: boolean;
+}
+
+export interface FlaggedWave {
+  wave: number;
+  clearRate: number;
+  ci95: [number, number] | null;
+  target: number;
+  deltaToTarget: number;
+}
+
+export interface WaveTarget {
+  wave: number;
+  before: { rate: number; ci95: [number, number] | null; games: number };
+  after: { rate: number; ci95: [number, number] | null; games: number };
+  outcome: "improved" | "unchanged" | "worse";
+}
+
+/** What the dashboard shows of a /full body for tentacle_run (the wire shape: packages/games/tentacle/SPEC.md). */
+export interface TentacleResult {
+  runs: number;
+  holdoutRuns: number | null;
+  winRate: number | null;
+  winCi95: [number, number] | null;
+  meanTicks: number | null;
+  waves: WaveRow[];
+  patchedWaves: WaveRow[];
+  flagged: FlaggedWave | null;
+  targets: WaveTarget[];
+  elapsedMs: number | null;
+}
+
+export const waveName = (wave: number, waveCount = 5) => (wave > waveCount ? "Man-Shark" : `Wave ${wave}`);
+
+const pair = (v: unknown): [number, number] | null =>
+  Array.isArray(v) && v.length === 2 && num(v[0]) !== undefined && num(v[1]) !== undefined
+    ? [Number(v[0]), Number(v[1])]
+    : null;
+
+function rowFrom(raw: unknown): WaveRow | null {
+  if (!isObject(raw)) return null;
+  const wave = num(raw.wave);
+  const reached = num(raw.reached);
+  const cleared = num(raw.cleared);
+  if (wave === undefined || reached === undefined || cleared === undefined) return null;
+  return {
+    wave,
+    reached,
+    reachRate: num(raw.reachRate) ?? null,
+    cleared,
+    clearRate: num(raw.clearRate) ?? (reached ? cleared / reached : null),
+    ci95: pair(raw.ci95),
+    target: num(raw.target) ?? null,
+    deltaToTarget: num(raw.deltaToTarget) ?? null,
+    deaths: num(raw.deaths) ?? Math.max(0, reached - cleared),
+    outlier: raw.outlier === true,
+  };
+}
+
+/** `waves` of a baseline or patched block, sorted by wave; bad rows are dropped. */
+export function wavesFrom(block: unknown): WaveRow[] {
+  const list = isObject(block) && Array.isArray(block.waves) ? block.waves : [];
+  return list.flatMap((r) => rowFrom(r) ?? []).sort((a, b) => a.wave - b.wave);
+}
+
+function rateOf(raw: unknown) {
+  if (!isObject(raw)) return null;
+  const rate = num(raw.rate);
+  const games = num(raw.games);
+  return rate === undefined || games === undefined ? null : { rate, ci95: pair(raw.ci95), games };
+}
+
+function targetsFrom(raw: unknown): WaveTarget[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((t) => {
+    if (!isObject(t)) return [];
+    const [before, after, wave] = [rateOf(t.before), rateOf(t.after), num(t.wave)];
+    const outcome = t.outcome === "improved" || t.outcome === "unchanged" || t.outcome === "worse" ? t.outcome : null;
+    return before && after && wave !== undefined && outcome ? [{ wave, before, after, outcome }] : [];
+  });
+}
+
+/** The tentacle part of a /full body; null when it has no wave table. */
+export function tentacleResultFrom(body: unknown): TentacleResult | null {
+  if (!isObject(body)) return null;
+  const waves = wavesFrom(body.baseline);
+  if (!waves.length) return null;
+  const base = isObject(body.baseline) ? body.baseline : {};
+  const f = isObject(body.flaggedWave) ? body.flaggedWave : null;
+  const flagged =
+    f && num(f.wave) !== undefined && num(f.clearRate) !== undefined && num(f.target) !== undefined
+      ? {
+          wave: Number(f.wave),
+          clearRate: Number(f.clearRate),
+          ci95: pair(f.ci95),
+          target: Number(f.target),
+          deltaToTarget: num(f.deltaToTarget) ?? Number(f.clearRate) - Number(f.target),
+        }
+      : null;
+  const verdict = isObject(body.verdict) ? body.verdict : {};
+  return {
+    runs: num(body.runs) ?? num(base.validRuns) ?? waves[0].reached,
+    holdoutRuns: num(body.holdoutRuns) ?? null,
+    winRate: num(base.winRate) ?? null,
+    winCi95: pair(base.winCi95),
+    meanTicks: num(base.meanTicks) ?? null,
+    waves,
+    patchedWaves: wavesFrom(body.patched),
+    flagged,
+    targets: targetsFrom(verdict.targets),
+    elapsedMs: num(body.elapsedMs) ?? null,
+  };
+}
+
+const FIELD_WORDS: Record<string, string> = {
+  walkers: "Walkers",
+  drones: "Drones",
+  sentries: "Sentries",
+  enemySpeed: "Enemy speed",
+  enemyDamage: "Enemy damage",
+  fireIntervalTicks: "Fire interval (ticks)",
+};
+
+/** "Wave 4 · Enemy damage" for /gameRules/waves/3/enemyDamage (the paths count waves from 0); null for other paths. */
+export function waveChangeLabel(path: string): string | null {
+  const m = /^\/gameRules\/waves\/(\d+)\/([A-Za-z]+)$/.exec(path);
+  return m ? `Wave ${Number(m[1]) + 1} · ${FIELD_WORDS[m[2]] ?? m[2]}` : null;
+}

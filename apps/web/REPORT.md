@@ -604,3 +604,25 @@ caveats. It is offered as a bot for runs only when `readiness.ready === true` (`
 `apps/web/tsconfig.json` was already `"strict": true` (0 errors). Added `noImplicitOverride` (4 `override` modifiers: the Phaser
 scene `update`, the error boundary), `noImplicitReturns` and `noFallthroughCasesInSwitch` (0 errors each). Measured and left
 off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors) and `exactOptionalPropertyTypes` (81).
+
+## Game 3: Sepia Tentacle Run (web side)
+
+- Launcher tile `tentacle_run` is playable; the lobby is solo (one seat, "Start run"); the QR carries `&game=tentacle_run`
+  so the phone form offers Sepia only (and the controller tells the room Sepia whatever the form said).
+- Arena screen: Phaser rooftop scene (`TentacleScene.ts`) from `TentacleObservationPayload` (16000 x 9000, y down):
+  anchor posts, the tentacle from the player to `posts[latch.post]`, walker/drone/sentry, shots, the boss entity and the
+  Man-Shark health bar with phase pips (lit pips = phases - phase). Phone: stick + Latch + Whip (`latch`/`whip` with aim).
+- Dashboard tab "Tentacle Run": headline = the flagged wave's clear rate against its target, per-wave table (reached,
+  cleared, clear rate with CI, died here, after the patch), patch ("Wave 4 · Enemy damage 40 → 18"), per-wave verdict,
+  and a bar per wave on the right. Read from the /full body of `packages/games/tentacle/example-full.json`
+  (`lib/tentacleDash.ts`); request `{gameId, runs: 200, holdoutRuns: 200}`.
+- Checked with a dev-only stub scene (`#/arena/tentacle_run?stub=1`, only under `npm run dev`), `?mock=1` sample data
+  (labelled) and the example body served through the real run path. Not yet against the live engine room.
+- The static build offers no Tentacle Run (no recorded run).
+
+- #/present gets one more optional scene "Same platform, a solo action game" (after the card scene) when this tab holds a
+  tentacle_run result: the flagged wave before to after, the patch and the verdict. No request; stored per game.
+
+- Phone controller (option A): one tentacle button replaces Latch + Whip. Tap (< 250 ms) = whip; a hold of 250 ms or
+  more throws the rope (latch) on release, toward the last stick direction (the facing when the stick is idle); a ring
+  fills while holding. Same `whip`/`latch` actions, no protocol change (`lib/tentacleButton.ts`, `TentacleButton.tsx`).

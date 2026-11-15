@@ -29,10 +29,13 @@ export function saveTheme(theme: Theme) {
   }
 }
 
+const runKey = (game: string) =>
+  game === "hero_cards" ? `${RUN_KEY}-cards` : game === "tentacle_run" ? `${RUN_KEY}-tentacle` : RUN_KEY;
+
 /** The last live run, if it is still there and still has the shape we need. */
 export function loadRun(game = "hero_arena"): PlaytestRun | null {
   try {
-    const raw = sessionStorage.getItem(game === "hero_cards" ? `${RUN_KEY}-cards` : RUN_KEY);
+    const raw = sessionStorage.getItem(runKey(game));
     const run = raw ? (JSON.parse(raw) as PlaytestRun) : null;
     return run && Array.isArray(run.baseline?.rows) ? run : null;
   } catch {
@@ -40,11 +43,10 @@ export function loadRun(game = "hero_arena"): PlaytestRun | null {
   }
 }
 
-/** Kept per game: a Hero Cards run never replaces the Hero Arena run, and the other way round. */
+/** Kept per game: a run of one game never replaces the last run of another. */
 export function saveRun(run: PlaytestRun) {
   try {
-    const cards = run.baseline.gameId === "hero_cards";
-    sessionStorage.setItem(cards ? `${RUN_KEY}-cards` : RUN_KEY, JSON.stringify(run));
+    sessionStorage.setItem(runKey(run.baseline.gameId), JSON.stringify(run));
   } catch {
     /* too big or blocked: the run stays in memory only */
   }
