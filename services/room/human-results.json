@@ -1953,5 +1953,561 @@
     "finalStateHash": "0844627828c5fa842325cca59e5ddf39d860534092c66fe0c7d5ffab9363f1d8",
     "valid": true,
     "errorCode": ""
+  },
+  {
+    "matchId": "human-6c535586-385e-43a0-8c9e-50b431f87457",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "hero_arena",
+      "simVersion": "arena-0.1.2",
+      "dataHash": "babbaeabf8563c373ee3a5518fb0810f576b793fba1f61e9c914cf71a55725cd",
+      "seed": 4085430833,
+      "players": [
+        "p1",
+        "p2"
+      ],
+      "mode": "realtime",
+      "maxTicks": 1800,
+      "options": {
+        "assignments": {
+          "p1": "sepia",
+          "p2": "bari"
+        }
+      }
+    },
+    "outcome": {
+      "status": "win",
+      "winners": [
+        "p2"
+      ],
+      "reason": "hp_zero"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 0,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 650,
+              "uses": 0
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 650,
+              "uses": 0
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 650,
+              "uses": 0
+            }
+          ]
+        },
+        {
+          "playerId": "p2",
+          "wins": 1,
+          "draws": 0,
+          "damage": 480,
+          "actions": [
+            {
+              "actionId": "melee",
+              "opportunities": 440,
+              "uses": 13
+            },
+            {
+              "actionId": "projectile",
+              "opportunities": 520,
+              "uses": 1
+            },
+            {
+              "actionId": "guard",
+              "opportunities": 517,
+              "uses": 1
+            }
+          ]
+        }
+      ],
+      "durationTicks": 686
+    },
+    "finalStateHash": "139df09853b6df4a2134a68a39ddfee360bf2d9c24f392af7ae90ecd1d04034a",
+    "valid": true,
+    "errorCode": "",
+    "botSeats": [
+      "p2"
+    ],
+    "botPolicyVersion": "scripted-0.2.1-gentle"
+  },
+  {
+    "matchId": "human-8e784f6e-1e4d-420d-9672-72ab7d92e8e6",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "tentacle_run",
+      "simVersion": "tentacle-0.1.0",
+      "dataHash": "09617a29acbfff3e7fdd3ae884c929304c62eb0dfa4c086849bbdef0a06412b9",
+      "seed": 900171767,
+      "players": [
+        "p1"
+      ],
+      "mode": "realtime",
+      "maxTicks": 7200,
+      "options": {
+        "assignments": {
+          "p1": "sepia"
+        }
+      }
+    },
+    "outcome": {
+      "status": "draw",
+      "winners": [],
+      "reason": "death"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 1,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "move",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "latch",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "whip",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:1:reached",
+              "opportunities": 0,
+              "uses": 1
+            },
+            {
+              "actionId": "wave:1:cleared",
+              "opportunities": 1,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:1:damage",
+              "opportunities": 0,
+              "uses": 100
+            },
+            {
+              "actionId": "wave:2:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:damage",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:damage",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:damage",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:damage",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:damage",
+              "opportunities": 0,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 551
+    },
+    "finalStateHash": "9b306e3e9fe8d16a36da3b0952bfa02d5a95d04e4ef9fbbe0a4216c7b90eccc4",
+    "valid": true,
+    "errorCode": ""
+  },
+  {
+    "matchId": "human-fe73e3e3-166b-4831-994d-6e3b447ea907",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "tentacle_run",
+      "simVersion": "tentacle-0.2.0",
+      "dataHash": "c170bc742fe33e1dcc3a57a9279e7eceee6ea4a70395cac827f4cc1b762df457",
+      "seed": 1776055575,
+      "players": [
+        "p1"
+      ],
+      "mode": "realtime",
+      "maxTicks": 7200,
+      "options": {
+        "assignments": {
+          "p1": "sepia"
+        }
+      }
+    },
+    "outcome": {
+      "status": "draw",
+      "winners": [],
+      "reason": "pit"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 1,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "control",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:1:reached",
+              "opportunities": 0,
+              "uses": 1
+            },
+            {
+              "actionId": "wave:1:cleared",
+              "opportunities": 1,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:cleared",
+              "opportunities": 0,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 214
+    },
+    "finalStateHash": "e8453555e52184de12697a5c86975cf3f5c9def19c5291c03d8761e4c51e426b",
+    "valid": true,
+    "errorCode": ""
+  },
+  {
+    "matchId": "human-b1e35400-b96f-45f5-bf8f-a03a923a5591",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "tentacle_run",
+      "simVersion": "tentacle-0.2.0",
+      "dataHash": "c170bc742fe33e1dcc3a57a9279e7eceee6ea4a70395cac827f4cc1b762df457",
+      "seed": 2294149868,
+      "players": [
+        "p1"
+      ],
+      "mode": "realtime",
+      "maxTicks": 7200,
+      "options": {
+        "assignments": {
+          "p1": "sepia"
+        }
+      }
+    },
+    "outcome": {
+      "status": "draw",
+      "winners": [],
+      "reason": "pit"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 1,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "control",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:1:reached",
+              "opportunities": 0,
+              "uses": 1
+            },
+            {
+              "actionId": "wave:1:cleared",
+              "opportunities": 1,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:cleared",
+              "opportunities": 0,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 209
+    },
+    "finalStateHash": "8c567558090e1ef0f3bee0a9ad345e29b3cdbb0c8e0b2c3984071bd554b3ebfc",
+    "valid": true,
+    "errorCode": ""
+  },
+  {
+    "matchId": "human-386b19e7-e488-4398-8b74-50b955919f04",
+    "config": {
+      "contractVersion": "0.1",
+      "schemaVersion": 1,
+      "gameId": "tentacle_run",
+      "simVersion": "tentacle-0.2.0",
+      "dataHash": "c170bc742fe33e1dcc3a57a9279e7eceee6ea4a70395cac827f4cc1b762df457",
+      "seed": 4287658435,
+      "players": [
+        "p1"
+      ],
+      "mode": "realtime",
+      "maxTicks": 7200,
+      "options": {
+        "assignments": {
+          "p1": "sepia"
+        }
+      }
+    },
+    "outcome": {
+      "status": "draw",
+      "winners": [],
+      "reason": "obstacle"
+    },
+    "statistics": {
+      "players": [
+        {
+          "playerId": "p1",
+          "wins": 0,
+          "draws": 1,
+          "damage": 0,
+          "actions": [
+            {
+              "actionId": "control",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:1:reached",
+              "opportunities": 0,
+              "uses": 1
+            },
+            {
+              "actionId": "wave:1:cleared",
+              "opportunities": 1,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:2:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:3:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:4:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:5:cleared",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:reached",
+              "opportunities": 0,
+              "uses": 0
+            },
+            {
+              "actionId": "wave:6:cleared",
+              "opportunities": 0,
+              "uses": 0
+            }
+          ]
+        }
+      ],
+      "durationTicks": 238
+    },
+    "finalStateHash": "39233824b1e12070e230ada307b20d6fec31a532161f34b5f2153c0f70eb2b2b",
+    "valid": true,
+    "errorCode": ""
   }
 ]
