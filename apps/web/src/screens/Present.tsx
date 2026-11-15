@@ -18,6 +18,7 @@ import { originLabel } from "../lib/fullRun";
 import { outcomeWords, targetWords, waveChangeLabel, waveName } from "../lib/tentacleDash";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
+import { TENTACLE_RUN_ENABLED } from "../lib/featureFlags";
 import { IS_STATIC } from "../lib/staticMode";
 import { loadStaticRun } from "../lib/staticRun";
 import { shouldStartOnMount } from "../lib/presentStart";
@@ -99,7 +100,10 @@ export function Present({ auto }: { auto: boolean }) {
     [mock, staticCards],
   );
   // And the last Sepia Tentacle Run result of this tab: one more scene, no request.
-  const soloRun = useMemo(() => (IS_STATIC || mock ? null : loadRun("tentacle_run")), [mock]);
+  const soloRun = useMemo(
+    () => (IS_STATIC || mock || !TENTACLE_RUN_ENABLED ? null : loadRun("tentacle_run")),
+    [mock],
+  );
   const scenes = useMemo(
     () =>
       scenesFor({

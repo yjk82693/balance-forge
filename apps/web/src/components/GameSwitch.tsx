@@ -1,9 +1,10 @@
+import { TENTACLE_RUN_ENABLED } from "../lib/featureFlags";
 import { IS_STATIC } from "../lib/staticMode";
 import { GAME_LABEL, setGame, useDashGame, type DashGame } from "../lib/dashGame";
 
 const ALL: DashGame[] = ["hero_arena", "hero_cards", "tentacle_run"];
 /** The static build offers the games that have a recorded run. */
-const GAMES: DashGame[] = IS_STATIC ? ALL.filter((g) => g !== "tentacle_run") : ALL;
+const GAMES: DashGame[] = ALL.filter((g) => g !== "tentacle_run" || (TENTACLE_RUN_ENABLED && !IS_STATIC));
 
 /** Hero Arena | Hero Cards: the one genre switch of the dashboard's top bar. */
 export function GameSwitch({ disabled = false }: { disabled?: boolean }) {
