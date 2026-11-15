@@ -245,3 +245,27 @@ test("the play mode is remembered per browser, survives blocked storage, and onl
   assert.equal(hasPcMode("sepia_unknown"), false);
   delete globalThis.localStorage;
 });
+
+import { chasmAnchor, jumpTrail, swingTrail } from "../src/lib/runner.ts";
+
+test("guide trails: a jump arc over a narrow pit, a swing arc under an anchor, and which pits are chasms", () => {
+  const arc = jumpTrail({ x: 1000, w: 1400 }, 500, 1000, 400);
+  assert.equal(arc[0].x, 500);
+  assert.equal(arc.at(-1).x, 500 + 1400 + 1000);
+  assert.equal(arc[0].y, 0);
+  assert.equal(Math.round(arc.at(-1).y), 0);
+  assert.ok(Math.max(...arc.map((p) => p.y)) <= 1000 + 1e-6 && Math.max(...arc.map((p) => p.y)) > 900);
+  const swing = swingTrail({ x: 5000, y: 4500 }, 3000, 400);
+  assert.ok(swing.length > 3);
+  // from the takeoff edge to the mirrored landing
+  assert.ok(Math.abs(swing[0].x - 3000) < 1 && Math.abs(swing.at(-1).x - 7000) < 1);
+  assert.ok(swing.every((p) => p.y <= 4500 + 1e-6)); // never above the anchor
+  assert.deepEqual(swingTrail({ x: 1, y: 0 }, 0, 100), []);
+  const anchors = [
+    { id: "a", x: 5000, y: 4500, section: 1, overPit: true },
+    { id: "b", x: 9000, y: 4500, section: 1, overPit: false },
+  ];
+  assert.equal(chasmAnchor({ x: 4000, w: 3600 }, anchors)?.id, "a");
+  assert.equal(chasmAnchor({ x: 8000, w: 3600 }, anchors), undefined); // an anchor before a wall is not a chasm
+  assert.equal(chasmAnchor({ x: 0, w: 1400 }, anchors), undefined);
+});

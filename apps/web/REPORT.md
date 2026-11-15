@@ -717,3 +717,9 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   (or A/D) move the highlight (the picked card, with a thick focus ring), Space or Enter plays it, E ends the turn, Esc
   cancels; a hint line sits under the hand. There is no target step in this game (a played card hits the opponent, a summon
   takes the next slot), so up/down are not used. The phone flow is unchanged. Checked with the mock room.
+
+- Chasm visuals (runner): a hook structure over a chasm (`anchor.overPit`) rises from the bottom of the screen like a pillar out
+  of the pit with its ring at the anchor; one before a wall stands on the ground. The chasm floor is a dark depth with a faint
+  violet glow and teal walls. A guide trail of small glowing dots shows an arc over each chasm (toward its anchor, down on the
+  far side) and the jump arc over each narrow pit; visual only. Observations without `overPit` still draw (only the narrow-pit
+  arcs). The ground line moved up to y=590 to leave the chasm some depth.
