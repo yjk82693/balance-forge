@@ -25,7 +25,17 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageFilter
 
-CELL, FEET_Y, BODY_TARGET = 512, 472, 400
+# the delivered cells are 512; the game loads them at HALF size (a 256 cell, body 200 high), lossy WebP: Sepia is drawn
+# ~150 px tall on a 1152 canvas, so 200 keeps her sharp on a laptop and a phone without the weight of the originals
+CELL, FEET_Y, BODY_TARGET = 256, 236, 200
+HOOK_HEIGHT = 512
+BG_HEIGHT = 512
+Q = {"char": 80, "hook": 78, "bg": 74, "tile": 80, "btn": 82}
+
+
+def save(im: Image.Image, path: Path, kind: str):
+    """Lossy WebP with its alpha, smallest method."""
+    im.save(path.with_suffix(".webp"), "WEBP", quality=Q[kind], alpha_quality=85, method=6)
 
 
 # ---- keying the painted checkerboard ------------------------------------------------------------------------------
@@ -203,7 +213,7 @@ def main():
     meta["sourceScale"] = round(scale, 4)
     for i, r in enumerate(run):
         if r:
-            place(r, scale, "feet").save(out / f"sepia_run_{i + 1}.png")
+            save(place(r, scale, "feet"), out / f"sepia_run_{i + 1}", "char")
             written.append(f"sepia_run_{i + 1}")
     if act_p and runA_p:
         runA = split_row(key_alpha(Image.open(runA_p)), 6, "setA run", notes)
@@ -212,7 +222,7 @@ def main():
         names = ["sepia_jump_up", "sepia_jump_fall", "sepia_slide", "sepia_hook_throw", "sepia_swing", "sepia_down"]
         for n, im in zip(names, acts):
             if im:
-                place(im, scaleA, "top" if n == "sepia_swing" else "feet").save(out / f"{n}.png")
+                save(place(im, scaleA, "top" if n == "sepia_swing" else "feet"), out / n, "char")
                 written.append(n)
 
     # hook structures: trimmed, the ring centre measured
@@ -224,14 +234,15 @@ def main():
             if not h:
                 continue
             h = trim(h)
-            if h.height > 1024:
-                h = h.resize((round(h.width * 1024 / h.height), 1024), Image.LANCZOS)
+            rc0 = ring_centre(h)
+            f = HOOK_HEIGHT / h.height
+            h = h.resize((round(h.width * f), HOOK_HEIGHT), Image.LANCZOS)
             name = f"hook_building_{i + 1}"
-            rc = ring_centre(h)
+            rc = (rc0[0] * f, rc0[1] * f) if rc0 else None
             if rc is None:
                 notes.append(f"{name}: no teal ring found, using the top centre")
                 rc = (h.width / 2, h.height * 0.08)
-            h.save(out / f"{name}.png")
+            save(h, out / name, "hook")
             meta["hooks"][name] = {"w": h.width, "h": h.height, "ringX": round(rc[0]), "ringY": round(rc[1])}
             written.append(name)
 
@@ -243,8 +254,8 @@ def main():
             continue
         im = Image.open(p)
         im = key_alpha(im) if keyed else clean_alpha(im)
-        im = im.resize((round(im.width * 1024 / im.height), 1024), Image.LANCZOS)
-        mirror_tile(im).save(out / f"{name}.png")
+        im = im.resize((round(im.width * BG_HEIGHT / im.height), BG_HEIGHT), Image.LANCZOS)
+        save(mirror_tile(im), out / name, "bg")
         written.append(name)
 
     # tiles and buttons: only in the atlas (its lower right block), found by component, label text dropped
@@ -264,7 +275,10 @@ def main():
                 im = trim(piece(block, box, cells, grow=4))
                 if n == "ground_tile":  # the keyed edge columns are faint: crop them so repeats leave no seam
                     im = im.crop((3, 0, im.width - 3, im.height))
-                im.save(out / f"{n}.png")
+                if n.startswith("btn_"):  # buttons are shown ~70 px: 128 is sharp on a phone
+                    f = 128 / max(im.size)
+                    im = im.resize((round(im.width * f), round(im.height * f)), Image.LANCZOS)
+                save(im, out / n, "btn" if n.startswith("btn_") else "tile")
                 meta["tiles"][n] = {"w": im.width, "h": im.height}
                 written.append(n)
     (out / "meta.json").write_text(json.dumps(meta, indent=2) + "\n")

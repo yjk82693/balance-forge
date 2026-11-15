@@ -149,11 +149,11 @@ test("hook buildings are stable per anchor and drawn so the ring sits on the anc
   assert.equal(buildingSlot("a1"), buildingSlot("a1"));
   assert.ok(["hook_building_1", "hook_building_2", "hook_building_3"].includes(buildingSlot("anchor-7")));
   // the ring is 80 of 1024 below the top: a cell 1024 tall puts it 944 above the ground
-  assert.equal(Math.round(hookDisplay(944)), 1024);
+  assert.equal(Math.round(hookDisplay(944, { ...DEFAULT_META, ringFromTop: 80 })), 1024);
   assert.ok(hookDisplay(0) > 0);
-  assert.equal(DEFAULT_META.feetY, 472);
-  assert.equal(feetOrigin(), 472 / 512);
-  assert.equal(spriteDisplay(400), 512);
+  assert.equal(DEFAULT_META.feetY, 236);
+  assert.equal(feetOrigin(), 236 / 256);
+  assert.equal(spriteDisplay(200), 256);
 });
 
 test("an overshoot with its band is read from the verdict, whatever the example holds", () => {
