@@ -16,13 +16,20 @@ const SLIDE_LEAD_TICKS = 6;
 const WALL_LEAD = 1900; // distance from the wall at which the bot jumps to take the wire
 const RELEASE_PAST = 300;
 
+/** True when a second press would find an anchor (up and forward within the wire range), so it never buffers a jump. */
+function hookable(me: TentacleObservationPayload['player'], anchors: TentacleObservationPayload['anchors']): boolean {
+  const headY = me.y + 1200;
+  return anchors.some(a => a.x - me.x >= -1500 && a.x - me.x <= 4800 && a.y - headY >= 1300 &&
+    (a.x - me.x) ** 2 + (a.y - headY) ** 2 <= 5000 ** 2);
+}
+
 function personality(variant: number) {
   let rng = (variant >>> 0) || 1;
   const draw = (m: number) => {
     rng = xorshift32(rng);
     return rng % m;
   };
-  return { sloppiness: draw(18), jitter: 1 + draw(5), salt: draw(1000003) + 1 };
+  return { sloppiness: draw(10), jitter: 1 + draw(5), salt: draw(1000003) + 1 };
 }
 const hashOf = (salt: number, id: string): number => {
   let h = salt >>> 0 || 1;
@@ -56,13 +63,16 @@ export function chooseActions(view: Observation, seq: number, variant = 0): Acti
     if (o.kind === 'pit') {
       const lead = Math.trunc((AIR_TICKS * speed - PIT_WIDTH) / 2);
       const dc = o.x - me.x - shift;
-      if (me.state === 'running' && dc <= lead && dc > -400) jump = 1;
-      else if (me.jumpHeldTicks > 0 && me.jumpHeldTicks < TAP_TICKS) jump = 1;
+      if (me.state === 'running' && dc <= lead && dc > -400) jump = 1; // one press: the jump
     } else if (o.kind === 'lowBar') {
       if (front <= speed * SLIDE_LEAD_TICKS && me.x - PLAYER_HALF < o.x + o.w + 100) slide = 1;
     } else if (o.kind === 'wall') {
-      if (me.state === 'running' && front <= WALL_LEAD) jump = 1;
-      else if (me.state === 'jumping' && front <= WALL_LEAD + 800) jump = 1; // keep holding to reach the anchor
+      if (me.state === 'running' && front <= WALL_LEAD) jump = 1; // the first press: the jump
+      else if (me.state === 'jumping' && front <= WALL_LEAD + 800) {
+        // a second press in the air fires the hook: release first, press again after a few ticks, repeat if it missed
+        if (me.jumpHeldTicks === 0 && me.y > 200 && hookable(me, p.anchors)) jump = 1;
+        else if (me.jumpHeldTicks > 0 && me.jumpHeldTicks < 3) jump = 1; // hold the press for 3 ticks
+      }
     }
   }
   return [{ playerId: view.viewerId, seq, tick: view.tick + 1, turnId: 0, actionId: 'control',

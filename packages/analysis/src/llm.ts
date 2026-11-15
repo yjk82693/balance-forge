@@ -106,8 +106,8 @@ function flaggedAdvice(flagged) {
     + `${flagged.wave} (target ${Math.round(flagged.target * 100)}% plus or minus 5 points): do not make it trivial, `
     + 'a patch that lands above that band is rejected. Touch only the flagged section unless necessary; a smaller '
     + 'anchorSpacing (anchors closer together, so the wire reaches them), fewer walls, pits or lowBars, or a lower '
-    + 'runSpeed all make it easier. Reference point measured on the designed flaw: anchorSpacing 6000 -> 4000 moved '
-    + 'it from about 5% to about 70%.';
+    + 'runSpeed all make it easier. Reference point measured on the designed flaw: anchorSpacing 5800 -> 3800 moved '
+    + 'it from about 5% to about 65%.';
 }
 
 /** Tentacle Run: the section table, the flagged section and the numbers a patch may change. */
