@@ -2598,3 +2598,6 @@ button.intent-btn { cursor: pointer; }
 /* The delivered button art replaces the drawn circle; the pressed art is the smaller one. */
 .runner-btn.art { background: none; border: 0; box-shadow: none; padding: 0; }
 .runner-art { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+
+/* Runner phone page on a PC: the one-line keyboard hint under the buttons. */
+.keyboard-hint { text-align: center; margin: var(--space-2) 0 0; }

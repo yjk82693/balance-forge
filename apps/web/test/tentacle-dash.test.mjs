@@ -179,3 +179,25 @@ test("a measured hook building is placed with its ring on the anchor and its bas
   assert.equal(hookPlacement("hook_building_2", 100, meta), null);
   assert.equal(hookPlacement("hook_building_1", 100, DEFAULT_META), null);
 });
+
+import { HeldKeys, keyButton } from "../src/lib/runnerKeys.ts";
+
+test("keyboard: Space and Up jump, Down and Shift slide, other keys do nothing", () => {
+  assert.equal(keyButton(" "), "jump");
+  assert.equal(keyButton("ArrowUp"), "jump");
+  assert.equal(keyButton("ArrowDown"), "slide");
+  assert.equal(keyButton("Shift"), "slide");
+  assert.equal(keyButton("a"), null);
+});
+
+test("keyboard: a press sends once, key repeat and a second key of a held button send nothing, release lets go", () => {
+  const k = new HeldKeys();
+  assert.deepEqual(k.change(" ", true), { button: "jump", down: true });
+  assert.equal(k.change(" ", true, true), null); // key repeat
+  assert.equal(k.change("ArrowUp", true), null); // jump is already down
+  assert.equal(k.change(" ", false), null); // ArrowUp still holds it
+  assert.deepEqual(k.change("ArrowUp", false), { button: "jump", down: false });
+  assert.deepEqual(k.change("Shift", true), { button: "slide", down: true });
+  assert.deepEqual(k.releaseAll(), ["slide"]);
+  assert.equal(k.change("x", true), null);
+});

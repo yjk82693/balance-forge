@@ -22,6 +22,7 @@ import { blip, buzz } from "../lib/sfx";
 import { CardsHand } from "../components/CardsHand";
 import { syncHero } from "../lib/heroSync";
 import { SlideButton } from "../components/SlideButton";
+import { HeldKeys, KEYBOARD_HINT, isTouchDevice } from "../lib/runnerKeys";
 import { TentacleButton } from "../components/TentacleButton";
 import { useTransport } from "../mock/transport";
 import { useRoom } from "../mock/useRoom";
@@ -199,6 +200,31 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
     pipeline?.action(CONTROL_ACTION, controlParams(next));
   };
 
+  // The same two buttons from a keyboard (a PC): Space/Up = jump, Down/Shift = slide, through the same press().
+  const pressRef = useRef(press);
+  pressRef.current = press;
+  const keysOn = isTentacle && playing;
+  useEffect(() => {
+    if (!keysOn) return;
+    const held = new HeldKeys();
+    const send = (c: { button: keyof RunnerControl; down: boolean } | null) => c && pressRef.current(c.button, c.down);
+    const onDown = (e: KeyboardEvent) => {
+      const c = held.change(e.key, true, e.repeat);
+      if (c || e.key === " " || e.key.startsWith("Arrow")) e.preventDefault(); // no page scroll
+      send(c);
+    };
+    const onUp = (e: KeyboardEvent) => send(held.change(e.key, false));
+    const onBlur = () => held.releaseAll().forEach((b) => pressRef.current(b, false));
+    addEventListener("keydown", onDown);
+    addEventListener("keyup", onUp);
+    addEventListener("blur", onBlur);
+    return () => {
+      removeEventListener("keydown", onDown);
+      removeEventListener("keyup", onUp);
+      removeEventListener("blur", onBlur);
+    };
+  }, [keysOn]);
+
   if (!playing) {
     return (
       <JoinForm
@@ -323,10 +349,13 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
           </div>
         )}
         {isTentacle ? (
-          <div className="runner-cluster">
-            <SlideButton disabled={!online} onHold={(down) => press("slide", down)} />
-            <TentacleButton disabled={!online} onHold={(down) => press("jump", down)} />
-          </div>
+          <>
+            <div className="runner-cluster">
+              <SlideButton disabled={!online} onHold={(down) => press("slide", down)} />
+              <TentacleButton disabled={!online} onHold={(down) => press("jump", down)} />
+            </div>
+            {!isTouchDevice() && <p className="caption keyboard-hint">{KEYBOARD_HINT}</p>}
+          </>
         ) : (
         <div className="btn-cluster">
           <ActionButton
