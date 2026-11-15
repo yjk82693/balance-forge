@@ -256,7 +256,8 @@ export type Recording = { matchId: string; seed: number; config: MatchConfig; fr
 
 // ---- Game 3: Sepia Tentacle Run (gameId "tentacle_run"), a 2D side-scrolling wire runner ----------------------
 // Solo, 60 Hz, integer math, seeded. Side view: x grows to the right (the course runs from x = 0 to finishX), y
-// grows UP// with the ground at y = 0 (a pit is a gap in the ground). Sepia auto-runs right at the section's runSpeed. The only
+// grows UP with the ground at y = 0 (a pit is a gap in the ground). Sepia auto-runs right at the section's
+// runSpeed. The only
 // input is the action "control" { jump: 0 | 1, slide: 0 | 1 } (held flags; the game keeps the last one until a new
 // one arrives). Tap jump (< tapTicks) = jump; keep it held in the air near an anchor = attach the wire and swing
 // (a pendulum); release = let go with the momentum. Slide held on the ground = slide. See
