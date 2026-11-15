@@ -15,7 +15,7 @@ import { loadSkill, policyFor } from "../lib/botPolicy";
 import { currentDiagnose, currentMatchup } from "../lib/matchup";
 import { buildFacts, fallbackNote, needsMoreGames } from "../lib/resultCard";
 import { originLabel } from "../lib/fullRun";
-import { waveChangeLabel, waveName } from "../lib/tentacleDash";
+import { outcomeWords, targetWords, waveChangeLabel, waveName } from "../lib/tentacleDash";
 import { pct } from "../lib/stats";
 import { loadRecordedRun } from "../lib/recorded";
 import { IS_STATIC } from "../lib/staticMode";
@@ -408,6 +408,7 @@ function SoloScene({ run }: { run: PlaytestRun | null }) {
   const after = f ? t.patchedWaves.find((w) => w.wave === f.wave)?.clearRate : null;
   const v = run.verdict && !run.fair ? VERDICT_COPY[run.verdict.verdict] : null;
   const note = fallbackNote(run);
+  const t4 = f ? t.targets.find((x) => x.wave === f.wave) : undefined;
   return (
     <section className="present-card">
       <p className="present-sub">Same platform, a solo action game</p>
@@ -423,7 +424,7 @@ function SoloScene({ run }: { run: PlaytestRun | null }) {
       </p>
       <p className="present-mid">
         {f
-          ? `${waveName(f.wave)} clears ${pct(f.clearRate)}% of the time; the target is ${pct(f.target)}%`
+          ? `${waveName(f.wave)} clears ${pct(f.clearRate)}% of the time; ${targetWords(t4?.band ?? null, f.target)}`
           : "Within target"}
       </p>
       {(run.proposal?.changes ?? []).slice(0, 2).map((c) => (
@@ -436,8 +437,10 @@ function SoloScene({ run }: { run: PlaytestRun | null }) {
         <p className={`present-verdict status ${v.cls}`} role="status">
           <span className="dot" />
           {v.label}
+          {t4 && ` · ${outcomeWords(t4.outcome)}`}
         </p>
       )}
+      {run.verdict?.reasons[1] && <p className="present-sub">{run.verdict.reasons[1]}</p>}
       {note && <p className="present-sub present-fallback">{note}</p>}
     </section>
   );

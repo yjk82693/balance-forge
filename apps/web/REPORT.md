@@ -626,3 +626,9 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
 - Phone controller (option A): one tentacle button replaces Latch + Whip. Tap (< 250 ms) = whip; a hold of 250 ms or
   more throws the rope (latch) on release, toward the last stick direction (the facing when the stick is idle); a ring
   fills while holding. Same `whip`/`latch` actions, no protocol change (`lib/tentacleButton.ts`, `TentacleButton.tsx`).
+
+- Tentacle verdict outcomes: improved, on target, overshot (too easy, a warning), unchanged, worse; the per-wave verdict, the
+  headline and the present scene show the target band ("target 60–70
+- Tentacle verdict outcomes: improved, on target, overshot (too easy: a warning, never a success), unchanged, worse. The
+  per-wave verdict, the headline and the present scene show the target band ("target 60-70%") and the reasons. The test
+  reads the recorded example-full.json (an overshoot, rejected).
