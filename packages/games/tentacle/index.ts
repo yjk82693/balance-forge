@@ -15,8 +15,12 @@ registerGame('tentacle_run', 1, schemas);
 const SEAT = 'p1';
 const FALL_DEATH_Y = -3000;
 const SPAWN_LEAD = 4000; // free run at the start of every section before its first obstacle
-const ATTACH_MIN_RISE = 1500; // the anchor must be at least this far above Sepia's head to take the wire
-const ATTACH_BEHIND = 1000; // an anchor up to this far behind Sepia can still be taken
+const ATTACH_MIN_RISE = 1000; // the anchor must be at least this far above Sepia's head to take the wire
+const ATTACH_BEHIND = 2000; // an anchor up to this far behind Sepia can still be taken (wide hook magnetism)
+const COYOTE_TICKS = 6; // a jump still works this long after Sepia left the ground
+const JUMP_BUFFER_TICKS = 7; // a jump pressed this long before landing fires on landing
+const PIT_GRACE = 500; // how far below the ground over a pit before it is a fall (room for a coyote jump)
+const SWING_MAX_SPEED = 40; // per axis, so a swing never gets too fast
 
 export const describe = () => ({
   gameId: 'tentacle_run',
@@ -101,7 +105,7 @@ export function initial(config: MatchConfig, data: GameData): State {
       config: structuredClone(config),
       input: { jump: 0, slide: 0 },
       player: { x: 0, y: 0, vx: rules.sections[0].runSpeed, vy: 0, state: 'running', height: rules.player.height,
-        jumpHeldTicks: 0, wire: null },
+        jumpHeldTicks: 0, airTicks: 0, jumpBuffer: 0, jumped: false, wire: null },
       outcome: { status: 'running', winners: [], reason: 'in_progress' },
       statistics: emptyStatistics([SEAT], statNames())
     }
@@ -211,6 +215,8 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
         dx = nx;
         dy = ny;
       }
+      p.vx = Math.max(-SWING_MAX_SPEED, Math.min(SWING_MAX_SPEED, p.vx));
+      p.vy = Math.max(-SWING_MAX_SPEED, Math.min(SWING_MAX_SPEED, p.vy));
       if (p.y <= 0) { // swung into the ground: land and run on
         p.y = 0;
         p.vy = 0;
@@ -225,7 +231,14 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
     p.vy = Math.max(p.vy - ph.gravity, -ph.maxFall);
     p.x += p.vx;
     p.y += p.vy;
-    if (jump && p.jumpHeldTicks === 1 && !p.wire) { // a jump press in the air: fire the hook at the nearest anchor
+    p.airTicks++;
+    if (p.jumpBuffer > 0) p.jumpBuffer--;
+    const pressed = jump && p.jumpHeldTicks === 1;
+    if (pressed && !p.jumped && p.airTicks <= COYOTE_TICKS) { // coyote time: a late jump off the edge still jumps
+      p.vy = ph.jumpVelocity;
+      p.jumped = true;
+      event('jump', {});
+    } else if (pressed && !p.wire) { // a jump press in the air: fire the hook at the nearest anchor
       let best = null, bestD = Infinity;
       const headY = p.y + rules.player.height;
       for (const a of q.anchors) {
@@ -242,20 +255,32 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
         p.state = 'swinging';
         p.height = rules.player.height;
         event('wire.attach', { anchor: best.id });
-      }
+      } else p.jumpBuffer = JUMP_BUFFER_TICKS; // nothing to hook: remember the press for the landing
     }
     if (p.state === 'jumping' && p.y <= 0 && supported(p.x)) { // landed
       p.y = 0;
-      p.vy = 0;
       p.vx = speed;
-      p.state = 'running';
+      p.airTicks = 0;
+      p.jumped = false;
+      if (p.jumpBuffer > 0) { // a buffered press: jump again at once
+        p.vy = ph.jumpVelocity;
+        p.jumpBuffer = 0;
+        p.jumped = true;
+        event('jump', {});
+      } else {
+        p.vy = 0;
+        p.state = 'running';
+      }
     }
   } else { // on the ground: running or sliding
     p.vx = speed;
     p.x += p.vx;
     p.y = 0;
+    p.airTicks = 0;
+    p.jumped = false;
     if (jump && p.jumpHeldTicks === 1 && !slide) {
       p.vy = ph.jumpVelocity;
+      p.jumped = true;
       p.state = 'jumping';
       event('jump', {});
     } else p.state = slide ? 'sliding' : 'running';
@@ -266,7 +291,7 @@ export function step(state: State, frame: InputFrame, data: GameData): StepResul
   const half = Math.trunc(rules.player.width / 2);
   let died = '';
   // below the ground over a pit: Sepia fell in (a jumper over the pit is above y = 0)
-  if (p.y < FALL_DEATH_Y || (p.y <= 0 && p.state !== 'swinging' && !supported(p.x))) died = 'pit';
+  if (p.y < FALL_DEATH_Y || (p.y < -PIT_GRACE && p.state !== 'swinging' && !supported(p.x))) died = 'pit';
   else for (const o of q.obstacles) {
     if (o.kind === 'pit') continue;
     if (p.x + half > o.x && p.x - half < o.x + o.w && p.y < o.y + o.h && p.y + p.height > o.y) {

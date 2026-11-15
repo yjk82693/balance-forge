@@ -16,6 +16,13 @@ const SLIDE_LEAD_TICKS = 6;
 const WALL_LEAD = 1900; // distance from the wall at which the bot jumps to take the wire
 const RELEASE_PAST = 300;
 
+/** True when a second press would find an anchor (up and forward within the wire range), so it never buffers a jump. */
+function hookable(me: TentacleObservationPayload['player'], anchors: TentacleObservationPayload['anchors']): boolean {
+  const headY = me.y + 1200;
+  return anchors.some(a => a.x - me.x >= -1500 && a.x - me.x <= 4800 && a.y - headY >= 1300 &&
+    (a.x - me.x) ** 2 + (a.y - headY) ** 2 <= 5000 ** 2);
+}
+
 function personality(variant: number) {
   let rng = (variant >>> 0) || 1;
   const draw = (m: number) => {
@@ -63,7 +70,7 @@ export function chooseActions(view: Observation, seq: number, variant = 0): Acti
       if (me.state === 'running' && front <= WALL_LEAD) jump = 1; // the first press: the jump
       else if (me.state === 'jumping' && front <= WALL_LEAD + 800) {
         // a second press in the air fires the hook: release first, press again after a few ticks, repeat if it missed
-        if (me.jumpHeldTicks === 0 && me.y > 200) jump = 1;
+        if (me.jumpHeldTicks === 0 && me.y > 200 && hookable(me, p.anchors)) jump = 1;
         else if (me.jumpHeldTicks > 0 && me.jumpHeldTicks < 3) jump = 1; // hold the press for 3 ticks
       }
     }

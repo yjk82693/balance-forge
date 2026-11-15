@@ -118,10 +118,13 @@ export function judgeWaves(before: ReturnType<typeof waveTable>, after: ReturnTy
     const b = before.waves[a.wave - 1];
     if (b.outlier || b.reached < minReached || a.reached < minReached) return false;
     const [, high] = bandOf(b.target);
-    const leftUpward = a.ci95[0] > high && b.ci95[0] <= high; // it was not above its band before
+    // it was not above its band before, and now clearly is (above the baseline interval too)
+    const leftUpward = a.ci95[0] > high && b.ci95[0] <= high && a.ci95[0] > b.ci95[1];
     return leftUpward || a.ci95[1] < b.ci95[0];
   });
-  const newlyFlagged = after.waves.filter((a) => a.outlier && !before.waves[a.wave - 1].outlier);
+  // newly flagged: it had enough runs before to be judged (a section few runs reached before is not comparable)
+  const newlyFlagged = after.waves.filter((a) => a.outlier && !before.waves[a.wave - 1].outlier &&
+    before.waves[a.wave - 1].reached >= minReached);
   for (const w of others) reasons.push(`section ${w.wave}: left its band or got worse beyond noise`);
   for (const w of newlyFlagged) reasons.push(`section ${w.wave}: newly flagged`);
   const good = targets.some((t) => t.outcome === 'on target' || t.outcome === 'improved');
