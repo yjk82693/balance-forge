@@ -98,3 +98,45 @@ export function withBotNames(
   for (const r of runners) if (!seatIds.includes(r.id)) out[r.id] = "Bot";
   return out;
 }
+
+/** How long the last frame stays before the end card: long enough to see the fall. */
+export const END_HOLD_MS = 1000;
+
+/**
+ * One small line saying why the match ended. `viewer` is the seat of a phone ("you"), null for the big screen.
+ * The engine's reason says finish, opponent_down (the other runner fell), max_ticks or draw; it does not say whether
+ * a pit or a wall did it, so the line says "fell".
+ */
+export function versusCause(
+  end: { reason: string; winners: readonly string[] },
+  runnerIds: readonly string[],
+  viewer: string | null,
+  names?: Readonly<Record<string, string>>,
+): string {
+  const winner = end.winners[0];
+  if (winner === undefined) return end.reason === "draw" ? "Both fell together" : "No one got ahead";
+  const who = (id: string, you: string, other: string) => (id === viewer ? you : `${laneLabel(id, names)} ${other}`);
+  if (end.reason === "finish") return who(winner, "You crossed the finish first", "crossed the finish first");
+  if (end.reason === "max_ticks") return who(winner, "Time ran out. You got further", "got further when time ran out");
+  const loser = runnerIds.find((id) => id !== winner) ?? "";
+  return loser ? who(loser, "You fell", "fell") : "A runner fell";
+}
+
+/** Team colours: P1 red, P2 blue (anything else, the bot, is blue). The tint is the light version for the sprite. */
+const COLORS: Record<string, number> = { p1: 0xff5c5c, p2: 0x5ca8ff };
+const TINTS: Record<string, number> = { p1: 0xffd6d6, p2: 0xd6e8ff };
+export const laneColor = (id: string): number => COLORS[id] ?? COLORS.p2;
+export const laneTint = (id: string): number => TINTS[id] ?? TINTS.p2;
+export const laneColorName = (id: string): "RED" | "BLUE" => (id === "p1" ? "RED" : "BLUE");
+export const cssColor = (n: number): string => `#${n.toString(16).padStart(6, "0")}`;
+
+/**
+ * Where the camera's left edge is, in world units, in a versus match. Both runners stay in view (centred between them)
+ * while the gap fits in 80% of the view; a wider gap follows the leader, who then keeps `lead` of the view behind them.
+ * `span` is the world width shown.
+ */
+export function versusCameraLeft(xs: readonly number[], span: number, lead: number): number {
+  const hi = Math.max(...xs);
+  const lo = Math.min(...xs);
+  return hi - lo <= span * 0.8 ? (hi + lo) / 2 - span / 2 : hi - lead * span;
+}

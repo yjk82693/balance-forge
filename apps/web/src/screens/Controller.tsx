@@ -2,7 +2,19 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { isArenaPayload, isCardsPayload, type CardsPayload, type Observation } from "../lib/contract";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel } from "../lib/runner";
-import { isVersusMatch, versusEnd, versusEndWords, versusOf } from "../lib/runnerVersus";
+import {
+  END_HOLD_MS,
+  cssColor,
+  laneColor,
+  laneColorName,
+  isVersusMatch,
+  versusCause,
+  versusEnd,
+  versusEndWords,
+  versusOf,
+  withBotNames,
+} from "../lib/runnerVersus";
+import { useDelayed } from "../lib/useDelayed";
 import { CONTROL_ACTION, NO_CONTROL, controlParams, withButton, type RunnerControl } from "../lib/runnerInput";
 import { HEROES, heroColorVar, heroName } from "../lib/heroes";
 import { HeroPortrait } from "../components/HeroPortrait";
@@ -94,6 +106,9 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   useEffect(() => {
     if (isTentacle && joined && joined.hero !== "sepia") setJoined({ ...joined, hero: "sepia" });
   }, [isTentacle, joined]);
+  // A versus match ends with a short hold on the pad (the fall plays on the big screen), then the verdict card.
+  const endNow = result && isTentacle ? result : null;
+  const endCard = useDelayed(endNow, END_HOLD_MS);
   usePreventPageGestures(playing && !isCards); // the cards hand scrolls sideways, so it is left alone
 
   useEffect(() => {
@@ -250,19 +265,48 @@ export function Controller({ initialCode, game }: { initialCode: string; game?: 
   // A versus match is over: the phone shows only the verdict, full screen.
   const sawVersus = !!versusOf(observation?.payload);
   const versusDone = !!result && isTentacle && (isVersusMatch(result.config.players) || sawVersus);
-  const verdict = result && versusDone ? versusEnd(result.outcome.winners, seat) : null;
+  const verdict = endCard && versusDone ? versusEnd(endCard.outcome.winners, seat) : null;
+  const runners = versusOf(observation?.payload)?.runners ?? [];
+  const cause =
+    endCard && verdict
+      ? versusCause(
+          endCard.outcome,
+          runners.length ? runners.map((r) => r.id) : endCard.config.players,
+          seat ?? null,
+          withBotNames(
+            Object.fromEntries((room?.seats ?? []).map((s) => [s.seat, s.name])),
+            runners,
+            (room?.seats ?? []).map((s) => s.seat),
+          ),
+        )
+      : "";
   const gameOn = room?.phase === "playing";
+  // In a versus match the whole phone wears the player's colour, so each knows which Sepia is theirs.
+  const vsNow = versusOf(observation?.payload);
+  const teamId = vsNow ? (vsNow.you ?? seat ?? "") : "";
 
   if (verdict) {
     return (
       <div className={`verdict ${verdict}`} role="status" aria-live="assertive">
         <p className="verdict-word">{versusEndWords(verdict)}</p>
+        <p className="verdict-cause">{cause}</p>
       </div>
     );
   }
 
   return (
-    <div className="phone" style={{ ["--hero" as string]: heroColorVar(hero) }}>
+    <div
+      className={`phone${teamId ? " team" : ""}`}
+      style={{
+        ["--hero" as string]: heroColorVar(hero),
+        ...(teamId ? { ["--team" as string]: cssColor(laneColor(teamId)) } : {}),
+      }}
+    >
+      {teamId && (
+        <p className="team-banner" role="status">
+          You are {laneColorName(teamId)} · {me?.name || teamId.toUpperCase()}
+        </p>
+      )}
       <header className="phone-head">
         <HeroPortrait hero={hero} size={32} />
         <span className="phone-name">{me?.name || heroName(hero)}</span>
