@@ -22,18 +22,22 @@ function cardsProposal(report, context) {
 }
 
 /**
- * Tentacle Run, offline: the flagged wave gets its enemy damage halved and its fire interval doubled (within the
- * allowed bounds): a stand-in for a model, not a balance method.
+ * Tentacle Run, offline: the flagged wave gets milder damage and a longer fire interval, sized by how far below its
+ * target it is, so the stand-in lands near the target band instead of past it (measured on wave 4: damage x0.75 and
+ * fire interval x2 take 15-20% to about 63%). A stand-in for a model, not a balance method.
  */
 function wavesProposal(report, context) {
   const flagged = context.flaggedWave;
   const index = (flagged?.wave ?? 1) - 1;
   const wave = context.rootData.gameRules.waves[index];
+  const gap = flagged ? flagged.target - flagged.clearRate : 0.5;
+  const [damage, fire] = gap > 0.4 ? [0.75, 2] : gap > 0.2 ? [0.85, 1.5] : [0.92, 1.25];
   const replacements = [
-    { path: `/gameRules/waves/${index}/enemyDamage`, value: Math.max(1, Math.round(wave.enemyDamage / 2)) },
-    { path: `/gameRules/waves/${index}/fireIntervalTicks`, value: Math.min(300, wave.fireIntervalTicks * 2) }];
+    { path: `/gameRules/waves/${index}/enemyDamage`, value: Math.max(1, Math.round(wave.enemyDamage * damage)) },
+    { path: `/gameRules/waves/${index}/fireIntervalTicks`,
+      value: Math.min(300, Math.round(wave.fireIntervalTicks * fire)) }];
   return { baseDataHash: report.dataHash, replacements,
-    rationale: `Offline stand-in: wave ${index + 1} is far below target; damage halved, fire interval doubled.` };
+    rationale: `Offline stand-in: wave ${index + 1} is below target; damage x${damage}, fire interval x${fire}.` };
 }
 
 /** Returns a canned proposal (e.g. fixtures/patch_proposal.json). Deterministic, offline. */

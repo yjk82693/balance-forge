@@ -51,36 +51,56 @@ test('a thin wave (fewer than 30 reached) is never flagged', () => {
   assert.equal(table.waves[3].outlier, false);
 });
 
-test('judgeWaves: improved, worse and thin holdouts', () => {
-  const before = waveTable(runs(100, 15));
-  const better = judgeWaves(before, waveTable(runs(100, 85, 1000)));
-  assert.equal(better.verdict, 'accepted');
-  assert.equal(better.targets[0].outcome, 'improved');
-  assert.equal(better.targets[0].matchup, 'wave 4');
+test('judgeWaves against the target band: on target, improved, overshot, unchanged, thin', () => {
+  const before = waveTable(runs(100, 15)); // wave 4: 15%, target 65%, band 60-70%
+  const onTarget = judgeWaves(before, waveTable(runs(100, 65, 1000)));
+  assert.equal(onTarget.targets[0].outcome, 'on target');
+  assert.deepEqual(onTarget.targets[0].band, [0.6, 0.7]);
+  assert.equal(onTarget.verdict, 'accepted');
+  const improved = judgeWaves(before, waveTable(runs(100, 40, 1000))); // 40% [31, 50]: toward the band, still below
+  assert.equal(improved.targets[0].outcome, 'improved');
+  assert.equal(improved.verdict, 'accepted');
+  const overshot = judgeWaves(before, waveTable(runs(100, 98, 1000))); // 98%: the whole interval above the band
+  assert.equal(overshot.targets[0].outcome, 'overshot');
+  assert.equal(overshot.verdict, 'rejected');
+  assert.match(overshot.reasons.join(' '), /overshot.*another round or the designer/);
   assert.equal(judgeWaves(before, waveTable(runs(100, 15, 1000))).verdict, 'inconclusive');
   assert.equal(judgeWaves(waveTable(runs(100, 60)), waveTable(runs(100, 60, 1000))).targets.length, 0);
   assert.match(judgeWaves(before, waveTable(runs(10, 10, 1000))).reasons.join(' '), /too thin|needed/);
 });
 
+test('a wave that was not flagged and leaves its band upward counts as worse', () => {
+  const before = waveTable(runs(100, 15));
+  const after = structuredClone(before);
+  Object.assign(before.waves[1], { clearRate: 0.7, ci95: [0.6, 0.8], reached: 100 }); // wave 2: inside its band
+  Object.assign(after.waves[1], { clearRate: 0.95, ci95: [0.88, 0.98], reached: 100 }); // whole interval above 65-75%
+  after.waves[3] = { ...after.waves[3], clearRate: 0.65, ci95: [0.55, 0.74], reached: 100, outlier: false };
+  const verdict = judgeWaves(before, after);
+  assert.equal(verdict.targets[0].outcome, 'on target'); // the flagged wave itself is fine
+  assert.equal(verdict.verdict, 'rejected');
+  assert.match(verdict.reasons.join(' '), /wave 2: left its band/);
+});
+
 test('runFullWaves: baseline, flagged wave, stand-in proposal, holdout, verdict', async () => {
   const baseHash = hash(data);
   const patched = (await importEngine('packages/contracts/index.ts')).applyPatch(data, { baseDataHash: baseHash,
-    rationale: 'x', replacements: [{ path: '/gameRules/waves/3/enemyDamage', value: 20 },
+    rationale: 'x', replacements: [{ path: '/gameRules/waves/3/enemyDamage', value: 30 },
       { path: '/gameRules/waves/3/fireIntervalTicks', value: 60 }] });
   const out = await runFullWaves({ baselineResults: runs(100, 15), baseData: data, rootData: data, hashData: hash,
     adapter: new FakePatchAdapter({ baseDataHash: '0'.repeat(64), replacements: [], rationale: '' }),
     holdoutSeeds: Array.from({ length: 100 }, (_, i) => 1001 + i), botPolicyVersion: 'tentacle-bot-0.1.0',
-    seedSetId: 'runs-1-100', runHoldout: async () => runs(100, 80, 1000, hash(patched)) });
+    seedSetId: 'runs-1-100', runHoldout: async () => runs(100, 65, 1000, hash(patched)) });
   assert.equal(out.ok, true, JSON.stringify(out));
   const body = out.value;
   assert.equal(body.fair, false);
   assert.equal(body.flaggedWave.wave, 4);
-  assert.deepEqual(body.proposal.replacements, [{ path: '/gameRules/waves/3/enemyDamage', value: 20 },
+  assert.deepEqual(body.proposal.replacements, [{ path: '/gameRules/waves/3/enemyDamage', value: 30 },
     { path: '/gameRules/waves/3/fireIntervalTicks', value: 60 }]);
   assert.equal(body.proposal.changes[0].label, 'Wave 4 · Enemy damage');
   assert.equal(body.proposal.changes[0].old, 40);
   assert.equal(body.patchedDataHash, hash(patched));
   assert.equal(body.verdict.verdict, 'accepted');
+  assert.equal(body.verdict.targets[0].outcome, 'on target');
   const fair = await runFullWaves({ baselineResults: runs(100, 100), baseData: data, rootData: data, hashData: hash,
     adapter: new FakePatchAdapter({ baseDataHash: '0'.repeat(64), replacements: [], rationale: '' }),
     holdoutSeeds: [5000], botPolicyVersion: 'b', seedSetId: 's', runHoldout: async () => [] });

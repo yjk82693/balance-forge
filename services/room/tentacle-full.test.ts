@@ -26,6 +26,8 @@ test('full playtest on Tentacle Run: per-wave table, flagged wave, wave patch, h
   assert.equal(server.storage.get('tentacle_run', body.patchedDataHash).dataHash, body.patchedDataHash);
   assert.equal(body.patched.waves.length, 6);
   assert.ok(['accepted', 'rejected', 'inconclusive'].includes(body.verdict.verdict));
+  // the stand-in aims near the target band instead of past it: the flagged wave must not be overshot
+  assert.notEqual(body.verdict.targets[0]?.outcome, 'overshot');
   const stored = JSON.parse(await readFile(join(server.storage.directory, 'playtests', `${body.runId}-baseline.json`),
     'utf8'));
   assert.equal(stored.length, 40);

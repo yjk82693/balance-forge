@@ -10,7 +10,7 @@ const rate = { type: 'number', minimum: 0, maximum: 1 };
 const result = object({ rate, ci95: { type: 'array', items: rate, minItems: 2, maxItems: 2 }, games: integer() });
 const change = object({ path: text(256), label: text(256), old: number, new: number }, ['path', 'old', 'new']);
 const target = object({ matchup: text(256), before: result, after: result,
-  outcome: { enum: ['improved', 'unchanged', 'worse'] } });
+  outcome: { enum: ['improved', 'unchanged', 'worse', 'on target', 'overshot'] } }); // the last two: Tentacle Run
 const recordSchema = object({
   dataHash: digest, parentHash: nullable(digest), gameId: { enum: ['hero_arena', 'hero_cards', 'tentacle_run'] },
   createdAt: text(64), origin: { enum: ['base', 'gemini', 'grok', 'fallback', 'fake', 'manual'] },

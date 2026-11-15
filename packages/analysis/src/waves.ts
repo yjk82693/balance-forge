@@ -67,10 +67,31 @@ export function waveReport(table: ReturnType<typeof waveTable>, meta: any) {
 }
 
 const side = (w: any) => ({ rate: w.clearRate, ci95: w.ci95, games: w.reached });
+/** The fair band around a target: target +- 5 points (the same band the arena intent uses). */
+export const TARGET_BAND = 0.05;
+export const bandOf = (target: number): [number, number] =>
+  [round6(target - TARGET_BAND), round6(target + TARGET_BAND)];
+const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
+
 /**
- * The verdict of a patch: for each flagged wave of the baseline, did its clear rate move toward the target beyond
- * noise (improved), away (worse) or not (unchanged)? Accepted needs one improved wave, no worse wave anywhere (a wave
- * whose whole interval fell below the baseline interval) and no newly flagged wave.
+ * Where a wave's clear rate stands against its target band, from its interval: "on target" (the interval overlaps the
+ * band), "overshot" (the whole interval above the band), or below it: "improved" (the whole interval above the
+ * baseline's interval), "worse" (the whole interval below it) or "unchanged".
+ */
+export function waveOutcome(before: any, after: any): string {
+  const [low, high] = bandOf(before.target);
+  if (after.ci95[1] >= low && after.ci95[0] <= high) return 'on target';
+  if (after.ci95[0] > high) return 'overshot';
+  return after.ci95[0] > before.ci95[1] ? 'improved' : after.ci95[1] < before.ci95[0] ? 'worse' : 'unchanged';
+}
+
+/**
+ * The verdict of a patch, judged against the target band of each wave. A flagged wave of the baseline is "on target",
+ * "improved" (moved toward the band but still below), "overshot" (the whole interval above the band: not accepted, the
+ * patch made the wave too easy and needs another round or the designer), "unchanged" or "worse". A wave that was not
+ * flagged and leaves its band upward (it was not above it before) counts as worse, and so does one that fell below
+ * its baseline interval. Accepted needs one flagged wave on target or improved and nothing overshot, worse or newly
+ * flagged.
  */
 export function judgeWaves(before: ReturnType<typeof waveTable>, after: ReturnType<typeof waveTable>,
   { minReached = MIN_REACHED }: { minReached?: number } = {}) {
@@ -84,26 +105,32 @@ export function judgeWaves(before: ReturnType<typeof waveTable>, after: ReturnTy
       thin = true;
       continue;
     }
-    const outcome = a.ci95[0] > b.ci95[1] ? 'improved' : a.ci95[1] < b.ci95[0] ? 'worse' : 'unchanged';
-    targets.push({ wave: b.wave, matchup: `wave ${b.wave}`, before: side(b), after: side(a), outcome });
-    const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
+    const outcome = waveOutcome(b, a);
+    const [low, high] = bandOf(b.target);
+    targets.push({ wave: b.wave, matchup: `wave ${b.wave}`, before: side(b), after: side(a), outcome,
+      band: [low, high] });
     reasons.push(`wave ${b.wave}: ${outcome} (${pct(b.clearRate)} -> ${pct(a.clearRate)} cleared, `
-      + `n=${b.reached} -> ${a.reached})`);
+      + `n=${b.reached} -> ${a.reached}; band ${pct(low)}-${pct(high)})`);
+    if (outcome === 'overshot') reasons.push(`wave ${b.wave}: overshot its band, the patch made it too easy: needs `
+      + 'another round or the designer');
   }
-  const worse = after.waves.filter((a) => {
+  const others = after.waves.filter((a) => {
     const b = before.waves[a.wave - 1];
-    return b.reached >= minReached && a.reached >= minReached && a.ci95[1] < b.ci95[0] && !b.outlier;
+    if (b.outlier || b.reached < minReached || a.reached < minReached) return false;
+    const [, high] = bandOf(b.target);
+    const leftUpward = a.ci95[0] > high && b.ci95[0] <= high; // it was not above its band before
+    return leftUpward || a.ci95[1] < b.ci95[0];
   });
   const newlyFlagged = after.waves.filter((a) => a.outlier && !before.waves[a.wave - 1].outlier);
-  for (const w of worse) reasons.push(`wave ${w.wave}: got worse beyond noise`);
+  for (const w of others) reasons.push(`wave ${w.wave}: left its band or got worse beyond noise`);
   for (const w of newlyFlagged) reasons.push(`wave ${w.wave}: newly flagged`);
-  const improved = targets.some((t) => t.outcome === 'improved');
-  const anyWorse = targets.some((t) => t.outcome === 'worse') || worse.length > 0 || newlyFlagged.length > 0;
-  const verdict = improved && !anyWorse ? 'accepted' : anyWorse ? 'rejected' : 'inconclusive';
+  const good = targets.some((t) => t.outcome === 'on target' || t.outcome === 'improved');
+  const bad = targets.some((t) => t.outcome === 'overshot' || t.outcome === 'worse') || others.length > 0 ||
+    newlyFlagged.length > 0;
+  const verdict = good && !bad ? 'accepted' : bad ? 'rejected' : 'inconclusive';
   if (verdict === 'accepted') {
-    reasons.push(`${targets.filter((t) => t.outcome === 'improved').length} of ${targets.length} flagged wave(s) `
-      + 'improved beyond noise; none got worse');
-  }
-  else if (thin && !improved) reasons.push('the holdout was too thin to judge');
+    reasons.push(`${targets.filter((t) => t.outcome === 'on target' || t.outcome === 'improved').length} of `
+      + `${targets.length} flagged wave(s) on target or improved; nothing overshot or got worse`);
+  } else if (thin && !good) reasons.push('the holdout was too thin to judge');
   return { verdict, reasons, targets };
 }
