@@ -11,6 +11,7 @@ import {
   type TrailPoint,
 } from "../lib/runner";
 import { segmentCount } from "../lib/tentacle";
+import { barFill, versusOf, type VersusInfo, type VersusRunner } from "../lib/runnerVersus";
 import {
   buildingSlot,
   feetOrigin,
@@ -134,12 +135,68 @@ export class RunnerScene extends Phaser.Scene {
     const wire = p.player.wire;
     for (const a of p.anchors) this.anchor(a, sx(a.x), sy(a.y), a.id === wire?.anchorId);
     if (p.shark) this.shark(sx(p.shark.x));
-    const me = { x: sx(p.player.x), y: sy(p.player.y) };
-    if (wire && p.player.state === "swinging" && !this.has("sepia_swing")) {
-      this.wire(me, { x: sx(wire.anchorX), y: sy(wire.anchorY) }, p.player.height * k);
+    const vs = versusOf(p);
+    const mine = {
+      x: p.player.x,
+      y: p.player.y,
+      vy: p.player.vy,
+      state: p.player.state,
+      height: p.player.height,
+      wire,
+      down: vs ? !vs.runners.find((r) => r.id === vs.leader)?.alive : undefined,
+    };
+    if (vs) {
+      for (const r of vs.runners) if (r.id !== vs.leader) this.rival(r, sx, sy, k);
     }
-    this.sepia(me, p, k, wire ? { x: sx(wire.anchorX), y: sy(wire.anchorY) } : undefined);
-    this.hud(p);
+    this.runner(mine, p, sx, sy, k, vs ? { label: laneName(vs.leader), tint: laneTint(vs.leader) } : undefined);
+    if (vs) this.versusHud(p, vs);
+    else this.hud(p);
+  }
+
+  /** one runner at its place: the wire when it swings and the pose; `style` labels and tints it in a versus match */
+  private runner(
+    r: Pose,
+    p: RunnerPayload,
+    sx: (x: number) => number,
+    sy: (y: number) => number,
+    k: number,
+    style?: { label: string; tint: number },
+    atX?: number,
+  ) {
+    const at = { x: atX ?? sx(r.x), y: sy(r.y) };
+    const wire = r.wire;
+    const anchor = wire ? { x: sx(wire.anchorX), y: sy(wire.anchorY) } : undefined;
+    if (wire && r.state === "swinging" && !this.has("sepia_swing")) this.wire(at, anchor!, r.height * k);
+    this.sepia(at, r, p, k, anchor, style?.tint);
+    if (style) {
+      const top = at.y - r.height * k - 14;
+      this.text(at.x, top, style.label, 20, hexColor(style.tint)).setOrigin(0.5, 1);
+    }
+  }
+
+  /** the other runner of a versus match; one that fell off the left edge is held at the edge with an arrow */
+  private rival(
+    r: VersusRunner,
+    sx: (x: number) => number,
+    sy: (y: number) => number,
+    k: number,
+  ) {
+    const pose: Pose = {
+      x: r.x,
+      y: r.y ?? 0,
+      vy: 0,
+      state: r.state as Pose["state"],
+      height: r.height ?? (r.state === "sliding" ? 500 : 1200),
+      wire: r.wire ?? null,
+      down: !r.alive,
+    };
+    const edge = 40;
+    const want = sx(r.x);
+    const at = Math.max(edge, Math.min(RUN_W - edge, want));
+    const name = laneName(r.id);
+    const label = want < edge ? `◀ ${name}` : want > RUN_W - edge ? `${name} ▶` : name;
+    const p = this.registry.get("obs").payload as RunnerPayload;
+    this.runner(pose, p, sx, sy, k, { label, tint: laneTint(r.id) }, at);
   }
 
   /** the delivered layers scroll at three speeds; with none delivered the drawn sky and skylines stand in */
@@ -353,44 +410,60 @@ export class RunnerScene extends Phaser.Scene {
     this.layer.add(this.add.image(x, y, hooked ? "post-target" : "post").setDisplaySize(52, 52));
   }
 
-  private sepia(c: { x: number; y: number }, p: RunnerPayload, k: number, anchor?: { x: number; y: number }) {
-    const state = p.player.state;
+  private sepia(
+    c: { x: number; y: number },
+    r: Pose,
+    p: RunnerPayload,
+    k: number,
+    anchor?: { x: number; y: number },
+    tint?: number,
+  ) {
+    const state = r.state;
     const slot = sepiaSlot({
       state,
-      vy: p.player.vy,
-      x: p.player.x,
-      hooking: !!p.player.wire && state !== "swinging",
-      down: !!p.outcome && p.outcome.status !== "running" && p.outcome.reason !== "finish",
+      vy: r.vy,
+      x: r.x,
+      hooking: !!r.wire && state !== "swinging",
+      down: r.down ?? (!!p.outcome && p.outcome.status !== "running" && p.outcome.reason !== "finish"),
     });
     const bodyPx = 1200 * k; // a standing body, in screen pixels
     if (this.has(slot)) {
       const size = spriteDisplay(bodyPx, this.meta);
       if (slot === "sepia_swing" && anchor) {
-        this.swingSprite(slot, c, anchor, size);
+        this.swingSprite(slot, c, anchor, size, tint);
         return;
       }
       const img = this.add.image(c.x, c.y, this.art(slot)).setOrigin(0.5, feetOrigin(this.meta));
+      if (tint !== undefined) img.setTint(tint);
       this.layer.add(img.setDisplaySize(size, size));
       return;
     }
-    const h = p.player.height * k; // 86 px standing, 36 px sliding
-    const r = Math.max(18, h / 2);
+    const h = r.height * k; // 86 px standing, 36 px sliding
+    const rad = Math.max(18, h / 2);
     const cy = c.y - h / 2;
-    this.layer.add(this.add.circle(c.x, cy, r, 0x0d1219, 0.6));
-    const img = this.add.image(c.x, cy, "sepia").setDisplaySize(r * 1.7, state === "sliding" ? r * 1.2 : r * 1.7);
+    this.layer.add(this.add.circle(c.x, cy, rad, 0x0d1219, 0.6));
+    const img = this.add.image(c.x, cy, "sepia").setDisplaySize(rad * 1.7, state === "sliding" ? rad * 1.2 : rad * 1.7);
+    if (tint !== undefined) img.setTint(tint);
     if (state === "swinging") img.setRotation(0.4);
     this.layer.add(img);
-    this.layer.add(this.add.circle(c.x, cy, r).setStrokeStyle(3, 0xb08af0));
+    this.layer.add(this.add.circle(c.x, cy, rad).setStrokeStyle(3, 0xb08af0));
   }
 
   /** the hanging pose, turned so she hangs from the anchor; the tentacle segments run from the anchor to her hand */
-  private swingSprite(slot: string, c: { x: number; y: number }, anchor: { x: number; y: number }, size: number) {
+  private swingSprite(
+    slot: string,
+    c: { x: number; y: number },
+    anchor: { x: number; y: number },
+    size: number,
+    tint?: number,
+  ) {
     const dx = c.x - anchor.x;
     const dy = c.y - anchor.y;
     const theta = -Math.atan2(dx, Math.max(1, dy));
     const origin = 0.85; // the body hangs at this fraction down the cell
     const img = this.add.image(c.x, c.y, this.art(slot)).setOrigin(0.5, origin);
     img.setDisplaySize(size, size).setRotation(theta);
+    if (tint !== undefined) img.setTint(tint);
     this.layer.add(img);
     const reach = origin * size; // from her to the top of the cell, where the tentacle leaves it
     this.wire(anchor, { x: c.x + Math.sin(theta) * reach, y: c.y - Math.cos(theta) * reach }, 0);
@@ -406,4 +479,38 @@ export class RunnerScene extends Phaser.Scene {
     this.layer.add(this.add.circle(x0 + w * progress(p), 62, 8, 0xe6ebf1));
     this.layer.add(this.add.rectangle(x0 + w, 62, 4, 18, 0xf2b84b));
   }
+
+  /** a versus match: one progress bar per runner (P1 above P2) with the finish flag */
+  private versusHud(p: RunnerPayload, vs: VersusInfo) {
+    this.text(RUN_W / 2, 14, sectionLabel(p), 22).setOrigin(0.5, 0);
+    const x0 = 100;
+    const w = RUN_W - 160;
+    vs.runners.forEach((r, i) => {
+      const y = 62 + i * 26;
+      const f = barFill(r.x, p.finishX);
+      const tint = laneTint(r.id);
+      this.text(24, y, laneName(r.id), 18, hexColor(tint)).setOrigin(0, 0.5);
+      this.layer.add(this.add.rectangle(x0, y, w, 8, 0x0d1219, 0.7).setOrigin(0, 0.5));
+      this.layer.add(this.add.rectangle(x0, y, w * f, 8, tint).setOrigin(0, 0.5));
+      this.layer.add(this.add.circle(x0 + w * f, y, 9, tint).setStrokeStyle(2, 0xe6ebf1));
+    });
+    this.layer.add(this.add.rectangle(x0 + w, 75, 4, 50, 0xf2b84b));
+  }
 }
+
+/** The pose of one runner: what the scene needs to draw it (the leader from the payload, the other from versus). */
+interface Pose {
+  x: number;
+  y: number;
+  vy: number;
+  state: RunnerPayload["player"]["state"];
+  height: number;
+  wire: RunnerPayload["player"]["wire"];
+  /** drawn lying down; leave out to follow the outcome (the solo run) */
+  down?: boolean;
+}
+
+const laneName = (id: string) => id.toUpperCase();
+const LANE_TINTS: Record<string, number> = { p1: 0xffffff, p2: 0x8fd0ff };
+const laneTint = (id: string) => LANE_TINTS[id] ?? 0xffffff;
+const hexColor = (n: number) => `#${n.toString(16).padStart(6, "0")}`;

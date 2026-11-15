@@ -16,6 +16,7 @@ import { CardsHand } from "../components/CardsHand";
 import { HeldKeys, KEYBOARD_HINT } from "../lib/runnerKeys";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
+import { isVersusMatch, versusHeadline } from "../lib/runnerVersus";
 import { ServerDown, useServerState } from "../components/ServerDown";
 import { SoundToggle } from "../components/SoundToggle";
 import { isMockMode } from "../mock/types";
@@ -125,6 +126,7 @@ export function Arena({ gameId }: { gameId: string }) {
       heroes: Object.fromEntries(seats.flatMap((s) => (s.hero ? [[s.seat, s.hero]] : []))),
     });
   }, [result, room, gameId]);
+  const versusEnded = tentacle && !!result && isVersusMatch(result.config.players);
   const winnerSeat = result?.outcome.winners[0];
   const winner = room?.seats.find((s) => s.seat === winnerSeat);
   const winnerEntity = isArenaPayload(observation?.payload)
@@ -201,9 +203,11 @@ export function Arena({ gameId }: { gameId: string }) {
           )}
           {result && (
             <div className="result-card panel" role="status">
-              <p className="eyebrow">{tentacle ? "Run over" : "Match over"}</p>
+              <p className="eyebrow">{tentacle ? (versusEnded ? "Versus over" : "Run over") : "Match over"}</p>
               <p className="h2">
-                {tentacle
+                {versusEnded
+                  ? versusHeadline(result.outcome.winners)
+                  : tentacle
                   ? result.outcome.status === "win"
                     ? "The Man-Shark is down"
                     : "Sepia went down"

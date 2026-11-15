@@ -37,10 +37,23 @@ export function stubObservation(tick: number): Observation<RunnerPayload> {
   const sliding = !swinging && !jumping && Math.floor(tick / 50) % 9 === 4;
   const cameraX = Math.max(0, x - 4000);
   const section = Math.min(6, 1 + Math.floor(x / 80000));
+  // &versus=1 adds a second runner that trails by 3000 units (&versus=far: far enough to fall off the left edge)
+  const vsMode = new URLSearchParams(location.hash.split("?")[1] ?? "").get("versus");
+  const gap = vsMode === "far" ? 9000 : 3000;
+  const versus = vsMode
+    ? {
+        you: null, leader: "p1",
+        runners: [
+          { id: "p1", x, state: "running", alive: true, section },
+          { id: "p2", x: x - gap, y: 600, state: "jumping", alive: true, section },
+        ],
+      }
+    : undefined;
   return {
     tick,
     viewerId: "p1",
     payload: {
+      ...(versus ? { versus } : {}),
       section, sectionCount: 6, sectionStartX: (section - 1) * 80000, sectionEndX: section * 80000,
       cameraX, viewWidth: 16000, finishX: FINISH,
       player: {
