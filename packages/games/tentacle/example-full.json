@@ -273,10 +273,10 @@
     "createdAt": "2026-11-14T23:58:54.416Z"
   },
   "verdict": {
-    "verdict": "accepted",
+    "verdict": "rejected",
     "reasons": [
-      "wave 4: improved (15.0% -> 81.4% cleared, n=100 -> 97)",
-      "1 of 1 flagged wave(s) improved beyond noise; none got worse"
+      "wave 4: overshot (15.0% -> 81.4% cleared, n=100 -> 97; band 60.0%-70.0%)",
+      "wave 4: overshot its band, the patch made it too easy: needs another round or the designer"
     ],
     "targets": [
       {
@@ -298,7 +298,11 @@
           ],
           "games": 97
         },
-        "outcome": "improved"
+        "outcome": "overshot",
+        "band": [
+          0.6,
+          0.7
+        ]
       }
     ]
   },
@@ -306,6 +310,6 @@
   "gameId": "tentacle_run",
   "botPolicy": "scripted",
   "elapsedMs": 30856,
-  "note": "Recorded run: 100 runs per phase, offline stand-in proposer (origin fake), scripted bot tentacle-bot-0.1.0",
+  "note": "Recorded run, 100 runs per phase, first stand-in (damage halved): re-judged against the target band",
   "recorded": true
 }
