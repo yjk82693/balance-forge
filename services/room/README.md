@@ -806,8 +806,10 @@ Controls: one action, `control { jump: 0|1, slide: 0|1 }`, sent through `input.s
 game keeps the last one). The first jump press jumps (a press up to 6 ticks after leaving the ground still jumps). A
 second press in the air fires the hook up and forward at the nearest anchor and Sepia swings on it while jump stays
 held; releasing lets go with the momentum. Pressing again in the air hooks again, and a press just before landing
-jumps on landing. Slide held on the ground slides under low bars. Pits need a jump, low bars a slide, walls the wire.
-Falling into a pit or hitting an obstacle ends the run; reaching the end of section 6 wins it.
+jumps on landing. Releasing the hook carries Sepia forward: she leaves it at least 1.6 times her running speed, and
+the extra speed fades in flight; slide held in the air tucks her under a low bar. Slide held on the ground slides
+under low bars. Pits need a jump, low bars a slide, walls the wire. Falling into a pit or hitting an obstacle ends the
+run; reaching the end of section 6 wins it.
 
 The view (`state.view` payload) carries the section, the camera, the visible obstacles and anchors, Sepia's state
 (`running`, `jumping`, `sliding`, `swinging`) with the wire anchor, and the shark in the last section; the shapes are
@@ -821,7 +823,7 @@ last). The proposer (Gemini through the server, or an offline stand-in) may chan
 seeds and judged against the target band (target plus or minus 5 points): "on target", "improved", "overshot" (too
 easy: not accepted), "unchanged" or "worse". Section 4 is the designed flaw: three walls and anchors 9,500 units
 apart, out of reach of the wire. In the recorded example (packages/games/tentacle/example-full.json, 100 runs per
-phase, offline stand-in) it is cleared by 8.3% of the runs that reach it against a target of 65%; the proposal
-"Section 4 · Anchor spacing 9500 → 6175" gives 55.0% on the holdout (44 of 80): on target, verdict accepted. The other
-sections of that run clear 95%, 83% and 91% (sections 1 to 3). Patches are listed in `/v1/versions/tentacle_run` like
+phase, offline stand-in) it is cleared by 2.9% of the runs that reach it against a target of 65%; the proposal
+"Section 4 · Anchor spacing 9500 → 6175" gives 47.9% on the holdout (35 of 73): improved, verdict accepted. The other
+sections of that run clear 95%, 87% and 83% (sections 1 to 3). Patches are listed in `/v1/versions/tentacle_run` like
 the other games.
