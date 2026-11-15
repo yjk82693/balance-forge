@@ -9,6 +9,10 @@ import { ArenaCanvas } from "../components/ArenaCanvas";
 import { CardBanner } from "../components/CardBanner";
 import { CardsCanvas } from "../components/CardsCanvas";
 import { RunnerCanvas } from "../components/RunnerCanvas";
+import { ARENA_KEY_HINT, MoveKeys, actionKey } from "../lib/pcKeys";
+import { hasPcMode, usePlayMode } from "../lib/playMode";
+import { pcSession } from "../lib/pcSession";
+import { HeldKeys, KEYBOARD_HINT } from "../lib/runnerKeys";
 import { TENTACLE_GAME_ID } from "../lib/tentacle";
 import { isRunnerPayload, sectionLabel, type RunnerPayload } from "../lib/runner";
 import { ServerDown, useServerState } from "../components/ServerDown";
@@ -46,6 +50,47 @@ export function Arena({ gameId }: { gameId: string }) {
   const cardsObs =
     observation && isCardsPayload(observation.payload) ? (observation as Observation<CardsPayload>) : null;
   const tentacle = gameId === TENTACLE_GAME_ID;
+  // PC mode: this tab holds the player seat (see the lobby) and the keyboard drives it.
+  const pc = usePlayMode() === "pc" && hasPcMode(gameId);
+  useEffect(() => {
+    if (!pc) return;
+    const scrolling = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "];
+    const stop = (e: KeyboardEvent) => scrolling.includes(e.key) && e.preventDefault(); // no page scroll
+    if (gameId === TENTACLE_GAME_ID) {
+      const held = new HeldKeys();
+      const send = (c: { button: "jump" | "slide"; down: boolean } | null) => c && pcSession.press(c.button, c.down);
+      const down = (e: KeyboardEvent) => (stop(e), send(held.change(e.key, true, e.repeat)));
+      const up = (e: KeyboardEvent) => send(held.change(e.key, false));
+      const blur = () => held.releaseAll().forEach((b) => pcSession.press(b, false));
+      addEventListener("keydown", down);
+      addEventListener("keyup", up);
+      addEventListener("blur", blur);
+      return () => {
+        removeEventListener("keydown", down);
+        removeEventListener("keyup", up);
+        removeEventListener("blur", blur);
+      };
+    }
+    const keys = new MoveKeys();
+    const move = (v: [number, number] | null) => v && pcSession.move(v[0], v[1]);
+    const down = (e: KeyboardEvent) => {
+      stop(e);
+      if (e.repeat) return;
+      move(keys.change(e.key, true));
+      const a = actionKey(e.key);
+      if (a) pcSession.button(a);
+    };
+    const up = (e: KeyboardEvent) => move(keys.change(e.key, false));
+    const blur = () => (keys.clear(), pcSession.move(0, 0));
+    addEventListener("keydown", down);
+    addEventListener("keyup", up);
+    addEventListener("blur", blur);
+    return () => {
+      removeEventListener("keydown", down);
+      removeEventListener("keyup", up);
+      removeEventListener("blur", blur);
+    };
+  }, [pc, gameId]);
   // Development only: #/arena/tentacle_run?stub=1 shows a made-up run (never in a production build).
   const stub = import.meta.env.DEV && tentacle && location.hash.includes("stub=1");
   const [stubTick, setStubTick] = useState(0);
@@ -107,6 +152,7 @@ export function Arena({ gameId }: { gameId: string }) {
           <div className="arena-overlay">
             {gameId === "hero_arena" && <PlayBadge mock={isMockMode()} playing={room?.phase === "playing"} />}
             {tentObs && <span className="caption">{sectionLabel(tentObs.payload)}</span>}
+            {pc && <span className="caption">{tentacle ? KEYBOARD_HINT : ARENA_KEY_HINT}</span>}
             {observation && <span className="caption">tick {observation.tick.toLocaleString("en-US")}</span>}
           </div>
           {srv === "unreachable" && !stub ? (
