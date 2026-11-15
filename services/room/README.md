@@ -821,7 +821,7 @@ last). The proposer (Gemini through the server, or an offline stand-in) may chan
 seeds and judged against the target band (target plus or minus 5 points): "on target", "improved", "overshot" (too
 easy: not accepted), "unchanged" or "worse". Section 4 is the designed flaw: three walls and anchors 9,500 units
 apart, out of reach of the wire. In the recorded example (packages/games/tentacle/example-full.json, 100 runs per
-phase, offline stand-in) it is cleared by 6.8% of the runs that reach it against a target of 65%; the proposal
-"Section 4 · Anchor spacing 9500 → 6175" gives 55.7% on the holdout (44 of 79): on target, verdict accepted. The other
-sections of that run clear 95%, 83% and 92% (sections 1 to 3). Patches are listed in `/v1/versions/tentacle_run` like
+phase, offline stand-in) it is cleared by 8.3% of the runs that reach it against a target of 65%; the proposal
+"Section 4 · Anchor spacing 9500 → 6175" gives 55.0% on the holdout (44 of 80): on target, verdict accepted. The other
+sections of that run clear 95%, 83% and 91% (sections 1 to 3). Patches are listed in `/v1/versions/tentacle_run` like
 the other games.

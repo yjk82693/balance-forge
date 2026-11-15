@@ -6,7 +6,7 @@
   "runs": 100,
   "holdoutRuns": 100,
   "baseline": {
-    "dataHash": "18b5d8430cfcb2de4d48c29a80581a721b3764f52e2b74ea7e782bc32e93cdfe",
+    "dataHash": "e05e29e1ed753b2c0f56658e3f1428295e97a9cbd445e5d1f59ec7de127098a7",
     "validRuns": 100,
     "invalidRuns": 0,
     "winRate": 0.04,
@@ -14,7 +14,7 @@
       0.015663,
       0.098372
     ],
-    "meanTicks": 2981,
+    "meanTicks": 3273,
     "waves": [
       {
         "wave": 1,
@@ -53,46 +53,46 @@
         "kind": "wave",
         "reached": 79,
         "reachRate": 0.79,
-        "cleared": 73,
-        "clearRate": 0.924051,
+        "cleared": 72,
+        "clearRate": 0.911392,
         "ci95": [
-          0.844044,
-          0.964728
+          0.828215,
+          0.956415
         ],
         "target": 0.65,
-        "deltaToTarget": 0.274051,
+        "deltaToTarget": 0.261392,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 4,
         "kind": "wave",
-        "reached": 73,
-        "reachRate": 0.73,
-        "cleared": 5,
-        "clearRate": 0.068493,
+        "reached": 72,
+        "reachRate": 0.72,
+        "cleared": 6,
+        "clearRate": 0.083333,
         "ci95": [
-          0.029609,
-          0.150523
+          0.038752,
+          0.170126
         ],
         "target": 0.65,
-        "deltaToTarget": -0.581507,
+        "deltaToTarget": -0.566667,
         "deaths": 0,
         "outlier": true
       },
       {
         "wave": 5,
         "kind": "wave",
-        "reached": 5,
-        "reachRate": 0.05,
+        "reached": 6,
+        "reachRate": 0.06,
         "cleared": 4,
-        "clearRate": 0.8,
+        "clearRate": 0.666667,
         "ci95": [
-          0.375528,
-          0.963777
+          0.299988,
+          0.903231
         ],
         "target": 0.6,
-        "deltaToTarget": 0.2,
+        "deltaToTarget": 0.066667,
         "deaths": 0,
         "outlier": false
       },
@@ -113,23 +113,23 @@
         "outlier": false
       }
     ],
-    "elapsedMs": 16878,
-    "createdAt": "2026-11-15T00:53:12.743Z"
+    "elapsedMs": 15782,
+    "createdAt": "2026-11-15T01:15:10.025Z"
   },
   "humanRuns": 0,
   "fair": false,
   "flaggedWave": {
     "wave": 4,
-    "clearRate": 0.068493,
+    "clearRate": 0.083333,
     "ci95": [
-      0.029609,
-      0.150523
+      0.038752,
+      0.170126
     ],
     "target": 0.65,
-    "deltaToTarget": -0.581507
+    "deltaToTarget": -0.566667
   },
   "proposal": {
-    "baseDataHash": "18b5d8430cfcb2de4d48c29a80581a721b3764f52e2b74ea7e782bc32e93cdfe",
+    "baseDataHash": "e05e29e1ed753b2c0f56658e3f1428295e97a9cbd445e5d1f59ec7de127098a7",
     "replacements": [
       {
         "path": "/gameRules/sections/3/anchorSpacing",
@@ -151,9 +151,9 @@
     "ok": true,
     "errors": []
   },
-  "patchedDataHash": "1d4e61baa147d7b62ccb1b3597b16b17c5b797283cfa165cddeab01ef864d6ac",
+  "patchedDataHash": "852bc76abba6b7bf38f89655365d03034ba36bd608828394b7793d032e223abe",
   "patched": {
-    "dataHash": "1d4e61baa147d7b62ccb1b3597b16b17c5b797283cfa165cddeab01ef864d6ac",
+    "dataHash": "852bc76abba6b7bf38f89655365d03034ba36bd608828394b7793d032e223abe",
     "validRuns": 100,
     "invalidRuns": 0,
     "winRate": 0.29,
@@ -161,7 +161,7 @@
       0.210147,
       0.385391
     ],
-    "meanTicks": 4175,
+    "meanTicks": 4449,
     "waves": [
       {
         "wave": 1,
@@ -184,46 +184,46 @@
         "kind": "wave",
         "reached": 98,
         "reachRate": 0.98,
-        "cleared": 83,
-        "clearRate": 0.846939,
+        "cleared": 84,
+        "clearRate": 0.857143,
         "ci95": [
-          0.76271,
-          0.904994
+          0.774386,
+          0.912956
         ],
         "target": 0.7,
-        "deltaToTarget": 0.146939,
+        "deltaToTarget": 0.157143,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 3,
         "kind": "wave",
-        "reached": 83,
-        "reachRate": 0.83,
-        "cleared": 79,
-        "clearRate": 0.951807,
+        "reached": 84,
+        "reachRate": 0.84,
+        "cleared": 80,
+        "clearRate": 0.952381,
         "ci95": [
-          0.88254,
-          0.981102
+          0.883865,
+          0.981329
         ],
         "target": 0.65,
-        "deltaToTarget": 0.301807,
+        "deltaToTarget": 0.302381,
         "deaths": 0,
         "outlier": false
       },
       {
         "wave": 4,
         "kind": "wave",
-        "reached": 79,
-        "reachRate": 0.79,
+        "reached": 80,
+        "reachRate": 0.8,
         "cleared": 44,
-        "clearRate": 0.556962,
+        "clearRate": 0.55,
         "ci95": [
-          0.447317,
-          0.661324
+          0.441193,
+          0.654225
         ],
         "target": 0.65,
-        "deltaToTarget": -0.093038,
+        "deltaToTarget": -0.1,
         "deaths": 0,
         "outlier": false
       },
@@ -260,12 +260,12 @@
         "outlier": false
       }
     ],
-    "createdAt": "2026-11-15T00:53:12.743Z"
+    "createdAt": "2026-11-15T01:15:10.025Z"
   },
   "verdict": {
     "verdict": "accepted",
     "reasons": [
-      "section 4: on target (6.8% -> 55.7% cleared, n=73 -> 79; band 60.0%-70.0%)",
+      "section 4: on target (8.3% -> 55.0% cleared, n=72 -> 80; band 60.0%-70.0%)",
       "1 of 1 flagged section(s) on target or improved; nothing overshot or got worse"
     ],
     "targets": [
@@ -273,20 +273,20 @@
         "wave": 4,
         "matchup": "section 4",
         "before": {
-          "rate": 0.068493,
+          "rate": 0.083333,
           "ci95": [
-            0.029609,
-            0.150523
+            0.038752,
+            0.170126
           ],
-          "games": 73
+          "games": 72
         },
         "after": {
-          "rate": 0.556962,
+          "rate": 0.55,
           "ci95": [
-            0.447317,
-            0.661324
+            0.441193,
+            0.654225
           ],
-          "games": 79
+          "games": 80
         },
         "outcome": "on target",
         "band": [
@@ -299,7 +299,7 @@
   "runId": "00000000-0000-4000-8000-000000000000",
   "gameId": "tentacle_run",
   "botPolicy": "scripted",
-  "elapsedMs": 43896,
+  "elapsedMs": 40979,
   "note": "Recorded run: 100 runs per phase, offline stand-in proposer, scripted bot tentacle-bot-0.2.0",
   "recorded": true
 }
