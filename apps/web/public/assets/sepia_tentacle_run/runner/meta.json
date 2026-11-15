@@ -1,0 +1,60 @@
+{
+  "canvas": 512,
+  "feetY": 472,
+  "bodyHeight": 400,
+  "sourceScale": 0.9615,
+  "hooks": {
+    "hook_building_1": {
+      "w": 544,
+      "h": 688,
+      "ringX": 272,
+      "ringY": 36
+    },
+    "hook_building_2": {
+      "w": 305,
+      "h": 687,
+      "ringX": 168,
+      "ringY": 38
+    },
+    "hook_building_3": {
+      "w": 620,
+      "h": 685,
+      "ringX": 578,
+      "ringY": 154
+    }
+  },
+  "tiles": {
+    "ground_tile": {
+      "w": 212,
+      "h": 90
+    },
+    "pit_edge": {
+      "w": 177,
+      "h": 90
+    },
+    "low_bar": {
+      "w": 217,
+      "h": 99
+    },
+    "wall": {
+      "w": 216,
+      "h": 133
+    },
+    "btn_jump": {
+      "w": 147,
+      "h": 152
+    },
+    "btn_jump_pressed": {
+      "w": 124,
+      "h": 120
+    },
+    "btn_slide": {
+      "w": 146,
+      "h": 144
+    },
+    "btn_slide_pressed": {
+      "w": 121,
+      "h": 119
+    }
+  }
+}

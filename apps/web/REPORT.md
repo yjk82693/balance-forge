@@ -666,3 +666,22 @@ off, because they need real code changes: `noUncheckedIndexedAccess` (109 errors
   Without a file the drawn fallback stays. Tried with synthetic sheets (not committed).
 - The phone route renders the runner pad for `tentacle_run` (checked with the mock room: the QR carries the game, the form
   offers Sepia, the pad shows SLIDE and JUMP); a leftover stick ring on the pad was removed.
+
+### Real runner art (two GPT sets)
+
+- Originals are copied (not edited) to `public/assets/sepia_tentacle_run/runner/src/` as `setA_*` (GPT names, painted
+  checker) and `setB_*` (our names, RGBA); the build leaves that folder out of `dist`. `scripts/slice_runner_art.py` keys
+  the checker of set A to alpha, splits by connected components, and writes the pieces next to `meta.json`.
+- Per piece the cleaner source: run frames and the three backgrounds from B; action poses, hook structures, tiles and the
+  four buttons from A (B's action cells are cut at the cell borders, its hook alpha is dithered, its tile cells straddle,
+  the buttons exist only in A's atlas). Backgrounds are mirrored into a seamless double-width tile.
+- All character frames share a scale (body 400 of 512) with the feet on one baseline (472); the hanging pose hangs from
+  the top edge. Each hook building's ring centre is measured and the scene places it with the ring on the anchor.
+- `RunnerScene` now looks like the art: three parallax layers, a hook structure under every anchor, ground tile with
+  broken pit edges, the pipe bar and wall blocks, Sepia's run cycle by distance, jump/fall/slide/hook/swing/down poses.
+  The phone buttons use the delivered button art with its pressed version.
+
+- Runner camera zoom 1.7x on the web side (about 9400 of the 16000 units across, Sepia ~150 px tall, ground at y=610 so the
+  4500-high anchors still fit); Sepia keeps the engine's lead from the left. The ground tile loses its faint edge columns
+  in the slicer (no seams). The originals under runner/src are git-ignored (kept locally), only the pieces, meta.json
+  and the slicer are committed.

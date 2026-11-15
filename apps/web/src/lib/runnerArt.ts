@@ -74,6 +74,10 @@ export interface RunnerMeta {
   feetY: number;
   bodyHeight: number;
   ringFromTop: number;
+  /** each hook building: its size and where its ring centre is (slicer, measured), in its own pixels */
+  hooks?: Record<string, { w: number; h: number; ringX: number; ringY: number }>;
+  /** the size of each tile and button piece */
+  tiles?: Record<string, { w: number; h: number }>;
 }
 export const DEFAULT_META: RunnerMeta = { canvas: 512, feetY: 472, bodyHeight: 400, ringFromTop: 80 };
 
@@ -91,6 +95,25 @@ export const feetOrigin = (m: RunnerMeta = DEFAULT_META): number => m.feetY / m.
 export function hookDisplay(groundToAnchor: number, m: RunnerMeta = DEFAULT_META): number {
   const frac = 1 - m.ringFromTop / 1024;
   return Math.max(40, groundToAnchor) / frac;
+}
+
+export interface HookPlacement {
+  /** display size in pixels and the origin (0..1) that puts the ring centre on the anchor */
+  width: number;
+  height: number;
+  originX: number;
+  originY: number;
+}
+
+/**
+ * Where a measured hook building goes: scaled so its base reaches the ground (`groundToAnchor` pixels below the anchor)
+ * with the ring centre exactly on the anchor. Null when the slicer has not measured this building.
+ */
+export function hookPlacement(slot: string, groundToAnchor: number, m: RunnerMeta): HookPlacement | null {
+  const h = m.hooks?.[slot];
+  if (!h || h.h <= h.ringY) return null;
+  const scale = Math.max(40, groundToAnchor) / (h.h - h.ringY);
+  return { width: h.w * scale, height: h.h * scale, originX: h.ringX / h.w, originY: h.ringY / h.h };
 }
 
 const cache = new Map<string, Promise<string | null>>();

@@ -34,10 +34,11 @@ test("the /full body of the engine is read: wave table, flagged wave, per-wave v
   assert.equal(r.flagged.wave, 4);
   assert.equal(r.patchedWaves.length, 6);
   assert.equal(r.targets[0].wave, 4);
-  // the recorded example is an overshoot: the patch made wave 4 too easy and the verdict is rejected
-  assert.equal(r.targets[0].outcome, "overshot");
-  assert.deepEqual(r.targets[0].band, [0.6, 0.7]);
-  assert.equal(body.verdict.verdict, "rejected");
+  // the outcome and band are the example's own (the engine regenerates it: on target / accepted today)
+  assert.equal(r.targets[0].outcome, body.verdict.targets[0].outcome);
+  assert.deepEqual(r.targets[0].band, body.verdict.targets[0].band);
+  assert.ok(["improved", "on target", "overshot", "unchanged", "worse"].includes(r.targets[0].outcome));
+  assert.equal(r.flagged.wave, body.flaggedWave.wave);
   assert.equal(r.runs, body.runs);
   assert.equal(tentacleResultFrom({ baseline: {} }), null);
   assert.equal(tentacleResultFrom(null), null);
@@ -153,4 +154,28 @@ test("hook buildings are stable per anchor and drawn so the ring sits on the anc
   assert.equal(DEFAULT_META.feetY, 472);
   assert.equal(feetOrigin(), 472 / 512);
   assert.equal(spriteDisplay(400), 512);
+});
+
+test("an overshoot with its band is read from the verdict, whatever the example holds", () => {
+  const file = new URL("../../../packages/games/tentacle/example-full.json", import.meta.url);
+  const body = JSON.parse(readFileSync(file, "utf8"));
+  const target = { ...body.verdict.targets[0], outcome: "overshot", band: [0.6, 0.7] };
+  const r = tentacleResultFrom({ ...body, verdict: { ...body.verdict, verdict: "rejected", targets: [target] } });
+  assert.equal(r.targets[0].outcome, "overshot");
+  assert.deepEqual(r.targets[0].band, [0.6, 0.7]);
+  assert.equal(outcomeClass(r.targets[0].outcome), "status warn");
+});
+
+import { hookPlacement } from "../src/lib/runnerArt.ts";
+
+test("a measured hook building is placed with its ring on the anchor and its base on the ground", () => {
+  const meta = { ...DEFAULT_META, hooks: { hook_building_1: { w: 544, h: 688, ringX: 272, ringY: 36 } } };
+  const p = hookPlacement("hook_building_1", 326, meta); // 326 px from the anchor down to the ground
+  assert.equal(Math.round(p.height), Math.round((688 / (688 - 36)) * 326));
+  assert.equal(p.originX, 0.5);
+  assert.equal(p.originY, 36 / 688);
+  // the ring is p.originY of the height below the top, so the base is (1 - originY) * height below the ring = ground
+  assert.equal(Math.round((1 - p.originY) * p.height), 326);
+  assert.equal(hookPlacement("hook_building_2", 100, meta), null);
+  assert.equal(hookPlacement("hook_building_1", 100, DEFAULT_META), null);
 });

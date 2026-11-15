@@ -2,11 +2,21 @@ import Phaser from "phaser";
 import type { Observation } from "../lib/contract";
 import { groundSegments, progress, sectionLabel, toScreenX, type RunnerPayload } from "../lib/runner";
 import { segmentCount } from "../lib/tentacle";
-import { buildingSlot, feetOrigin, hookDisplay, sepiaSlot, spriteDisplay, type RunnerMeta } from "../lib/runnerArt";
+import {
+  buildingSlot,
+  feetOrigin,
+  hookDisplay,
+  hookPlacement,
+  sepiaSlot,
+  spriteDisplay,
+  type RunnerMeta,
+} from "../lib/runnerArt";
 
 export const RUN_W = 1152;
 export const RUN_H = 648;
-const GROUND_Y = 560; // screen y of the ground line (y = 0 in the world)
+const GROUND_Y = 610; // screen y of the ground line (y = 0 in the world); the anchors (4500 high) still fit above it
+/** The camera is zoomed on the web side: about 9400 of the engine's 16000 units are drawn across, Sepia ~150 px tall. */
+export const ZOOM = 1.7;
 const FONT = '"Inter", "Noto Sans KR", system-ui, sans-serif';
 const SKY_TOP = 0x0b1020;
 const SKY_BOTTOM = 0x2a1a4a;
@@ -59,7 +69,7 @@ export class RunnerScene extends Phaser.Scene {
   create() {
     this.meta = (this.registry.get("assets") as RunnerAssets).meta;
     // the three parallax layers (2048x1024 art scaled to the view height), far and mid behind the scene, near in front
-    const layers = [["far", -30, "bg_far"], ["mid", -20, "bg_mid"], ["near", 10, "bg_near"]] as const;
+    const layers = [["far", -30, "bg_far"], ["mid", -20, "bg_mid"], ["near", -10, "bg_near"]] as const;
     for (const [key, depth, name] of layers) {
       if (!this.has(name)) continue;
       const t = this.add.tileSprite(0, 0, RUN_W, RUN_H, this.art(name)).setOrigin(0, 0).setDepth(depth);
@@ -86,10 +96,12 @@ export class RunnerScene extends Phaser.Scene {
     this.layer.removeAll(true);
     if (!obs) return;
     const p = obs.payload;
-    const k = RUN_W / p.viewWidth; // world unit to pixel, the same up and across
-    const sx = (wx: number) => toScreenX(wx, p.cameraX, p.viewWidth, RUN_W);
+    const k = (ZOOM * RUN_W) / p.viewWidth; // world unit to pixel, the same up and across
+    // Sepia keeps the engine's lead from the left edge (a quarter of the view); the world scrolls around her
+    const lead = Math.max(0.1, Math.min(0.5, (p.player.x - p.cameraX) / p.viewWidth));
+    const sx = (wx: number) => toScreenX(wx, p.player.x - lead * (RUN_W / k), RUN_W / k, RUN_W);
     const sy = (wy: number) => GROUND_Y - wy * k;
-    this.scrollBackgrounds(p.cameraX * k);
+    this.scrollBackgrounds(p.player.x * k);
     this.ground(p, sx, k);
     for (const o of p.obstacles) this.obstacle(o, sx, sy, k);
     const wire = p.player.wire;
@@ -144,12 +156,14 @@ export class RunnerScene extends Phaser.Scene {
   }
 
   private ground(p: RunnerPayload, sx: (x: number) => number, k: number) {
-    const from = p.cameraX - 500;
-    const to = p.cameraX + p.viewWidth + 500;
+    const left = p.player.x - sx(p.player.x) / k; // the world x at the left edge of the screen
+    const from = left - 500;
+    const to = left + RUN_W / k + 500;
     const pits = p.obstacles.filter((o) => o.kind === "pit");
     const g = this.add.graphics();
     const tile = this.has("ground_tile");
-    const TILE = 0.25; // a 512 tile drawn 128 px wide
+    const tileH = this.meta.tiles?.ground_tile?.h ?? 128;
+    const TILE = (700 * k) / tileH; // the tile is 700 world units tall, so it zooms with the world
     for (const [a, b] of groundSegments(pits, from, to)) {
       if (tile) {
         const t = this.add.tileSprite(sx(a), GROUND_Y, (b - a) * k, RUN_H - GROUND_Y, this.art("ground_tile"));
@@ -168,9 +182,12 @@ export class RunnerScene extends Phaser.Scene {
         const left = sx(pit.x);
         const right = sx(pit.x + pit.w);
         if (right < -140 || left > RUN_W + 140) continue;
-        this.layer.add(this.add.image(left, GROUND_Y, this.art("pit_edge")).setOrigin(1, 0).setDisplaySize(128, 128));
+        const e = this.meta.tiles?.pit_edge ?? { w: 177, h: 90 };
+        const w = e.w * TILE;
+        const h = e.h * TILE;
+        this.layer.add(this.add.image(left, GROUND_Y, this.art("pit_edge")).setOrigin(1, 0).setDisplaySize(w, h));
         this.layer.add(
-          this.add.image(right, GROUND_Y, this.art("pit_edge")).setOrigin(1, 0).setFlipX(true).setDisplaySize(128, 128),
+          this.add.image(right, GROUND_Y, this.art("pit_edge")).setOrigin(0, 0).setFlipX(true).setDisplaySize(w, h),
         );
       }
     }
@@ -195,10 +212,16 @@ export class RunnerScene extends Phaser.Scene {
     const art = o.kind === "lowBar" ? "low_bar" : o.kind === "wall" ? "wall" : "";
     if (art && this.has(art)) {
       const top = sy(o.y + o.h);
+      if (o.kind === "lowBar") {
+        // one pipe stretched over the bar
+        this.layer.add(this.add.image(x, top, this.art(art)).setOrigin(0, 0).setDisplaySize(w, o.h * k));
+        return;
+      }
+      // a wall: the block repeated upward, as wide as the wall
+      const native = this.meta.tiles?.wall ?? { w: 216, h: 133 };
       const t = this.add.tileSprite(x, top, w, o.h * k, this.art(art)).setOrigin(0, 0);
-      // a single block of art, repeated along whichever side is longer
-      const scale = o.kind === "lowBar" ? (o.h * k) / 512 : w / 512;
-      t.setTileScale(scale, scale);
+      t.setTileScale(w / native.w, w / native.w);
+      t.tilePositionY = native.h; // start the repeat from the ground up
       this.layer.add(t);
       return;
     }
@@ -247,6 +270,14 @@ export class RunnerScene extends Phaser.Scene {
   private anchor(a: RunnerPayload["anchors"][number], x: number, y: number, hooked: boolean) {
     if (x < -300 || x > RUN_W + 300) return;
     const slot = buildingSlot(a.id);
+    const placed = this.has(slot) ? hookPlacement(slot, GROUND_Y - y, this.meta) : null;
+    if (placed) {
+      const img = this.add.image(x, y, this.art(slot)).setOrigin(placed.originX, placed.originY);
+      img.setDisplaySize(placed.width, placed.height);
+      if (hooked) img.setTint(0xcfffee);
+      this.layer.add(img);
+      return;
+    }
     if (this.has(slot)) {
       const size = hookDisplay(GROUND_Y - y, this.meta);
       const img = this.add.image(x, GROUND_Y, this.art(slot)).setOrigin(0.5, 1).setDisplaySize(size, size);
