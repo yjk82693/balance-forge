@@ -803,6 +803,6 @@ accepted and played as Sepia. `match.start` needs exactly one seated phone. Acti
 `POST /v1/playtest/full {gameId: 'tentacle_run', runs?: 100, holdoutRuns?}` runs the scripted bot `tentacle-bot-0.1.0`
 for `runs` runs, builds the per-wave table (reach rate, clear rate given reached with a Wilson interval, deaths), flags
 the wave whose whole interval sits below its target minus 10 points (targets 70, 70, 65, 65, 60 and 50% for the boss),
-asks the proposer for a patch on `/gameRules/waves/N/...`, validates it, runs fresh holdout seeds and judges each flagged
-wave. The body shape is in packages/games/tentacle/example-full.json (a recorded run). Patches are listed in
+asks the proposer for a patch on `/gameRules/waves/N/...`, validates it, runs fresh holdout seeds and judges each
+flagged wave. The body shape is in packages/games/tentacle/example-full.json (a recorded run). Patches are listed in
 `/v1/versions/tentacle_run` like the other games.
