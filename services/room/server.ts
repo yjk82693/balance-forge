@@ -855,6 +855,15 @@ export class RoomServer {
       json(response, 200, { enabled: this.sinks.enabled, status });
       return;
     }
+    const humansRoute = path.match(/^\/v1\/humans\/(hero_arena|hero_cards|tentacle_run)$/);
+    if (request.method === 'GET' && humansRoute) { // the human rows of one game, for the live dashboard
+      const gameId = humansRoute[1];
+      const { addHumanRows } = await import('../../packages/analysis/src/human.ts');
+      const results = this.storage.humans.filter(result => (result?.config?.gameId ?? gameId) === gameId);
+      const report: any = addHumanRows({ rows: [] }, structuredClone(results));
+      json(response, 200, { gameId, humanMatches: report.humanMatches ?? 0, rows: report.rows });
+      return;
+    }
     const trendRoute = path.match(/^\/v1\/trend\/(hero_arena|hero_cards|tentacle_run)$/);
     if (request.method === 'GET' && trendRoute) {
       const matchup = url.searchParams.get('matchup') ?? '';
