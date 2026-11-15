@@ -5,7 +5,7 @@ import { deepFreeze } from '../../sim/index.ts';
 // Section 4 is the designed flaw: three walls and anchors 9,500 units apart, so the wire almost never reaches one.
 export const rules: TentacleRules = {
   viewWidth: 16000,
-  leadIn: 2000,
+  leadIn: 9000,
   player: { width: 600, height: 1200, slideHeight: 500 },
   physics: { gravity: 2, jumpVelocity: 64, maxFall: 60, tapTicks: 12, wireRange: 5600, wireMinLength: 2600,
     swingGravity: 2, reelSpeed: 30, releaseBoost: 14 },
