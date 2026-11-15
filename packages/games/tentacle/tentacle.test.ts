@@ -36,7 +36,14 @@ test('the data shape: six sections, one flawed section, a generated course', () 
   const state = fresh();
   const kinds = state.payload.obstacles.reduce((n, o) => ({ ...n, [o.kind]: (n[o.kind] ?? 0) + 1 }), {});
   assert.deepEqual(kinds, { pit: 13, lowBar: 10, wall: 8 }); // the sum over the six sections
-  assert.ok(state.payload.anchors.length > 20);
+  // anchors only where swinging is needed: before every wall and over the swing chasms
+  const chasms = state.payload.obstacles.filter(o => o.kind === 'pit' && o.w > 3000);
+  assert.equal(chasms.length, 6); // every second pit of every section
+  const walls = state.payload.obstacles.filter(o => o.kind === 'wall');
+  assert.equal(state.payload.anchors.filter(a => !a.overPit).length, walls.length);
+  assert.ok(state.payload.anchors.filter(a => a.overPit)
+    .every(a => chasms.some(c => a.x >= c.x - 800 && a.x < c.x + c.w)));
+  assert.ok(state.payload.obstacles.every(o => o.x + o.w < state.payload.finishX));
   assert.equal(state.payload.finishX, rules.leadIn + 6 * 30000);
   assert.equal(game.describe().maxPlayers, 1);
 });
@@ -231,4 +238,17 @@ test('the swing carries Sepia forward: on release she flies faster than she runs
   const fast = state.payload.player.vx;
   for (let i = 0; i < 30; i++) state = stepWith(state);
   assert.ok(state.payload.player.vx < fast && state.payload.player.vx >= run);
+});
+
+test('a swing chasm cannot be jumped, narrow pits have no anchors, and the double press crosses the chasm', () => {
+  let state = fresh();
+  const chasm = state.payload.obstacles.find(o => o.kind === 'pit' && o.w > 3000);
+  const narrow = state.payload.obstacles.filter(o => o.kind === 'pit' && o.w < 3000);
+  assert.ok(narrow.every(p => !state.payload.anchors.some(a => a.x > p.x - 600 && a.x < p.x + p.w)));
+  state.payload.obstacles = [chasm];
+  state.payload.player.x = chasm.x - 300;
+  state = stepWith(state, [control(state, 1, 0)]); // a plain jump
+  state = stepWith(state, [control(state, 0, 0, 1)]);
+  state = runTo(state, chasm.x + chasm.w + 800);
+  assert.equal(state.payload.outcome.reason, 'pit');
 });

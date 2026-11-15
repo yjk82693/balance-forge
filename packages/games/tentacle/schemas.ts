@@ -10,7 +10,7 @@ const section = object({ length: int(6000, 100000), pits: int(0, 12), lowBars: i
 ['length', 'pits', 'lowBars', 'walls', 'anchorSpacing', 'runSpeed']);
 const obstacle = object({ id: text(), kind: { enum: ['pit', 'lowBar', 'wall'] }, x: coord, w: int(1, 100000), y: coord,
   h: int(0, 100000), section: int(1, 6) });
-const anchor = object({ id: text(), x: coord, y: coord, section: int(1, 6) });
+const anchor = object({ id: text(), x: coord, y: coord, section: int(1, 6), overPit: { type: 'boolean' } });
 const wire = { anyOf: [{ type: 'null' }, object({ anchorId: text(), anchorX: coord, anchorY: coord,
   length: int(1, 100000) })] };
 const playerState = { enum: ['running', 'jumping', 'sliding', 'swinging'] };
